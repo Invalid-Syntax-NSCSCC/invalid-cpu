@@ -341,3 +341,6 @@ hs_err_pid*
 
 # Metals
 .metals/
+
+### Project Specific stuff
+!/utils/firtool.exe
