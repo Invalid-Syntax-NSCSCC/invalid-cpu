@@ -1,7 +1,9 @@
 import chisel3._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
 import chiseltest.simulator.WriteVcdAnnotation
 import frontend.InstQueue
+import pipeline.dispatch.bundles.InstInfoBundle
 import utest._
 
 object ComponentSpec extends ChiselUtestTester {
@@ -14,7 +16,10 @@ object ComponentSpec extends ChiselUtestTester {
         instQueue.clock.step()
 
         // Enqueue and dequeue at the same time, then flow through and can dequeue
-        val testValue = 114514.U
+        val testValue = (new InstInfoBundle).Lit(
+          _.pcAddr -> 114.U,
+          _.inst -> 514.U
+        )
         instQueue.io.enqueuePort.ready.expect(true.B)
         instQueue.io.enqueuePort.valid.poke(true.B)
         instQueue.io.enqueuePort.bits.poke(testValue)
@@ -28,7 +33,7 @@ object ComponentSpec extends ChiselUtestTester {
         instQueue.io.dequeuePort.ready.poke(false.B)
         for (i <- 1 to 5) {
           instQueue.io.enqueuePort.valid.poke(true.B)
-          instQueue.io.enqueuePort.bits.poke(1.U)
+          instQueue.io.enqueuePort.bits.poke(testValue)
           instQueue.clock.step()
         }
         instQueue.io.enqueuePort.valid.poke(false.B)
