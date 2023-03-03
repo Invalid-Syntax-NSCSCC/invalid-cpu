@@ -1,5 +1,3 @@
 package pipeline.dispatch
 
-class RegReadStage {
-
-}
+class RegReadStage {}

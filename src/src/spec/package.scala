@@ -5,7 +5,7 @@ package object spec {
   // Immutable definitions according to LA32R documentation go here
 
   val wordLength = 32
-  val wordLog = log2Ceil(wordLength)
+  val wordLog    = log2Ceil(wordLength)
 
   val zeroWord = 0.U(wordLength.W)
 

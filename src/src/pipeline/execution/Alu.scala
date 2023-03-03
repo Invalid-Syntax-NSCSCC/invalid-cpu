@@ -1,5 +1,3 @@
 package pipeline.execution
 
-class Alu {
-
-}
+class Alu {}

@@ -10,5 +10,4 @@ class IssueStage extends Module {
     val instInfoPort = Input(new InstInfoBundle)
   })
 
-
 }

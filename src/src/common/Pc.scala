@@ -5,6 +5,4 @@ import chisel3.util._
 import common.bundles._
 import spec._
 
-class Pc extends Module{
-
-}
+class Pc extends Module {}

@@ -8,4 +8,3 @@ class RfReadPort extends Bundle {
   val addr = Input(UInt(Width.Reg.addr))
   val data = Output(UInt(Width.Reg.data))
 }
-
