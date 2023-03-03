@@ -10,6 +10,8 @@ Invalid Syntax 参赛队为 LoongArch 挑战赛 2023 设计的 CPU 源代码。
 
 请确保在开发系统上配置好 [chiplab](https://gitee.com/loongson-edu/chiplab/tree/chiplab_diff)、IntelliJ IDEA、JDK 等开发工具，并在 IDEA 中安装好 Scala 插件。
 
+初次使用 IDEA 打开此项目的时候，需要执行命令 `./millw mill.bsp.BSP/install`。
+
 *待补充*
 
 ## 自动化任务
