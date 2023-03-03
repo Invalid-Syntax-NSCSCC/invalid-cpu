@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import spec._
 
-${NAME} extends Module {
+class ${NAME} extends Module {
   val io = IO(new Bundle {
     
   })
