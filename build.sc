@@ -16,7 +16,7 @@ object src extends ScalaModule with ScalafmtModule { m =>
     "-P:chiselplugin:genBundleElements"
   )
   override def ivyDeps = Agg(
-    ivy"edu.berkeley.cs::chisel3:3.5.4",
+    ivy"edu.berkeley.cs::chisel3:3.6.0-M2",
     ivy"com.sifive::chisel-circt:0.6.0"
   )
   override def scalacPluginIvyDeps = Agg(
