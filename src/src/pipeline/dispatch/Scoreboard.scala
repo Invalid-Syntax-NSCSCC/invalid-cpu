@@ -5,11 +5,11 @@ import chisel3.util._
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec._
 
-class Scoreboard extends Module {
+class Scoreboard(changeNum: Int = Param.scoreboardChangeNum) extends Module {
   val io = IO(new Bundle {
-    val occupyPort = Input(new ScoreboardChangeNdPort)
-    val freePort   = Input(new ScoreboardChangeNdPort)
-    val regScores  = Output(Vec(Count.reg, Bool()))
+    val occupyPorts = Input(Vec(changeNum, new ScoreboardChangeNdPort))
+    val freePorts   = Input(Vec(changeNum, new ScoreboardChangeNdPort))
+    val regScores   = Output(Vec(Count.reg, Bool()))
   })
 
   val isRegOccupied = RegInit(VecInit(Seq.fill(Count.reg)(false.B)))
@@ -20,9 +20,9 @@ class Scoreboard extends Module {
   isRegOccupied.zipWithIndex.foreach {
     case (reg, index) =>
       reg := reg
-      when(io.occupyPort.en && io.occupyPort.addr === index.U) {
+      when(io.occupyPorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
         reg := true.B
-      }.elsewhen(io.freePort.en && io.freePort.addr === index.U) {
+      }.elsewhen(io.freePorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
         reg := false.B
       }
   }

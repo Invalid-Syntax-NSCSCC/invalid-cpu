@@ -6,13 +6,13 @@ import pipeline.dispatch.bundles.{DecodeOutNdPort, DecodePort, InstInfoBundle, I
 import pipeline.dispatch.decode.{Decoder, Decoder_2RI12}
 import spec._
 
-class IssueStage extends Module {
+class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
   val io = IO(new Bundle {
     val fetchInstInfoPort = Flipped(Decoupled(new InstInfoBundle))
 
     // Scoreboard
-    val occupyPort = Output(new ScoreboardChangeNdPort)
-    val regScores  = Input(Vec(Count.reg, Bool()))
+    val occupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
+    val regScores   = Input(Vec(Count.reg, Bool()))
 
     // `IssueStage` -> `RegReadStage`
     val issuedInfoPort = Output(new IssuedInfoNdPort)
@@ -40,6 +40,10 @@ class IssueStage extends Module {
   // Fallback for no operation
   io.issuedInfoPort.isValid := false.B
   io.issuedInfoPort.info    := DontCare
+  io.occupyPorts.foreach { port =>
+    port.en   := false.B
+    port.addr := DontCare
+  }
 
   // Issue pre-microcode
   when(isNeedIssue) {
@@ -49,6 +53,13 @@ class IssueStage extends Module {
       .reduce(_ && _) && (!(io.regScores(
       selectedDecoder.info.gprWritePort.addr
     ) && selectedDecoder.info.gprWritePort.en))
+
+    // Indicate the occupation in scoreboard
+    io.occupyPorts.zip(selectedDecoder.info.gprReadPorts ++ Seq(selectedDecoder.info.gprWritePort)).foreach {
+      case (occupyPort, accessInfo) =>
+        occupyPort.en   := accessInfo.en
+        occupyPort.addr := accessInfo.addr
+    }
 
     io.issuedInfoPort.info := selectedDecoder.info
   }

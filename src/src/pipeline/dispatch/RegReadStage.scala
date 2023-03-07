@@ -9,7 +9,7 @@ import spec._
 class RegReadStage extends Module {
   val io = IO(new Bundle {
     val issuedInfoPort = Input(new IssuedInfoNdPort)
-    val gprReadPorts   = Vec(2, new RfReadPort)
+    val gprReadPorts   = Vec(2, Flipped(new RfReadPort))
     val microcodePort  = Output(new MicrocodeNdPort)
   })
 
