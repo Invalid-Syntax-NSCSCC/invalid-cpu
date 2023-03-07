@@ -1,6 +1,7 @@
 import chisel3._
-import chisel3.experimental.{FlatIO}
+import chisel3.experimental.FlatIO
 import chisel3.util._
+import frontend.InstQueue
 
 class CpuTop extends Module {
   val io = FlatIO(new Bundle {
@@ -67,6 +68,9 @@ class CpuTop extends Module {
 
   io <> DontCare
 
+  // TODO: Remove temporary test content
   val testReg = RegNext(true.B, false.B)
   io.bready := testReg
+
+  val instQueue = Module(new InstQueue)
 }

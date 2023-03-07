@@ -24,19 +24,32 @@ class IssueStage extends Module {
   val instInfo        = RegEnable(io.fetchInstInfoPort.bits, InstInfoBundle.default, isInstAvailable)
   io.fetchInstInfoPort.ready := isInstFetch
 
-  val decoders     = Seq(new Decoder_2RI12)
+  // Select a decoder
+  val decoders = Seq(Module(new Decoder_2RI12))
+  decoders.foreach(_.io.inst := instInfo.inst)
   val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
   decoderWires.zip(decoders).foreach {
     case (port, decoder) => port := decoder.io.out
   }
+  val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
+  val selectedDecoder = WireDefault(decoderWires(decoderIndex))
 
   val isInstValid = WireDefault(decoderWires.map(_.isMatched).reduce(_ || _))
   val isNeedIssue = WireDefault((isInstAvailable || !isInstFetch) && isInstValid)
-  val decoderIndex = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
 
-  // TODO: Issue `nop` if not `isNeedIssue`
+  // Fallback for no operation
+  io.issuedInfoPort.isValid := false.B
+  io.issuedInfoPort.info    := DontCare
 
+  // Issue pre-microcode
   when(isNeedIssue) {
+    // Check scoreboard to eliminate data hazards
+    io.issuedInfoPort.isValid := selectedDecoder.info.gprReadPorts
+      .map(port => !(io.regScores(port.addr) && port.en))
+      .reduce(_ && _) && (!(io.regScores(
+      selectedDecoder.info.gprWritePort.addr
+    ) && selectedDecoder.info.gprWritePort.en))
 
+    io.issuedInfoPort.info := selectedDecoder.info
   }
 }

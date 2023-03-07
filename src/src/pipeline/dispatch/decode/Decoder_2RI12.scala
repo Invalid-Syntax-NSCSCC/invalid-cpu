@@ -13,7 +13,7 @@ class Decoder_2RI12 extends Decoder {
   val rd     = io.inst(4, 0)
 
   // It has immediate
-  io.out.isHasImm := true.B
+  io.out.info.isHasImm := true.B
 
   // Extend immediate
   val immSext = Wire(SInt(Width.Reg.data))
@@ -22,25 +22,25 @@ class Decoder_2RI12 extends Decoder {
   immZext := imm12
 
   // Read and write GPR
-  io.out.regFileReadPorts(0).en   := true.B
-  io.out.regFileReadPorts(0).addr := rj
-  io.out.regFileReadPorts(1).en   := false.B
-  io.out.regFileReadPorts(1).addr := DontCare
-  io.out.regFileWritePort.en := true.B
-  io.out.regFileWritePort.addr := rd
+  io.out.info.gprReadPorts(0).en   := true.B
+  io.out.info.gprReadPorts(0).addr := rj
+  io.out.info.gprReadPorts(1).en   := false.B
+  io.out.info.gprReadPorts(1).addr := DontCare
+  io.out.info.gprWritePort.en      := true.B
+  io.out.info.gprWritePort.addr    := rd
 
   // Fallback
-  io.out.exeSel := ExeInst.Sel.none
-  io.out.exeOp := ExeInst.Op.nop
-  io.out.imm := DontCare
-  io.out.isMatched := false.B
+  io.out.info.exeSel := ExeInst.Sel.none
+  io.out.info.exeOp  := ExeInst.Op.nop
+  io.out.info.imm    := DontCare
+  io.out.isMatched   := false.B
 
   switch(opcode) {
     is(Inst.addi_w) {
-      io.out.isMatched := true.B
-      io.out.exeSel := ExeInst.Sel.arithmetic
-      io.out.exeOp := ExeInst.Op.add
-      io.out.imm := immSext
+      io.out.isMatched   := true.B
+      io.out.info.exeSel := ExeInst.Sel.arithmetic
+      io.out.info.exeOp  := ExeInst.Op.add
+      io.out.info.imm    := immSext
     }
   }
 }

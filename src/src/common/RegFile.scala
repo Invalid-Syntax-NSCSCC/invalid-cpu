@@ -26,7 +26,7 @@ class RegFile(readNum: Int = Param.regFileReadNum) extends Module {
 
   // Read
   io.readPorts.foreach { readPort =>
-    readPort := zeroWord
+    readPort.data := zeroWord
     when(readPort.addr === 0.U) {
       // Always zero
       readPort.data := zeroWord

@@ -11,6 +11,4 @@ class DecodePort extends Bundle {
 
   // Output info
   val out = Output(new DecodeOutNdPort)
-
-  // Other things need to be considered in the future
 }

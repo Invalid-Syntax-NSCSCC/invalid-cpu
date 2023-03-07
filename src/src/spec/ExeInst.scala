@@ -10,7 +10,7 @@ object ExeInst {
       count.U(Param.Width.exeSel)
     }
 
-    val none = 0.U(Param.Width.exeSel)
+    val none       = 0.U(Param.Width.exeSel)
     val arithmetic = next
   }
   object Op {
