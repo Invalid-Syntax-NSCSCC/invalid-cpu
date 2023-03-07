@@ -11,5 +11,5 @@ abstract class Decoder extends Module {
   // 2) Extract register information from instruction
   // 3) Something else...
 
-  val io: DecodePort
+  val io = IO(new DecodePort)
 }

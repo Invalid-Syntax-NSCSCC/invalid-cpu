@@ -15,6 +15,10 @@ package object spec {
       val addr = wordLog.W
       val data = wordLength.W
     }
+
+    object Op {
+      val _2RI12 = 10.W
+    }
   }
 
   object Count {

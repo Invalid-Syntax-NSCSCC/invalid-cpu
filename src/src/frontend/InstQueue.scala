@@ -10,6 +10,8 @@ class InstQueue(val queueLength: Int = Param.instQueueLength) extends Module {
   val io = IO(new Bundle {
     val isFlush     = Input(Bool())
     val enqueuePort = Flipped(Decoupled(new InstInfoBundle))
+
+    // `InstQueue` -> `IssueStage`
     val dequeuePort = Decoupled(new InstInfoBundle)
   })
 
