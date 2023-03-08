@@ -19,6 +19,12 @@ package object spec {
     object Op {
       val _2RI12 = 10.W
     }
+
+    object Axi {
+      val addr = wordLength
+      val data = 128
+      val strb = data / 8
+    }
   }
 
   object Count {
