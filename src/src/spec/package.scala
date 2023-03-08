@@ -21,9 +21,11 @@ package object spec {
     }
 
     object Axi {
-      val addr = wordLength
-      val data = 128
-      val strb = data / 8
+      val addr   = wordLength
+      val data   = 32
+      val strb   = data / 8
+      val aruser = 1
+      val ruser  = 1
     }
   }
 
@@ -37,6 +39,10 @@ package object spec {
       val block           = true // blocking arbiter enable
       val blockAck        = true // block on acknowledge assert when nonzero, request deassert when 0
       val lsbHighPriority = true // LSB priority selection
+    }
+    object Crossbar {
+      val aruserEnable = false // propagate aruser signal
+      val ruserEnable  = false // propagate ruser signal
     }
   }
 }
