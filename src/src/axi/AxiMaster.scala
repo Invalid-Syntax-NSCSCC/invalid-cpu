@@ -55,6 +55,11 @@ class AxiMaster(val Id: Int = 0) extends Module {
   io.axi.awburst := 0.U
   io.axi.bready  := true.B
 
+  val readyMod = Module(new SetClrReg(setOverClr = false, width = 1, resetValue = 1))
+  readyMod.io.set := (io.axi.rvalid & (io.axi.rid === Id)) | (io.axi.bvalid & (io.axi.bid === Id))
+  readyMod.io.clr := io.newRequest
+  io.readyOut     := readyMod.io.result
+
   val validReg = RegNext(io.axi.rvalid, 0.U)
   io.validOut := validReg
 
