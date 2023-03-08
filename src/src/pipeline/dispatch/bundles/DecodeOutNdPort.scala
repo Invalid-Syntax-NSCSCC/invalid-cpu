@@ -8,5 +8,5 @@ class DecodeOutNdPort extends Bundle {
   // Is instruction matched
   val isMatched = Bool()
 
-  val info = new PreMicrocodeNdPort
+  val info = new PreExeInstNdPort
 }

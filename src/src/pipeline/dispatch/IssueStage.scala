@@ -14,15 +14,19 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     val occupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
     val regScores   = Input(Vec(Count.reg, Bool()))
 
-    // `IssueStage` -> `RegReadStage`
+    // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPort = Output(new IssuedInfoNdPort)
   })
 
+  // Pass to the next stage in a sequential way
+  val issuedInfoReg = RegInit(IssuedInfoNdPort.default)
+  io.issuedInfoPort := issuedInfoReg
+
   // Get next instruction if needed
-  val isInstFetch     = WireDefault(true.B)
-  val isInstAvailable = WireDefault(io.fetchInstInfoPort.valid && isInstFetch)
+  val isNonBlocking   = WireDefault(true.B)
+  val isInstAvailable = WireDefault(io.fetchInstInfoPort.valid && isNonBlocking)
   val instInfo        = RegEnable(io.fetchInstInfoPort.bits, InstInfoBundle.default, isInstAvailable)
-  io.fetchInstInfoPort.ready := isInstFetch
+  io.fetchInstInfoPort.ready := isNonBlocking
 
   // Select a decoder
   val decoders = Seq(Module(new Decoder_2RI12))
@@ -34,33 +38,39 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
   val selectedDecoder = WireDefault(decoderWires(decoderIndex))
 
+  // Check scoreboard
+  isNonBlocking := selectedDecoder.info.gprReadPorts.map { port =>
+    !(port.en && io.regScores(port.addr))
+  }.reduce(_ || _)
+
   val isInstValid = WireDefault(decoderWires.map(_.isMatched).reduce(_ || _))
-  val isNeedIssue = WireDefault((isInstAvailable || !isInstFetch) && isInstValid)
+  val isNeedIssue = WireDefault((isInstAvailable || !isNonBlocking) && isInstValid)
 
   // Fallback for no operation
-  io.issuedInfoPort.isValid := false.B
-  io.issuedInfoPort.info    := DontCare
+  issuedInfoReg.isValid              := false.B
+  issuedInfoReg.info                 := DontCare
+  issuedInfoReg.info.gprWritePort.en := false.B
   io.occupyPorts.foreach { port =>
     port.en   := false.B
     port.addr := DontCare
   }
 
-  // Issue pre-microcode
+  // Issue pre-execution instruction
   when(isNeedIssue) {
     // Check scoreboard to eliminate data hazards
-    io.issuedInfoPort.isValid := selectedDecoder.info.gprReadPorts
+    issuedInfoReg.isValid := selectedDecoder.info.gprReadPorts
       .map(port => !(io.regScores(port.addr) && port.en))
       .reduce(_ && _) && (!(io.regScores(
       selectedDecoder.info.gprWritePort.addr
     ) && selectedDecoder.info.gprWritePort.en))
 
     // Indicate the occupation in scoreboard
-    io.occupyPorts.zip(selectedDecoder.info.gprReadPorts ++ Seq(selectedDecoder.info.gprWritePort)).foreach {
+    io.occupyPorts.zip(Seq(selectedDecoder.info.gprWritePort)).foreach {
       case (occupyPort, accessInfo) =>
         occupyPort.en   := accessInfo.en
         occupyPort.addr := accessInfo.addr
     }
 
-    io.issuedInfoPort.info := selectedDecoder.info
+    issuedInfoReg.info := selectedDecoder.info
   }
 }

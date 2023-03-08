@@ -11,7 +11,7 @@ object ExeInst {
     }
 
     val none       = 0.U(Param.Width.exeSel)
-    val arithmetic = next
+    val arithmetic = next // Only for regular arithmetic operation computed in ALU
   }
   object Op {
     private var count = 0
