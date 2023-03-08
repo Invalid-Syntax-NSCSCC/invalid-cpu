@@ -9,7 +9,7 @@
             <option value="$PROJECT_DIR$" />
           </set>
         </option>
-        <option name="serverConfig" value="BspConfigFile:/Users/lihaojun/Source/Chisel/invalid-cpu/.bsp/mill-bsp.json" />
+        <option name="serverConfig" value="BspConfigFile:$PROJECT_DIR$/.bsp/mill-bsp.json" />
         <option name="preImportConfig" value="NoPreImport" />
       </BspProjectSettings>
     </option>

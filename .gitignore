@@ -343,7 +343,7 @@ hs_err_pid*
 .metals/
 
 # Bloop
-.bloop/out/
+.bloop/
 
 ### Project Specific stuff
 !/utils/firtool.exe
