@@ -30,4 +30,13 @@ package object spec {
   object Count {
     val reg = wordLength
   }
+
+  object Axi {
+    object Arb {
+      val typeRoundRobin  = true // select round robin arbitration
+      val block           = true // blocking arbiter enable
+      val blockAck        = true // block on acknowledge assert when nonzero, request deassert when 0
+      val lsbHighPriority = true // LSB priority selection
+    }
+  }
 }
