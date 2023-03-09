@@ -194,6 +194,8 @@ Session.vim
 .idea/workspace.xml
 .idea/tasks.xml
 .idea/dictionaries
+.idea/bsp.xml
+.idea/scala_compiler.xml
 
 # Sensitive or high-churn files:
 .idea/dataSources.ids
@@ -343,7 +345,7 @@ hs_err_pid*
 .metals/
 
 # Bloop
-.bloop/out/
+.bloop/
 
 ### Project Specific stuff
 !/utils/firtool.exe
