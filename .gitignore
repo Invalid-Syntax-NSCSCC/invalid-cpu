@@ -194,6 +194,8 @@ Session.vim
 .idea/workspace.xml
 .idea/tasks.xml
 .idea/dictionaries
+.idea/bsp.xml
+.idea/scala_compiler.xml
 
 # Sensitive or high-churn files:
 .idea/dataSources.ids
