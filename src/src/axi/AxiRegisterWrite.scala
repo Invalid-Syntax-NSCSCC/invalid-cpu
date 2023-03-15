@@ -64,7 +64,7 @@ class AxiRegisterWrite(val idWidth: Int, val awRegType: RegType, val wRegType: R
       val storeTempToOutput  = Reg(Bool())
 
       // enable ready input next cycle if output is ready or the temp reg will not be filled on the next cycle (output reg empty or no input)
-      val slaveReadyEarly = io.master.aw.ready | (~tempMasterValidReg & (!masterValidReg | !io.slave.aw.valid))
+      val slaveReadyEarly = io.master.aw.ready | (!tempMasterValidReg & (!masterValidReg | !io.slave.aw.valid))
       val slaveReadyReg   = RegNext(slaveReadyEarly, false.B)
 
       // datapath control
@@ -116,20 +116,20 @@ class AxiRegisterWrite(val idWidth: Int, val awRegType: RegType, val wRegType: R
       io.master.w <> io.slave.w
       io.master.w.bits.user := (if (Axi.Crossbar.wuserEnable) io.slave.w.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
-      val masterReg = Reg(chiselTypeOf(io.master.w.bits))
+      val masterReg          = Reg(chiselTypeOf(io.master.w.bits))
       val masterValidNextReg = Reg(Bool())
-      val masterValidReg = RegNext(masterValidNextReg, false.B)
+      val masterValidReg     = RegNext(masterValidNextReg, false.B)
 
       val storeInputToOutput = Reg(Bool())
 
       val slaveReadyEarly = !masterValidNextReg // enable ready input next cycle if output buffer will be empty
-      val slaveReadyReg = RegNext(slaveReadyEarly, false.B)
+      val slaveReadyReg   = RegNext(slaveReadyEarly, false.B)
 
       // datapath control
-      io.slave.w.ready := slaveReadyReg
-      io.master.w.bits := masterReg
+      io.slave.w.ready      := slaveReadyReg
+      io.master.w.bits      := masterReg
       io.master.w.bits.user := (if (Axi.Crossbar.wuserEnable) masterReg.user else 0.U)
-      io.master.w.valid := masterValidReg
+      io.master.w.valid     := masterValidReg
 
       // transfer sink ready state to source
       when(slaveReadyReg) {
@@ -149,34 +149,34 @@ class AxiRegisterWrite(val idWidth: Int, val awRegType: RegType, val wRegType: R
         masterReg := 0.U.asTypeOf(masterReg)
       }
     case SKID_BUFFER => // no bubble cycles
-      val masterReg = Reg(chiselTypeOf(io.master.w.bits))
+      val masterReg          = Reg(chiselTypeOf(io.master.w.bits))
       val masterValidNextReg = Reg(Bool())
-      val masterValidReg = RegNext(masterValidNextReg, false.B)
+      val masterValidReg     = RegNext(masterValidNextReg, false.B)
 
-      val tempMasterReg = Reg(chiselTypeOf(io.master.w.bits))
+      val tempMasterReg          = Reg(chiselTypeOf(io.master.w.bits))
       val tempMasterValidNextReg = Reg(Bool())
-      val tempMasterValidReg = RegNext(tempMasterValidNextReg, false.B)
+      val tempMasterValidReg     = RegNext(tempMasterValidNextReg, false.B)
 
       val storeInputToOutput = Reg(Bool())
-      val storeInputToTemp = Reg(Bool())
-      val storeTempToOutput = Reg(Bool())
+      val storeInputToTemp   = Reg(Bool())
+      val storeTempToOutput  = Reg(Bool())
 
       // enable ready input next cycle if output is ready or the temp reg will not be filled on the next cycle (output reg empty or no input)
-      val slaveReadyEarly = io.master.w.ready | (~tempMasterValidReg & (!masterValidReg | !io.slave.w.valid))
-      val slaveReadyReg = RegNext(slaveReadyEarly, false.B)
+      val slaveReadyEarly = io.master.w.ready | (!tempMasterValidReg & (!masterValidReg | !io.slave.w.valid))
+      val slaveReadyReg   = RegNext(slaveReadyEarly, false.B)
 
       // datapath control
-      io.slave.w.ready := slaveReadyReg
-      io.master.w.bits := masterReg
+      io.slave.w.ready      := slaveReadyReg
+      io.master.w.bits      := masterReg
       io.master.w.bits.user := (if (Axi.Crossbar.wuserEnable) masterReg.user else 0.U)
-      io.master.w.valid := masterValidReg
+      io.master.w.valid     := masterValidReg
 
       // transfer sink ready state to source
-      masterValidNextReg := masterValidReg
+      masterValidNextReg     := masterValidReg
       tempMasterValidNextReg := tempMasterValidReg
-      storeInputToOutput := false.B
-      storeInputToTemp := false.B
-      storeTempToOutput := false.B
+      storeInputToOutput     := false.B
+      storeInputToTemp       := false.B
+      storeTempToOutput      := false.B
       when(slaveReadyReg) { // input is ready
         when(io.master.w.ready | ~masterValidReg) {
           // output is ready or currently not valid, transfer data to output
@@ -184,13 +184,13 @@ class AxiRegisterWrite(val idWidth: Int, val awRegType: RegType, val wRegType: R
           storeInputToOutput := true.B
         }.otherwise {
           tempMasterValidNextReg := io.slave.w.valid
-          storeInputToTemp := true.B
+          storeInputToTemp       := true.B
         }
       }.elsewhen(io.master.w.ready) {
         // input is not ready, but output is ready
-        masterValidNextReg := tempMasterValidReg
+        masterValidNextReg     := tempMasterValidReg
         tempMasterValidNextReg := false.B
-        storeTempToOutput := true.B
+        storeTempToOutput      := true.B
       }
 
       when(storeInputToOutput) {
@@ -260,7 +260,7 @@ class AxiRegisterWrite(val idWidth: Int, val awRegType: RegType, val wRegType: R
       val storeTempToOutput  = Reg(Bool())
 
       // enable ready input next cycle if output is ready or the temp reg will not be filled on the next cycle (output reg empty or no input)
-      val masterReadyEarly = io.slave.b.ready | (~tempSlaveValidReg & (!slaveValidReg | !io.master.b.valid))
+      val masterReadyEarly = io.slave.b.ready | (!tempSlaveValidReg & (!slaveValidReg | !io.master.b.valid))
       val masterReadyReg   = RegNext(masterReadyEarly, false.B)
 
       // datapath control
