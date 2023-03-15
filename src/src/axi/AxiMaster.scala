@@ -1,7 +1,7 @@
 package axi
 
+import axi.bundles.AxiMasterPort
 import chisel3._
-import common.bundles.AxiMasterPort
 import spec._
 
 class AxiMaster(val Id: Int = 0) extends Module {
