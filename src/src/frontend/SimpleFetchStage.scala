@@ -37,10 +37,13 @@ class SimpleFetchStage extends Module {
   io.isPcNext := isPcNextReg
   val axiReadRequestReg = RegInit(false.B)
   axiMaster.io.newRequest := axiReadRequestReg
+  val axiAddrReg = RegInit(0.U(Width.Axi.addr))
+  axiMaster.io.addr := axiAddrReg
 
   // Fallback
   isPcNextReg              := false.B
   axiReadRequestReg        := false.B
+  axiAddrReg               := axiAddrReg
   io.instEnqueuePort.valid := false.B
   io.instEnqueuePort.bits  := DontCare
 
@@ -54,6 +57,7 @@ class SimpleFetchStage extends Module {
 
         isPcNextReg       := true.B
         axiReadRequestReg := true.B
+        axiAddrReg        := io.pc
       }.otherwise {
         nextState := State.requestInst
       }
