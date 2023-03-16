@@ -1,7 +1,7 @@
 package axi
 
+import axi.bundles.AxiMasterPort
 import chisel3._
-import common.bundles.AxiMasterPort
 import spec._
 
 class AxiMaster(val Id: Int = 0) extends Module {
@@ -10,14 +10,14 @@ class AxiMaster(val Id: Int = 0) extends Module {
     val newRequest = Input(Bool())
     val we         = Input(Bool())
     val uncached   = Input(Bool())
-    val addr       = Input(UInt(Width.Axi.addr.W))
+    val addr       = Input(UInt(Width.Axi.addr))
     val size       = Input(UInt(3.W))
-    val dataIn     = Input(UInt(Width.Axi.data.W))
-    val wstrb      = Input(UInt(Width.Axi.strb.W))
+    val dataIn     = Input(UInt(Width.Axi.data))
+    val wstrb      = Input(UInt(Width.Axi.strb))
 
     val readyOut = Output(Bool())
     val validOut = Output(Bool())
-    val dataOut  = Output(UInt(Width.Axi.data.W))
+    val dataOut  = Output(UInt(Width.Axi.data))
   })
 
   // AXI ID

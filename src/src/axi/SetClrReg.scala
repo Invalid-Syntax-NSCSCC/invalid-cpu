@@ -12,9 +12,9 @@ class SetClrReg(val setOverClr: Boolean, val width: Int, val resetValue: Int) ex
 
   val resultReg = RegInit(resetValue.U(width.W))
   resultReg := (if (setOverClr) {
-                  io.set | (resultReg & ~io.clr)
+                  io.set | (resultReg & (~io.clr).asUInt)
                 } else {
-                  (io.set | resultReg) & ~io.clr
+                  (io.set | resultReg) & (~io.clr).asUInt
                 })
   io.result := resultReg
 }
