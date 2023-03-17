@@ -4,9 +4,9 @@ import chisel3._
 import chisel3.util._
 import spec._
 
-class MasterRegisterWrite(val idWidth: Int) extends Bundle {
+class MasterWrite extends Bundle {
   val aw = Decoupled(new Bundle {
-    val id     = UInt(idWidth.W)
+    val id     = UInt(Param.Width.Axi.masterId.W)
     val addr   = UInt(Width.Axi.addr.W)
     val len    = UInt(8.W)
     val size   = UInt(3.W)
@@ -25,7 +25,7 @@ class MasterRegisterWrite(val idWidth: Int) extends Bundle {
     val user = UInt(Width.Axi.wuser.W)
   })
   val b = Flipped(Decoupled(new Bundle {
-    val id   = UInt(idWidth.W)
+    val id   = UInt(Param.Width.Axi.masterId.W)
     val resp = UInt(2.W)
     val user = UInt(Width.Axi.buser.W)
   }))

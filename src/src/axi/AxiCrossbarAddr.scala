@@ -7,8 +7,6 @@ import spec._
 class AxiCrossbarAddr(
   val slaveIndex:               Int,
   val idWidth:                  Int,
-  val slaveThread:              Int,
-  val slaveAccept:              Int,
   val masterBaseAddr:           Int, // set to zero for default addressing
   val writeCommandOutputEnable: Boolean)
     extends Module {
@@ -47,8 +45,6 @@ class AxiCrossbarAddr(
     new axi_crossbar_addr(
       slaveIndex               = slaveIndex,
       idWidth                  = idWidth,
-      slaveThread              = slaveThread,
-      slaveAccept              = slaveAccept,
       masterBaseAddr           = masterBaseAddr,
       writeCommandOutputEnable = writeCommandOutputEnable
     )
@@ -80,8 +76,6 @@ class AxiCrossbarAddr(
 class axi_crossbar_addr(
   val slaveIndex:               Int,
   val idWidth:                  Int,
-  val slaveThread:              Int,
-  val slaveAccept:              Int,
   val masterBaseAddr:           Int, // set to zero for default addressing
   val writeCommandOutputEnable: Boolean)
     extends BlackBox(
@@ -91,8 +85,8 @@ class axi_crossbar_addr(
         "M_COUNT" -> Param.Count.Axi.master,
         "ADDR_WIDTH" -> Width.Axi.addr,
         "ID_WIDTH" -> idWidth,
-        "S_THREADS" -> slaveThread,
-        "S_ACCEPT" -> slaveAccept,
+        "S_THREADS" -> "32'd2",
+        "S_ACCEPT" -> "32'd16",
         "M_REGIONS" -> 1,
         "M_BASE_ADDR" -> masterBaseAddr,
         "WC_OUTPUT" -> (if (writeCommandOutputEnable) 1 else 0)
