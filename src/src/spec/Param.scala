@@ -14,4 +14,11 @@ object Param {
     val exeSel = 3.W
     val exeOp  = 8.W
   }
+
+  object Count {
+    object Axi {
+      val master = 1
+      val slave = 3
+    }
+  }
 }
