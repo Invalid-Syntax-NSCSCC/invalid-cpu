@@ -32,6 +32,7 @@ class PriorityEncoder(val width: Int) extends Module {
   for (l <- 1 until levels) {
     for (n <- 0 until w / math.pow(2, l + 1).toInt) {
       stageValid(l)(n) := stageValid(l - 1)(n * 2 + 1, n * 2).asUInt.orR
+      // TODO： 👇 may be read-only?
       stageEnc(l)((n + 1) * (l + 1) - 1, n * (l + 1)) := Mux(
         if (lsbHighPriority) stageValid(l - 1)(n * 2 + 0) else !stageValid(l - 1)(n * 2 + 1),
         Cat(false.B, stageEnc(l - 1)((n * 2 + 1) * l - 1, (n * 2 + 0) * l)),
