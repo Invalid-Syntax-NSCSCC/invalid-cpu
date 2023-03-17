@@ -12,8 +12,7 @@ object src extends ScalaModule with ScalafmtModule { m =>
     "-language:reflectiveCalls",
     "-deprecation",
     "-feature",
-    "-Xcheckinit",
-    "-P:chiselplugin:genBundleElements"
+    "-Xcheckinit"
   )
 
   override def ivyDeps = Agg(

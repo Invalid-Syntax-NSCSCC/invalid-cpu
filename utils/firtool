@@ -2,5 +2,5 @@
 if [[ "$OSTYPE" == "darwin"* ]]; then
     firtool_darwin --disable-annotation-unknown "$@"
 else
-    firtool.elf.strip --disable-annotation-unknown "$@"
+    firtool_ubuntu2004 --disable-annotation-unknown "$@"
 fi
