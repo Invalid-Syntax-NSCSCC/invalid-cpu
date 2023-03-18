@@ -8,8 +8,6 @@ import spec.ExeInst.Sel
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 
-import pipeline.ctrl.bundles.PipelineControlNDPort
-// Attention: if advance is false, the exeInstPort needs to keep unchange
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)
@@ -25,34 +23,67 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val stallRequest = Output(Bool())
   })
 
+  // store exeInst
+  val exeInstStore = RegInit(ExeInstNdPort.default)
+
   // Pass to the next stage in a sequential way
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   io.gprWritePort := gprWriteReg
 
   // ALU module
   val alu = Module(new Alu)
-  alu.io.aluInst.op           := io.exeInstPort.exeOp
-  alu.io.aluInst.leftOperand  := io.exeInstPort.leftOperand
-  alu.io.aluInst.rightOperand := io.exeInstPort.rightOperand
-  io.stallRequest             := alu.io.stallRequest
+
+  val stallRequest = alu.io.stallRequest
+  val stallRequestDelay = RegNext(stallRequest, false.B)
+  io.stallRequest := stallRequest
+
+
+  alu.io.aluInst.op := Mux(stallRequestDelay, exeInstStore.exeOp, io.exeInstPort.exeOp)
+  alu.io.aluInst.leftOperand := Mux(stallRequestDelay, exeInstStore.leftOperand, io.exeInstPort.leftOperand)
+  alu.io.aluInst.rightOperand := Mux(stallRequestDelay, exeInstStore.rightOperand, io.exeInstPort.rightOperand)
+
+
+  exeInstStore := Mux(
+    stallRequestDelay,
+    exeInstStore,
+    io.exeInstPort
+  )
 
   // Pass write-back information
-  gprWriteReg.en   := io.exeInstPort.gprWritePort.en  
-  gprWriteReg.addr := io.exeInstPort.gprWritePort.addr
+  // gprWriteReg.en   := (io.exeInstPort.gprWritePort.en | exeInstStore.gprWritePort.en ) & ~stallRequest & (exeInstStore.leftOperand.orR | exeInstStore.exeOp.orR | exeInstStore.rightOperand.orR)
+  // gprWriteReg.addr := Mux(stallRequest, zeroWord, io.exeInstPort.gprWritePort.addr) 44
+  gprWriteReg.en := false.B
+  gprWriteReg.addr := zeroWord
+  val useSel = WireDefault(0.U(Param.Width.exeSel))
+  when(stallRequestDelay & ~stallRequest) {
+    // with stall like mul / div that take more than 1 cycle
+    gprWriteReg.en := exeInstStore.gprWritePort.en
+    gprWriteReg.addr := exeInstStore.gprWritePort.addr
+    useSel := exeInstStore.exeSel
+  }.elsewhen(~stallRequest) {
+    // normal inst that take 1 cycle
+    gprWriteReg.en := io.exeInstPort.gprWritePort.en
+    gprWriteReg.addr := io.exeInstPort.gprWritePort.addr
+    useSel := io.exeInstPort.exeSel
+  }
+
 
   // Result fallback
   gprWriteReg.data := zeroWord
 
   // Result selection
-  switch(io.exeInstPort.exeSel) {
-    is(Sel.logic) {
-      gprWriteReg.data := alu.io.result.logic
-    }
-    is(Sel.shift) {
-      gprWriteReg.data := alu.io.result.shift
-    }
-    is(Sel.arithmetic) {
-      gprWriteReg.data := alu.io.result.arithmetic
+  when(~stallRequest) {
+    switch(useSel) {
+      is(Sel.logic) {
+        gprWriteReg.data := alu.io.result.logic
+      }
+      is(Sel.shift) {
+        gprWriteReg.data := alu.io.result.shift
+      }
+      is(Sel.arithmetic) {
+        gprWriteReg.data := alu.io.result.arithmetic
+      }
     }
   }
+
 }

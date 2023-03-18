@@ -6,10 +6,11 @@ import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}
 import spec._
 import ExeInst.Op
 
+// Attention: if advance is false, the exeInstPort needs to keep unchange
 class Alu extends Module {
   val io = IO(new Bundle {
     val aluInst = Input(new AluInstNdPort)
-    val result  = Output(new AluResultNdPort)
+    val result = Output(new AluResultNdPort)
 
     val stallRequest = Output(Bool())
   })
@@ -17,15 +18,19 @@ class Alu extends Module {
   io.result := DontCare
 
   def lop = io.aluInst.leftOperand
+
   def rop = io.aluInst.rightOperand
+
   def arithmetic = io.result.arithmetic
+
   def logic = io.result.logic
+
   def shift = io.result.shift
 
 
   // Logic computation
   switch(io.aluInst.op) {
-    is (Op.nor) {
+    is(Op.nor) {
       logic := ~(lop | rop)
     }
     is(Op.and) {
@@ -34,7 +39,7 @@ class Alu extends Module {
     is(Op.or) {
       logic := lop | rop
     }
-    is (Op.xor) {
+    is(Op.xor) {
       logic := lop ^ rop
     }
   }
@@ -42,13 +47,13 @@ class Alu extends Module {
   // shift computation
   switch(io.aluInst.op) {
     is(Op.sll) {
-      shift := lop << rop(4,0);
+      shift := lop << rop(4, 0);
     }
     is(Op.srl) {
-      shift := lop >> rop(4,0);
+      shift := lop >> rop(4, 0);
     }
     is(Op.sra) {
-      shift := (lop.asSInt << rop(4,0)).asUInt
+      shift := (lop.asSInt << rop(4, 0)).asUInt
     }
   }
 
@@ -63,7 +68,7 @@ class Alu extends Module {
     ExeInst.Op.mul,
     ExeInst.Op.mulh,
     ExeInst.Op.mulhu
-  ).contains(io.aluInst.op)) 
+  ).contains(io.aluInst.op))
 
   val mulStart = Wire(Bool())
 
@@ -95,7 +100,7 @@ class Alu extends Module {
     ExeInst.Op.modu
   ).contains(io.aluInst.op))
 
-  val divStart = Wire(Bool()) 
+  val divStart = Wire(Bool())
 
   val divStage = Module(new Div)
   divStage.io.divInst.valid := divStart
@@ -110,7 +115,7 @@ class Alu extends Module {
   val quotient = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
 
-  
+
   io.stallRequest := (mulStart | divStart | divStage.io.isRunning)
 
   when(~io.stallRequest) {
@@ -128,10 +133,10 @@ class Alu extends Module {
         arithmetic := (lop < rop).asUInt
       }
       is(Op.mul) {
-        arithmetic := mulResult(wordLength-1, 0)
+        arithmetic := mulResult(wordLength - 1, 0)
       }
       is(Op.mulh, Op.mulhu) {
-        arithmetic := mulResult(doubleWordLength-1, wordLength)
+        arithmetic := mulResult(doubleWordLength - 1, wordLength)
       }
       is(Op.div, Op.divu) {
         arithmetic := quotient
@@ -140,9 +145,9 @@ class Alu extends Module {
         arithmetic := remainder
       }
     }
-  }.otherwise{
+  }.otherwise {
     arithmetic := zeroWord
   }
-  
-  
+
+
 }

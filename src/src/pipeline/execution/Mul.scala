@@ -15,12 +15,11 @@ class Mul extends Module {
     // val isRunning = (Output(Bool()))
   })
 
-    
 
-  val op  = WireDefault(io.mulInst.bits.op)
+  val op = WireDefault(io.mulInst.bits.op)
   val lop = WireDefault(io.mulInst.bits.leftOperand)
   val rop = WireDefault(io.mulInst.bits.rightOperand)
-  
+
   // // 是否为有符号乘法
   // val isSigned = WireDefault(VecInit(
   //     ExeInst.Op.mul,
@@ -28,10 +27,10 @@ class Mul extends Module {
   //   ).contains(op)
   // )
   val allSign = VecInit(
-      ExeInst.Op.mul,
-      ExeInst.Op.mulh
-    )
-  
+    ExeInst.Op.mul,
+    ExeInst.Op.mulh
+  )
+
   val isSignedWoWire = allSign.contains(op)
   val isSigned = WireDefault(isSignedWoWire)
 
@@ -39,7 +38,7 @@ class Mul extends Module {
   val result = RegInit(0.U(doubleWordLength.W))
 
   val outValid = RegNext(io.mulInst.valid, false.B)
-  
+
 
   result := Mux(
     isSigned,
