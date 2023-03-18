@@ -15,7 +15,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
   awRegType match {
     case BYPASS =>
       io.master.aw <> io.slave.aw
-      io.master.aw.bits.user := (if (Axi.Crossbar.awuserEnable) io.slave.aw.bits.user else 0.U)
+      io.master.aw.bits.user := (if (Param.Axi.Crossbar.awuserEnable) io.slave.aw.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
       val masterReg       = Reg(chiselTypeOf(io.master.aw.bits))
       val masterValidNext = Wire(Bool())
@@ -29,7 +29,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       // datapath control
       io.slave.aw.ready      := slaveReadyReg
       io.master.aw.bits      := masterReg
-      io.master.aw.bits.user := (if (Axi.Crossbar.awuserEnable) masterReg.user else 0.U)
+      io.master.aw.bits.user := (if (Param.Axi.Crossbar.awuserEnable) masterReg.user else 0.U)
       io.master.aw.valid     := masterValidReg
 
       // transfer sink ready state to source
@@ -69,7 +69,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       // datapath control
       io.slave.aw.ready      := slaveReadyReg
       io.master.aw.bits      := masterReg
-      io.master.aw.bits.user := (if (Axi.Crossbar.awuserEnable) masterReg.user else 0.U)
+      io.master.aw.bits.user := (if (Param.Axi.Crossbar.awuserEnable) masterReg.user else 0.U)
       io.master.aw.valid     := masterValidReg
 
       // transfer sink ready state to source
@@ -113,7 +113,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
   wRegType match {
     case BYPASS =>
       io.master.w <> io.slave.w
-      io.master.w.bits.user := (if (Axi.Crossbar.wuserEnable) io.slave.w.bits.user else 0.U)
+      io.master.w.bits.user := (if (Param.Axi.Crossbar.wuserEnable) io.slave.w.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
       val masterReg       = Reg(chiselTypeOf(io.master.w.bits))
       val masterValidNext = Wire(Bool())
@@ -127,7 +127,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       // datapath control
       io.slave.w.ready      := slaveReadyReg
       io.master.w.bits      := masterReg
-      io.master.w.bits.user := (if (Axi.Crossbar.wuserEnable) masterReg.user else 0.U)
+      io.master.w.bits.user := (if (Param.Axi.Crossbar.wuserEnable) masterReg.user else 0.U)
       io.master.w.valid     := masterValidReg
 
       // transfer sink ready state to source
@@ -167,7 +167,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       // datapath control
       io.slave.w.ready      := slaveReadyReg
       io.master.w.bits      := masterReg
-      io.master.w.bits.user := (if (Axi.Crossbar.wuserEnable) masterReg.user else 0.U)
+      io.master.w.bits.user := (if (Param.Axi.Crossbar.wuserEnable) masterReg.user else 0.U)
       io.master.w.valid     := masterValidReg
 
       // transfer sink ready state to source
@@ -211,7 +211,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
   bRegType match {
     case BYPASS =>
       io.slave.b <> io.master.b
-      io.slave.b.bits.user := (if (Axi.Crossbar.buserEnable) io.master.b.bits.user else 0.U)
+      io.slave.b.bits.user := (if (Param.Axi.Crossbar.buserEnable) io.master.b.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
       val slaveReg       = Reg(chiselTypeOf(io.slave.b.bits))
       val slaveValidNext = Wire(Bool())
@@ -225,7 +225,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       // datapath control
       io.master.b.ready    := masterReadyReg
       io.slave.b.bits      := slaveReg
-      io.slave.b.bits.user := (if (Axi.Crossbar.buserEnable) slaveReg.user else 0.U)
+      io.slave.b.bits.user := (if (Param.Axi.Crossbar.buserEnable) slaveReg.user else 0.U)
       io.slave.b.valid     := slaveValidReg
 
       // transfer sink ready state to source
@@ -265,7 +265,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       // datapath control
       io.master.b.ready    := masterReadyReg
       io.slave.b.bits      := slaveReg
-      io.slave.b.bits.user := (if (Axi.Crossbar.buserEnable) slaveReg.user else 0.U)
+      io.slave.b.bits.user := (if (Param.Axi.Crossbar.buserEnable) slaveReg.user else 0.U)
       io.slave.b.valid     := slaveValidReg
 
       // transfer sink ready state to source

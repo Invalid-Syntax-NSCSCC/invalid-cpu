@@ -27,4 +27,21 @@ object Param {
       val slave = 3
     }
   }
+
+  object Axi {
+    object Arb {
+      val typeRoundRobin = true // select round robin arbitration
+      val block = true // blocking arbiter enable
+      val blockAck = true // block on acknowledge assert when nonzero, request deassert when 0
+      val lsbHighPriority = true // LSB priority selection
+    }
+
+    object Crossbar {
+      val aruserEnable = false // propagate aruser signal
+      val ruserEnable = false // propagate ruser signal
+      val awuserEnable = false
+      val wuserEnable = false
+      val buserEnable = false
+    }
+  }
 }

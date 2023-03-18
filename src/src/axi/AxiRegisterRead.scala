@@ -3,7 +3,7 @@ package axi
 import axi.bundles.MasterRead
 import axi.types.RegType._
 import chisel3._
-import spec._
+import spec.Param._
 
 class AxiRegisterRead(val arRegType: RegType, val rRegType: RegType) extends Module {
   val io = IO(new Bundle {

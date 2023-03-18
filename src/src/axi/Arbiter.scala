@@ -2,8 +2,9 @@ package axi
 
 import chisel3._
 import chisel3.util._
-import spec.Axi.Arb._
+import spec.Param.Axi.Arb._
 
+// TODO： learn chisel3 arbiter
 class Arbiter(val ports: Int) extends Module {
   val io = IO(new Bundle {
     val request     = Input(UInt(ports.W))
