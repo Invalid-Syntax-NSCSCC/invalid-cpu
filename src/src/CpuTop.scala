@@ -92,7 +92,53 @@ class CpuTop extends Module {
   scoreboard.io <> DontCare
 
   // `SimpleFetchStage` <> AXI top
-  simpleFetchStage.io.axiMasterInterface
+  io.arid                                        := simpleFetchStage.io.axiMasterInterface.arid
+  io.araddr                                      := simpleFetchStage.io.axiMasterInterface.araddr
+  io.arlen                                       := simpleFetchStage.io.axiMasterInterface.arlen
+  io.arsize                                      := simpleFetchStage.io.axiMasterInterface.arsize
+  io.arburst                                     := simpleFetchStage.io.axiMasterInterface.arburst
+  io.arlock                                      := simpleFetchStage.io.axiMasterInterface.arlock
+  io.arcache                                     := simpleFetchStage.io.axiMasterInterface.arcache
+  io.arprot                                      := simpleFetchStage.io.axiMasterInterface.arprot
+  io.arvalid                                     := simpleFetchStage.io.axiMasterInterface.arvalid
+  simpleFetchStage.io.axiMasterInterface.arready := io.arready
+
+  simpleFetchStage.io.axiMasterInterface.rid    := io.rid
+  simpleFetchStage.io.axiMasterInterface.rdata  := io.rdata
+  simpleFetchStage.io.axiMasterInterface.rresp  := io.rresp
+  simpleFetchStage.io.axiMasterInterface.rlast  := io.rlast
+  simpleFetchStage.io.axiMasterInterface.rvalid := io.rvalid
+  io.rready                                     := simpleFetchStage.io.axiMasterInterface.rready
+
+  io.awid                                        := simpleFetchStage.io.axiMasterInterface.awid
+  io.awaddr                                      := simpleFetchStage.io.axiMasterInterface.awaddr
+  io.awlen                                       := simpleFetchStage.io.axiMasterInterface.awlen
+  io.awsize                                      := simpleFetchStage.io.axiMasterInterface.awsize
+  io.awburst                                     := simpleFetchStage.io.axiMasterInterface.awburst
+  io.awlock                                      := simpleFetchStage.io.axiMasterInterface.awlock
+  io.awcache                                     := simpleFetchStage.io.axiMasterInterface.awcache
+  io.awprot                                      := simpleFetchStage.io.axiMasterInterface.awprot
+  io.awvalid                                     := simpleFetchStage.io.axiMasterInterface.awvalid
+  simpleFetchStage.io.axiMasterInterface.awready := io.awready
+
+  io.wid                                        := simpleFetchStage.io.axiMasterInterface.wid
+  io.wdata                                      := simpleFetchStage.io.axiMasterInterface.wdata
+  io.wstrb                                      := simpleFetchStage.io.axiMasterInterface.wstrb
+  io.wlast                                      := simpleFetchStage.io.axiMasterInterface.wlast
+  io.wvalid                                     := simpleFetchStage.io.axiMasterInterface.wvalid
+  simpleFetchStage.io.axiMasterInterface.wready := io.wready
+
+  simpleFetchStage.io.axiMasterInterface.bid    := io.bid
+  simpleFetchStage.io.axiMasterInterface.bresp  := io.bresp
+  simpleFetchStage.io.axiMasterInterface.bvalid := io.bvalid
+  io.bready                                     := simpleFetchStage.io.axiMasterInterface.bready
+
+  // Debug ports
+  io.debug0_wb.pc       := pc.io.pc
+  io.debug0_wb.rf.wen   := regFile.io.writePort.en
+  io.debug0_wb.rf.wnum  := regFile.io.writePort.addr
+  io.debug0_wb.rf.wdata := regFile.io.writePort.data
+  io.debug0_wb.inst     := 0.U // TODO: Make connections correct
 
   issueStage.io.fetchInstInfoPort <> instQueue.io.dequeuePort
   issueStage.io.regScores   := scoreboard.io.regScores
