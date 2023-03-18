@@ -12,7 +12,7 @@ class Mul extends Module {
   val io = IO(new Bundle {
     val mulInst = Flipped(Decoupled(new AluInstNdPort))
     val mulResult = Decoupled(UInt(doubleWordLength.W))
-    val isRunning = (Output(Bool()))
+    // val isRunning = (Output(Bool()))
   })
 
     
@@ -37,18 +37,20 @@ class Mul extends Module {
 
 
   val result = RegInit(0.U(doubleWordLength.W))
-  val valid = RegNext(io.mulInst.valid, false.B)
+
+  val outValid = RegNext(io.mulInst.valid, false.B)
   
 
   result := Mux(
-    isSigned & io.mulInst.valid,
+    isSigned,
     (lop.asSInt * lop.asSInt).asUInt,
     lop * rop
   )
 
-  io.mulInst.ready := ~valid
-  io.mulResult.valid := valid
+  io.mulInst.ready := ~outValid
+  io.mulResult.valid := outValid
   io.mulResult.bits := result
-  io.isRunning := io.mulInst.valid
+  // io.isRunning := io.mulInst.valid
+
 
 }

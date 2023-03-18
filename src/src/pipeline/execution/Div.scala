@@ -19,7 +19,7 @@ class Div extends Module {
 
   // 正在运行
   val running = RegInit(false.B)
-  io.isRunning := running
+  io.isRunning := running// | io.divInst.valid
 
   val inputReady = WireDefault(~running)
   io.divInst.ready := inputReady

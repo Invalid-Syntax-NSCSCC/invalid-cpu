@@ -6,8 +6,10 @@ import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
 import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
-import pipelie.bundles.PipelineControlNDPort
+import pipeline.ctrl.bundles.PipelineControlNDPort
 
+import pipeline.ctrl.bundles.PipelineControlNDPort
+// Attention: if advance is false, the exeInstPort needs to keep unchange
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)
@@ -17,8 +19,10 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val gprWritePort = Output(new RfWriteNdPort)
 
     // pipeline control signal
+    // `CtrlStage` -> `ExeStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
-    val advance = Output(Bool())
+    // `Exestage` -> `CtrlStage`
+    val stallRequest = Output(Bool())
   })
 
   // Pass to the next stage in a sequential way
@@ -30,10 +34,10 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   alu.io.aluInst.op           := io.exeInstPort.exeOp
   alu.io.aluInst.leftOperand  := io.exeInstPort.leftOperand
   alu.io.aluInst.rightOperand := io.exeInstPort.rightOperand
-  io.advance                  := alu.io.advance
+  io.stallRequest             := alu.io.stallRequest
 
   // Pass write-back information
-  gprWriteReg.en   := io.exeInstPort.gprWritePort.en
+  gprWriteReg.en   := io.exeInstPort.gprWritePort.en  
   gprWriteReg.addr := io.exeInstPort.gprWritePort.addr
 
   // Result fallback
