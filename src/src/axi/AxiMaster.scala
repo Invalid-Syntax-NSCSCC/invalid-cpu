@@ -20,6 +20,8 @@ class AxiMaster(val Id: Int = 0) extends Module {
     val dataOut  = Output(UInt(Width.Axi.data))
   })
 
+  io <> DontCare
+
   // AXI ID
   io.axi.arid := Id.U
   io.axi.awid := Id.U
