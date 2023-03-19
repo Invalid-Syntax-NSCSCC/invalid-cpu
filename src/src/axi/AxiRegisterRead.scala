@@ -14,7 +14,7 @@ class AxiRegisterRead(val idWidth: Int, val arRegType: RegType, val rRegType: Re
   // AR channel
   arRegType match {
     case BYPASS =>
-      io.master.ar <> io.slave.ar
+      io.master.ar           <> io.slave.ar
       io.master.ar.bits.user := (if (Axi.Crossbar.aruserEnable) io.slave.ar.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
       val masterReg          = Reg(chiselTypeOf(io.master.ar.bits))
@@ -63,7 +63,7 @@ class AxiRegisterRead(val idWidth: Int, val arRegType: RegType, val rRegType: Re
       val storeTempToOutput  = Reg(Bool())
 
       // enable ready input next cycle if output is ready or the temp reg will not be filled on the next cycle (output reg empty or no input)
-      val slaveReadyEarly = io.master.ar.ready | (~tempMasterValidReg & (!masterValidReg | !io.slave.ar.valid))
+      val slaveReadyEarly = io.master.ar.ready | (!tempMasterValidReg & (!masterValidReg | !io.slave.ar.valid))
       val slaveReadyReg   = RegNext(slaveReadyEarly, false.B)
 
       // datapath control
@@ -112,7 +112,7 @@ class AxiRegisterRead(val idWidth: Int, val arRegType: RegType, val rRegType: Re
   // R channel
   rRegType match {
     case BYPASS =>
-      io.slave.r <> io.master.r
+      io.slave.r           <> io.master.r
       io.slave.r.bits.user := (if (Axi.Crossbar.ruserEnable) io.master.r.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
       val slaveReg          = Reg(chiselTypeOf(io.slave.r.bits))
@@ -161,7 +161,7 @@ class AxiRegisterRead(val idWidth: Int, val arRegType: RegType, val rRegType: Re
       val storeTempToOutput  = Reg(Bool())
 
       // enable ready input next cycle if output is ready or the temp reg will not be filled on the next cycle (output reg empty or no input)
-      val masterReadyEarly = io.slave.r.ready | (~tempSlaveValidReg & (!slaveValidReg | !io.master.r.valid))
+      val masterReadyEarly = io.slave.r.ready | (!tempSlaveValidReg & (!slaveValidReg | !io.master.r.valid))
       val masterReadyReg   = RegNext(masterReadyEarly, false.B)
 
       // datapath control

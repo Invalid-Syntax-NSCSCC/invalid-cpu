@@ -15,7 +15,7 @@ class AxiRegisterWrite(val idWidth: Int, val awRegType: RegType, val wRegType: R
   // AW channel
   awRegType match {
     case BYPASS =>
-      io.master.aw <> io.slave.aw
+      io.master.aw           <> io.slave.aw
       io.master.aw.bits.user := (if (Axi.Crossbar.awuserEnable) io.slave.aw.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
       val masterReg          = Reg(chiselTypeOf(io.master.aw.bits))
@@ -113,7 +113,7 @@ class AxiRegisterWrite(val idWidth: Int, val awRegType: RegType, val wRegType: R
   // W channel
   wRegType match {
     case BYPASS =>
-      io.master.w <> io.slave.w
+      io.master.w           <> io.slave.w
       io.master.w.bits.user := (if (Axi.Crossbar.wuserEnable) io.slave.w.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
       val masterReg          = Reg(chiselTypeOf(io.master.w.bits))
@@ -211,7 +211,7 @@ class AxiRegisterWrite(val idWidth: Int, val awRegType: RegType, val wRegType: R
   // B channel
   bRegType match {
     case BYPASS =>
-      io.slave.b <> io.master.b
+      io.slave.b           <> io.master.b
       io.slave.b.bits.user := (if (Axi.Crossbar.buserEnable) io.master.b.bits.user else 0.U)
     case SIMPLE_BUFFER => // inserts bubble cycles
       val slaveReg          = Reg(chiselTypeOf(io.slave.b.bits))

@@ -33,7 +33,8 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   decoders.foreach(_.io.inst := instInfo.inst)
   val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
   decoderWires.zip(decoders).foreach {
-    case (port, decoder) => port := decoder.io.out
+    case (port, decoder) =>
+      port := decoder.io.out
   }
   val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
   val selectedDecoder = WireDefault(decoderWires(decoderIndex))
