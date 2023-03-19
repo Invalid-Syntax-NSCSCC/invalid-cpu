@@ -26,11 +26,13 @@ object ExeStageSpec extends ChiselUtestTester {
             ExeInst.Op.mul,
             ExeInst.Op.div,
             ExeInst.Op.sub,
-            ExeInst.Op.mod
+            ExeInst.Op.mod,
+            ExeInst.Op.add,
+            ExeInst.Op.nop
         )
         val sel = ExeInst.Sel.arithmetic
         val lop = 47.U;
-        val rop = 5.U;
+        val rop = 0.U;
         exeStage.io.exeInstPort.poke(ExeInstNdPort.default)
         exeStage.io.pipelineControlPort.poke(PipelineControlNDPort.default)
         def instPort = exeStage.io.exeInstPort

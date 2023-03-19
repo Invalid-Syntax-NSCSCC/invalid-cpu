@@ -21,6 +21,8 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val pipelineControlPort = Input(new PipelineControlNDPort)
     // `Exestage` -> `CtrlStage`
     val stallRequest = Output(Bool())
+    // exception
+    val divisorZeroException = Output(Bool())
   })
 
   // store exeInst
@@ -41,6 +43,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   alu.io.aluInst.op := Mux(stallRequestDelay, exeInstStore.exeOp, io.exeInstPort.exeOp)
   alu.io.aluInst.leftOperand := Mux(stallRequestDelay, exeInstStore.leftOperand, io.exeInstPort.leftOperand)
   alu.io.aluInst.rightOperand := Mux(stallRequestDelay, exeInstStore.rightOperand, io.exeInstPort.rightOperand)
+  io.divisorZeroException := alu.io.divisorZeroException
 
 
   exeInstStore := Mux(

@@ -19,7 +19,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
 
     // 数据前推
     // `ExeStage` -> `RegReadStage`
-    val exRfWriteFeedbackPort = Input(new RfWriteNdPort)
+    val exeRfWriteFeedbackPort = Input(new RfWriteNdPort)
 
     // `pipeline control signal
     // `CtrlStage` -> `RegReadStage`
@@ -71,10 +71,10 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
           case (oprand, gprReadPort) => {
             when(
               gprReadPort.en && 
-              io.exRfWriteFeedbackPort.en && 
-              gprReadPort.addr === io.exRfWriteFeedbackPort.addr
+              io.exeRfWriteFeedbackPort.en && 
+              gprReadPort.addr === io.exeRfWriteFeedbackPort.addr
             ) {
-              oprand := io.exRfWriteFeedbackPort.data
+              oprand := io.exeRfWriteFeedbackPort.data
             }.elsewhen(gprReadPort.en) {
               oprand := gprReadPort.data
             }
