@@ -19,4 +19,3 @@ class CtrlStage(ctrlControlNum: Integer = Param.ctrlControlNum) extends Module {
   Seq.range(0, 3).foreach(io.pipelineControlPort(_).stall := io.exeStallRequest)
 
 }
-    

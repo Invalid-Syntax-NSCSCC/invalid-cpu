@@ -10,9 +10,9 @@ import ExeInst.Op
 class Alu extends Module {
   val io = IO(new Bundle {
     val aluInst = Input(new AluInstNdPort)
-    val result = Output(new AluResultNdPort)
+    val result  = Output(new AluResultNdPort)
 
-    val stallRequest = Output(Bool())
+    val stallRequest         = Output(Bool())
     val divisorZeroException = Output(Bool())
   })
 
@@ -27,7 +27,6 @@ class Alu extends Module {
   def logic = io.result.logic
 
   def shift = io.result.shift
-
 
   // Logic computation
   switch(io.aluInst.op) {
@@ -60,18 +59,20 @@ class Alu extends Module {
 
   // mul
 
-  val useMul = WireDefault(VecInit(
-    ExeInst.Op.mul,
-    ExeInst.Op.mulh,
-    ExeInst.Op.mulhu
-  ).contains(io.aluInst.op))
+  val useMul = WireDefault(
+    VecInit(
+      ExeInst.Op.mul,
+      ExeInst.Op.mulh,
+      ExeInst.Op.mulhu
+    ).contains(io.aluInst.op)
+  )
 
   val mulStart = Wire(Bool())
 
   val mulStage = Module(new Mul)
-  mulStage.io.mulInst.valid := mulStart
-  mulStage.io.mulInst.bits.op := io.aluInst.op
-  mulStage.io.mulInst.bits.leftOperand := lop
+  mulStage.io.mulInst.valid             := mulStart
+  mulStage.io.mulInst.bits.op           := io.aluInst.op
+  mulStage.io.mulInst.bits.leftOperand  := lop
   mulStage.io.mulInst.bits.rightOperand := rop
 
   mulStage.io.mulResult.ready := DontCare
@@ -82,33 +83,32 @@ class Alu extends Module {
 
   // Div
 
-  val useDiv = WireDefault(VecInit(
-    ExeInst.Op.div,
-    ExeInst.Op.divu,
-    ExeInst.Op.mod,
-    ExeInst.Op.modu
-  ).contains(io.aluInst.op))
+  val useDiv = WireDefault(
+    VecInit(
+      ExeInst.Op.div,
+      ExeInst.Op.divu,
+      ExeInst.Op.mod,
+      ExeInst.Op.modu
+    ).contains(io.aluInst.op)
+  )
 
   val divStart = Wire(Bool())
 
   val divStage = Module(new Div)
-  divStage.io.divInst.valid := divStart
-  divStage.io.divInst.bits.op := io.aluInst.op
-  divStage.io.divInst.bits.leftOperand := lop
+  divStage.io.divInst.valid             := divStart
+  divStage.io.divInst.bits.op           := io.aluInst.op
+  divStage.io.divInst.bits.leftOperand  := lop
   divStage.io.divInst.bits.rightOperand := rop
 
   divStage.io.divResult.ready := DontCare
-
 
   val divisorValid = WireDefault(rop.orR)
   io.divisorZeroException := ~divisorValid & useDiv
 
   divStart := (useDiv & ~divStage.io.isRunning & ~divStage.io.divResult.valid & divisorValid)
 
-
-  val quotient = WireDefault(divStage.io.divResult.bits.quotient)
+  val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
-
 
   io.stallRequest := (mulStart | divStart | divStage.io.isRunning)
 
@@ -142,6 +142,5 @@ class Alu extends Module {
   }.otherwise {
     arithmetic := zeroWord
   }
-
 
 }

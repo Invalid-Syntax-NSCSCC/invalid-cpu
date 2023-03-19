@@ -12,9 +12,9 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     // `InstQueue` -> `IssueStage`
     val fetchInstInfoPort = Flipped(Decoupled(new InstInfoBundle))
 
-    // `IssueStage` <-> `Scoreboard` 
+    // `IssueStage` <-> `Scoreboard`
     val occupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
-    val regScores = Input(Vec(Count.reg, Bool()))
+    val regScores   = Input(Vec(Count.reg, Bool()))
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPort = Output(new IssuedInfoNdPort)
@@ -29,9 +29,9 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   io.issuedInfoPort := issuedInfoReg
 
   // Get next instruction if needed
-  val isNonBlocking = WireDefault(true.B)
+  val isNonBlocking   = WireDefault(true.B)
   val isInstAvailable = WireDefault(io.fetchInstInfoPort.valid && isNonBlocking)
-  val instInfo = RegEnable(io.fetchInstInfoPort.bits, InstInfoBundle.default, isInstAvailable)
+  val instInfo        = RegEnable(io.fetchInstInfoPort.bits, InstInfoBundle.default, isInstAvailable)
   io.fetchInstInfoPort.ready := isNonBlocking
 
   // Select a decoder
@@ -43,7 +43,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     case (port, decoder) =>
       port := decoder.io.out
   }
-  val decoderIndex = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
+  val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
   val selectedDecoder = WireDefault(decoderWires(decoderIndex))
 
   // Check scoreboard
@@ -56,11 +56,11 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   val isNeedIssue = WireDefault((isInstAvailable || !isNonBlocking) && isInstValid)
 
   // Fallback for no operation
-  issuedInfoReg.isValid := false.B
-  issuedInfoReg.info := DontCare
+  issuedInfoReg.isValid              := false.B
+  issuedInfoReg.info                 := DontCare
   issuedInfoReg.info.gprWritePort.en := false.B
   io.occupyPorts.foreach { port =>
-    port.en := false.B
+    port.en   := false.B
     port.addr := DontCare
   }
 
@@ -76,7 +76,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     // Indicate the occupation in scoreboard
     io.occupyPorts.zip(Seq(selectedDecoder.info.gprWritePort)).foreach {
       case (occupyPort, accessInfo) =>
-        occupyPort.en := accessInfo.en
+        occupyPort.en   := accessInfo.en
         occupyPort.addr := accessInfo.addr
     }
 

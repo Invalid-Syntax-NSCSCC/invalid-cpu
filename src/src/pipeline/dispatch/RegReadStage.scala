@@ -43,12 +43,12 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   // Read from GPR
   io.gprReadPorts.zip(io.issuedInfoPort.info.gprReadPorts).foreach {
     case (port, info) =>
-      port.en := info.en
+      port.en   := info.en
       port.addr := info.addr
   }
 
   // Determine left and right operands
-  exeInstReg.leftOperand := zeroWord
+  exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
   when(~stall) {
     // when(io.issuedInfoPort.info.gprReadPorts(0).en) {
@@ -82,15 +82,14 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
       }
   }
 
-
   // Pass execution instruction if valid
-  exeInstReg.exeSel := ExeInst.Sel.none
-  exeInstReg.exeOp := ExeInst.Op.nop
+  exeInstReg.exeSel       := ExeInst.Sel.none
+  exeInstReg.exeOp        := ExeInst.Op.nop
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
   when(~stall) {
     when(io.issuedInfoPort.isValid) {
-      exeInstReg.exeSel := io.issuedInfoPort.info.exeSel
-      exeInstReg.exeOp := io.issuedInfoPort.info.exeOp
+      exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
+      exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
       exeInstReg.gprWritePort := io.issuedInfoPort.info.gprWritePort
     }
   }

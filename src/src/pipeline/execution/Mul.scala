@@ -10,13 +10,12 @@ import chisel3.internal.firrtl.DefRegInit
 class Mul extends Module {
 
   val io = IO(new Bundle {
-    val mulInst = Flipped(Decoupled(new AluInstNdPort))
+    val mulInst   = Flipped(Decoupled(new AluInstNdPort))
     val mulResult = Decoupled(UInt(doubleWordLength.W))
     // val isRunning = (Output(Bool()))
   })
 
-
-  val op = WireDefault(io.mulInst.bits.op)
+  val op  = WireDefault(io.mulInst.bits.op)
   val lop = WireDefault(io.mulInst.bits.leftOperand)
   val rop = WireDefault(io.mulInst.bits.rightOperand)
 
@@ -32,13 +31,11 @@ class Mul extends Module {
   )
 
   val isSignedWoWire = allSign.contains(op)
-  val isSigned = WireDefault(isSignedWoWire)
-
+  val isSigned       = WireDefault(isSignedWoWire)
 
   val result = RegInit(0.U(doubleWordLength.W))
 
   val outValid = RegNext(io.mulInst.valid, false.B)
-
 
   result := Mux(
     isSigned,
@@ -46,10 +43,9 @@ class Mul extends Module {
     lop * rop
   )
 
-  io.mulInst.ready := ~outValid
+  io.mulInst.ready   := ~outValid
   io.mulResult.valid := outValid
-  io.mulResult.bits := result
+  io.mulResult.bits  := result
   // io.isRunning := io.mulInst.valid
-
 
 }
