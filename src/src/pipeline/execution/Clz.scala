@@ -63,8 +63,7 @@ class Clz extends Module {
     Seq.range(3, -1, -1).map(i =>
       subsubClz(Cat(i.U(2.W), ~subClz(i * 2 + 1)))
     )
-  )
-    )
+  ))
 
   val clzResult10 = clzResult10Selector(Cat(clzResult4, clzResult3))
 

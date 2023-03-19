@@ -104,7 +104,7 @@ class Alu extends Module {
   io.divisorZeroException := ~divisorValid & useDiv
 
   divStart := (useDiv & ~divStage.io.isRunning & ~divStage.io.divResult.valid & divisorValid)
-  
+
 
   val quotient = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)

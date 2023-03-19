@@ -2,7 +2,7 @@ package pipeline.dispatch
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{RfAccessInfoNdPort, RfReadPort,RfWriteNdPort}
+import common.bundles.{RfAccessInfoNdPort, RfReadPort, RfWriteNdPort}
 import bundles.{ExeInstNdPort, IssuedInfoNdPort}
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
@@ -12,7 +12,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     // `IssueStage` -> `RegReadStage`
     val issuedInfoPort = Input(new IssuedInfoNdPort)
     // `RegReadStage` <-> `Regfile`
-    val gprReadPorts   = Vec(readNum, Flipped(new RfReadPort))
+    val gprReadPorts = Vec(readNum, Flipped(new RfReadPort))
 
     // `RegReadStage` -> `ExeStage` (next clock pulse)
     val exeInstPort = Output(new ExeInstNdPort)
@@ -43,12 +43,12 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   // Read from GPR
   io.gprReadPorts.zip(io.issuedInfoPort.info.gprReadPorts).foreach {
     case (port, info) =>
-      port.en   := info.en
+      port.en := info.en
       port.addr := info.addr
   }
 
   // Determine left and right operands
-  exeInstReg.leftOperand  := zeroWord
+  exeInstReg.leftOperand := zeroWord
   exeInstReg.rightOperand := zeroWord
   when(~stall) {
     // when(io.issuedInfoPort.info.gprReadPorts(0).en) {
@@ -62,35 +62,35 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     // }.elsewhen(io.issuedInfoPort.info.isHasImm) {
     //   exeInstReg.rightOperand := io.issuedInfoPort.info.imm
     // }
-      when(io.issuedInfoPort.info.isHasImm) {
-        exeInstReg.rightOperand := io.issuedInfoPort.info.imm
-      }
-      Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
-        .zip(io.gprReadPorts)
-        .foreach{
-          case (oprand, gprReadPort) => {
-            when(
-              gprReadPort.en && 
-              io.exeRfWriteFeedbackPort.en && 
+    when(io.issuedInfoPort.info.isHasImm) {
+      exeInstReg.rightOperand := io.issuedInfoPort.info.imm
+    }
+    Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
+      .zip(io.gprReadPorts)
+      .foreach {
+        case (oprand, gprReadPort) => {
+          when(
+            gprReadPort.en &&
+              io.exeRfWriteFeedbackPort.en &&
               gprReadPort.addr === io.exeRfWriteFeedbackPort.addr
-            ) {
-              oprand := io.exeRfWriteFeedbackPort.data
-            }.elsewhen(gprReadPort.en) {
-              oprand := gprReadPort.data
-            }
+          ) {
+            oprand := io.exeRfWriteFeedbackPort.data
+          }.elsewhen(gprReadPort.en) {
+            oprand := gprReadPort.data
           }
+        }
       }
   }
-  
+
 
   // Pass execution instruction if valid
-  exeInstReg.exeSel       := ExeInst.Sel.none
-  exeInstReg.exeOp        := ExeInst.Op.nop
+  exeInstReg.exeSel := ExeInst.Sel.none
+  exeInstReg.exeOp := ExeInst.Op.nop
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
   when(~stall) {
     when(io.issuedInfoPort.isValid) {
-      exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
-      exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
+      exeInstReg.exeSel := io.issuedInfoPort.info.exeSel
+      exeInstReg.exeOp := io.issuedInfoPort.info.exeOp
       exeInstReg.gprWritePort := io.issuedInfoPort.info.gprWritePort
     }
   }
