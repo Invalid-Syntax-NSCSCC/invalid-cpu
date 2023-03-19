@@ -140,16 +140,25 @@ class CpuTop extends Module {
   io.debug0_wb.rf.wdata := regFile.io.writePort.data
   io.debug0_wb.inst     := 0.U // TODO: Make connections correct
 
+  // Simple fetch stage
+  instQueue.io.enqueuePort <> simpleFetchStage.io.instEnqueuePort
+  simpleFetchStage.io.pc := pc.io.pc
+  pc.io.isNext           := simpleFetchStage.io.isPcNext
+
+  // Issue stage
   issueStage.io.fetchInstInfoPort <> instQueue.io.dequeuePort
   issueStage.io.regScores   := scoreboard.io.regScores
   scoreboard.io.occupyPorts := issueStage.io.occupyPorts
 
+  // Reg-read stage
   regReadStage.io.issuedInfoPort := issueStage.io.issuedInfoPort
   regReadStage.io.gprReadPorts(0) <> regFile.io.readPorts(0)
   regReadStage.io.gprReadPorts(1) <> regFile.io.readPorts(1)
 
+  // Execution stage
   exeStage.io.exeInstPort := regReadStage.io.exeInstPort
 
+  // Write-back stage
   wbStage.io.gprWriteInfoPort := exeStage.io.gprWritePort
   regFile.io.writePort        := wbStage.io.gprWritePort
   scoreboard.io.freePorts     := wbStage.io.freePorts
