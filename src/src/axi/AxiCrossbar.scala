@@ -11,18 +11,18 @@ class AxiCrossbar extends Module {
   })
 
   val axiCrossbarWrite = Module(new AxiCrossbarWrite())
-  for ((src, dst) <- axiCrossbarWrite.io.slaves zip io.slaves) {
+  for ((src, dst) <- axiCrossbarWrite.io.slaves.zip(io.slaves)) {
     src <> dst.write
   }
-  for ((src, dst) <- axiCrossbarWrite.io.masters zip io.masters) {
+  for ((src, dst) <- axiCrossbarWrite.io.masters.zip(io.masters)) {
     src <> dst.write
   }
 
   val axiCrossbarRead = Module(new AxiCrossbarRead())
-  for ((src, dst) <- axiCrossbarRead.io.slaves zip io.slaves) {
+  for ((src, dst) <- axiCrossbarRead.io.slaves.zip(io.slaves)) {
     src <> dst.read
   }
-  for ((src, dst) <- axiCrossbarRead.io.masters zip io.masters){
+  for ((src, dst) <- axiCrossbarRead.io.masters.zip(io.masters)) {
     src <> dst.read
   }
 }

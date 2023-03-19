@@ -84,28 +84,28 @@ class AxiCrossbarRead(
       )
     )
     // address input
-    addrInst.io.slaveAid <> IntSlavesAr(index).id
-    addrInst.io.slaveAaddr <> IntSlavesAr(index).addr
-    addrInst.io.slaveAprot <> IntSlavesAr(index).prot
-    addrInst.io.slaveAqos <> IntSlavesAr(index).qos
+    addrInst.io.slaveAid    <> IntSlavesAr(index).id
+    addrInst.io.slaveAaddr  <> IntSlavesAr(index).addr
+    addrInst.io.slaveAprot  <> IntSlavesAr(index).prot
+    addrInst.io.slaveAqos   <> IntSlavesAr(index).qos
     addrInst.io.slaveAvalid <> IntSlavesAr(index).valid
     addrInst.io.slaveAready <> IntSlavesAr(index).ready
     // address output
     addrInst.io.masterAregion <> IntSlavesAr(index).region
-    addrInst.io.masterSelect <> aSelect
-    addrInst.io.masterAvalid <> masterAValid
-    addrInst.io.masterAready <> masterAReady
+    addrInst.io.masterSelect  <> aSelect
+    addrInst.io.masterAvalid  <> masterAValid
+    addrInst.io.masterAready  <> masterAReady
     // write command output
     addrInst.io.masterWriteCommandSelect <> DontCare
     addrInst.io.masterWriteCommandDecerr <> DontCare
-    addrInst.io.masterWriteCommandValid <> DontCare
-    addrInst.io.masterWriteCommandReady <> true.B
+    addrInst.io.masterWriteCommandValid  <> DontCare
+    addrInst.io.masterWriteCommandReady  <> true.B
     // response command output
     addrInst.io.masterReplyCommandDecerr <> masterRcDecerr
-    addrInst.io.masterReplyCommandValid <> masterRcValid
-    addrInst.io.masterReplyCommandReady <> masterRcReady
+    addrInst.io.masterReplyCommandValid  <> masterRcValid
+    addrInst.io.masterReplyCommandReady  <> masterRcReady
     // completion input
-    addrInst.io.slaveCompletionId <> slaveCplId
+    addrInst.io.slaveCompletionId    <> slaveCplId
     addrInst.io.slaveCompletionValid <> slaveCplValid
 
     IntArValid(index) := (masterAValid << aSelect)
@@ -162,10 +162,10 @@ class AxiCrossbarRead(
     val rGrantValid   = Wire(Bool())
     val rGrantEncoded = Wire(UInt(log2Ceil(masterCount + 1).W))
     val rArbiter      = Module(new Arbiter(ports = masterCount + 1))
-    rArbiter.io.request <> rRequest.asUInt
-    rArbiter.io.acknowledge <> rAcknowledge.asUInt
-    rArbiter.io.grant <> rGrant
-    rArbiter.io.grantValid <> rGrantValid
+    rArbiter.io.request      <> rRequest.asUInt
+    rArbiter.io.acknowledge  <> rAcknowledge.asUInt
+    rArbiter.io.grant        <> rGrant
+    rArbiter.io.grantValid   <> rGrantValid
     rArbiter.io.grantEncoded <> rGrantEncoded
 
     // read response mux
@@ -209,40 +209,40 @@ class AxiCrossbarRead(
     slaveCplValid := masterRvalidMux && masterRreadyMux && masterRlastMux
 
     val regInst = Module(new AxiRegisterRead(arRegType = slaveArRegType(index), rRegType = slaveRRegType(index)))
-    regInst.io.slave.ar.ready <> io.slaves(index).ar.ready
-    regInst.io.slave.ar.valid <> io.slaves(index).ar.valid
-    regInst.io.slave.ar.bits.id <> io.slaves(index).ar.bits.id
-    regInst.io.slave.ar.bits.addr <> io.slaves(index).ar.bits.addr
-    regInst.io.slave.ar.bits.len <> io.slaves(index).ar.bits.len
-    regInst.io.slave.ar.bits.size <> io.slaves(index).ar.bits.size
-    regInst.io.slave.ar.bits.burst <> io.slaves(index).ar.bits.burst
-    regInst.io.slave.ar.bits.lock <> io.slaves(index).ar.bits.lock
-    regInst.io.slave.ar.bits.cache <> io.slaves(index).ar.bits.cache
-    regInst.io.slave.ar.bits.prot <> io.slaves(index).ar.bits.prot
-    regInst.io.slave.ar.bits.qos <> io.slaves(index).ar.bits.qos
-    regInst.io.slave.ar.bits.region <> 0.U
-    regInst.io.slave.ar.bits.user <> io.slaves(index).ar.bits.user
-    regInst.io.slave.r <> io.slaves(index).r
-    regInst.io.master.ar.bits.id <> IntSlavesAr(index).id
-    regInst.io.master.ar.bits.addr <> IntSlavesAr(index).addr
-    regInst.io.master.ar.bits.len <> IntSlavesAr(index).len
-    regInst.io.master.ar.bits.size <> IntSlavesAr(index).size
-    regInst.io.master.ar.bits.burst <> IntSlavesAr(index).burst
-    regInst.io.master.ar.bits.lock <> IntSlavesAr(index).lock
-    regInst.io.master.ar.bits.cache <> IntSlavesAr(index).cache
-    regInst.io.master.ar.bits.prot <> IntSlavesAr(index).prot
-    regInst.io.master.ar.bits.qos <> IntSlavesAr(index).qos
+    regInst.io.slave.ar.ready        <> io.slaves(index).ar.ready
+    regInst.io.slave.ar.valid        <> io.slaves(index).ar.valid
+    regInst.io.slave.ar.bits.id      <> io.slaves(index).ar.bits.id
+    regInst.io.slave.ar.bits.addr    <> io.slaves(index).ar.bits.addr
+    regInst.io.slave.ar.bits.len     <> io.slaves(index).ar.bits.len
+    regInst.io.slave.ar.bits.size    <> io.slaves(index).ar.bits.size
+    regInst.io.slave.ar.bits.burst   <> io.slaves(index).ar.bits.burst
+    regInst.io.slave.ar.bits.lock    <> io.slaves(index).ar.bits.lock
+    regInst.io.slave.ar.bits.cache   <> io.slaves(index).ar.bits.cache
+    regInst.io.slave.ar.bits.prot    <> io.slaves(index).ar.bits.prot
+    regInst.io.slave.ar.bits.qos     <> io.slaves(index).ar.bits.qos
+    regInst.io.slave.ar.bits.region  <> 0.U
+    regInst.io.slave.ar.bits.user    <> io.slaves(index).ar.bits.user
+    regInst.io.slave.r               <> io.slaves(index).r
+    regInst.io.master.ar.bits.id     <> IntSlavesAr(index).id
+    regInst.io.master.ar.bits.addr   <> IntSlavesAr(index).addr
+    regInst.io.master.ar.bits.len    <> IntSlavesAr(index).len
+    regInst.io.master.ar.bits.size   <> IntSlavesAr(index).size
+    regInst.io.master.ar.bits.burst  <> IntSlavesAr(index).burst
+    regInst.io.master.ar.bits.lock   <> IntSlavesAr(index).lock
+    regInst.io.master.ar.bits.cache  <> IntSlavesAr(index).cache
+    regInst.io.master.ar.bits.prot   <> IntSlavesAr(index).prot
+    regInst.io.master.ar.bits.qos    <> IntSlavesAr(index).qos
     regInst.io.master.ar.bits.region <> IntSlavesAr(index).region
-    regInst.io.master.ar.bits.user <> IntSlavesAr(index).user
-    regInst.io.master.ar.valid <> IntSlavesAr(index).valid
-    regInst.io.master.ar.ready <> IntSlavesAr(index).ready
-    regInst.io.master.r.bits.id <> masterRidMux
-    regInst.io.master.r.bits.data <> masterRdataMux
-    regInst.io.master.r.bits.resp <> masterRrespMux
-    regInst.io.master.r.bits.last <> masterRlastMux
-    regInst.io.master.r.bits.user <> masterRuserMux
-    regInst.io.master.r.valid <> masterRvalidMux
-    regInst.io.master.r.ready <> masterRreadyMux
+    regInst.io.master.ar.bits.user   <> IntSlavesAr(index).user
+    regInst.io.master.ar.valid       <> IntSlavesAr(index).valid
+    regInst.io.master.ar.ready       <> IntSlavesAr(index).ready
+    regInst.io.master.r.bits.id      <> masterRidMux
+    regInst.io.master.r.bits.data    <> masterRdataMux
+    regInst.io.master.r.bits.resp    <> masterRrespMux
+    regInst.io.master.r.bits.last    <> masterRlastMux
+    regInst.io.master.r.bits.user    <> masterRuserMux
+    regInst.io.master.r.valid        <> masterRvalidMux
+    regInst.io.master.r.ready        <> masterRreadyMux
   }
 
   for (index <- 0 until masterCount) {
@@ -265,10 +265,10 @@ class AxiCrossbarRead(
     val aGrantEncoded = Wire(UInt(log2Ceil(slaveCount).W))
 
     val aArb = Module(new Arbiter(ports = slaveCount))
-    aArb.io.request <> aRequest.asUInt
-    aArb.io.acknowledge <> aAcknowledge.asUInt
-    aArb.io.grant <> aGrant
-    aArb.io.grantValid <> aGrantValid
+    aArb.io.request      <> aRequest.asUInt
+    aArb.io.acknowledge  <> aAcknowledge.asUInt
+    aArb.io.grant        <> aGrant
+    aArb.io.grantValid   <> aGrantValid
     aArb.io.grantEncoded <> aGrantEncoded
 
     val slaveAridMux     = Wire(UInt(Param.Width.Axi.masterId.W))
@@ -317,26 +317,26 @@ class AxiCrossbarRead(
 
     // M side register
     val regInst = Module(new AxiRegisterRead(arRegType = masterArRegType(index), rRegType = masterRRegType(index)))
-    regInst.io.slave.ar.bits.id <> slaveAridMux
-    regInst.io.slave.ar.bits.addr <> slaveAraddrMux
-    regInst.io.slave.ar.bits.len <> slaveArlenMux
-    regInst.io.slave.ar.bits.size <> slaveArsizeMux
-    regInst.io.slave.ar.bits.burst <> slaveArburstMux
-    regInst.io.slave.ar.bits.lock <> slaveArlockMux
-    regInst.io.slave.ar.bits.cache <> slaveArcacheMux
-    regInst.io.slave.ar.bits.prot <> slaveArprotMux
-    regInst.io.slave.ar.bits.qos <> slaveArqosMux
+    regInst.io.slave.ar.bits.id     <> slaveAridMux
+    regInst.io.slave.ar.bits.addr   <> slaveAraddrMux
+    regInst.io.slave.ar.bits.len    <> slaveArlenMux
+    regInst.io.slave.ar.bits.size   <> slaveArsizeMux
+    regInst.io.slave.ar.bits.burst  <> slaveArburstMux
+    regInst.io.slave.ar.bits.lock   <> slaveArlockMux
+    regInst.io.slave.ar.bits.cache  <> slaveArcacheMux
+    regInst.io.slave.ar.bits.prot   <> slaveArprotMux
+    regInst.io.slave.ar.bits.qos    <> slaveArqosMux
     regInst.io.slave.ar.bits.region <> slaveArregionMux
-    regInst.io.slave.ar.bits.user <> slaveAruserMux
-    regInst.io.slave.ar.valid <> slaveArvalidMux
-    regInst.io.slave.ar.ready <> slaveArreadyMux
-    regInst.io.slave.r.bits.id <> IntMastersR(index).id
-    regInst.io.slave.r.bits.data <> IntMastersR(index).data
-    regInst.io.slave.r.bits.resp <> IntMastersR(index).resp
-    regInst.io.slave.r.bits.last <> IntMastersR(index).last
-    regInst.io.slave.r.bits.user <> IntMastersR(index).user
-    regInst.io.slave.r.valid <> IntMastersR(index).valid
-    regInst.io.slave.r.ready <> IntMastersR(index).ready
-    regInst.io.master <> io.masters(index)
+    regInst.io.slave.ar.bits.user   <> slaveAruserMux
+    regInst.io.slave.ar.valid       <> slaveArvalidMux
+    regInst.io.slave.ar.ready       <> slaveArreadyMux
+    regInst.io.slave.r.bits.id      <> IntMastersR(index).id
+    regInst.io.slave.r.bits.data    <> IntMastersR(index).data
+    regInst.io.slave.r.bits.resp    <> IntMastersR(index).resp
+    regInst.io.slave.r.bits.last    <> IntMastersR(index).last
+    regInst.io.slave.r.bits.user    <> IntMastersR(index).user
+    regInst.io.slave.r.valid        <> IntMastersR(index).valid
+    regInst.io.slave.r.ready        <> IntMastersR(index).ready
+    regInst.io.master               <> io.masters(index)
   }
 }

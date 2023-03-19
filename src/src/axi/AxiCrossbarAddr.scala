@@ -50,27 +50,27 @@ class AxiCrossbarAddr(
     )
   )
 
-  rawModule.io.clk := clock
-  rawModule.io.rst := reset
-  rawModule.io.s_axi_aid <> io.slaveAid
-  rawModule.io.s_axi_aaddr <> io.slaveAaddr
-  rawModule.io.s_axi_aprot <> io.slaveAprot
-  rawModule.io.s_axi_aqos <> io.slaveAqos
-  rawModule.io.s_axi_avalid <> io.slaveAvalid
-  rawModule.io.s_axi_aready <> io.slaveAready
+  rawModule.io.clk           := clock
+  rawModule.io.rst           := reset
+  rawModule.io.s_axi_aid     <> io.slaveAid
+  rawModule.io.s_axi_aaddr   <> io.slaveAaddr
+  rawModule.io.s_axi_aprot   <> io.slaveAprot
+  rawModule.io.s_axi_aqos    <> io.slaveAqos
+  rawModule.io.s_axi_avalid  <> io.slaveAvalid
+  rawModule.io.s_axi_aready  <> io.slaveAready
   rawModule.io.m_axi_aregion <> io.masterAregion
-  rawModule.io.m_select <> io.masterSelect
-  rawModule.io.m_axi_avalid <> io.masterAvalid
-  rawModule.io.m_axi_aready <> io.masterAready
-  rawModule.io.m_wc_select <> io.masterWriteCommandSelect
-  rawModule.io.m_wc_decerr <> io.masterWriteCommandDecerr
-  rawModule.io.m_wc_valid <> io.masterWriteCommandValid
-  rawModule.io.m_wc_ready <> io.masterWriteCommandReady
-  rawModule.io.m_rc_decerr <> io.masterReplyCommandDecerr
-  rawModule.io.m_rc_valid <> io.masterReplyCommandValid
-  rawModule.io.m_rc_ready <> io.masterReplyCommandReady
-  rawModule.io.s_cpl_id <> io.slaveCompletionId
-  rawModule.io.s_cpl_valid <> io.slaveCompletionValid
+  rawModule.io.m_select      <> io.masterSelect
+  rawModule.io.m_axi_avalid  <> io.masterAvalid
+  rawModule.io.m_axi_aready  <> io.masterAready
+  rawModule.io.m_wc_select   <> io.masterWriteCommandSelect
+  rawModule.io.m_wc_decerr   <> io.masterWriteCommandDecerr
+  rawModule.io.m_wc_valid    <> io.masterWriteCommandValid
+  rawModule.io.m_wc_ready    <> io.masterWriteCommandReady
+  rawModule.io.m_rc_decerr   <> io.masterReplyCommandDecerr
+  rawModule.io.m_rc_valid    <> io.masterReplyCommandValid
+  rawModule.io.m_rc_ready    <> io.masterReplyCommandReady
+  rawModule.io.s_cpl_id      <> io.slaveCompletionId
+  rawModule.io.s_cpl_valid   <> io.slaveCompletionValid
 }
 
 class axi_crossbar_addr(
@@ -127,7 +127,8 @@ class axi_crossbar_addr(
     val s_cpl_valid = Input(Bool())
   })
 
-  setInline("axi_crossbar_addr.v",
+  setInline(
+    "axi_crossbar_addr.v",
     """
       |
       |/*
@@ -519,5 +520,6 @@ class axi_crossbar_addr(
       |
       |`resetall
       |
-      |""".stripMargin)
+      |""".stripMargin
+  )
 }

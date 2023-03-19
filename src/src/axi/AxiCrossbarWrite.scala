@@ -104,28 +104,28 @@ class AxiCrossbarWrite(
       )
     )
     // address input
-    addrInst.io.slaveAid <> IntSlavesAw(index).id
-    addrInst.io.slaveAaddr <> IntSlavesAw(index).addr
-    addrInst.io.slaveAprot <> IntSlavesAw(index).prot
-    addrInst.io.slaveAqos <> IntSlavesAw(index).qos
+    addrInst.io.slaveAid    <> IntSlavesAw(index).id
+    addrInst.io.slaveAaddr  <> IntSlavesAw(index).addr
+    addrInst.io.slaveAprot  <> IntSlavesAw(index).prot
+    addrInst.io.slaveAqos   <> IntSlavesAw(index).qos
     addrInst.io.slaveAvalid <> IntSlavesAw(index).valid
     addrInst.io.slaveAready <> IntSlavesAw(index).ready
     // address output
     addrInst.io.masterAregion <> IntSlavesAw(index).region
-    addrInst.io.masterSelect <> aSelect
-    addrInst.io.masterAvalid <> masterAValid
-    addrInst.io.masterAready <> masterAReady
+    addrInst.io.masterSelect  <> aSelect
+    addrInst.io.masterAvalid  <> masterAValid
+    addrInst.io.masterAready  <> masterAReady
     // write command output
     addrInst.io.masterWriteCommandSelect <> masterWcSelect
     addrInst.io.masterWriteCommandDecerr <> masterWcDecerr
-    addrInst.io.masterWriteCommandValid <> masterWcValid
-    addrInst.io.masterWriteCommandReady <> masterWcReady
+    addrInst.io.masterWriteCommandValid  <> masterWcValid
+    addrInst.io.masterWriteCommandReady  <> masterWcReady
     // response command output
     addrInst.io.masterReplyCommandDecerr <> masterRcDecerr
-    addrInst.io.masterReplyCommandValid <> masterRcValid
-    addrInst.io.masterReplyCommandReady <> masterRcReady
+    addrInst.io.masterReplyCommandValid  <> masterRcValid
+    addrInst.io.masterReplyCommandReady  <> masterRcReady
     // completion input
-    addrInst.io.slaveCompletionId <> slaveCplId
+    addrInst.io.slaveCompletionId    <> slaveCplId
     addrInst.io.slaveCompletionValid <> slaveCplValid
 
     IntAwValid(index) := (masterAValid << aSelect)
@@ -191,10 +191,10 @@ class AxiCrossbarWrite(
     val bGrantValid   = Wire(Bool())
     val bGrantEncoded = Wire(UInt(log2Ceil(masterCount + 1).W))
     val bArbiter      = Module(new Arbiter(ports = masterCount + 1))
-    bArbiter.io.request <> bRequest.asUInt
-    bArbiter.io.acknowledge <> bAcknowledge.asUInt
-    bArbiter.io.grant <> bGrant
-    bArbiter.io.grantValid <> bGrantValid
+    bArbiter.io.request      <> bRequest.asUInt
+    bArbiter.io.acknowledge  <> bAcknowledge.asUInt
+    bArbiter.io.grant        <> bGrant
+    bArbiter.io.grantValid   <> bGrantValid
     bArbiter.io.grantEncoded <> bGrantEncoded
 
     // write response mux
@@ -236,45 +236,45 @@ class AxiCrossbarWrite(
         bRegType  = slaveBRegType(index)
       )
     )
-    regInst.io.slave.aw.ready <> io.slaves(index).aw.ready
-    regInst.io.slave.aw.valid <> io.slaves(index).aw.valid
-    regInst.io.slave.aw.bits.id <> io.slaves(index).aw.bits.id
-    regInst.io.slave.aw.bits.addr <> io.slaves(index).aw.bits.addr
-    regInst.io.slave.aw.bits.len <> io.slaves(index).aw.bits.len
-    regInst.io.slave.aw.bits.size <> io.slaves(index).aw.bits.size
-    regInst.io.slave.aw.bits.burst <> io.slaves(index).aw.bits.burst
-    regInst.io.slave.aw.bits.lock <> io.slaves(index).aw.bits.lock
-    regInst.io.slave.aw.bits.cache <> io.slaves(index).aw.bits.cache
-    regInst.io.slave.aw.bits.prot <> io.slaves(index).aw.bits.prot
-    regInst.io.slave.aw.bits.qos <> io.slaves(index).aw.bits.qos
-    regInst.io.slave.aw.bits.region <> 0.U
-    regInst.io.slave.aw.bits.user <> io.slaves(index).aw.bits.user
-    regInst.io.slave.w <> io.slaves(index).w
-    regInst.io.slave.b <> io.slaves(index).b
-    regInst.io.master.aw.bits.id <> IntSlavesAw(index).id
-    regInst.io.master.aw.bits.addr <> IntSlavesAw(index).addr
-    regInst.io.master.aw.bits.len <> IntSlavesAw(index).len
-    regInst.io.master.aw.bits.size <> IntSlavesAw(index).size
-    regInst.io.master.aw.bits.burst <> IntSlavesAw(index).burst
-    regInst.io.master.aw.bits.lock <> IntSlavesAw(index).lock
-    regInst.io.master.aw.bits.cache <> IntSlavesAw(index).cache
-    regInst.io.master.aw.bits.prot <> IntSlavesAw(index).prot
-    regInst.io.master.aw.bits.qos <> IntSlavesAw(index).qos
+    regInst.io.slave.aw.ready        <> io.slaves(index).aw.ready
+    regInst.io.slave.aw.valid        <> io.slaves(index).aw.valid
+    regInst.io.slave.aw.bits.id      <> io.slaves(index).aw.bits.id
+    regInst.io.slave.aw.bits.addr    <> io.slaves(index).aw.bits.addr
+    regInst.io.slave.aw.bits.len     <> io.slaves(index).aw.bits.len
+    regInst.io.slave.aw.bits.size    <> io.slaves(index).aw.bits.size
+    regInst.io.slave.aw.bits.burst   <> io.slaves(index).aw.bits.burst
+    regInst.io.slave.aw.bits.lock    <> io.slaves(index).aw.bits.lock
+    regInst.io.slave.aw.bits.cache   <> io.slaves(index).aw.bits.cache
+    regInst.io.slave.aw.bits.prot    <> io.slaves(index).aw.bits.prot
+    regInst.io.slave.aw.bits.qos     <> io.slaves(index).aw.bits.qos
+    regInst.io.slave.aw.bits.region  <> 0.U
+    regInst.io.slave.aw.bits.user    <> io.slaves(index).aw.bits.user
+    regInst.io.slave.w               <> io.slaves(index).w
+    regInst.io.slave.b               <> io.slaves(index).b
+    regInst.io.master.aw.bits.id     <> IntSlavesAw(index).id
+    regInst.io.master.aw.bits.addr   <> IntSlavesAw(index).addr
+    regInst.io.master.aw.bits.len    <> IntSlavesAw(index).len
+    regInst.io.master.aw.bits.size   <> IntSlavesAw(index).size
+    regInst.io.master.aw.bits.burst  <> IntSlavesAw(index).burst
+    regInst.io.master.aw.bits.lock   <> IntSlavesAw(index).lock
+    regInst.io.master.aw.bits.cache  <> IntSlavesAw(index).cache
+    regInst.io.master.aw.bits.prot   <> IntSlavesAw(index).prot
+    regInst.io.master.aw.bits.qos    <> IntSlavesAw(index).qos
     regInst.io.master.aw.bits.region <> DontCare
-    regInst.io.master.aw.bits.user <> IntSlavesAw(index).user
-    regInst.io.master.aw.valid <> IntSlavesAw(index).valid
-    regInst.io.master.aw.ready <> IntSlavesAw(index).ready
-    regInst.io.master.w.bits.data <> IntSlavesW(index).data
-    regInst.io.master.w.bits.strb <> IntSlavesW(index).strb
-    regInst.io.master.w.bits.last <> IntSlavesW(index).last
-    regInst.io.master.w.bits.user <> IntSlavesW(index).user
-    regInst.io.master.w.valid <> IntSlavesW(index).valid
-    regInst.io.master.w.ready <> IntSlavesW(index).ready
-    regInst.io.master.b.bits.id <> masterBidMux
-    regInst.io.master.b.bits.resp <> masterBrespMux
-    regInst.io.master.b.bits.user <> masterBuserMux
-    regInst.io.master.b.valid <> masterBvalidMux
-    regInst.io.master.b.ready <> masterBreadyMux
+    regInst.io.master.aw.bits.user   <> IntSlavesAw(index).user
+    regInst.io.master.aw.valid       <> IntSlavesAw(index).valid
+    regInst.io.master.aw.ready       <> IntSlavesAw(index).ready
+    regInst.io.master.w.bits.data    <> IntSlavesW(index).data
+    regInst.io.master.w.bits.strb    <> IntSlavesW(index).strb
+    regInst.io.master.w.bits.last    <> IntSlavesW(index).last
+    regInst.io.master.w.bits.user    <> IntSlavesW(index).user
+    regInst.io.master.w.valid        <> IntSlavesW(index).valid
+    regInst.io.master.w.ready        <> IntSlavesW(index).ready
+    regInst.io.master.b.bits.id      <> masterBidMux
+    regInst.io.master.b.bits.resp    <> masterBrespMux
+    regInst.io.master.b.bits.user    <> masterBuserMux
+    regInst.io.master.b.valid        <> masterBvalidMux
+    regInst.io.master.b.ready        <> masterBreadyMux
   }
 
   for (index <- 0 until masterCount) {
@@ -305,10 +305,10 @@ class AxiCrossbarWrite(
     val aGrantEncoded = Wire(UInt(log2Ceil(slaveCount).W))
 
     val aArb = Module(new Arbiter(ports = slaveCount))
-    aArb.io.request <> aRequest.asUInt
-    aArb.io.acknowledge <> aAcknowledge.asUInt
-    aArb.io.grant <> aGrant
-    aArb.io.grantValid <> aGrantValid
+    aArb.io.request      <> aRequest.asUInt
+    aArb.io.acknowledge  <> aAcknowledge.asUInt
+    aArb.io.grant        <> aGrant
+    aArb.io.grantValid   <> aGrantValid
     aArb.io.grantEncoded <> aGrantEncoded
 
     // address mux
@@ -390,30 +390,30 @@ class AxiCrossbarWrite(
         bRegType  = masterBRegType(index)
       )
     )
-    regInst.io.slave.aw.bits.id <> slaveAwidMux
-    regInst.io.slave.aw.bits.addr <> slaveAwaddrMux
-    regInst.io.slave.aw.bits.len <> slaveAwlenMux
-    regInst.io.slave.aw.bits.size <> slaveAwsizeMux
-    regInst.io.slave.aw.bits.burst <> slaveAwburstMux
-    regInst.io.slave.aw.bits.lock <> slaveAwlockMux
-    regInst.io.slave.aw.bits.cache <> slaveAwcacheMux
-    regInst.io.slave.aw.bits.prot <> slaveAwprotMux
-    regInst.io.slave.aw.bits.qos <> slaveAwqosMux
+    regInst.io.slave.aw.bits.id     <> slaveAwidMux
+    regInst.io.slave.aw.bits.addr   <> slaveAwaddrMux
+    regInst.io.slave.aw.bits.len    <> slaveAwlenMux
+    regInst.io.slave.aw.bits.size   <> slaveAwsizeMux
+    regInst.io.slave.aw.bits.burst  <> slaveAwburstMux
+    regInst.io.slave.aw.bits.lock   <> slaveAwlockMux
+    regInst.io.slave.aw.bits.cache  <> slaveAwcacheMux
+    regInst.io.slave.aw.bits.prot   <> slaveAwprotMux
+    regInst.io.slave.aw.bits.qos    <> slaveAwqosMux
     regInst.io.slave.aw.bits.region <> slaveAwregionMux
-    regInst.io.slave.aw.bits.user <> slaveAwuserMux
-    regInst.io.slave.aw.valid <> slaveAwvalidMux
-    regInst.io.slave.aw.ready <> slaveAwreadyMux
-    regInst.io.slave.w.bits.data <> slaveWdataMux
-    regInst.io.slave.w.bits.strb <> slaveWstrbMux
-    regInst.io.slave.w.bits.last <> slaveWlastMux
-    regInst.io.slave.w.bits.user <> slaveWuserMux
-    regInst.io.slave.w.valid <> slaveWvalidMux
-    regInst.io.slave.w.ready <> slaveWreadyMux
-    regInst.io.slave.b.bits.id <> IntMastersB(index).id
-    regInst.io.slave.b.bits.resp <> IntMastersB(index).resp
-    regInst.io.slave.b.bits.user <> IntMastersB(index).user
-    regInst.io.slave.b.valid <> IntMastersB(index).valid
-    regInst.io.slave.b.ready <> IntMastersB(index).ready
-    regInst.io.master <> io.masters(index)
+    regInst.io.slave.aw.bits.user   <> slaveAwuserMux
+    regInst.io.slave.aw.valid       <> slaveAwvalidMux
+    regInst.io.slave.aw.ready       <> slaveAwreadyMux
+    regInst.io.slave.w.bits.data    <> slaveWdataMux
+    regInst.io.slave.w.bits.strb    <> slaveWstrbMux
+    regInst.io.slave.w.bits.last    <> slaveWlastMux
+    regInst.io.slave.w.bits.user    <> slaveWuserMux
+    regInst.io.slave.w.valid        <> slaveWvalidMux
+    regInst.io.slave.w.ready        <> slaveWreadyMux
+    regInst.io.slave.b.bits.id      <> IntMastersB(index).id
+    regInst.io.slave.b.bits.resp    <> IntMastersB(index).resp
+    regInst.io.slave.b.bits.user    <> IntMastersB(index).user
+    regInst.io.slave.b.valid        <> IntMastersB(index).valid
+    regInst.io.slave.b.ready        <> IntMastersB(index).ready
+    regInst.io.master               <> io.masters(index)
   }
 }
