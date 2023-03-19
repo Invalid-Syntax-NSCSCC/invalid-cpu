@@ -1,1 +1,1 @@
-export CHIPLAB_HOME="<Your own chiplab pwd address>"
+export CHIPLAB_HOME="/home/Chris/Program/scala/chiplab/chiplab"
