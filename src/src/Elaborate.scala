@@ -4,7 +4,7 @@ import circt.stage.{CIRCTTarget, CIRCTTargetAnnotation}
 object Elaborate extends App {
   val useMFC    = true // Use MLIR-based firrtl compiler
   val generator = Seq(chisel3.stage.ChiselGeneratorAnnotation(() => top))
-  def top       = new CpuTop
+  def top       = new CoreCpuTop
 
   if (useMFC) {
     (new circt.stage.ChiselStage)
