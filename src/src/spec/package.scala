@@ -21,14 +21,14 @@ package object spec {
     }
 
     object Axi {
-      val addr   = wordLength
-      val data   = 32
-      val strb   = data / 8
-      val aruser = 1
-      val ruser  = 1
-      val awuser = 1
-      val wuser  = 1
-      val buser  = 1
+      val addr   = wordLength.W
+      val data   = 32.W
+      val strb   = 4.W // = (data / 8)
+      val aruser = 1.W
+      val ruser  = 1.W
+      val awuser = 1.W
+      val wuser  = 1.W
+      val buser  = 1.W
     }
   }
 

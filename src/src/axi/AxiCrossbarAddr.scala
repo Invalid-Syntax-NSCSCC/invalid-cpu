@@ -13,7 +13,7 @@ class AxiCrossbarAddr(
   val io = IO(new Bundle {
     // address input
     val slaveAid    = Input(UInt(idWidth.W))
-    val slaveAaddr  = Input(UInt(Width.Axi.addr.W))
+    val slaveAaddr  = Input(UInt(Width.Axi.addr))
     val slaveAprot  = Input(UInt(3.W))
     val slaveAqos   = Input(UInt(4.W))
     val slaveAvalid = Input(Bool())
@@ -83,7 +83,7 @@ class axi_crossbar_addr(
         "S" -> slaveIndex,
         "S_COUNT" -> Param.Count.Axi.slave,
         "M_COUNT" -> Param.Count.Axi.master,
-        "ADDR_WIDTH" -> Width.Axi.addr,
+        "ADDR_WIDTH" -> Width.Axi.addr.get,
         "ID_WIDTH" -> idWidth,
         "S_THREADS" -> "32'd2",
         "S_ACCEPT" -> "32'd16",
@@ -99,7 +99,7 @@ class axi_crossbar_addr(
 
     // address input
     val s_axi_aid    = Input(UInt(idWidth.W))
-    val s_axi_aaddr  = Input(UInt(Width.Axi.addr.W))
+    val s_axi_aaddr  = Input(UInt(Width.Axi.addr))
     val s_axi_aprot  = Input(UInt(3.W))
     val s_axi_aqos   = Input(UInt(4.W))
     val s_axi_avalid = Input(Bool())

@@ -31,7 +31,7 @@ class AxiCrossbarWrite(
       slaveCount,
       new Bundle {
         val id     = UInt(Param.Width.Axi.slaveId.W)
-        val addr   = UInt(Width.Axi.addr.W)
+        val addr   = UInt(Width.Axi.addr)
         val len    = UInt(8.W)
         val size   = UInt(3.W)
         val burst  = UInt(2.W)
@@ -40,7 +40,7 @@ class AxiCrossbarWrite(
         val prot   = UInt(3.W)
         val qos    = UInt(4.W)
         val region = UInt(4.W)
-        val user   = UInt(Width.Axi.awuser.W)
+        val user   = UInt(Width.Axi.awuser)
         val valid  = Bool()
         val ready  = Bool()
       }
@@ -52,10 +52,10 @@ class AxiCrossbarWrite(
     Vec(
       slaveCount,
       new Bundle {
-        val data  = UInt(Width.Axi.data.W)
-        val strb  = UInt(Width.Axi.strb.W)
+        val data  = UInt(Width.Axi.data)
+        val strb  = UInt(Width.Axi.strb)
         val last  = Bool()
-        val user  = UInt(Width.Axi.wuser.W)
+        val user  = UInt(Width.Axi.wuser)
         val valid = Bool()
         val ready = Bool()
       }
@@ -69,7 +69,7 @@ class AxiCrossbarWrite(
       new Bundle {
         val id    = UInt(Param.Width.Axi.masterId.W)
         val resp  = UInt(2.W)
-        val user  = UInt(Width.Axi.buser.W)
+        val user  = UInt(Width.Axi.buser)
         val valid = Bool()
         val ready = Bool()
       }
@@ -200,7 +200,7 @@ class AxiCrossbarWrite(
     // write response mux
     val masterBidMux    = Wire(UInt(Param.Width.Axi.slaveId.W))
     val masterBrespMux  = Wire(UInt(2.W))
-    val masterBuserMux  = Wire(UInt(Width.Axi.buser.W))
+    val masterBuserMux  = Wire(UInt(Width.Axi.buser))
     val masterBvalidMux = Wire(Bool())
     val masterBreadyMux = Wire(Bool())
 
@@ -208,9 +208,9 @@ class AxiCrossbarWrite(
       Cat(result, item.id)
     ) >> (bGrantEncoded * Param.Width.Axi.masterId.U)
     masterBrespMux := IntMastersB.foldLeft(3.U(2.W))((result, item) => Cat(result, item.resp)) >> (bGrantEncoded * 2.U)
-    masterBuserMux := IntMastersB.foldLeft(0.U(Width.Axi.buser.W))((result, item) =>
+    masterBuserMux := IntMastersB.foldLeft(0.U(Width.Axi.buser))((result, item) =>
       Cat(result, item.user)
-    ) >> (bGrantEncoded * Width.Axi.buser.U)
+    ) >> (bGrantEncoded * Width.Axi.buser.get.U)
     masterBvalidMux := IntMastersB.foldLeft(decerrMasterBvalidReg.asUInt)((result, item) =>
       Cat(result, item.valid)
     ) >> bGrantValid
@@ -313,7 +313,7 @@ class AxiCrossbarWrite(
 
     // address mux
     val slaveAwidMux     = Wire(UInt(Param.Width.Axi.masterId.W))
-    val slaveAwaddrMux   = Wire(UInt(Width.Axi.addr.W))
+    val slaveAwaddrMux   = Wire(UInt(Width.Axi.addr))
     val slaveAwlenMux    = Wire(UInt(8.W))
     val slaveAwsizeMux   = Wire(UInt(3.W))
     val slaveAwburstMux  = Wire(UInt(2.W))
@@ -322,7 +322,7 @@ class AxiCrossbarWrite(
     val slaveAwprotMux   = Wire(UInt(3.W))
     val slaveAwqosMux    = Wire(UInt(4.W))
     val slaveAwregionMux = Wire(UInt(4.W))
-    val slaveAwuserMux   = Wire(UInt(Width.Axi.awuser.W))
+    val slaveAwuserMux   = Wire(UInt(Width.Axi.awuser))
     val slaveAwvalidMux  = Wire(Bool())
     val slaveAwreadyMux  = Wire(Bool())
     slaveAwidMux     := IntSlavesAw(aGrantEncoded).id | (aGrantEncoded << Param.Width.Axi.slaveId)
@@ -348,10 +348,10 @@ class AxiCrossbarWrite(
     transStart := slaveAwvalidMux && slaveAwreadyMux && aGrantValid
 
     // write data mux
-    val slaveWdataMux  = Wire(UInt(Width.Axi.data.W))
-    val slaveWstrbMux  = Wire(UInt(Width.Axi.strb.W))
+    val slaveWdataMux  = Wire(UInt(Width.Axi.data))
+    val slaveWstrbMux  = Wire(UInt(Width.Axi.strb))
     val slaveWlastMux  = Wire(Bool())
-    val slaveWuserMux  = Wire(UInt(Width.Axi.wuser.W))
+    val slaveWuserMux  = Wire(UInt(Width.Axi.wuser))
     val slaveWvalidMux = Wire(Bool())
     val slaveWreadyMux = Wire(Bool())
     slaveWdataMux  := IntSlavesW(wSelectReg).data

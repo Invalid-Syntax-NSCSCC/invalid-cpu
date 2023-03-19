@@ -1,8 +1,8 @@
 import chisel3._
 import chisel3.experimental.FlatIO
 import chisel3.util._
-import common.RegFile
-import frontend.InstQueue
+import common.{Pc, RegFile}
+import frontend.{InstQueue, SimpleFetchStage}
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
@@ -72,19 +72,17 @@ class CpuTop extends Module {
 
   io <> DontCare
 
-  // TODO: Remove temporary test content
-  val testReg = RegNext(true.B, false.B)
-  io.bready := testReg
-
-  val instQueue    = Module(new InstQueue)
-  val issueStage   = Module(new IssueStage)
-  val regReadStage = Module(new RegReadStage)
-  val exeStage     = Module(new ExeStage)
-  val wbStage      = Module(new WbStage)
+  val simpleFetchStage = Module(new SimpleFetchStage)
+  val instQueue        = Module(new InstQueue)
+  val issueStage       = Module(new IssueStage)
+  val regReadStage     = Module(new RegReadStage)
+  val exeStage         = Module(new ExeStage)
+  val wbStage          = Module(new WbStage)
 
   val scoreboard = Module(new Scoreboard)
 
   val regFile = Module(new RegFile)
+  val pc      = Module(new Pc)
 
   // Default DontCare
   instQueue.io <> DontCare
@@ -92,6 +90,9 @@ class CpuTop extends Module {
   regReadStage.io <> DontCare
   regFile.io <> DontCare
   scoreboard.io <> DontCare
+
+  // `SimpleFetchStage` <> AXI top
+  // simpleFetchStage.io.axiMasterInterface
 
   issueStage.io.fetchInstInfoPort <> instQueue.io.dequeuePort
   issueStage.io.regScores   := scoreboard.io.regScores

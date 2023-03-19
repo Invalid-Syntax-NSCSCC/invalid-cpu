@@ -4,9 +4,9 @@ import chisel3._
 import chisel3.util._
 import spec._
 
-class MasterRead extends Bundle {
+class MasterRegisterRead(val idWidth: Int) extends Bundle {
   val ar = Decoupled(new Bundle {
-    val id     = UInt(Param.Width.Axi.masterId.W)
+    val id     = UInt(idWidth.W)
     val addr   = UInt(Width.Axi.addr)
     val len    = UInt(8.W)
     val size   = UInt(3.W)
@@ -19,7 +19,7 @@ class MasterRead extends Bundle {
     val user   = UInt(Width.Axi.aruser)
   })
   val r = Flipped(Decoupled(new Bundle {
-    val id   = UInt(Param.Width.Axi.masterId.W)
+    val id   = UInt(idWidth.W)
     val data = UInt(Width.Axi.data)
     val resp = UInt(2.W)
     val last = Bool()
