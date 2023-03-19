@@ -19,6 +19,9 @@ package object spec {
 
     object Op {
       val _2RI12 = 10.W
+      val _2R    = 22.W
+      val _3R    = 17.W
+      val _4R    = 12.W
     }
 
     object Axi {

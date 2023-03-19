@@ -7,11 +7,12 @@ import spec._
 import spec.Inst.{_2RI12 => Inst}
 
 class Decoder_2RI12 extends Decoder {
-  val opcode = io.inst(31, 22)
-  val imm12  = io.inst(21, 10)
-  val rj     = io.inst(9, 5)
-  val rd     = io.inst(4, 0)
-
+  val opcode = WireDefault(io.inst(31, 22))
+  val imm12  = WireDefault(io.inst(21, 10))
+  val rj     = WireDefault(io.inst(9, 5))
+  val rd     = WireDefault(io.inst(4, 0))
+  
+  io.out := DontCare
   // It has immediate
   io.out.info.isHasImm := true.B
 
