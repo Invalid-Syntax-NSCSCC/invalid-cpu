@@ -2,18 +2,18 @@ package axi
 
 import axi.Arbiter
 import axi.bundles.{MasterRead, SlaveRead}
-import axi.types.RegType.RegType
+import axi.types.RegType._
 import chisel3._
 import chisel3.util._
 import spec._
 
 class AxiCrossbarRead(
-  slaveArRegType:     Seq[RegType],
-  slaveRRegType:      Seq[RegType],
-  masterArRegType:    Seq[RegType],
-  masterRRegType:     Seq[RegType],
-  masterIssue:        Seq[Int] = Seq.fill(Param.Count.Axi.master)(4),
-  val masterBaseAddr: Int      = 0 // set to zero for default addressing
+  slaveArRegType:     Seq[RegType] = Seq.fill(Param.Count.Axi.slave)(BYPASS),
+  slaveRRegType:      Seq[RegType] = Seq.fill(Param.Count.Axi.slave)(SKID_BUFFER),
+  masterArRegType:    Seq[RegType] = Seq.fill(Param.Count.Axi.master)(SIMPLE_BUFFER),
+  masterRRegType:     Seq[RegType] = Seq.fill(Param.Count.Axi.master)(BYPASS),
+  masterIssue:        Seq[Int]     = Seq.fill(Param.Count.Axi.master)(4),
+  val masterBaseAddr: Int          = 0 // set to zero for default addressing
 ) extends Module {
 
   private val masterCount = Param.Count.Axi.master
@@ -79,7 +79,7 @@ class AxiCrossbarRead(
       new AxiCrossbarAddr(
         slaveIndex               = index,
         idWidth                  = Param.Width.Axi.slaveId,
-        masterBaseAddr           = 0,
+        masterBaseAddr           = masterBaseAddr,
         writeCommandOutputEnable = false
       )
     )
