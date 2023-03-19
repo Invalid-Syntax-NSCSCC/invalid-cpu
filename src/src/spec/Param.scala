@@ -11,6 +11,7 @@ object Param {
   val regFileReadNum      = 3
   val scoreboardChangeNum = 1
   val instRegReadNum      = 2
+  val ctrlControlNum      = 3
 
   object Width {
     val exeSel = 3.W

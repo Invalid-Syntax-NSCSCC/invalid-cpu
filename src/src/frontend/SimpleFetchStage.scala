@@ -5,19 +5,22 @@ import axi.bundles.AxiMasterPort
 import chisel3._
 import chisel3.util._
 import pipeline.dispatch.bundles.InstInfoBundle
-import spec.Param.{SimpleFetchStageState => State}
 import spec._
+import Param.{SimpleFetchStageState => State}
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+
+import java.lang.Package
 
 class SimpleFetchStage extends Module {
   val io = IO(new Bundle {
     val pc                 = Input(UInt(Width.Reg.data))
     val isPcNext           = Output(Bool())
-    val axiMasterInterface = Flipped(new AxiMasterPort)
+    val axiMasterInterface = new AxiMasterPort
     val instEnqueuePort    = Decoupled(new InstInfoBundle)
   })
 
   val axiMaster = Module(new AxiMaster)
-  axiMaster.io.axi <> io.axiMasterInterface
+  io.axiMasterInterface <> axiMaster.io.axi
   axiMaster.io.we       := false.B
   axiMaster.io.uncached := true.B
   axiMaster.io.size     := 4.U
@@ -38,12 +41,15 @@ class SimpleFetchStage extends Module {
   val axiAddrReg = RegInit(0.U(Width.Axi.addr))
   axiMaster.io.addr := axiAddrReg
 
+  val lastPcReg = RegInit(zeroWord)
+
   // Fallback
   isPcNextReg              := false.B
   axiReadRequestReg        := false.B
   axiAddrReg               := axiAddrReg
   io.instEnqueuePort.valid := false.B
   io.instEnqueuePort.bits  := DontCare
+  lastPcReg                := lastPcReg
 
   switch(state) {
     is(State.idle) {
@@ -56,6 +62,7 @@ class SimpleFetchStage extends Module {
         isPcNextReg       := true.B
         axiReadRequestReg := true.B
         axiAddrReg        := io.pc
+        lastPcReg         := io.pc
       }.otherwise {
         nextState := State.requestInst
       }
@@ -64,8 +71,9 @@ class SimpleFetchStage extends Module {
       when(axiReadValid) {
         nextState := State.requestInst
 
-        io.instEnqueuePort.valid := true.B
-        io.instEnqueuePort.bits  := axiData
+        io.instEnqueuePort.valid       := true.B
+        io.instEnqueuePort.bits.inst   := axiData
+        io.instEnqueuePort.bits.pcAddr := lastPcReg
       }.otherwise {
         nextState := State.waitInst
       }

@@ -14,7 +14,8 @@ class Scoreboard(changeNum: Int = Param.scoreboardChangeNum) extends Module {
 
   val isRegOccupied = RegInit(VecInit(Seq.fill(Count.reg)(false.B)))
   io.regScores.zip(isRegOccupied).foreach {
-    case (dest, reg) => dest := reg
+    case (dest, reg) =>
+      dest := reg
   }
 
   isRegOccupied.zipWithIndex.foreach {
