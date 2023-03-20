@@ -12,6 +12,8 @@ object Param {
   val scoreboardChangeNum = 1
   val instRegReadNum      = 2
   val ctrlControlNum      = 3
+  val issueInstInfoMaxNum = 1
+  val dispatchInstNum     = 1 // 发射shuliang
 
   object Width {
     val exeSel                = 3.W
