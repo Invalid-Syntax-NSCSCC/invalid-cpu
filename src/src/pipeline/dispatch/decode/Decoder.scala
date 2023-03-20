@@ -12,4 +12,5 @@ abstract class Decoder extends Module {
   // 3) Something else...
 
   val io = IO(new DecodePort)
+  io.out.info.pcAddr := io.instInfoPort.pcAddr
 }

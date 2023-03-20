@@ -39,10 +39,11 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val stallRequestDelay = RegNext(stallRequest, false.B)
   io.stallRequest := stallRequest
 
-  alu.io.aluInst.op           := Mux(stallRequestDelay, exeInstStore.exeOp, io.exeInstPort.exeOp)
-  alu.io.aluInst.leftOperand  := Mux(stallRequestDelay, exeInstStore.leftOperand, io.exeInstPort.leftOperand)
-  alu.io.aluInst.rightOperand := Mux(stallRequestDelay, exeInstStore.rightOperand, io.exeInstPort.rightOperand)
-  io.divisorZeroException     := alu.io.divisorZeroException
+  alu.io.aluInst.op             := Mux(stallRequestDelay, exeInstStore.exeOp, io.exeInstPort.exeOp)
+  alu.io.aluInst.leftOperand    := Mux(stallRequestDelay, exeInstStore.leftOperand, io.exeInstPort.leftOperand)
+  alu.io.aluInst.rightOperand   := Mux(stallRequestDelay, exeInstStore.rightOperand, io.exeInstPort.rightOperand)
+  alu.io.aluInst.jumpBranchAddr := Mux(stallRequestDelay, exeInstStore.jumpBranchAddr, io.exeInstPort.jumpBranchAddr)
+  io.divisorZeroException       := alu.io.divisorZeroException
 
   exeInstStore := Mux(
     stallRequestDelay,
@@ -82,6 +83,9 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
       }
       is(Sel.arithmetic) {
         gprWriteReg.data := alu.io.result.arithmetic
+      }
+      is(Sel.jumpBranch) {
+        gprWriteReg.data := io.exeInstPort.pcAddr + 4.U
       }
     }
   }

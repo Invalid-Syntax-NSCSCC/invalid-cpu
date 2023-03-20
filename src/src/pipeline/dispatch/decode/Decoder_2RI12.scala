@@ -7,11 +7,13 @@ import spec._
 import spec.Inst.{_2RI12 => Inst}
 
 class Decoder_2RI12 extends Decoder {
-  val opcode = WireDefault(io.inst(31, 22))
-  val imm12  = WireDefault(io.inst(21, 10))
-  val rj     = WireDefault(io.inst(9, 5))
-  val rd     = WireDefault(io.inst(4, 0))
-  
+  val opcode = WireDefault(io.instInfoPort.inst(31, 22))
+  val imm12  = WireDefault(io.instInfoPort.inst(21, 10))
+  val rj     = WireDefault(io.instInfoPort.inst(9, 5))
+  val rd     = WireDefault(io.instInfoPort.inst(4, 0))
+
+  def outInfo = io.out.info
+
   io.out := DontCare
   // It has immediate
   io.out.info.isHasImm := true.B
@@ -37,11 +39,41 @@ class Decoder_2RI12 extends Decoder {
   io.out.isMatched   := false.B
 
   switch(opcode) {
+    is(Inst.slti) {
+      io.out.isMatched   := true.B
+      io.out.info.exeOp  := ExeInst.Op.slt
+      io.out.info.exeSel := ExeInst.Sel.arithmetic
+      io.out.info.imm    := immSext.asUInt
+    }
+    is(Inst.sltui) {
+      io.out.isMatched   := true.B
+      io.out.info.exeOp  := ExeInst.Op.sltu
+      io.out.info.exeSel := ExeInst.Sel.arithmetic
+      io.out.info.imm    := immZext
+    }
     is(Inst.addi_w) {
       io.out.isMatched   := true.B
-      io.out.info.exeSel := ExeInst.Sel.arithmetic
       io.out.info.exeOp  := ExeInst.Op.add
+      io.out.info.exeSel := ExeInst.Sel.arithmetic
       io.out.info.imm    := immSext.asUInt
+    }
+    is(Inst.andi) {
+      io.out.isMatched   := true.B
+      io.out.info.exeOp  := ExeInst.Op.and
+      io.out.info.exeSel := ExeInst.Sel.logic
+      io.out.info.imm    := immZext
+    }
+    is(Inst.ori) {
+      io.out.isMatched   := true.B
+      io.out.info.exeOp  := ExeInst.Op.or
+      io.out.info.exeSel := ExeInst.Sel.logic
+      io.out.info.imm    := immZext
+    }
+    is(Inst.xori) {
+      io.out.isMatched   := true.B
+      io.out.info.exeOp  := ExeInst.Op.xor
+      io.out.info.exeSel := ExeInst.Sel.logic
+      io.out.info.imm    := immZext
     }
   }
 }

@@ -22,6 +22,10 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   val isHasImm = Bool()
   val imm      = UInt(Width.Reg.data)
 
+  // Branch Jump Addr
+  val pcAddr         = UInt(Width.Reg.data)
+  val jumpBranchAddr = UInt(Width.Reg.data)
+
   // TODO: Signals in this port is not sufficient
 }
 

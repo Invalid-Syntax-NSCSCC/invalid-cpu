@@ -57,6 +57,57 @@ class Alu extends Module {
     }
   }
 
+  // jump and branch
+  io.result.jumpBranchInfo.en := false.B
+  switch(io.aluInst.op) {
+    is(Op.b, Op.bl) {
+      io.result.jumpBranchInfo.en     := true.B
+      io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+    }
+    is(Op.jirl) {
+      io.result.jumpBranchInfo.en     := true.B
+      io.result.jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr
+    }
+    is(Op.beq) {
+      when(lop === rop) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.bne) {
+      when(lop =/= rop) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.blt) {
+      when(lop.asSInt < rop.asSInt) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.bge) {
+      when(lop.asSInt >= rop.asSInt) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.bltu) {
+      when(lop < rop) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.bgeu) {
+      when(lop >= rop) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+  }
+
+  // arithmetic
+
   // mul
 
   val useMul = WireDefault(

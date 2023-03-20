@@ -88,9 +88,11 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
   when(~stall) {
     when(io.issuedInfoPort.isValid) {
-      exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
-      exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
-      exeInstReg.gprWritePort := io.issuedInfoPort.info.gprWritePort
+      exeInstReg.exeSel         := io.issuedInfoPort.info.exeSel
+      exeInstReg.exeOp          := io.issuedInfoPort.info.exeOp
+      exeInstReg.gprWritePort   := io.issuedInfoPort.info.gprWritePort
+      exeInstReg.jumpBranchAddr := io.issuedInfoPort.info.jumpBranchAddr
+      exeInstReg.pcAddr         := io.issuedInfoPort.info.pcAddr
     }
   }
 }

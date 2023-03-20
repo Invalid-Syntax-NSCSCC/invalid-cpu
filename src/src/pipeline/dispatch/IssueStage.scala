@@ -3,7 +3,7 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import pipeline.dispatch.bundles.{DecodeOutNdPort, DecodePort, InstInfoBundle, IssuedInfoNdPort, ScoreboardChangeNdPort}
-import pipeline.dispatch.decode.{Decoder, Decoder_2RI12}
+import pipeline.dispatch.decode.{Decoder, Decoder_2R, Decoder_2RI12, Decoder_2RI16, Decoder_3R, Decoder_4R}
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 
@@ -35,8 +35,14 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   io.fetchInstInfoPort.ready := isNonBlocking
 
   // Select a decoder
-  val decoders = Seq(Module(new Decoder_2RI12))
-  decoders.foreach(_.io.inst := instInfo.inst)
+  val decoders = Seq(
+    Module(new Decoder_2RI12),
+    Module(new Decoder_2RI16),
+    Module(new Decoder_2R),
+    Module(new Decoder_3R),
+    Module(new Decoder_4R)
+  )
+  decoders.foreach(_.io.instInfoPort.inst := instInfo.inst)
 
   val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
   decoderWires.zip(decoders).foreach {
