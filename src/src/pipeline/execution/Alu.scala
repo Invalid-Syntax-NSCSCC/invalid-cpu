@@ -128,7 +128,7 @@ class Alu extends Module {
 
   mulStage.io.mulResult.ready := DontCare
 
-  mulStart := useMul & ~mulStage.io.mulResult.valid
+  mulStart := useMul && !mulStage.io.mulResult.valid
 
   val mulResult = WireDefault(mulStage.io.mulResult.bits)
 
@@ -154,14 +154,14 @@ class Alu extends Module {
   divStage.io.divResult.ready := DontCare
 
   val divisorValid = WireDefault(rop.orR)
-  io.divisorZeroException := ~divisorValid & useDiv
+  io.divisorZeroException := !divisorValid && useDiv
 
-  divStart := (useDiv & ~divStage.io.isRunning & ~divStage.io.divResult.valid & divisorValid)
+  divStart := (useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid)
 
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
 
-  io.stallRequest := (mulStart | divStart | divStage.io.isRunning)
+  io.stallRequest := (mulStart || divStart || divStage.io.isRunning)
 
   when(~io.stallRequest) {
     switch(io.aluInst.op) {
