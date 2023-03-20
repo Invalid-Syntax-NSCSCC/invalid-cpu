@@ -39,7 +39,7 @@ class Mul extends Module {
 
   result := Mux(
     isSigned,
-    (lop.asSInt * lop.asSInt).asUInt,
+    (lop.asSInt * rop.asSInt).asUInt,
     lop * rop
   )
 

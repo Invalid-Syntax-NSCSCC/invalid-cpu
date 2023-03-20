@@ -31,8 +31,8 @@ object ExeStageSpec extends ChiselUtestTester {
             ExeInst.Op.nop
         )
         val sel = ExeInst.Sel.arithmetic
-        val lop = 47.U;
-        val rop = 0.U;
+        val lop = 472;
+        val rop = 5;
         exeStage.io.exeInstPort.poke(ExeInstNdPort.default)
         exeStage.io.pipelineControlPort.poke(PipelineControlNDPort.default)
         def instPort = exeStage.io.exeInstPort
@@ -42,8 +42,8 @@ object ExeStageSpec extends ChiselUtestTester {
         for (i <- 0 until ops.length) {
             instPort.exeOp.poke(ops(i))
             instPort.exeSel.poke(sel)
-            instPort.leftOperand.poke(lop)
-            instPort.rightOperand.poke(rop)
+            instPort.leftOperand.poke(lop.U)
+            instPort.rightOperand.poke(rop.U)
             
             println(exeStage.io.stallRequest.peek().litValue)
             while (exeStage.io.stallRequest.peek().litValue == 1) {
@@ -55,8 +55,9 @@ object ExeStageSpec extends ChiselUtestTester {
                 instPort.rightOperand.poke(0.U)
                 
             }
-            println()
+            
             exeStage.clock.step(1) 
+            println()
         }
         exeStage.clock.step(10)
       }
