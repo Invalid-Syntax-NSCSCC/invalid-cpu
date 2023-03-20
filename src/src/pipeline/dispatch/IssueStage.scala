@@ -21,8 +21,10 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
 
     // pipeline control signal
     // `CtrlStage` -> `IssueStage`
-    val pipelineControlPorts = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNDPort)
   })
+
+  // TODO: Refactor using state machine
 
   // Pass to the next stage in a sequential way
   val issuedInfoReg = RegInit(IssuedInfoNdPort.default)
@@ -31,12 +33,12 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   // Get next instruction if needed
   val isNonBlocking   = WireDefault(true.B)
   val isInstAvailable = WireDefault(io.fetchInstInfoPort.valid && isNonBlocking)
-  val instInfo        = RegEnable(io.fetchInstInfoPort.bits, InstInfoBundle.default, isInstAvailable)
+  val instInfoReg     = RegEnable(io.fetchInstInfoPort.bits, InstInfoBundle.default, isInstAvailable)
   io.fetchInstInfoPort.ready := isNonBlocking
 
   // Select a decoder
   val decoders = Seq(Module(new Decoder_2RI12))
-  decoders.foreach(_.io.inst := instInfo.inst)
+  decoders.foreach(_.io.inst := instInfoReg.inst)
 
   val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
   decoderWires.zip(decoders).foreach {
@@ -47,13 +49,13 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   val selectedDecoder = WireDefault(decoderWires(decoderIndex))
 
   // Check scoreboard
-  val scoreboardNonBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
+  val isScoreboardNonBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
     !(port.en && io.regScores(port.addr))
-  }.reduce(_ || _))
-  isNonBlocking := scoreboardNonBlocking && !io.pipelineControlPorts.stall
+  }.reduce(_ && _))
+  isNonBlocking := isScoreboardNonBlocking && !io.pipelineControlPort.stall
 
   val isInstValid = WireDefault(decoderWires.map(_.isMatched).reduce(_ || _))
-  val isNeedIssue = WireDefault((isInstAvailable || !isNonBlocking) && isInstValid)
+  val isNeedIssue = WireDefault(isInstAvailable && isInstValid) // TODO: Include in refactor
 
   // Fallback for no operation
   issuedInfoReg.isValid              := isNeedIssue
