@@ -21,10 +21,15 @@ class Scoreboard(changeNum: Int = Param.scoreboardChangeNum) extends Module {
   isRegOccupied.zipWithIndex.foreach {
     case (reg, index) =>
       reg := reg
-      when(io.occupyPorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
-        reg := true.B
-      }.elsewhen(io.freePorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
+      if (index == 0) {
+        // GPR 0 is not meant to be written and always keeps 0
         reg := false.B
+      } else {
+        when(io.occupyPorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
+          reg := true.B
+        }.elsewhen(io.freePorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
+          reg := false.B
+        }
       }
   }
 }

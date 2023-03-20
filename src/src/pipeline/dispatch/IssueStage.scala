@@ -21,7 +21,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
 
     // pipeline control signal
     // `CtrlStage` -> `IssueStage`
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPorts = Input(new PipelineControlNDPort)
   })
 
   // Pass to the next stage in a sequential way
@@ -50,13 +50,13 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   val scoreboardNonBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
     !(port.en && io.regScores(port.addr))
   }.reduce(_ || _))
-  isNonBlocking := scoreboardNonBlocking && ~io.pipelineControlPort.stall
+  isNonBlocking := scoreboardNonBlocking && !io.pipelineControlPorts.stall
 
   val isInstValid = WireDefault(decoderWires.map(_.isMatched).reduce(_ || _))
   val isNeedIssue = WireDefault((isInstAvailable || !isNonBlocking) && isInstValid)
 
   // Fallback for no operation
-  issuedInfoReg.isValid              := false.B
+  issuedInfoReg.isValid              := isNeedIssue
   issuedInfoReg.info                 := DontCare
   issuedInfoReg.info.gprWritePort.en := false.B
   io.occupyPorts.foreach { port =>
@@ -66,13 +66,6 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
 
   // Issue pre-execution instruction
   when(isNeedIssue) {
-    // Check scoreboard to eliminate data hazards
-    issuedInfoReg.isValid := selectedDecoder.info.gprReadPorts
-      .map(port => !(io.regScores(port.addr) && port.en))
-      .reduce(_ && _) && (!(io.regScores(
-      selectedDecoder.info.gprWritePort.addr
-    ) && selectedDecoder.info.gprWritePort.en))
-
     // Indicate the occupation in scoreboard
     io.occupyPorts.zip(Seq(selectedDecoder.info.gprWritePort)).foreach {
       case (occupyPort, accessInfo) =>

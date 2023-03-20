@@ -8,7 +8,7 @@ import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
 
 class CoreCpuTop extends Module {
-  val io = FlatIO(new Bundle {
+  val io = IO(new Bundle {
     val intrpt = Input(UInt(8.W))
     val axi    = new AxiMasterPort
 
@@ -43,6 +43,9 @@ class CoreCpuTop extends Module {
   regReadStage.io <> DontCare
   regFile.io      <> DontCare
   scoreboard.io   <> DontCare
+
+  // TODO: Other connections
+  exeStage.io := DontCare
 
   // `SimpleFetchStage` <> AXI top
   io.axi <> simpleFetchStage.io.axiMasterInterface
