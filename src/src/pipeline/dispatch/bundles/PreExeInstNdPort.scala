@@ -36,6 +36,8 @@ object PreExeInstNdPort {
     _.gprReadPorts -> Vec.Lit(RfAccessInfoNdPort.default, RfAccessInfoNdPort.default),
     _.gprWritePort -> RfAccessInfoNdPort.default,
     _.isHasImm -> false.B,
-    _.imm -> 0.U
+    _.imm -> 0.U,
+    _.pcAddr -> zeroWord,
+    _.jumpBranchAddr -> zeroWord
   )
 }

@@ -42,7 +42,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     Module(new Decoder_3R),
     Module(new Decoder_4R)
   )
-  decoders.foreach(_.io.instInfoPort.inst := instInfo.inst)
+  decoders.foreach(_.io.instInfoPort := io.fetchInstInfoPort.bits)
 
   val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
   decoderWires.zip(decoders).foreach {

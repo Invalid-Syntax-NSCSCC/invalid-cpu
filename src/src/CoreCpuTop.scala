@@ -6,6 +6,7 @@ import frontend.{InstQueue, SimpleFetchStage}
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
+import pipeline.ctrl.CtrlStage
 
 class CoreCpuTop extends Module {
   val io = FlatIO(new Bundle {
@@ -31,6 +32,7 @@ class CoreCpuTop extends Module {
   val regReadStage     = Module(new RegReadStage)
   val exeStage         = Module(new ExeStage)
   val wbStage          = Module(new WbStage)
+  val ctrlStage        = Module(new CtrlStage)
 
   val scoreboard = Module(new Scoreboard)
 
@@ -43,6 +45,7 @@ class CoreCpuTop extends Module {
   regReadStage.io <> DontCare
   regFile.io      <> DontCare
   scoreboard.io   <> DontCare
+  ctrlStage.io    <> DontCare
 
   // `SimpleFetchStage` <> AXI top
   io.axi <> simpleFetchStage.io.axiMasterInterface
@@ -60,20 +63,26 @@ class CoreCpuTop extends Module {
   pc.io.isNext             := simpleFetchStage.io.isPcNext
 
   // Issue stage
-  issueStage.io.fetchInstInfoPort <> instQueue.io.dequeuePort
-  issueStage.io.regScores         := scoreboard.io.regScores
-  scoreboard.io.occupyPorts       := issueStage.io.occupyPorts
+  issueStage.io.fetchInstInfoPort   <> instQueue.io.dequeuePort
+  issueStage.io.regScores           := scoreboard.io.regScores
+  scoreboard.io.occupyPorts         := issueStage.io.occupyPorts
+  issueStage.io.pipelineControlPort := ctrlStage.io.pipelineControlPorts(0)
 
   // Reg-read stage
-  regReadStage.io.issuedInfoPort  := issueStage.io.issuedInfoPort
-  regReadStage.io.gprReadPorts(0) <> regFile.io.readPorts(0)
-  regReadStage.io.gprReadPorts(1) <> regFile.io.readPorts(1)
+  regReadStage.io.issuedInfoPort      := issueStage.io.issuedInfoPort
+  regReadStage.io.gprReadPorts(0)     <> regFile.io.readPorts(0)
+  regReadStage.io.gprReadPorts(1)     <> regFile.io.readPorts(1)
+  regReadStage.io.pipelineControlPort := ctrlStage.io.pipelineControlPorts(1)
 
   // Execution stage
-  exeStage.io.exeInstPort := regReadStage.io.exeInstPort
+  exeStage.io.exeInstPort         := regReadStage.io.exeInstPort
+  exeStage.io.pipelineControlPort := ctrlStage.io.pipelineControlPorts(2)
 
   // Write-back stage
   wbStage.io.gprWriteInfoPort := exeStage.io.gprWritePort
   regFile.io.writePort        := wbStage.io.gprWritePort
   scoreboard.io.freePorts     := wbStage.io.freePorts
+
+  // ctrl
+  ctrlStage.io.exeStallRequest := exeStage.io.stallRequest
 }

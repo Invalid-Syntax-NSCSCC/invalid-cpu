@@ -6,17 +6,17 @@ import spec.Width.{Op => wd}
 import ujson.Str
 
 object Inst {
-  private def b(str: String, width: Width): UInt = {
-    assert(str.length.W == width)
+  private def b(str: String, width: Width, underLineNum: Int): UInt = {
+    assert((str.length - underLineNum).W == width)
     ("b" + str).U(width)
   }
 
   object _2R {
-    private def i(str: String) = b(str, wd._2R)
+    private def i(str: String) = b(str, wd._2R, 0)
   }
 
   object _3R {
-    private def i(str: String) = b(str, wd._3R)
+    private def i(str: String) = b(str, wd._3R, 4)
     val add_w   = i("0000_0000_0001_0000_0")
     val sub_w   = i("0000_0000_0001_0001_0")
     val slt_w   = i("0000_0000_0001_0010_0")
@@ -41,11 +41,11 @@ object Inst {
   }
 
   object _4R {
-    private def i(str: String) = b(str, wd._4R)
+    private def i(str: String) = b(str, wd._4R, 0)
   }
 
   object _2RI12 {
-    private def i(str: String) = b(str, wd._2RI12)
+    private def i(str: String) = b(str, wd._2RI12, 2)
     val slti   = i("0000_0010_00")
     val sltui  = i("0000_0010_01")
     val addi_w = i("0000_0010_10")
@@ -55,7 +55,7 @@ object Inst {
   }
 
   object _2RI16 {
-    private def i(str: String) = b(str, wd._2RI16)
+    private def i(str: String) = b(str, wd._2RI16, 1)
     // val bceqz = i("010_010")
     // val bcnez = i("010_010")
     val jirl = i("010_011")
