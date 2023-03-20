@@ -2,8 +2,9 @@ package axi
 
 import chisel3._
 import chisel3.util._
-import spec.Axi.Arb._
+import spec.Param.Axi.Arb._
 
+// TODO： learn chisel3 arbiter
 class Arbiter(val ports: Int) extends Module {
   val io = IO(new Bundle {
     val request     = Input(UInt(ports.W))
@@ -14,16 +15,16 @@ class Arbiter(val ports: Int) extends Module {
     val grantEncoded = Output(UInt(log2Ceil(ports).W))
   })
 
-  val grantReg     = RegInit(0.U(ports.W))
-  val grantNextReg = Reg(UInt(ports.W))
+  val grantReg  = RegInit(0.U(ports.W))
+  val grantNext = Wire(UInt(ports.W))
   io.grant <> grantReg
 
-  val grantValidReg     = RegInit(false.B)
-  val grantValidNextReg = Reg(Bool())
+  val grantValidReg  = RegInit(false.B)
+  val grantValidNext = Wire(Bool())
   io.grantValid <> grantValidReg
 
-  val grantEncodedReg     = RegInit(0.U(log2Ceil(ports).W))
-  val grantEncodedNextReg = Reg(UInt(log2Ceil(ports).W))
+  val grantEncodedReg  = RegInit(0.U(log2Ceil(ports).W))
+  val grantEncodedNext = Wire(UInt(log2Ceil(ports).W))
   io.grantEncoded <> grantEncodedReg
 
   val requestValid = Wire(Bool())
@@ -37,7 +38,7 @@ class Arbiter(val ports: Int) extends Module {
   requestMask                           := priorityEncoderInst.io.outputUnencoded
 
   val maskReg  = RegInit(0.U(ports.W))
-  val maskNext = Reg(UInt(ports.W))
+  val maskNext = Wire(UInt(ports.W))
 
   val maskedRequestValid = Wire(Bool())
   val maskedRequestIndex = Wire(UInt(log2Ceil(ports).W))
@@ -50,35 +51,35 @@ class Arbiter(val ports: Int) extends Module {
   maskedRequestMask                       := priorityEncoderMasked.io.outputUnencoded
 
   // fallback
-  grantNextReg        := 0.U
-  grantValidNextReg   := false.B
-  grantEncodedNextReg := 0.U
-  maskNext            := maskReg
+  grantNext        := 0.U
+  grantValidNext   := false.B
+  grantEncodedNext := 0.U
+  maskNext         := maskReg
   when((block && !blockAck).B && (grantReg & io.request).orR) {
     // granted request still asserted; hold it
-    grantValidNextReg   := grantValidReg
-    grantNextReg        := grantReg
-    grantEncodedNextReg := grantEncodedReg
+    grantValidNext   := grantValidReg
+    grantNext        := grantReg
+    grantEncodedNext := grantEncodedReg
   }.elsewhen((block && blockAck).B && (grantValidReg && !(grantReg & io.acknowledge))) {
     // granted request not yet acknowledged; hold it
-    grantValidNextReg   := grantValidReg
-    grantNextReg        := grantReg
-    grantEncodedNextReg := grantEncodedReg
+    grantValidNext   := grantValidReg
+    grantNext        := grantReg
+    grantEncodedNext := grantEncodedReg
   }.elsewhen(requestValid) {
     if (typeRoundRobin) {
       when(maskedRequestValid) {
-        grantValidNextReg   := true.B
-        grantNextReg        := maskedRequestMask
-        grantEncodedNextReg := maskedRequestIndex
+        grantValidNext   := true.B
+        grantNext        := maskedRequestMask
+        grantEncodedNext := maskedRequestIndex
         maskNext := (if (lsbHighPriority) {
                        Fill(ports, true.B) << (maskedRequestIndex + 1.U)
                      } else {
                        Fill(ports, true.B) >> (ports.U - maskedRequestIndex)
                      })
       }.otherwise {
-        grantValidNextReg   := true.B
-        grantNextReg        := requestMask
-        grantEncodedNextReg := requestIndex
+        grantValidNext   := true.B
+        grantNext        := requestMask
+        grantEncodedNext := requestIndex
         maskNext := (if (lsbHighPriority) {
                        Fill(ports, true.B) << (requestIndex + 1.U)
                      } else {
@@ -86,9 +87,9 @@ class Arbiter(val ports: Int) extends Module {
                      })
       }
     } else {
-      grantValidNextReg   := true.B
-      grantNextReg        := requestMask
-      grantEncodedNextReg := requestIndex
+      grantValidNext   := true.B
+      grantNext        := requestMask
+      grantEncodedNext := requestIndex
     }
   }
 }
