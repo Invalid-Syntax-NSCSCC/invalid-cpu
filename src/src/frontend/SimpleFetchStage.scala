@@ -32,7 +32,7 @@ class SimpleFetchStage extends Module {
   val axiData      = WireInit(axiMaster.io.dataOut)
 
   val nextState = WireInit(State.idle)
-  val state     = RegNext(nextState, State.idle)
+  val stateReg  = RegNext(nextState, State.idle)
 
   val isPcNextReg = RegInit(false.B)
   io.isPcNext := isPcNextReg
@@ -51,7 +51,7 @@ class SimpleFetchStage extends Module {
   io.instEnqueuePort.bits  := DontCare
   lastPcReg                := lastPcReg
 
-  switch(state) {
+  switch(stateReg) {
     is(State.idle) {
       nextState := State.requestInst
     }

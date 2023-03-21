@@ -3,14 +3,14 @@ package pipeline.execution
 import chisel3._
 import chisel3.util._
 import spec._
-import pipeline.execution.bundles.AluInstNdPort
 import chisel3.internal.firrtl.DefRegInit
+import pipeline.execution.bundles.MulDivInstNdPort
 
 // 花费一周期完成
 class Mul extends Module {
 
   val io = IO(new Bundle {
-    val mulInst   = Flipped(Decoupled(new AluInstNdPort))
+    val mulInst   = Flipped(Decoupled(new MulDivInstNdPort))
     val mulResult = Decoupled(UInt(doubleWordLength.W))
     // val isRunning = (Output(Bool()))
   })
@@ -39,7 +39,7 @@ class Mul extends Module {
 
   result := Mux(
     isSigned,
-    (lop.asSInt * lop.asSInt).asUInt,
+    (lop.asSInt * rop.asSInt).asUInt,
     lop * rop
   )
 

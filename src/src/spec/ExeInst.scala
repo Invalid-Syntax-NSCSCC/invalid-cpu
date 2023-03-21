@@ -15,6 +15,7 @@ object ExeInst {
     val logic      = next
     val shift      = next
     val arithmetic = next // Only for regular arithmetic operation computed in ALU
+    val jumpBranch = next
   }
 
   object Op {
@@ -44,5 +45,15 @@ object ExeInst {
     val divu  = next
     val mod   = next
     val modu  = next
+    // branch
+    val jirl = next
+    val b    = next
+    val bl   = next
+    val beq  = next
+    val bne  = next
+    val blt  = next
+    val bge  = next
+    val bltu = next
+    val bgeu = next
   }
 }

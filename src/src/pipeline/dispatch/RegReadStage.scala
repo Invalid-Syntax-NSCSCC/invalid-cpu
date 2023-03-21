@@ -22,7 +22,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     val exeRfWriteFeedbackPort = Input(new RfWriteNdPort)
 
     // `pipeline control signal
-    // `CtrlStage` -> `RegReadStage`
+    // `Cu` -> `RegReadStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
   })
 
@@ -50,7 +50,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
-  when(~stall) {
+  when(!stall) {
     // when(io.issuedInfoPort.info.gprReadPorts(0).en) {
     //   exeInstReg.leftOperand := io.gprReadPorts(0).data
 
@@ -68,7 +68,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
       .zip(io.gprReadPorts)
       .foreach {
-        case (oprand, gprReadPort) => {
+        case (oprand, gprReadPort) =>
           when(
             gprReadPort.en &&
               io.exeRfWriteFeedbackPort.en &&
@@ -78,7 +78,6 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
           }.elsewhen(gprReadPort.en) {
             oprand := gprReadPort.data
           }
-        }
       }
   }
 
@@ -86,11 +85,13 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   exeInstReg.exeSel       := ExeInst.Sel.none
   exeInstReg.exeOp        := ExeInst.Op.nop
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
-  when(~stall) {
+  when(!stall) {
     when(io.issuedInfoPort.isValid) {
-      exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
-      exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
-      exeInstReg.gprWritePort := io.issuedInfoPort.info.gprWritePort
+      exeInstReg.exeSel         := io.issuedInfoPort.info.exeSel
+      exeInstReg.exeOp          := io.issuedInfoPort.info.exeOp
+      exeInstReg.gprWritePort   := io.issuedInfoPort.info.gprWritePort
+      exeInstReg.jumpBranchAddr := io.issuedInfoPort.info.jumpBranchAddr
+      exeInstReg.pcAddr         := io.issuedInfoPort.info.pcAddr
     }
   }
 }

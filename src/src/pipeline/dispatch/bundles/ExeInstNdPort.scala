@@ -15,6 +15,10 @@ class ExeInstNdPort extends Bundle {
   val leftOperand  = UInt(Width.Reg.data)
   val rightOperand = UInt(Width.Reg.data)
 
+  // Branch jump addr
+  val pcAddr         = UInt(Width.Reg.data)
+  val jumpBranchAddr = UInt(Width.Reg.data)
+
   // GPR write (writeback)
   val gprWritePort = new RfAccessInfoNdPort
 
@@ -27,6 +31,8 @@ object ExeInstNdPort {
     _.exeOp -> ExeInst.Op.nop,
     _.leftOperand -> 0.U,
     _.rightOperand -> 0.U,
-    _.gprWritePort -> RfAccessInfoNdPort.default
+    _.gprWritePort -> RfAccessInfoNdPort.default,
+    _.pcAddr -> zeroWord,
+    _.jumpBranchAddr -> zeroWord
   )
 }
