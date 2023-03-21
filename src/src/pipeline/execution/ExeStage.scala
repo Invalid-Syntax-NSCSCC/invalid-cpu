@@ -16,16 +16,16 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     // `ExeStage` -> `WbStage` (next clock pulse)
     val gprWritePort = Output(new RfWriteNdPort)
 
-    // pipeline control signal
-    // `CtrlStage` -> `ExeStage`
+    // Pipeline control signal
+    // `Cu` -> `ExeStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
-    // `Exestage` -> `CtrlStage`
+    // `ExeStage` -> `Cu`
     val stallRequest = Output(Bool())
-    // exception
+    // Exception
     val divisorZeroException = Output(Bool())
   })
 
-  // store exeInst
+  // Store exeInst
   val exeInstStore = RegInit(ExeInstNdPort.default)
 
   // Pass to the next stage in a sequential way
@@ -39,10 +39,11 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val stallRequestDelay = RegNext(stallRequest, false.B)
   io.stallRequest := stallRequest
 
-  alu.io.aluInst.op           := Mux(stallRequestDelay, exeInstStore.exeOp, io.exeInstPort.exeOp)
-  alu.io.aluInst.leftOperand  := Mux(stallRequestDelay, exeInstStore.leftOperand, io.exeInstPort.leftOperand)
-  alu.io.aluInst.rightOperand := Mux(stallRequestDelay, exeInstStore.rightOperand, io.exeInstPort.rightOperand)
-  io.divisorZeroException     := alu.io.divisorZeroException
+  alu.io.aluInst.op             := Mux(stallRequestDelay, exeInstStore.exeOp, io.exeInstPort.exeOp)
+  alu.io.aluInst.leftOperand    := Mux(stallRequestDelay, exeInstStore.leftOperand, io.exeInstPort.leftOperand)
+  alu.io.aluInst.rightOperand   := Mux(stallRequestDelay, exeInstStore.rightOperand, io.exeInstPort.rightOperand)
+  alu.io.aluInst.jumpBranchAddr := Mux(stallRequestDelay, exeInstStore.jumpBranchAddr, io.exeInstPort.jumpBranchAddr)
+  io.divisorZeroException       := alu.io.divisorZeroException
 
   exeInstStore := Mux(
     stallRequestDelay,
@@ -56,13 +57,13 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   gprWriteReg.en   := false.B
   gprWriteReg.addr := zeroWord
   val useSel = WireDefault(0.U(Param.Width.exeSel))
-  when(stallRequestDelay & ~stallRequest) {
-    // with stall like mul / div that take more than 1 cycle
+  when(stallRequestDelay && !stallRequest) {
+    // With stall like mul / div that take more than 1 cycle
     gprWriteReg.en   := exeInstStore.gprWritePort.en
     gprWriteReg.addr := exeInstStore.gprWritePort.addr
     useSel           := exeInstStore.exeSel
-  }.elsewhen(~stallRequest) {
-    // normal inst that take 1 cycle
+  }.elsewhen(!stallRequest) {
+    // Normal inst that take 1 cycle
     gprWriteReg.en   := io.exeInstPort.gprWritePort.en
     gprWriteReg.addr := io.exeInstPort.gprWritePort.addr
     useSel           := io.exeInstPort.exeSel
@@ -72,7 +73,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   gprWriteReg.data := zeroWord
 
   // Result selection
-  when(~stallRequest) {
+  when(!stallRequest) {
     switch(useSel) {
       is(Sel.logic) {
         gprWriteReg.data := alu.io.result.logic
@@ -83,7 +84,9 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
       is(Sel.arithmetic) {
         gprWriteReg.data := alu.io.result.arithmetic
       }
+      is(Sel.jumpBranch) {
+        gprWriteReg.data := io.exeInstPort.pcAddr + 4.U
+      }
     }
   }
-
 }

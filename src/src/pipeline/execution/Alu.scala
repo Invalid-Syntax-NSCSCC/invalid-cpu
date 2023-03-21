@@ -57,6 +57,57 @@ class Alu extends Module {
     }
   }
 
+  // jump and branch
+  io.result.jumpBranchInfo.en := false.B
+  switch(io.aluInst.op) {
+    is(Op.b, Op.bl) {
+      io.result.jumpBranchInfo.en     := true.B
+      io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+    }
+    is(Op.jirl) {
+      io.result.jumpBranchInfo.en     := true.B
+      io.result.jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr
+    }
+    is(Op.beq) {
+      when(lop === rop) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.bne) {
+      when(lop =/= rop) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.blt) {
+      when(lop.asSInt < rop.asSInt) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.bge) {
+      when(lop.asSInt >= rop.asSInt) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.bltu) {
+      when(lop < rop) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+    is(Op.bgeu) {
+      when(lop >= rop) {
+        io.result.jumpBranchInfo.en     := true.B
+        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+    }
+  }
+
+  // arithmetic
+
   // mul
 
   val useMul = WireDefault(
@@ -77,7 +128,7 @@ class Alu extends Module {
 
   mulStage.io.mulResult.ready := DontCare
 
-  mulStart := useMul & ~mulStage.io.mulResult.valid
+  mulStart := useMul && !mulStage.io.mulResult.valid
 
   val mulResult = WireDefault(mulStage.io.mulResult.bits)
 
@@ -103,14 +154,14 @@ class Alu extends Module {
   divStage.io.divResult.ready := DontCare
 
   val divisorValid = WireDefault(rop.orR)
-  io.divisorZeroException := ~divisorValid & useDiv
+  io.divisorZeroException := !divisorValid && useDiv
 
-  divStart := (useDiv & ~divStage.io.isRunning & ~divStage.io.divResult.valid & divisorValid)
+  divStart := (useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid)
 
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
 
-  io.stallRequest := (mulStart | divStart | divStage.io.isRunning)
+  io.stallRequest := (mulStart || divStart || divStage.io.isRunning)
 
   when(~io.stallRequest) {
     switch(io.aluInst.op) {
