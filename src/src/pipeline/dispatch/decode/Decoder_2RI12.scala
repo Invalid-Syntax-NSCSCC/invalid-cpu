@@ -75,5 +75,74 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.exeSel := ExeInst.Sel.logic
       io.out.info.imm    := immZext
     }
+    // LoadStore: read0: rj, read1: store reg src, loadStoreImm: offset
+    is(Inst.ld_b) {
+      io.out.isMatched         := true.B
+      io.out.info.exeOp        := ExeInst.Op.ld_b
+      io.out.info.exeSel       := ExeInst.Sel.loadStore
+      io.out.info.isHasImm     := false.B
+      io.out.info.loadStoreImm := immSext.asUInt
+    }
+    is(Inst.ld_h) {
+      io.out.isMatched         := true.B
+      io.out.info.exeOp        := ExeInst.Op.ld_h
+      io.out.info.exeSel       := ExeInst.Sel.loadStore
+      io.out.info.isHasImm     := false.B
+      io.out.info.loadStoreImm := immSext.asUInt
+    }
+    is(Inst.ld_w) {
+      io.out.isMatched         := true.B
+      io.out.info.exeOp        := ExeInst.Op.ld_w
+      io.out.info.exeSel       := ExeInst.Sel.loadStore
+      io.out.info.isHasImm     := false.B
+      io.out.info.loadStoreImm := immSext.asUInt
+    }
+    is(Inst.ld_bu) {
+      io.out.isMatched         := true.B
+      io.out.info.exeOp        := ExeInst.Op.ld_bu
+      io.out.info.exeSel       := ExeInst.Sel.loadStore
+      io.out.info.isHasImm     := false.B
+      io.out.info.loadStoreImm := immSext.asUInt
+    }
+    is(Inst.ld_hu) {
+      io.out.isMatched         := true.B
+      io.out.info.exeOp        := ExeInst.Op.ld_hu
+      io.out.info.exeSel       := ExeInst.Sel.loadStore
+      io.out.info.isHasImm     := false.B
+      io.out.info.loadStoreImm := immSext.asUInt
+    }
+    is(Inst.st_b) {
+      io.out.isMatched                 := true.B
+      io.out.info.exeOp                := ExeInst.Op.st_b
+      io.out.info.exeSel               := ExeInst.Sel.loadStore
+      io.out.info.isHasImm             := false.B
+      io.out.info.loadStoreImm         := immSext.asUInt
+      io.out.info.gprReadPorts(1).en   := true.B
+      io.out.info.gprReadPorts(1).addr := rd
+      io.out.info.gprWritePort.en      := false.B
+      io.out.info.gprWritePort.addr    := DontCare
+    }
+    is(Inst.st_h) {
+      io.out.isMatched                 := true.B
+      io.out.info.exeOp                := ExeInst.Op.st_h
+      io.out.info.exeSel               := ExeInst.Sel.loadStore
+      io.out.info.isHasImm             := false.B
+      io.out.info.loadStoreImm         := immSext.asUInt
+      io.out.info.gprReadPorts(1).en   := true.B
+      io.out.info.gprReadPorts(1).addr := rd
+      io.out.info.gprWritePort.en      := false.B
+      io.out.info.gprWritePort.addr    := DontCare
+    }
+    is(Inst.st_w) {
+      io.out.isMatched                 := true.B
+      io.out.info.exeOp                := ExeInst.Op.st_w
+      io.out.info.exeSel               := ExeInst.Sel.loadStore
+      io.out.info.isHasImm             := false.B
+      io.out.info.loadStoreImm         := immSext.asUInt
+      io.out.info.gprReadPorts(1).en   := true.B
+      io.out.info.gprReadPorts(1).addr := rd
+      io.out.info.gprWritePort.en      := false.B
+      io.out.info.gprWritePort.addr    := DontCare
+    }
   }
 }
