@@ -8,6 +8,7 @@ import spec.ExeInst.Sel
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import pipeline.execution.bundles.MemLoadStoreNdPort
+import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
@@ -97,10 +98,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   }
 
   // MemLoadStore
-  io.memLoadStorePort := (new MemLoadStoreNdPort).Lit(
-    _.exeOp -> io.exeInstPort.exeOp,
-    _.vaddr -> (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm),
-    _.data -> io.exeInstPort.rightOperand
-  )
-
+  io.memLoadStorePort.exeOp := io.exeInstPort.exeOp
+  io.memLoadStorePort.data := io.exeInstPort.rightOperand
+  io.memLoadStorePort.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
 }
