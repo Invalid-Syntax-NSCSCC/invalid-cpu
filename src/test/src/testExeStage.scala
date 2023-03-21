@@ -28,8 +28,8 @@ object ExeStageSpec extends ChiselUtestTester {
           ExeInst.Op.nop
         )
         val sel = ExeInst.Sel.arithmetic
-        val lop = 47.U;
-        val rop = 0.U;
+        val lop = 472;
+        val rop = 5;
         exeStage.io.exeInstPort.poke(ExeInstNdPort.default)
         exeStage.io.pipelineControlPort.poke(PipelineControlNDPort.default)
         def instPort = exeStage.io.exeInstPort
@@ -37,23 +37,24 @@ object ExeStageSpec extends ChiselUtestTester {
         instPort.gprWritePort.en.poke(true.B)
         instPort.gprWritePort.addr.poke(7.U)
         for (i <- 0 until ops.length) {
-          instPort.exeOp.poke(ops(i))
-          instPort.exeSel.poke(sel)
-          instPort.leftOperand.poke(lop)
-          instPort.rightOperand.poke(rop)
+            instPort.exeOp.poke(ops(i))
+            instPort.exeSel.poke(sel)
+            instPort.leftOperand.poke(lop.U)
+            instPort.rightOperand.poke(rop.U)
 
-          println(exeStage.io.stallRequest.peek().litValue)
-          while (exeStage.io.stallRequest.peek().litValue == 1) {
-            print("*")
+            println(exeStage.io.stallRequest.peek().litValue)
+            while (exeStage.io.stallRequest.peek().litValue == 1) {
+                print("*")
+                exeStage.clock.step(1)
+                instPort.exeOp.poke(0.U)
+                instPort.exeSel.poke(0.U)
+                instPort.leftOperand.poke(0.U)
+                instPort.rightOperand.poke(0.U)
+
+            }
+
             exeStage.clock.step(1)
-            instPort.exeOp.poke(0.U)
-            instPort.exeSel.poke(0.U)
-            instPort.leftOperand.poke(0.U)
-            instPort.rightOperand.poke(0.U)
-
-          }
-          println()
-          exeStage.clock.step(1)
+            println()
         }
         exeStage.clock.step(10)
       }

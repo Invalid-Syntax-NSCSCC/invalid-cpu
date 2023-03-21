@@ -3,13 +3,13 @@ package pipeline.execution
 import chisel3._
 import chisel3.util._
 import spec._
-import pipeline.execution.bundles.AluInstNdPort
+import pipeline.execution.bundles.MulDivInstNdPort
 
 // Attention : 如果运行时输入数据，输入无效
 class Div extends Module {
 
   val io = IO(new Bundle {
-    val divInst = Flipped(Decoupled(new AluInstNdPort))
+    val divInst = Flipped(Decoupled(new MulDivInstNdPort))
     val divResult = Decoupled(new Bundle {
       val quotient  = Output(UInt(wordLength.W)) // 商
       val remainder = Output(UInt(wordLength.W)) // 余数

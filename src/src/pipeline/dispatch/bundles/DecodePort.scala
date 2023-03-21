@@ -7,7 +7,7 @@ import spec._
 
 class DecodePort extends Bundle {
   // The original instruction
-  val inst = Input(UInt(Width.inst))
+  val instInfoPort = Input(new InstInfoBundle)
 
   // Output info
   val out = Output(new DecodeOutNdPort)
