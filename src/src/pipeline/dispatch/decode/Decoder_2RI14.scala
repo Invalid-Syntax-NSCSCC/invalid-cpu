@@ -14,7 +14,6 @@ class Decoder_2RI14 extends Decoder {
 
   def outInfo = io.out.info
 
-  io.out := DontCare
   // It has immediate
   io.out.info.isHasImm := false.B
 
@@ -31,6 +30,14 @@ class Decoder_2RI14 extends Decoder {
   io.out.info.gprReadPorts(1).addr := DontCare
   io.out.info.gprWritePort.en      := false.B
   io.out.info.gprWritePort.addr    := DontCare
+
+  // Fallback
+  io.out.info.exeSel         := ExeInst.Sel.none
+  io.out.info.exeOp          := ExeInst.Op.nop
+  io.out.info.imm            := DontCare
+  io.out.isMatched           := false.B
+  io.out.info.jumpBranchAddr := DontCare
+  io.out.info.pcAddr         := DontCare
 
   switch(opcode) {
     is(Inst.ll) {

@@ -7,7 +7,6 @@ import spec._
 import spec.Inst.{_special => Inst}
 
 class Decoder_special extends Decoder {
-  io.out := DontCare
 
   val rd = WireDefault(io.instInfoPort.inst(4, 0))
 
@@ -31,6 +30,14 @@ class Decoder_special extends Decoder {
   io.out.info.gprReadPorts(1).addr := DontCare
   io.out.info.gprWritePort.en      := false.B
   io.out.info.gprWritePort.addr    := rd
+
+  // Fallback
+  io.out.info.exeSel         := ExeInst.Sel.none
+  io.out.info.exeOp          := ExeInst.Op.nop
+  io.out.info.imm            := DontCare
+  io.out.isMatched           := false.B
+  io.out.info.jumpBranchAddr := DontCare
+  io.out.info.pcAddr         := DontCare
 
   switch(opcode7) {
     is(Inst.pcaddu12i) {

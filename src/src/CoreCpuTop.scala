@@ -71,7 +71,6 @@ class CoreCpuTop extends Module {
   scoreboard.io.occupyPorts         := issueStage.io.occupyPorts
   issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(0)
 
-
   // Reg-read stage
   regReadStage.io.issuedInfoPort      := issueStage.io.issuedInfoPort
   regReadStage.io.gprReadPorts(0)     <> regFile.io.readPorts(0)

@@ -22,7 +22,6 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     // `ExeStage` -> `WbStage` (next clock pulse)
     val memLoadStorePort = Output(new MemLoadStoreNdPort)
 
-
     // Pipeline control signal
     // `Cu` -> `ExeStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
@@ -99,6 +98,6 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // MemLoadStore
   io.memLoadStorePort.exeOp := io.exeInstPort.exeOp
-  io.memLoadStorePort.data := io.exeInstPort.rightOperand
+  io.memLoadStorePort.data  := io.exeInstPort.rightOperand
   io.memLoadStorePort.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
 }

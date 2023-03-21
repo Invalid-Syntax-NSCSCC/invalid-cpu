@@ -8,8 +8,7 @@ import spec.Inst.{_3R => Inst}
 class Decoder_3R extends Decoder {
   // TODO: Fix bug where `isMatched` is always true
 
-
-  io.out := DontCare
+  io.out.isMatched := false.B
 
   val opcode = WireDefault(io.instInfoPort.inst(31, 15))
   val rk     = WireDefault(io.instInfoPort.inst(14, 10))
@@ -27,6 +26,14 @@ class Decoder_3R extends Decoder {
   outInfo.gprReadPorts(1).addr := rk
   outInfo.gprWritePort.en      := true.B
   outInfo.gprWritePort.addr    := rd
+
+  // Fallback
+  io.out.info.exeSel         := ExeInst.Sel.none
+  io.out.info.exeOp          := ExeInst.Op.nop
+  io.out.info.imm            := DontCare
+  io.out.isMatched           := false.B
+  io.out.info.jumpBranchAddr := DontCare
+  io.out.info.pcAddr         := DontCare
 
   switch(opcode) {
     is(Inst.add_w) {

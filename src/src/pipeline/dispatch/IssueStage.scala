@@ -81,6 +81,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     Module(new Decoder_2RI12),
     Module(new Decoder_2RI16),
     Module(new Decoder_2R),
+    Module(new Decoder_3R),
     Module(new Decoder_4R)
   )
   decoders.foreach(_.io.instInfoPort := selectedInstInfo)
@@ -92,7 +93,6 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   }
   val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
   val selectedDecoder = WireDefault(decoderWires(decoderIndex))
-
 
   // State machine input
   /** Determine blocking:
