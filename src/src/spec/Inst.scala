@@ -63,6 +63,12 @@ object Inst {
     val ld_hu = i("0010_1010_01")
   }
 
+  object _2RI14 {
+    private def i(str: String) = b(str, wd._2RI14, 1)
+    val ll = i("0010_0000")
+    val sc = i("0010_0001")
+  }
+
   object _2RI16 {
     private def i(str: String) = b(str, wd._2RI16, 1)
     // val bceqz = i("010_010")
@@ -78,9 +84,9 @@ object Inst {
     val bgeu = i("011_011")
   }
 
-  object  _special {
+  object _special {
     private def i(str: String) = b(str, wd._2RI16, 1)
-    val lu12i_w = i("0001_010")
+    val lu12i_w   = i("0001_010")
     val pcaddu12i = i("0001_110")
   }
 }

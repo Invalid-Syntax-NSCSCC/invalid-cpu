@@ -7,6 +7,8 @@ import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
+import pipeline.execution.bundles.MemLoadStoreNdPort
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
@@ -15,6 +17,9 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     // TODO: Add `MemStage` in between
     // `ExeStage` -> `WbStage` (next clock pulse)
     val gprWritePort = Output(new RfWriteNdPort)
+
+    // `ExeStage` -> `WbStage` (next clock pulse)
+    val memLoadStorePort = Output(new MemLoadStoreNdPort)
 
     // pipeline control signal
     // `CtrlStage` -> `ExeStage`
@@ -89,5 +94,12 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
       }
     }
   }
+
+  // MemLoadStore
+  io.memLoadStorePort := (new MemLoadStoreNdPort).Lit(
+    _.exeOp -> io.exeInstPort.exeOp,
+    _.vaddr -> (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm),
+    _.data -> io.exeInstPort.rightOperand
+  )
 
 }

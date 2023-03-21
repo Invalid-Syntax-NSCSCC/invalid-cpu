@@ -65,6 +65,7 @@ object ExeInst {
     val st_w  = next
     val ld_bu = next
     val ld_hu = next
-
+    val ll    = next
+    val sc    = next
   }
 }
