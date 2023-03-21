@@ -6,10 +6,10 @@ import frontend.{InstQueue, SimpleFetchStage}
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
-import pipeline.ctrl.CtrlStage
+import pipeline.ctrl.Cu
 
 class CoreCpuTop extends Module {
-  val io = FlatIO(new Bundle {
+  val io = IO(new Bundle {
     val intrpt = Input(UInt(8.W))
     val axi    = new AxiMasterPort
 
@@ -32,7 +32,7 @@ class CoreCpuTop extends Module {
   val regReadStage     = Module(new RegReadStage)
   val exeStage         = Module(new ExeStage)
   val wbStage          = Module(new WbStage)
-  val ctrlStage        = Module(new CtrlStage)
+  val cu               = Module(new Cu)
 
   val scoreboard = Module(new Scoreboard)
 
@@ -45,7 +45,10 @@ class CoreCpuTop extends Module {
   regReadStage.io <> DontCare
   regFile.io      <> DontCare
   scoreboard.io   <> DontCare
-  ctrlStage.io    <> DontCare
+  cu.io           <> DontCare
+
+  // TODO: Other connections
+  exeStage.io := DontCare
 
   // `SimpleFetchStage` <> AXI top
   io.axi <> simpleFetchStage.io.axiMasterInterface
@@ -66,17 +69,18 @@ class CoreCpuTop extends Module {
   issueStage.io.fetchInstInfoPort   <> instQueue.io.dequeuePort
   issueStage.io.regScores           := scoreboard.io.regScores
   scoreboard.io.occupyPorts         := issueStage.io.occupyPorts
-  issueStage.io.pipelineControlPort := ctrlStage.io.pipelineControlPorts(0)
+  issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(0)
+
 
   // Reg-read stage
   regReadStage.io.issuedInfoPort      := issueStage.io.issuedInfoPort
   regReadStage.io.gprReadPorts(0)     <> regFile.io.readPorts(0)
   regReadStage.io.gprReadPorts(1)     <> regFile.io.readPorts(1)
-  regReadStage.io.pipelineControlPort := ctrlStage.io.pipelineControlPorts(1)
+  regReadStage.io.pipelineControlPort := cu.io.pipelineControlPorts(1)
 
   // Execution stage
   exeStage.io.exeInstPort         := regReadStage.io.exeInstPort
-  exeStage.io.pipelineControlPort := ctrlStage.io.pipelineControlPorts(2)
+  exeStage.io.pipelineControlPort := cu.io.pipelineControlPorts(2)
 
   // Write-back stage
   wbStage.io.gprWriteInfoPort := exeStage.io.gprWritePort
@@ -84,5 +88,5 @@ class CoreCpuTop extends Module {
   scoreboard.io.freePorts     := wbStage.io.freePorts
 
   // ctrl
-  ctrlStage.io.exeStallRequest := exeStage.io.stallRequest
+  cu.io.exeStallRequest := exeStage.io.stallRequest
 }

@@ -1,4 +1,3 @@
-
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import chisel3._
 import chisel3.util._
@@ -14,21 +13,19 @@ import pipeline.execution.ExeStage
 import spec.ExeInst
 import pipeline.dispatch.bundles.ExeInstNdPort
 
-
-
 object ExeStageSpec extends ChiselUtestTester {
   val tests = Tests {
     test("Test exe stage module") {
       testCircuit(new ExeStage, Seq(WriteVcdAnnotation)) { exeStage =>
         val ops = Seq(
-            ExeInst.Op.add,
-            ExeInst.Op.slt,
-            ExeInst.Op.mul,
-            ExeInst.Op.div,
-            ExeInst.Op.sub,
-            ExeInst.Op.mod,
-            ExeInst.Op.add,
-            ExeInst.Op.nop
+          ExeInst.Op.add,
+          ExeInst.Op.slt,
+          ExeInst.Op.mul,
+          ExeInst.Op.div,
+          ExeInst.Op.sub,
+          ExeInst.Op.mod,
+          ExeInst.Op.add,
+          ExeInst.Op.nop
         )
         val sel = ExeInst.Sel.arithmetic
         val lop = 472;
@@ -44,7 +41,6 @@ object ExeStageSpec extends ChiselUtestTester {
             instPort.exeSel.poke(sel)
             instPort.leftOperand.poke(lop.U)
             instPort.rightOperand.poke(rop.U)
-            
             println(exeStage.io.stallRequest.peek().litValue)
             while (exeStage.io.stallRequest.peek().litValue == 1) {
                 print("*")
@@ -53,9 +49,8 @@ object ExeStageSpec extends ChiselUtestTester {
                 instPort.exeSel.poke(0.U)
                 instPort.leftOperand.poke(0.U)
                 instPort.rightOperand.poke(0.U)
-                
+
             }
-            
             exeStage.clock.step(1) 
             println()
         }

@@ -53,4 +53,8 @@ object Param {
   object SimpleFetchStageState extends ChiselEnum {
     val idle, requestInst, waitInst = Value
   }
+
+  object IssueStageState extends ChiselEnum {
+    val nonBlocking, blocking = Value
+  }
 }

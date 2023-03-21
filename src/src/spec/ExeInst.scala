@@ -56,6 +56,7 @@ object ExeInst {
     val bge  = next
     val bltu = next
     val bgeu = next
+
     // load store
     val ld_b  = next
     val ld_h  = next

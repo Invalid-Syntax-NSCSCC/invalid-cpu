@@ -22,7 +22,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     val exeRfWriteFeedbackPort = Input(new RfWriteNdPort)
 
     // `pipeline control signal
-    // `CtrlStage` -> `RegReadStage`
+    // `Cu` -> `RegReadStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
   })
 
@@ -42,27 +42,43 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
-  when(~stallFromCtrl) {
+  when(!stallFromCtrl) {
+    // when(io.issuedInfoPort.info.gprReadPorts(0).en) {
+    //   exeInstReg.leftOperand := io.gprReadPorts(0).data
+
+    // }
+
+    // when(io.issuedInfoPort.info.gprReadPorts(1).en) {
+    //   exeInstReg.rightOperand := io.gprReadPorts(1).data
+
+    // }.elsewhen(io.issuedInfoPort.info.isHasImm) {
+    //   exeInstReg.rightOperand := io.issuedInfoPort.info.imm
+    // }
     when(io.issuedInfoPort.info.isHasImm) {
       exeInstReg.rightOperand := io.issuedInfoPort.info.imm
     }
-    Seq(exeInstReg.leftOperand, exeInstReg.rightOperand).zip(io.gprReadPorts).foreach {
-      case (oprand, gprReadPort) => {
-        when(
-          gprReadPort.en &&
-            io.exeRfWriteFeedbackPort.en &&
-            gprReadPort.addr === io.exeRfWriteFeedbackPort.addr
-        ) {
-          oprand := io.exeRfWriteFeedbackPort.data
-        }.elsewhen(gprReadPort.en) {
-          oprand := gprReadPort.data
-        }
+    Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
+      .zip(io.gprReadPorts)
+      .foreach {
+        case (oprand, gprReadPort) =>
+          when(
+            gprReadPort.en &&
+              io.exeRfWriteFeedbackPort.en &&
+              gprReadPort.addr === io.exeRfWriteFeedbackPort.addr
+          ) {
+            oprand := io.exeRfWriteFeedbackPort.data
+          }.elsewhen(gprReadPort.en) {
+            oprand := gprReadPort.data
+          }
       }
-    }
   }
 
   // Pass execution instruction if valid
-  when(~stallFromCtrl) {
+
+  exeInstReg.exeSel       := ExeInst.Sel.none
+  exeInstReg.exeOp        := ExeInst.Op.nop
+  exeInstReg.gprWritePort := RfAccessInfoNdPort.default
+  when(!stallFromCtrl) {
     when(io.issuedInfoPort.isValid) {
       exeInstReg.exeSel         := io.issuedInfoPort.info.exeSel
       exeInstReg.exeOp          := io.issuedInfoPort.info.exeOp
