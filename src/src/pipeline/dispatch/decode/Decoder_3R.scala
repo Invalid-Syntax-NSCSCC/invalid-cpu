@@ -6,6 +6,8 @@ import spec._
 import spec.Inst.{_3R => Inst}
 
 class Decoder_3R extends Decoder {
+  // TODO: Fix bug where `isMatched` is always true
+
   io.out := DontCare
 
   val opcode = WireDefault(io.instInfoPort.inst(31, 15))
