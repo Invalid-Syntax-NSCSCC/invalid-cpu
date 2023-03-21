@@ -22,12 +22,12 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     val exeRfWriteFeedbackPort = Input(new RfWriteNdPort)
 
     // `pipeline control signal
-    // `CtrlStage` -> `RegReadStage`
-    val pipelineControlPorts = Input(new PipelineControlNDPort)
+    // `Cu` -> `RegReadStage`
+    val pipelineControlPort = Input(new PipelineControlNDPort)
   })
 
   // 暂停 目前仅实现对exeInstPort暂停
-  val stall = WireDefault(io.pipelineControlPorts.stall)
+  val stall = WireDefault(io.pipelineControlPort.stall)
 
   // Pass to the next stage in a sequential way
   val exeInstReg = RegInit(ExeInstNdPort.default)
@@ -68,7 +68,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
       .zip(io.gprReadPorts)
       .foreach {
-        case (oprand, gprReadPort) => {
+        case (oprand, gprReadPort) =>
           when(
             gprReadPort.en &&
               io.exeRfWriteFeedbackPort.en &&
@@ -78,7 +78,6 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
           }.elsewhen(gprReadPort.en) {
             oprand := gprReadPort.data
           }
-        }
       }
   }
 

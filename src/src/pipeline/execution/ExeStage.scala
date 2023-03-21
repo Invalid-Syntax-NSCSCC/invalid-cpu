@@ -17,9 +17,9 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val gprWritePort = Output(new RfWriteNdPort)
 
     // Pipeline control signal
-    // `CtrlStage` -> `ExeStage`
+    // `Cu` -> `ExeStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
-    // `ExeStage` -> `CtrlStage`
+    // `ExeStage` -> `Cu`
     val stallRequest = Output(Bool())
     // Exception
     val divisorZeroException = Output(Bool())

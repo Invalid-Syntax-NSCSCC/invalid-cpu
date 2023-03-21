@@ -8,9 +8,9 @@ import pipeline.ctrl.bundles.PipelineControlNDPort
 
 class Cu(ctrlControlNum: Int = Param.ctrlControlNum) extends Module {
   val io = IO(new Bundle {
-    // `ExeStage` -> `CtrlStage`
+    // `ExeStage` -> `Cu`
     val exeStallRequest = Input(Bool())
-    // `CtrlStage` -> `IssueStage`, `RegReadStage`, `ExeStage`
+    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`
     val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNDPort))
   })
 
