@@ -39,10 +39,10 @@ object ExeInst {
     val sll   = next
     val srl   = next
     val sra   = next
-    val mul   = next
+    val mul   = next // C
     val mulh  = next
     val mulhu = next
-    val div   = next
+    val div   = next // F
     val divu  = next
     val mod   = next
     val modu  = next

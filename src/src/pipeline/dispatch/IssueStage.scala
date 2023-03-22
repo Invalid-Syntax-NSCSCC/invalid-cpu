@@ -117,6 +117,10 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   val isLastCanFetchReg = RegNext(io.fetchInstInfoPort.valid, false.B)
 
   // Implement output function (mealy)
+  //                                                         prev  --->  now
+  // isFetch is false    when   blocking || (nonBlocking && fetch) ---> blocking
+  // isIssue is true     when   blocking || (nonBlocking && fetch) ---> nonBlocking
+  // instStoreReg update when   nonBlocking && fetch               --->  *
   switch(stateReg) {
     is(State.nonBlocking) {
       when(isLastCanFetchReg) {
@@ -138,6 +142,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   }
 
   // Next state function
+  // isBlocking delay
   nextState := Mux(isBlocking, State.blocking, State.nonBlocking)
 
   // End: state machine

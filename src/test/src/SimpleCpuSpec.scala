@@ -10,13 +10,22 @@ object SimpleCpuSpec extends ChiselUtestTester {
   val tests = Tests {
     test("Test ADDI.W") {
       testCircuit(new CoreCpuTop, Seq(WriteVcdAnnotation)) { cpu =>
+        val instSeq = Seq(
+          "0000001010_000000000011_00000_00001", // addi $1, $0, 3
+          "0000001010_000000110011_00000_00100", // addi $4, $0, 51
+          "0000001010_000000000010_00001_00010", // addi $2, $1, 2
+          "00000000000100100_00001_00010_00011", // slt $3, $2, $1
+          "00000000000111000_00001_00100_00101", // mul $5, $4, $1
+          "00000000001000000_00001_00100_00110"  // div $6, $4, $1
+        )
         cpu.io.intrpt.poke(0.U)
         cpu.io.axi.arready.poke(true.B)
         cpu.io.axi.rvalid.poke(true.B)
-        cpu.io.axi.rdata.poke("b_0000001010_000000000001_00000_00001".U) // addi $1, $0, 1
-        cpu.clock.step(5)
-        cpu.io.axi.rdata.poke("b_0000001010_000000000010_00001_00010".U) // addi $2, $1, 2
-        cpu.clock.step(15);
+        instSeq.foreach { inst =>
+          cpu.io.axi.rdata.poke(("b"+inst).U)
+          cpu.clock.step(5)
+        }
+        cpu.clock.step(10);
       }
     }
   }
