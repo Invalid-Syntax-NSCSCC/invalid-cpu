@@ -81,7 +81,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     Module(new Decoder_2RI12),
     Module(new Decoder_2RI16),
     Module(new Decoder_2R),
-    Module(new Decoder_3R),
+    //    Module(new Decoder_3R),
     Module(new Decoder_4R)
   )
   decoders.foreach(_.io.instInfoPort := selectedInstInfo)
@@ -104,7 +104,6 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     *     - If inst invalid:
     *       - non-blocking
     */
-
   val isInstValid = WireDefault(decoderWires.map(_.isMatched).reduce(_ || _))
   val isScoreboardBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
     port.en && io.regScores(port.addr)
@@ -117,10 +116,6 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   val isLastCanFetchReg = RegNext(io.fetchInstInfoPort.valid, false.B)
 
   // Implement output function (mealy)
-  //                                                         prev  --->  now
-  // isFetch is false    when   blocking || (nonBlocking && fetch) ---> blocking
-  // isIssue is true     when   blocking || (nonBlocking && fetch) ---> nonBlocking
-  // instStoreReg update when   nonBlocking && fetch               --->  *
   switch(stateReg) {
     is(State.nonBlocking) {
       when(isLastCanFetchReg) {
@@ -142,7 +137,6 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   }
 
   // Next state function
-  // isBlocking delay
   nextState := Mux(isBlocking, State.blocking, State.nonBlocking)
 
   // End: state machine
