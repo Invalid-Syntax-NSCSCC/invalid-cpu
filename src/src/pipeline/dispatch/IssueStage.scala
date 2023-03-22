@@ -31,20 +31,24 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
 
   // Start: state machine
 
-  /** State behaviors (mealy machine):
+  /** State behaviors:
     *   - Fallback: keep inst store reg, no issue, no fetch
     *   - `nonBlocking`:
     *     - If can fetch: store inst to reg
     *       - If blocking: (nothing else)
     *       - if still non-blocking: fetch, issue
-    *     - If cannot fetch: fetch
+    *     - If cannot fetch:
+    *       - If blocking: (nothing else)
+    *       - if still non-blocking: fetch
     *   - `blocking`:
     *     - If still blocking: (nothing else)
     *     - If non-blocking: fetch, issue
     *
-    * State behaviors (moore machine):
-    *   - `nonBlocking`: decode from port
-    *   - `blocking`: decode from inst store reg
+    * State behaviors:
+    *   - If can fetch:
+    *     - `nonBlocking`: decode from port
+    *     - `blocking`: decode from inst store reg
+    *     - If cannot fetch: decode nop
     *
     * State transitions:
     *   - `nonBlocking`: is blocking -> `blocking`, else `nonBlocking`
@@ -58,19 +62,21 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   val instStoreReg = RegInit(InstInfoBundle.default)
   instStoreReg := instStoreReg
   val selectedInstInfo = WireDefault(InstInfoBundle.default)
-  val isIssue          = WireDefault(false.B)
+  val isAllowIssue     = WireDefault(false.B)
   val isFetch          = WireDefault(false.B)
 
   // Connect state machine output to I/O
   io.fetchInstInfoPort.ready := isFetch
 
-  // Implement output function (moore)
-  switch(stateReg) {
-    is(State.nonBlocking) {
-      selectedInstInfo := io.fetchInstInfoPort.bits
-    }
-    is(State.blocking) {
-      selectedInstInfo := instStoreReg
+  // Implement output function
+  when(io.fetchInstInfoPort.valid) {
+    switch(stateReg) {
+      is(State.nonBlocking) {
+        selectedInstInfo := io.fetchInstInfoPort.bits
+      }
+      is(State.blocking) {
+        selectedInstInfo := instStoreReg
+      }
     }
   }
 
@@ -81,7 +87,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     Module(new Decoder_2RI12),
     Module(new Decoder_2RI16),
     Module(new Decoder_2R),
-    //    Module(new Decoder_3R),
+    Module(new Decoder_3R),
     Module(new Decoder_4R)
   )
   decoders.foreach(_.io.instInfoPort := selectedInstInfo)
@@ -113,25 +119,27 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
       isInstValid && isScoreboardBlocking
     )
   )
-  val isLastCanFetchReg = RegNext(io.fetchInstInfoPort.valid, false.B)
+//  val isLastCanFetchReg = RegNext(io.fetchInstInfoPort.valid, false.B)
 
-  // Implement output function (mealy)
+  // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
-      when(isLastCanFetchReg) {
+      when(io.fetchInstInfoPort.valid) {
         instStoreReg := io.fetchInstInfoPort.bits
         when(!isBlocking) {
-          isFetch := true.B
-          isIssue := true.B
+          isFetch      := true.B
+          isAllowIssue := true.B
         }
       }.otherwise {
-        isFetch := true.B
+        when(!isBlocking) {
+          isFetch := true.B
+        }
       }
     }
     is(State.blocking) {
       when(!isBlocking) {
-        isFetch := true.B
-        isIssue := true.B
+        isFetch      := true.B
+        isAllowIssue := true.B
       }
     }
   }
@@ -142,7 +150,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   // End: state machine
 
   // Fallback for no operation
-  issuedInfoReg.isValid              := isIssue
+  issuedInfoReg.isValid              := isAllowIssue && isInstValid
   issuedInfoReg.info                 := DontCare
   issuedInfoReg.info.gprWritePort.en := false.B
   io.occupyPorts.foreach { port =>
@@ -152,7 +160,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
 
   // Issue pre-execution instruction
 
-  when(isIssue) {
+  when(isAllowIssue) {
     // Indicate the occupation in scoreboard
     io.occupyPorts.zip(Seq(selectedDecoder.info.gprWritePort)).foreach {
       case (occupyPort, accessInfo) =>
