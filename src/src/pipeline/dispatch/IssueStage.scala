@@ -34,7 +34,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   /** State behaviors:
     *   - Fallback: keep inst store reg, no issue, no fetch
     *   - `nonBlocking`:
-    *     - If can fetch: store inst to reg
+    *     - If can fetch: store inst to reg (if valid)
     *       - If blocking: (nothing else)
     *       - if still non-blocking: fetch, issue
     *     - If cannot fetch:
@@ -42,7 +42,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     *       - if still non-blocking: fetch
     *   - `blocking`:
     *     - If still blocking: (nothing else)
-    *     - If non-blocking: fetch, issue
+    *     - If non-blocking: issue
     *
     * State behaviors:
     *   - If can fetch:
@@ -61,6 +61,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   // State machine output (including fallback)
   val instStoreReg = RegInit(InstInfoBundle.default)
   instStoreReg := instStoreReg
+  val isLastStallReg   = RegNext(io.pipelineControlPort.stall, false.B)
   val selectedInstInfo = WireDefault(InstInfoBundle.default)
   val isAllowIssue     = WireDefault(false.B)
   val isFetch          = WireDefault(false.B)
@@ -75,7 +76,18 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
         selectedInstInfo := io.fetchInstInfoPort.bits
       }
       is(State.blocking) {
-        selectedInstInfo := instStoreReg
+        // TODO: A better solution is add a new state to distinguish between blockings caused by stall and data hazard, and current solution might not work as expected in some edge cases
+        // So we need to consider the following situation:
+        // 1) Blocking only caused by data hazard
+        // 2) Blocking caused by data hazard, but later on caused by stall
+        // 3) Blocking only caused by stall
+        // Current solution can handle 1) and 3).
+        // Unless we cannot prove 2) doesn't exist, this solution will cause problems.
+        when(isLastStallReg && !io.pipelineControlPort.stall) {
+          selectedInstInfo := io.fetchInstInfoPort.bits
+        }.otherwise {
+          selectedInstInfo := instStoreReg
+        }
       }
     }
   }
@@ -138,7 +150,6 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     }
     is(State.blocking) {
       when(!isBlocking) {
-        isFetch      := true.B
         isAllowIssue := true.B
       }
     }
@@ -150,7 +161,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   // End: state machine
 
   // Fallback for no operation
-  issuedInfoReg.isValid              := isAllowIssue && isInstValid
+  issuedInfoReg.isValid              := isAllowIssue && isInstValid // TODO: Has bug where issued inst will issue again
   issuedInfoReg.info                 := DontCare
   issuedInfoReg.info.gprWritePort.en := false.B
   io.occupyPorts.foreach { port =>
