@@ -26,7 +26,9 @@ object SimpleCpuSpec extends ChiselUtestTester {
           cpu.io.axi.rdata.poke(("b" + inst).U)
           cpu.clock.step(5)
         }
-        cpu.clock.step(15);
+        cpu.clock.step(15)
+        cpu.io.axi.rvalid.poke(false.B)
+        cpu.clock.step(15)
       }
     }
   }
