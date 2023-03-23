@@ -10,6 +10,7 @@ import pipeline.ctrl.bundles.PipelineControlNDPort
 import pipeline.execution.bundles.MemLoadStoreNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import spec.Param.{ExeStageState => State}
 
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
@@ -31,56 +32,72 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val divisorZeroException = Output(Bool())
   })
 
-  // Store exeInst
-  val exeInstStore = RegInit(ExeInstNdPort.default)
-
   // Pass to the next stage in a sequential way
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   io.gprWritePort := gprWriteReg
 
+  // Start: state machine
+
+  /** State behaviors: --> exeInst store and select
+    * - Fallback     : keep inst store reg
+    * - `nonBlocking`: select and store input exeInst
+    * - `blocking`   : select stored exeInst
+    * 
+    * State transitions:
+    *   - `nonBlocking`: is blocking -> `blocking`, else `nonBlocking`
+    *   - `blocking`: is blocking -> `blocking`, else `nonBlocking`
+    */
+  val nextState = WireDefault(State.nonBlocking)
+  val stateReg  = RegNext(nextState, State.nonBlocking)
+
+  // State machine output (including fallback)
+  val exeInstStoreReg = RegInit(ExeInstNdPort.default)
+  exeInstStoreReg := exeInstStoreReg
+  val selectedExeInst = WireDefault(ExeInstNdPort.default)
+
+  // Implement output function
+  switch(stateReg) {
+    is(State.nonBlocking) {
+      selectedExeInst := io.exeInstPort
+      exeInstStoreReg := io.exeInstPort
+    }
+    is(State.blocking) {
+      selectedExeInst := exeInstStoreReg
+    }
+  }
+
   // ALU module
   val alu = Module(new Alu)
 
-  val stallRequest      = alu.io.stallRequest
-  val stallRequestDelay = RegNext(stallRequest, false.B)
+  // state machine input
+  val stallRequest      = WireDefault(alu.io.stallRequest)
   io.stallRequest := stallRequest
+  val isBlocking = io.pipelineControlPort.stall || stallRequest
 
-  alu.io.aluInst.op             := Mux(stallRequestDelay, exeInstStore.exeOp, io.exeInstPort.exeOp)
-  alu.io.aluInst.leftOperand    := Mux(stallRequestDelay, exeInstStore.leftOperand, io.exeInstPort.leftOperand)
-  alu.io.aluInst.rightOperand   := Mux(stallRequestDelay, exeInstStore.rightOperand, io.exeInstPort.rightOperand)
-  alu.io.aluInst.jumpBranchAddr := Mux(stallRequestDelay, exeInstStore.jumpBranchAddr, io.exeInstPort.jumpBranchAddr)
-  io.divisorZeroException       := alu.io.divisorZeroException
+  // Next state function
+  nextState := Mux(isBlocking, State.blocking, State.nonBlocking)
 
-  exeInstStore := Mux(
-    stallRequestDelay,
-    exeInstStore,
-    io.exeInstPort
-  )
+  // ALU input
+  alu.io.aluInst.op := selectedExeInst.exeOp
+  alu.io.aluInst.leftOperand := selectedExeInst.leftOperand
+  alu.io.aluInst.rightOperand := selectedExeInst.rightOperand
+  alu.io.aluInst.jumpBranchAddr := selectedExeInst.jumpBranchAddr  // also load-store imm
+  alu.io.pipelineControlPort := io.pipelineControlPort
 
-  // Pass write-back information
-  // gprWriteReg.en   := (io.exeInstPort.gprWritePort.en | exeInstStore.gprWritePort.en ) & ~stallRequest & (exeInstStore.leftOperand.orR | exeInstStore.exeOp.orR | exeInstStore.rightOperand.orR)
-  // gprWriteReg.addr := Mux(stallRequest, zeroWord, io.exeInstPort.gprWritePort.addr) 44
-  gprWriteReg.en   := false.B
+  // ALU output
+  io.divisorZeroException := alu.io.divisorZeroException
+
+  // write-back information fallback
+  gprWriteReg.en := false.B
   gprWriteReg.addr := zeroWord
-  val useSel = WireDefault(0.U(Param.Width.exeSel))
-  when(stallRequestDelay && !stallRequest) {
-    // With stall like mul / div that take more than 1 cycle
-    gprWriteReg.en   := exeInstStore.gprWritePort.en
-    gprWriteReg.addr := exeInstStore.gprWritePort.addr
-    useSel           := exeInstStore.exeSel
-  }.elsewhen(!stallRequest) {
-    // Normal inst that take 1 cycle
-    gprWriteReg.en   := io.exeInstPort.gprWritePort.en
-    gprWriteReg.addr := io.exeInstPort.gprWritePort.addr
-    useSel           := io.exeInstPort.exeSel
-  }
-
-  // Result fallback
   gprWriteReg.data := zeroWord
 
-  // Result selection
-  when(!stallRequest) {
-    switch(useSel) {
+  // write-back information selection
+  when(!isBlocking) {
+    gprWriteReg.en := selectedExeInst.gprWritePort.en
+    gprWriteReg.addr := selectedExeInst.gprWritePort.addr
+
+    switch(selectedExeInst.exeSel) {
       is(Sel.logic) {
         gprWriteReg.data := alu.io.result.logic
       }

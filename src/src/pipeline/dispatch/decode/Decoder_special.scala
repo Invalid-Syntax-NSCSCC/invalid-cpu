@@ -22,6 +22,8 @@ class Decoder_special extends Decoder {
   // Extend immediate
   val immSext = Wire(SInt(Width.Reg.data))
   val immZext = Wire(UInt(Width.Reg.data))
+  immSext := zeroWord.asSInt
+  immZext := zeroWord
 
   // Read and write GPR
   io.out.info.gprReadPorts(0).en   := false.B
@@ -49,7 +51,7 @@ class Decoder_special extends Decoder {
       outInfo.gprReadPorts(0).addr := RegIndex.r0
       outInfo.gprWritePort.en      := true.B
       outInfo.isHasImm             := true.B
-      immSext                      := (imm20 << 12)
+      immSext                      := (imm20 << 12).asSInt
       outInfo.imm                  := immSext.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.lu12i_w) {
@@ -61,7 +63,7 @@ class Decoder_special extends Decoder {
       outInfo.gprReadPorts(0).addr := RegIndex.r0
       outInfo.gprWritePort.en      := true.B
       outInfo.isHasImm             := true.B
-      immSext                      := (imm20 << 12)
+      immSext                      := (imm20 << 12).asSInt
       outInfo.imm                  := immSext.asUInt
     }
   }

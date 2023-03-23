@@ -7,7 +7,7 @@ import ujson.Str
 
 object Inst {
   private def b(str: String, width: Width, underLineNum: Int): UInt = {
-    assert((str.length - underLineNum).W == width)
+    assert((str.length - underLineNum).W == width, s"opcode: ${str}, width: ${width}, underLineNum: ${underLineNum}")
     ("b" + str).U(width)
   }
 
@@ -85,8 +85,8 @@ object Inst {
   }
 
   object _special {
-    private def i(str: String) = b(str, wd._2RI16, 1)
-    val lu12i_w   = i("0001_010")
-    val pcaddu12i = i("0001_110")
+    private def i(str: String, opcodeLength: Int) = b(str, opcodeLength.W, 1)
+    val lu12i_w   = i("0001_010", 7)
+    val pcaddu12i = i("0001_110", 7)
   }
 }

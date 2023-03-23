@@ -57,4 +57,8 @@ object Param {
   object IssueStageState extends ChiselEnum {
     val nonBlocking, blocking = Value
   }
+
+  object ExeStageState extends ChiselEnum {
+    val nonBlocking, blocking = Value
+  }
 }
