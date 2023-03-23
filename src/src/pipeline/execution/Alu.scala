@@ -198,32 +198,16 @@ class Alu extends Module {
         arithmetic := (lop < rop).asUInt
       }
       is(Op.mul) {
-        arithmetic := Mux(
-          io.pipelineControlPort.stall, 
-          mulResultStoreReg(wordLength - 1, 0), 
-          mulResult(wordLength - 1, 0)
-        )
+        arithmetic := Mux(io.stallRequest, zeroWord, mulResult(wordLength - 1, 0))
       }
       is(Op.mulh, Op.mulhu) {
-        arithmetic := Mux(
-          io.pipelineControlPort.stall, 
-          mulResultStoreReg(doubleWordLength - 1, wordLength), 
-          mulResult(doubleWordLength - 1, wordLength)
-        )
+        arithmetic := Mux(io.stallRequest, zeroWord, mulResult(doubleWordLength - 1, wordLength))
       }
       is(Op.div, Op.divu) {
-        arithmetic := Mux(
-          io.pipelineControlPort.stall, 
-          quotientStoreReg,
-          Mux(io.stallRequest, zeroWord, quotient)
-        )
+        arithmetic := Mux(io.stallRequest, zeroWord, quotient)
       }
       is(Op.mod, Op.modu) {
-        arithmetic := Mux(
-          io.pipelineControlPort.stall, 
-          remainderStoreReg,
-          remainder
-        )
+        arithmetic := Mux(io.stallRequest, zeroWord, remainder)
       }
     }
   // }
