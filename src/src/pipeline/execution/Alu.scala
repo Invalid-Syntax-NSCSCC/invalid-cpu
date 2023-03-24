@@ -13,7 +13,7 @@ class Alu extends Module {
     val aluInst = Input(new AluInstNdPort)
     val result  = Output(new AluResultNdPort)
 
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort  = Input(new PipelineControlNDPort)
     val stallRequest         = Output(Bool())
     val divisorZeroException = Output(Bool())
   })
@@ -169,12 +169,12 @@ class Alu extends Module {
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
 
-  val quotientStoreReg = RegInit(zeroWord)
+  val quotientStoreReg  = RegInit(zeroWord)
   val remainderStoreReg = RegInit(zeroWord)
-  quotientStoreReg := quotientStoreReg
+  quotientStoreReg  := quotientStoreReg
   remainderStoreReg := remainderStoreReg
   when(divStage.io.divResult.valid) {
-    quotientStoreReg := quotient
+    quotientStoreReg  := quotient
     remainderStoreReg := remainder
   }
 
@@ -182,34 +182,34 @@ class Alu extends Module {
 
   val arithmetic = WireDefault(zeroWord)
   io.result.arithmetic := arithmetic
-  arithmetic := zeroWord
+  arithmetic           := zeroWord
   // when(!io.stallRequest) {
-    switch(io.aluInst.op) {
-      is(Op.add) {
-        arithmetic := (lop.asSInt + rop.asSInt).asUInt
-      }
-      is(Op.sub) {
-        arithmetic := (lop.asSInt - rop.asSInt).asUInt
-      }
-      is(Op.slt) {
-        arithmetic := (lop.asSInt < rop.asSInt).asUInt
-      }
-      is(Op.sltu) {
-        arithmetic := (lop < rop).asUInt
-      }
-      is(Op.mul) {
-        arithmetic := Mux(io.stallRequest, zeroWord, mulResult(wordLength - 1, 0))
-      }
-      is(Op.mulh, Op.mulhu) {
-        arithmetic := Mux(io.stallRequest, zeroWord, mulResult(doubleWordLength - 1, wordLength))
-      }
-      is(Op.div, Op.divu) {
-        arithmetic := Mux(io.stallRequest, zeroWord, quotient)
-      }
-      is(Op.mod, Op.modu) {
-        arithmetic := Mux(io.stallRequest, zeroWord, remainder)
-      }
+  switch(io.aluInst.op) {
+    is(Op.add) {
+      arithmetic := (lop.asSInt + rop.asSInt).asUInt
     }
+    is(Op.sub) {
+      arithmetic := (lop.asSInt - rop.asSInt).asUInt
+    }
+    is(Op.slt) {
+      arithmetic := (lop.asSInt < rop.asSInt).asUInt
+    }
+    is(Op.sltu) {
+      arithmetic := (lop < rop).asUInt
+    }
+    is(Op.mul) {
+      arithmetic := Mux(io.stallRequest, zeroWord, mulResult(wordLength - 1, 0))
+    }
+    is(Op.mulh, Op.mulhu) {
+      arithmetic := Mux(io.stallRequest, zeroWord, mulResult(doubleWordLength - 1, wordLength))
+    }
+    is(Op.div, Op.divu) {
+      arithmetic := Mux(io.stallRequest, zeroWord, quotient)
+    }
+    is(Op.mod, Op.modu) {
+      arithmetic := Mux(io.stallRequest, zeroWord, remainder)
+    }
+  }
   // }
 
   // io.result.arithmetic := Mux(io.pipelineControlPort.stall, )

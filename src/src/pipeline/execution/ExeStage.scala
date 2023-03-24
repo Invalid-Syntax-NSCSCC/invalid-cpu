@@ -39,10 +39,10 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   // Start: state machine
 
   /** State behaviors: --> exeInst store and select
-    * - Fallback     : keep inst store reg
-    * - `nonBlocking`: select and store input exeInst
-    * - `blocking`   : select stored exeInst
-    * 
+    *   - Fallback : keep inst store reg
+    *   - `nonBlocking`: select and store input exeInst
+    *   - `blocking` : select stored exeInst
+    *
     * State transitions:
     *   - `nonBlocking`: is blocking -> `blocking`, else `nonBlocking`
     *   - `blocking`: is blocking -> `blocking`, else `nonBlocking`
@@ -70,7 +70,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val alu = Module(new Alu)
 
   // state machine input
-  val stallRequest      = WireDefault(alu.io.stallRequest)
+  val stallRequest = WireDefault(alu.io.stallRequest)
   io.stallRequest := stallRequest
   val isBlocking = io.pipelineControlPort.stall || stallRequest
 
@@ -78,23 +78,23 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   nextState := Mux(isBlocking, State.blocking, State.nonBlocking)
 
   // ALU input
-  alu.io.aluInst.op := selectedExeInst.exeOp
-  alu.io.aluInst.leftOperand := selectedExeInst.leftOperand
-  alu.io.aluInst.rightOperand := selectedExeInst.rightOperand
-  alu.io.aluInst.jumpBranchAddr := selectedExeInst.jumpBranchAddr  // also load-store imm
-  alu.io.pipelineControlPort := io.pipelineControlPort
+  alu.io.aluInst.op             := selectedExeInst.exeOp
+  alu.io.aluInst.leftOperand    := selectedExeInst.leftOperand
+  alu.io.aluInst.rightOperand   := selectedExeInst.rightOperand
+  alu.io.aluInst.jumpBranchAddr := selectedExeInst.jumpBranchAddr // also load-store imm
+  alu.io.pipelineControlPort    := io.pipelineControlPort
 
   // ALU output
   io.divisorZeroException := alu.io.divisorZeroException
 
   // write-back information fallback
-  gprWriteReg.en := false.B
+  gprWriteReg.en   := false.B
   gprWriteReg.addr := zeroWord
   gprWriteReg.data := zeroWord
 
   // write-back information selection
   when(!isBlocking) {
-    gprWriteReg.en := selectedExeInst.gprWritePort.en
+    gprWriteReg.en   := selectedExeInst.gprWritePort.en
     gprWriteReg.addr := selectedExeInst.gprWritePort.addr
 
     switch(selectedExeInst.exeSel) {

@@ -3,7 +3,16 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import pipeline.dispatch.bundles.{DecodeOutNdPort, DecodePort, InstInfoBundle, IssuedInfoNdPort, ScoreboardChangeNdPort}
-import pipeline.dispatch.decode.{Decoder, Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_2RI16, Decoder_3R, Decoder_4R, Decoder_special}
+import pipeline.dispatch.decode.{
+  Decoder,
+  Decoder_2R,
+  Decoder_2RI12,
+  Decoder_2RI14,
+  Decoder_2RI16,
+  Decoder_3R,
+  Decoder_4R,
+  Decoder_special
+}
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.Param.{IssueStageState => State}
