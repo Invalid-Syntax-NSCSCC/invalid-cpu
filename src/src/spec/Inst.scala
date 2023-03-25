@@ -90,7 +90,7 @@ object Inst {
     private def i(str: String, opcodeLength: Int, underLineNum: Int) = b(str, opcodeLength.W, underLineNum)
     val lu12i_w   = i("0001_010", 7, 1)
     val pcaddu12i = i("0001_110", 7, 1)
-    val dbar = i("0011_1000_0111_0010_0", 17, 4)
-    val ibar = i("0011_1000_0111_0010_1", 17, 4)
+    val dbar      = i("0011_1000_0111_0010_0", 17, 4)
+    val ibar      = i("0011_1000_0111_0010_1", 17, 4)
   }
 }
