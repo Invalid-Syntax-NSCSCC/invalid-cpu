@@ -26,19 +26,11 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     val pipelineControlPort = Input(new PipelineControlNDPort)
   })
 
-  // 暂停 目前仅实现对exeInstPort暂停
-  val stall = WireDefault(io.pipelineControlPort.stall)
+  val stallFromCtrl = WireDefault(io.pipelineControlPort.stall)
 
   // Pass to the next stage in a sequential way
   val exeInstReg = RegInit(ExeInstNdPort.default)
   io.exeInstPort := exeInstReg
-
-  // Pass through write-back info
-  exeInstReg.gprWritePort := Mux(
-    stall,
-    RfAccessInfoNdPort.default,
-    io.issuedInfoPort.info.gprWritePort
-  )
 
   // Read from GPR
   io.gprReadPorts.zip(io.issuedInfoPort.info.gprReadPorts).foreach {
@@ -50,7 +42,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
-  when(!stall) {
+  when(!stallFromCtrl) {
     // when(io.issuedInfoPort.info.gprReadPorts(0).en) {
     //   exeInstReg.leftOperand := io.gprReadPorts(0).data
 
@@ -82,10 +74,11 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   }
 
   // Pass execution instruction if valid
+
   exeInstReg.exeSel       := ExeInst.Sel.none
   exeInstReg.exeOp        := ExeInst.Op.nop
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
-  when(!stall) {
+  when(!stallFromCtrl) {
     when(io.issuedInfoPort.isValid) {
       exeInstReg.exeSel         := io.issuedInfoPort.info.exeSel
       exeInstReg.exeOp          := io.issuedInfoPort.info.exeOp

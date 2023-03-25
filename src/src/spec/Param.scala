@@ -12,6 +12,8 @@ object Param {
   val scoreboardChangeNum = 1
   val instRegReadNum      = 2
   val ctrlControlNum      = 3
+  val issueInstInfoMaxNum = 1
+  val dispatchInstNum     = 1 // 发射shuliang
 
   object Width {
     val exeSel                = 3.W
@@ -53,6 +55,10 @@ object Param {
   }
 
   object IssueStageState extends ChiselEnum {
+    val nonBlocking, blocking = Value
+  }
+
+  object ExeStageState extends ChiselEnum {
     val nonBlocking, blocking = Value
   }
 }

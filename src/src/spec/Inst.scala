@@ -7,7 +7,7 @@ import ujson.Str
 
 object Inst {
   private def b(str: String, width: Width, underLineNum: Int): UInt = {
-    assert((str.length - underLineNum).W == width)
+    assert((str.length - underLineNum).W == width, s"opcode: ${str}, width: ${width}, underLineNum: ${underLineNum}")
     ("b" + str).U(width)
   }
 
@@ -52,6 +52,21 @@ object Inst {
     val andi   = i("0000_0011_01")
     val ori    = i("0000_0011_10")
     val xori   = i("0000_0011_11")
+
+    val ld_b  = i("0010_1000_00")
+    val ld_h  = i("0010_1000_01")
+    val ld_w  = i("0010_1000_10")
+    val st_b  = i("0010_1001_00")
+    val st_h  = i("0010_1001_01")
+    val st_w  = i("0010_1001_10")
+    val ld_bu = i("0010_1010_00")
+    val ld_hu = i("0010_1010_01")
+  }
+
+  object _2RI14 {
+    private def i(str: String) = b(str, wd._2RI14, 1)
+    val ll = i("0010_0000")
+    val sc = i("0010_0001")
   }
 
   object _2RI16 {
@@ -67,5 +82,11 @@ object Inst {
     val bge  = i("011_001")
     val bltu = i("011_010")
     val bgeu = i("011_011")
+  }
+
+  object _special {
+    private def i(str: String, opcodeLength: Int) = b(str, opcodeLength.W, 1)
+    val lu12i_w   = i("0001_010", 7)
+    val pcaddu12i = i("0001_110", 7)
   }
 }

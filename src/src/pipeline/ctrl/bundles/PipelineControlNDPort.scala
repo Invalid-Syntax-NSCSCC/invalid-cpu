@@ -14,6 +14,6 @@ object PipelineControlNDPort {
   val default = (new PipelineControlNDPort).Lit(
     _.flush -> false.B,
     _.clear -> false.B,
-    _.stall -> true.B
+    _.stall -> false.B
   )
 }

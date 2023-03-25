@@ -16,6 +16,7 @@ object ExeInst {
     val shift      = next
     val arithmetic = next // Only for regular arithmetic operation computed in ALU
     val jumpBranch = next
+    val loadStore  = next
   }
 
   object Op {
@@ -38,10 +39,10 @@ object ExeInst {
     val sll   = next
     val srl   = next
     val sra   = next
-    val mul   = next
+    val mul   = next // C
     val mulh  = next
     val mulhu = next
-    val div   = next
+    val div   = next // F
     val divu  = next
     val mod   = next
     val modu  = next
@@ -55,5 +56,17 @@ object ExeInst {
     val bge  = next
     val bltu = next
     val bgeu = next
+
+    // load store
+    val ld_b  = next
+    val ld_h  = next
+    val ld_w  = next
+    val st_b  = next
+    val st_h  = next
+    val st_w  = next
+    val ld_bu = next
+    val ld_hu = next
+    val ll    = next
+    val sc    = next
   }
 }

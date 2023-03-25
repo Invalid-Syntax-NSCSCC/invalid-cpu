@@ -5,13 +5,15 @@ import chisel3.util._
 import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}
 import spec._
 import ExeInst.Op
+import pipeline.ctrl.bundles.PipelineControlNDPort
 
-// Attention: if advance is false, the exeInstPort needs to keep unchange
+// Attention: if stallRequest is true, the exeInstPort needs to keep unchange
 class Alu extends Module {
   val io = IO(new Bundle {
     val aluInst = Input(new AluInstNdPort)
     val result  = Output(new AluResultNdPort)
 
+    val pipelineControlPort  = Input(new PipelineControlNDPort)
     val stallRequest         = Output(Bool())
     val divisorZeroException = Output(Bool())
   })
@@ -22,7 +24,7 @@ class Alu extends Module {
 
   def rop = io.aluInst.rightOperand
 
-  def arithmetic = io.result.arithmetic
+  // def arithmetic = io.result.arithmetic
 
   def logic = io.result.logic
 
@@ -132,6 +134,12 @@ class Alu extends Module {
 
   val mulResult = WireDefault(mulStage.io.mulResult.bits)
 
+  val mulResultStoreReg = RegInit(0.U(doubleWordLength.W))
+  mulResultStoreReg := mulResultStoreReg
+  when(mulStage.io.mulResult.valid) {
+    mulResultStoreReg := mulResult
+  }
+
   // Div
 
   val useDiv = WireDefault(
@@ -161,37 +169,48 @@ class Alu extends Module {
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
 
-  io.stallRequest := (mulStart || divStart || divStage.io.isRunning)
-
-  when(~io.stallRequest) {
-    switch(io.aluInst.op) {
-      is(Op.add) {
-        arithmetic := (lop.asSInt + rop.asSInt).asUInt
-      }
-      is(Op.sub) {
-        arithmetic := (lop.asSInt - rop.asSInt).asUInt
-      }
-      is(Op.slt) {
-        arithmetic := (lop.asSInt < rop.asSInt).asUInt
-      }
-      is(Op.sltu) {
-        arithmetic := (lop < rop).asUInt
-      }
-      is(Op.mul) {
-        arithmetic := mulResult(wordLength - 1, 0)
-      }
-      is(Op.mulh, Op.mulhu) {
-        arithmetic := mulResult(doubleWordLength - 1, wordLength)
-      }
-      is(Op.div, Op.divu) {
-        arithmetic := quotient
-      }
-      is(Op.mod, Op.modu) {
-        arithmetic := remainder
-      }
-    }
-  }.otherwise {
-    arithmetic := zeroWord
+  val quotientStoreReg  = RegInit(zeroWord)
+  val remainderStoreReg = RegInit(zeroWord)
+  quotientStoreReg  := quotientStoreReg
+  remainderStoreReg := remainderStoreReg
+  when(divStage.io.divResult.valid) {
+    quotientStoreReg  := quotient
+    remainderStoreReg := remainder
   }
 
+  io.stallRequest := (mulStart || divStart || divStage.io.isRunning)
+
+  val arithmetic = WireDefault(zeroWord)
+  io.result.arithmetic := arithmetic
+  arithmetic           := zeroWord
+  // when(!io.stallRequest) {
+  switch(io.aluInst.op) {
+    is(Op.add) {
+      arithmetic := (lop.asSInt + rop.asSInt).asUInt
+    }
+    is(Op.sub) {
+      arithmetic := (lop.asSInt - rop.asSInt).asUInt
+    }
+    is(Op.slt) {
+      arithmetic := (lop.asSInt < rop.asSInt).asUInt
+    }
+    is(Op.sltu) {
+      arithmetic := (lop < rop).asUInt
+    }
+    is(Op.mul) {
+      arithmetic := Mux(io.stallRequest, zeroWord, mulResult(wordLength - 1, 0))
+    }
+    is(Op.mulh, Op.mulhu) {
+      arithmetic := Mux(io.stallRequest, zeroWord, mulResult(doubleWordLength - 1, wordLength))
+    }
+    is(Op.div, Op.divu) {
+      arithmetic := Mux(io.stallRequest, zeroWord, quotient)
+    }
+    is(Op.mod, Op.modu) {
+      arithmetic := Mux(io.stallRequest, zeroWord, remainder)
+    }
+  }
+  // }
+
+  // io.result.arithmetic := Mux(io.pipelineControlPort.stall, )
 }

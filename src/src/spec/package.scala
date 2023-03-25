@@ -11,6 +11,7 @@ package object spec {
   val zeroWord = 0.U(wordLength.W)
 
   object RegIndex {
+    val r0 = 0.U
     val r1 = 1.U
   }
 
@@ -23,6 +24,7 @@ package object spec {
 
     object Op {
       val _2RI12 = 10.W
+      val _2RI14 = 8.W
       val _2RI16 = 6.W
       val _2R    = 22.W
       val _3R    = 17.W

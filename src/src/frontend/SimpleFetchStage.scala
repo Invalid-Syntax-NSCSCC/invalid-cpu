@@ -55,7 +55,7 @@ class SimpleFetchStage extends Module {
     is(State.idle) {
       nextState := State.requestInst
     }
-    is(State.requestInst) {
+    is(State.requestInst) { // State Value: 1
       when(axiReady && io.instEnqueuePort.ready) {
         nextState := State.waitInst
 
@@ -67,7 +67,7 @@ class SimpleFetchStage extends Module {
         nextState := State.requestInst
       }
     }
-    is(State.waitInst) {
+    is(State.waitInst) { // State Value: 2
       when(axiReadValid) {
         nextState := State.requestInst
 

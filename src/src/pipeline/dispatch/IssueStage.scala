@@ -3,7 +3,16 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import pipeline.dispatch.bundles.{DecodeOutNdPort, DecodePort, InstInfoBundle, IssuedInfoNdPort, ScoreboardChangeNdPort}
-import pipeline.dispatch.decode.{Decoder, Decoder_2R, Decoder_2RI12, Decoder_2RI16, Decoder_3R, Decoder_4R}
+import pipeline.dispatch.decode.{
+  Decoder,
+  Decoder_2R,
+  Decoder_2RI12,
+  Decoder_2RI14,
+  Decoder_2RI16,
+  Decoder_3R,
+  Decoder_4R,
+  Decoder_special
+}
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.Param.{IssueStageState => State}
@@ -31,19 +40,21 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
 
   // Start: state machine
 
-  /** State behaviors (mealy machine):
-    *   - Fallback: keep inst store reg, no issue, no fetch
-    *   - `nonBlocking`:
+  /** State behaviors:
+    *   - Fallback: keep inst store reg, no issue, no fetch (pre)
+    *   - `nonBlocking`: fetch (pre)
     *     - If can fetch: store inst to reg
     *       - If blocking: (nothing else)
-    *       - if still non-blocking: fetch, issue
-    *     - If cannot fetch: fetch
+    *       - if still non-blocking: issue
+    *     - If cannot fetch: (nothing else)
     *   - `blocking`:
     *     - If still blocking: (nothing else)
-    *     - If non-blocking: fetch, issue
+    *     - If non-blocking: issue
     *
-    * State behaviors (moore machine):
-    *   - `nonBlocking`: decode from port
+    * State behaviors:
+    *   - `nonBlocking`:
+    *     - If can fetch: decode from port
+    *     - If cannot fetch: decode nop
     *   - `blocking`: decode from inst store reg
     *
     * State transitions:
@@ -58,16 +69,20 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   val instStoreReg = RegInit(InstInfoBundle.default)
   instStoreReg := instStoreReg
   val selectedInstInfo = WireDefault(InstInfoBundle.default)
-  val isIssue          = WireDefault(false.B)
+  val isAllowIssue     = WireDefault(false.B)
   val isFetch          = WireDefault(false.B)
 
   // Connect state machine output to I/O
   io.fetchInstInfoPort.ready := isFetch
 
-  // Implement output function (moore)
+  // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
-      selectedInstInfo := io.fetchInstInfoPort.bits
+      isFetch := true.B
+      when(io.fetchInstInfoPort.valid) {
+        selectedInstInfo := io.fetchInstInfoPort.bits
+        instStoreReg     := io.fetchInstInfoPort.bits
+      }
     }
     is(State.blocking) {
       selectedInstInfo := instStoreReg
@@ -79,10 +94,12 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   // Select a decoder
   val decoders = Seq(
     Module(new Decoder_2RI12),
+    Module(new Decoder_2RI14),
     Module(new Decoder_2RI16),
     Module(new Decoder_2R),
-//    Module(new Decoder_3R),
-    Module(new Decoder_4R)
+    Module(new Decoder_3R),
+    Module(new Decoder_4R),
+    Module(new Decoder_special)
   )
   decoders.foreach(_.io.instInfoPort := selectedInstInfo)
 
@@ -113,25 +130,17 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
       isInstValid && isScoreboardBlocking
     )
   )
-  val isLastCanFetchReg = RegNext(io.fetchInstInfoPort.valid, false.B)
 
-  // Implement output function (mealy)
+  // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
-      when(isLastCanFetchReg) {
-        instStoreReg := io.fetchInstInfoPort.bits
-        when(!isBlocking) {
-          isFetch := true.B
-          isIssue := true.B
-        }
-      }.otherwise {
-        isFetch := true.B
+      when(io.fetchInstInfoPort.valid && !isBlocking) {
+        isAllowIssue := true.B
       }
     }
     is(State.blocking) {
       when(!isBlocking) {
-        isFetch := true.B
-        isIssue := true.B
+        isAllowIssue := true.B
       }
     }
   }
@@ -142,7 +151,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   // End: state machine
 
   // Fallback for no operation
-  issuedInfoReg.isValid              := isIssue
+  issuedInfoReg.isValid              := isAllowIssue && isInstValid
   issuedInfoReg.info                 := DontCare
   issuedInfoReg.info.gprWritePort.en := false.B
   io.occupyPorts.foreach { port =>
@@ -151,8 +160,10 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   }
 
   // Issue pre-execution instruction
-  when(isIssue) {
+
+  when(isAllowIssue) {
     // Indicate the occupation in scoreboard
+    instStoreReg := InstInfoBundle.default // Patch for preventing reissue an inst itself
     io.occupyPorts.zip(Seq(selectedDecoder.info.gprWritePort)).foreach {
       case (occupyPort, accessInfo) =>
         occupyPort.en   := accessInfo.en
