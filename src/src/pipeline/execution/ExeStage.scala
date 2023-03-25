@@ -115,6 +115,8 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // MemLoadStore
   io.memLoadStorePort.exeOp := io.exeInstPort.exeOp
-  io.memLoadStorePort.data  := io.exeInstPort.rightOperand
+  // store : the data to write
+  // preld, dbar, ibar : hint
+  io.memLoadStorePort.data  := io.exeInstPort.rightOperand  
   io.memLoadStorePort.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
 }
