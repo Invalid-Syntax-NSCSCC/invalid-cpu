@@ -14,9 +14,9 @@ class AluResultNdPort extends Bundle {
 
 object AluResultNdPort {
   val default = (new AluResultNdPort).Lit(
-  _.logic -> zeroWord,
-  _.shift -> zeroWord,
-  _.arithmetic -> zeroWord,
-  _.jumpBranchInfo -> JumpBranchInfoNdPort.default
+    _.logic -> zeroWord,
+    _.shift -> zeroWord,
+    _.arithmetic -> zeroWord,
+    _.jumpBranchInfo -> JumpBranchInfoNdPort.default
   )
 }

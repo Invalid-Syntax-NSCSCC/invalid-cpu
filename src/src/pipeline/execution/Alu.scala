@@ -31,21 +31,21 @@ class Alu extends Module {
   io.stallRequest := stallRequest
 
   /** State machine
-   * 
-   * State behaviors for shift, logic, jump and 
-   *  - `nonBlocking`: permit mulStage and divStage start running
-   *  - `blocking`: forbidden mulStage and divStage start running
-   *
-   * State transition
-   *   - `nonBlocking`: blocking from other stage -> `nonblocking` else `blocking`
-   *   - `blocking` : blocking from other stage -> `nonblocking` else `blocking`
-   */
+    *
+    * State behaviors for shift, logic, jump and
+    *   - `nonBlocking`: permit mulStage and divStage start running
+    *   - `blocking`: forbidden mulStage and divStage start running
+    *
+    * State transition
+    *   - `nonBlocking`: blocking from other stage -> `nonblocking` else `blocking`
+    *   - `blocking` : blocking from other stage -> `nonblocking` else `blocking`
+    */
 
   val nextState = WireDefault(State.nonBlocking)
-  val stateReg = RegNext(nextState, State.nonBlocking)
+  val stateReg  = RegNext(nextState, State.nonBlocking)
 
   nextState := Mux(io.pipelineControlPort.stall, State.blocking, State.nonBlocking)
-    
+
   /** Result definition
     */
 
@@ -61,15 +61,12 @@ class Alu extends Module {
   val computedResult = WireDefault(AluResultNdPort.default)
   io.result := computedResult
 
-
   when(!(io.pipelineControlPort.stall && stallRequest)) {
     computedResult.arithmetic     := arithmetic
     computedResult.logic          := logic
     computedResult.jumpBranchInfo := jumpBranchInfo
     computedResult.shift          := shift
   }
-
-  
 
   /** Logic computation
     */
@@ -244,14 +241,13 @@ class Alu extends Module {
     remainderStoreReg := remainder
   }
 
-  val selectedQuotient = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
+  val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
   val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
-
 
   stallRequest := (mulStart || divStart || divStage.io.isRunning)
 
   when(!stallRequest) {
-    switch(io.aluInst.op) { 
+    switch(io.aluInst.op) {
       is(Op.add) {
         arithmetic := (lop.asSInt + rop.asSInt).asUInt
       }
