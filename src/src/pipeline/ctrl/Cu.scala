@@ -15,5 +15,6 @@ class Cu(ctrlControlNum: Int = Param.ctrlControlNum) extends Module {
   })
 
   io.pipelineControlPorts := DontCare
-  io.pipelineControlPorts.take(3).foreach(_.stall := io.exeStallRequest)
+  // `ExeStage` --stall--> `IssueStage`, `RegReadStage` (DONT STALL ITSELF)
+  io.pipelineControlPorts.take(2).foreach(_.stall := io.exeStallRequest)
 }

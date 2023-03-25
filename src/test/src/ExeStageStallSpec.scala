@@ -13,6 +13,7 @@ import pipeline.execution.ExeStage
 import spec.ExeInst
 import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.zeroWord
+import spec.Width
 
 object ExeStageStallSpec extends ChiselUtestTester {
   val tests = Tests {
@@ -37,6 +38,8 @@ object ExeStageStallSpec extends ChiselUtestTester {
         exeStage.io.pipelineControlPort.stall.poke(true.B)
         exeStage.clock.step(15)
         exeStage.io.pipelineControlPort.stall.poke(false.B)
+        exeStage.clock.step(1)
+        instPort.exeOp.poke(ExeInst.Op.add)
         exeStage.clock.step(20)
       }
     }

@@ -13,49 +13,49 @@ import pipeline.execution.ExeStage
 import spec.ExeInst
 import pipeline.dispatch.bundles.ExeInstNdPort
 
-// object ExeStageSpec extends ChiselUtestTester {
-//   val tests = Tests {
-//     test("Test exe stage module") {
-//       testCircuit(new ExeStage, Seq(WriteVcdAnnotation)) { exeStage =>
-//         val ops = Seq(
-//           ExeInst.Op.add,
-//           ExeInst.Op.slt,
-//           ExeInst.Op.mul,
-//           ExeInst.Op.div,
-//           ExeInst.Op.sub,
-//           ExeInst.Op.mod,
-//           ExeInst.Op.add,
-//           ExeInst.Op.nop
-//         )
-//         val sel = ExeInst.Sel.arithmetic
-//         val lop = 472;
-//         val rop = 5;
-//         exeStage.io.exeInstPort.poke(ExeInstNdPort.default)
-//         exeStage.io.pipelineControlPort.poke(PipelineControlNDPort.default)
-//         def instPort = exeStage.io.exeInstPort
+object ExeStageSpec extends ChiselUtestTester {
+  val tests = Tests {
+    test("Test exe stage module") {
+      testCircuit(new ExeStage, Seq(WriteVcdAnnotation)) { exeStage =>
+        val ops = Seq(
+          ExeInst.Op.add,
+          ExeInst.Op.slt,
+          ExeInst.Op.mul,
+          ExeInst.Op.div,
+          ExeInst.Op.sub,
+          ExeInst.Op.mod,
+          ExeInst.Op.add,
+          ExeInst.Op.nop
+        )
+        val sel = ExeInst.Sel.arithmetic
+        val lop = 472;
+        val rop = 5;
+        exeStage.io.exeInstPort.poke(ExeInstNdPort.default)
+        exeStage.io.pipelineControlPort.poke(PipelineControlNDPort.default)
+        def instPort = exeStage.io.exeInstPort
 
-//         instPort.gprWritePort.en.poke(true.B)
-//         instPort.gprWritePort.addr.poke(7.U)
-//         for (i <- 0 until ops.length) {
-//             instPort.exeOp.poke(ops(i))
-//             instPort.exeSel.poke(sel)
-//             instPort.leftOperand.poke(lop.U)
-//             instPort.rightOperand.poke(rop.U)
-//             println(exeStage.io.stallRequest.peek().litValue)
-//             while (exeStage.io.stallRequest.peek().litValue == 1) {
-//                 print("*")
-//                 exeStage.clock.step(1)
-//                 instPort.exeOp.poke(0.U)
-//                 instPort.exeSel.poke(0.U)
-//                 instPort.leftOperand.poke(0.U)
-//                 instPort.rightOperand.poke(0.U)
+        instPort.gprWritePort.en.poke(true.B)
+        instPort.gprWritePort.addr.poke(7.U)
+        for (i <- 0 until ops.length) {
+            instPort.exeOp.poke(ops(i))
+            instPort.exeSel.poke(sel)
+            instPort.leftOperand.poke(lop.U)
+            instPort.rightOperand.poke(rop.U)
+            println(exeStage.io.stallRequest.peek().litValue)
+            while (exeStage.io.stallRequest.peek().litValue == 1) {
+                print("*")
+                exeStage.clock.step(1)
+                instPort.exeOp.poke(0.U)
+                instPort.exeSel.poke(0.U)
+                instPort.leftOperand.poke(0.U)
+                instPort.rightOperand.poke(0.U)
 
-//             }
-//             exeStage.clock.step(1) 
-//             println()
-//         }
-//         exeStage.clock.step(10)
-//       }
-//     }
-//   }
-// }
+            }
+            exeStage.clock.step(1) 
+            println()
+        }
+        exeStage.clock.step(10)
+      }
+    }
+  }
+}
