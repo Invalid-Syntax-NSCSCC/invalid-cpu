@@ -10,7 +10,6 @@ import pipeline.execution.bundles.JumpBranchInfoNdPort
 import spec.Param.{AluState => State}
 
 // Attention: if stallRequest is true, the exeInstPort needs to keep unchange
-// TODO : 阻止外部暂停时mul与div重复进行
 class Alu extends Module {
   val io = IO(new Bundle {
     val aluInst = Input(new AluInstNdPort)
