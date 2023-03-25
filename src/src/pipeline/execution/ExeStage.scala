@@ -36,8 +36,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   // Pass to the next stage in a sequential way
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   io.gprWritePort := gprWriteReg
-
-  // Start: state machine
+// Start: state machine
 
   /** State behaviors: --> exeInst store and select
     *   - Fallback : keep inst store reg

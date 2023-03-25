@@ -41,6 +41,7 @@ object ExeStageSpec extends ChiselUtestTester {
             instPort.exeSel.poke(sel)
             instPort.leftOperand.poke(lop.U)
             instPort.rightOperand.poke(rop.U)
+
             println(exeStage.io.stallRequest.peek().litValue)
             while (exeStage.io.stallRequest.peek().litValue == 1) {
                 print("*")
@@ -51,7 +52,8 @@ object ExeStageSpec extends ChiselUtestTester {
                 instPort.rightOperand.poke(0.U)
 
             }
-            exeStage.clock.step(1) 
+
+            exeStage.clock.step(1)
             println()
         }
         exeStage.clock.step(10)
