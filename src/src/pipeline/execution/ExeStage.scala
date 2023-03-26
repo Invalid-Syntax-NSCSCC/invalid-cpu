@@ -12,6 +12,7 @@ import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param.{ExeStageState => State}
 import pipeline.execution.Alu
+import pipeline.writeback.bundles.WbDebugNdPort
 
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
@@ -19,10 +20,9 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
     // TODO: Add `MemStage` in between
     // `ExeStage` -> `WbStage` (next clock pulse)
-    val gprWritePort = Output(new RfWriteNdPort)
-
-    // `ExeStage` -> `WbStage` (next clock pulse)
-    val memLoadStorePort = Output(new MemLoadStoreNdPort)
+    val gprWritePort           = Output(new RfWriteNdPort)
+    val memLoadStorePort       = Output(new MemLoadStoreNdPort)
+    val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
 
     // Pipeline control signal
     // `Cu` -> `ExeStage`
@@ -33,10 +33,15 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val divisorZeroException = Output(Bool())
   })
 
+  // Wb debug port connection
+  val wbDebugReg = RegNext(io.wbDebugPassthroughPort.in, WbDebugNdPort.default)
+  io.wbDebugPassthroughPort.out := wbDebugReg
+
   // Pass to the next stage in a sequential way
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   io.gprWritePort := gprWriteReg
-// Start: state machine
+
+  // Start: state machine
 
   /** State behaviors: --> exeInst store and select
     *   - Fallback : keep inst store reg

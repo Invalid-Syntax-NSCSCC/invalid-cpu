@@ -32,6 +32,8 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     // pipeline control signal
     // `Cu` -> `IssueStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
+
+    val wbDebugInst = Output(UInt(Width.Reg.data))
   })
 
   // Pass to the next stage in a sequential way
@@ -158,6 +160,9 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     port.en   := false.B
     port.addr := DontCare
   }
+  val wbDebugInstReg = RegInit(0.U(Width.Reg.data))
+  io.wbDebugInst := wbDebugInstReg
+  wbDebugInstReg := 0.U
 
   // Issue pre-execution instruction
 
@@ -171,5 +176,6 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     }
 
     issuedInfoReg.info := selectedDecoder.info
+    wbDebugInstReg     := selectedInstInfo.inst
   }
 }

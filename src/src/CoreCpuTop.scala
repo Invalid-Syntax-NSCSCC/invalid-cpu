@@ -134,13 +134,6 @@ class CoreCpuTop extends Module {
   simpleFetchStage.io.axiMasterInterface.bvalid  <> crossbar.io.slaves(0).write.b.valid
   simpleFetchStage.io.axiMasterInterface.bready  <> crossbar.io.slaves(0).write.b.ready
 
-  // Debug ports
-  io.debug0_wb.pc       := pc.io.pc
-  io.debug0_wb.rf.wen   := regFile.io.writePort.en
-  io.debug0_wb.rf.wnum  := regFile.io.writePort.addr
-  io.debug0_wb.rf.wdata := regFile.io.writePort.data
-  io.debug0_wb.inst     := 0.U // TODO: Make connections correct
-
   // Simple fetch stage
   instQueue.io.enqueuePort <> simpleFetchStage.io.instEnqueuePort
   simpleFetchStage.io.pc   := pc.io.pc
@@ -157,22 +150,33 @@ class CoreCpuTop extends Module {
   regReadStage.io.gprReadPorts(0)     <> regFile.io.readPorts(0)
   regReadStage.io.gprReadPorts(1)     <> regFile.io.readPorts(1)
   regReadStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
+  regReadStage.io.wbDebugInst         := issueStage.io.wbDebugInst
 
   // Execution stage
-  exeStage.io.exeInstPort         := regReadStage.io.exeInstPort
-  exeStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
+  exeStage.io.exeInstPort               := regReadStage.io.exeInstPort
+  exeStage.io.pipelineControlPort       := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
+  exeStage.io.wbDebugPassthroughPort.in := regReadStage.io.wbDebugPort
 
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
   memStage.io.memLoadStorePort           := exeStage.io.memLoadStorePort
   memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
+  memStage.io.wbDebugPassthroughPort.in  := exeStage.io.wbDebugPassthroughPort.out
 
   // Write-back stage
-  wbStage.io.gprWriteInfoPort := memStage.io.gprWritePassThroughPort.out
-  regFile.io.writePort        := wbStage.io.gprWritePort
-  scoreboard.io.freePorts     := wbStage.io.freePorts
+  wbStage.io.gprWriteInfoPort          := memStage.io.gprWritePassThroughPort.out
+  wbStage.io.wbDebugPassthroughPort.in := memStage.io.wbDebugPassthroughPort.out
+  regFile.io.writePort                 := wbStage.io.gprWritePort
+  scoreboard.io.freePorts              := wbStage.io.freePorts
 
-  // ctrl unit
+  // Debug ports
+  io.debug0_wb.pc       := wbStage.io.wbDebugPassthroughPort.out.pc
+  io.debug0_wb.rf.wen   := wbStage.io.gprWritePort.en
+  io.debug0_wb.rf.wnum  := wbStage.io.gprWritePort.addr
+  io.debug0_wb.rf.wdata := wbStage.io.gprWritePort.data
+  io.debug0_wb.inst     := wbStage.io.wbDebugPassthroughPort.out.inst
+
+  // Ctrl unit
   cu.io.exeStallRequest := exeStage.io.stallRequest
   cu.io.memStallRequest := memStage.io.stallRequest
 }
