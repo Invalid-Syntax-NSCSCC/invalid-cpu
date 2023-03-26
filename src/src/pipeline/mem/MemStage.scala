@@ -10,6 +10,7 @@ import pipeline.ctrl.bundles.PipelineControlNDPort
 import pipeline.execution.bundles.MemLoadStoreNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import pipeline.writeback.bundles.WbDebugNdPort
 
 class MemStage extends Module {
   val io = IO(new Bundle {
@@ -21,7 +22,13 @@ class MemStage extends Module {
     val pipelineControlPort = Input(new PipelineControlNDPort)
     // `MemStage` -> Cu
     val stallRequest = Output(Bool())
+
+    val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
   })
+
+  // Wb debug port connection
+  val wbDebugReg = RegNext(io.wbDebugPassthroughPort.in, WbDebugNdPort.default)
+  io.wbDebugPassthroughPort.out := wbDebugReg
 
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   gprWriteReg := Mux(

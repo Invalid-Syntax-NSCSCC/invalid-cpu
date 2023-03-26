@@ -2,10 +2,12 @@ package pipeline.dispatch
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{RfAccessInfoNdPort, RfReadPort, RfWriteNdPort}
+import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfReadPort, RfWriteNdPort}
 import bundles.{ExeInstNdPort, IssuedInfoNdPort}
+import chisel3.experimental.BundleLiterals._
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
+import pipeline.writeback.bundles.WbDebugNdPort
 
 class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
@@ -24,7 +26,16 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     // `pipeline control signal
     // `Cu` -> `RegReadStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
+
+    val wbDebugInst = Input(UInt(Width.Reg.data))
+    val wbDebugPort = Output(new WbDebugNdPort)
   })
+
+  // Wb debug port connection
+  val wbDebugReg = RegInit(WbDebugNdPort.default)
+  wbDebugReg.pc   := io.exeInstPort.pcAddr
+  wbDebugReg.inst := io.wbDebugInst
+  io.wbDebugPort  := wbDebugReg
 
   val stallFromCtrl = WireDefault(io.pipelineControlPort.stall)
 

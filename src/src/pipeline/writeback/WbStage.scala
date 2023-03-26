@@ -2,8 +2,9 @@ package pipeline.writeback
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{RfAccessInfoNdPort, RfWriteNdPort}
+import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
+import pipeline.writeback.bundles.WbDebugNdPort
 import spec._
 
 class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
@@ -13,7 +14,12 @@ class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
 
     // Scoreboard
     val freePorts = Output(Vec(changeNum, new ScoreboardChangeNdPort))
+
+    val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
   })
+
+  // Wb debug port connection
+  io.wbDebugPassthroughPort.out := io.wbDebugPassthroughPort.in
 
   io.gprWritePort := io.gprWriteInfoPort
 
