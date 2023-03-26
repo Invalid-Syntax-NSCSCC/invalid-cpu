@@ -31,6 +31,11 @@ package object spec {
     def getCount: Int = count
   }
 
+  object ReadWriteMode {
+    val read  = false.B
+    val write = true.B
+  }
+
   object Width {
     val inst = wordLength.W
     object Reg {

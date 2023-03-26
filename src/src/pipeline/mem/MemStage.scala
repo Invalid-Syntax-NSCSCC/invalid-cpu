@@ -7,20 +7,23 @@ import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
-import pipeline.execution.bundles.MemLoadStoreNdPort
+import pipeline.execution.bundles.MemLoadStoreInfoNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import pipeline.mem.bundles.MemLoadStorePort
 
 class MemStage extends Module {
   val io = IO(new Bundle {
     // `ExeStage` -> `MemStage` -> `WbStage`
     val gprWritePassThroughPort = new PassThroughPort(new RfWriteNdPort)
     // `ExeStage` -> `MemStage`
-    val memLoadStorePort = Input(new MemLoadStoreNdPort)
+    val memLoadStoreInfoPort = Input(new MemLoadStoreInfoNdPort)
     // `Cu` -> `MemStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
     // `MemStage` -> Cu
     val stallRequest = Output(Bool())
+    // `MemStage` -> ?Ram
+    val memLoadStorePort = Flipped(new MemLoadStorePort)
   })
 
   val gprWriteReg = RegInit(RfWriteNdPort.default)
@@ -32,4 +35,9 @@ class MemStage extends Module {
   io.gprWritePassThroughPort.out := gprWriteReg
 
   io.stallRequest := false.B
+
+  val storeData = WireDefault(io.memLoadStoreInfoPort.data)
+  val hint      = WireDefault(io.memLoadStoreInfoPort.data)
+
+  io.memLoadStorePort <> DontCare
 }

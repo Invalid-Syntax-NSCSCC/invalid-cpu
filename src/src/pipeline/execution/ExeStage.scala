@@ -7,7 +7,7 @@ import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
-import pipeline.execution.bundles.MemLoadStoreNdPort
+import pipeline.execution.bundles.MemLoadStoreInfoNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param.{ExeStageState => State}
@@ -22,7 +22,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val gprWritePort = Output(new RfWriteNdPort)
 
     // `ExeStage` -> `WbStage` (next clock pulse)
-    val memLoadStorePort = Output(new MemLoadStoreNdPort)
+    val memLoadStoreInfoPort = Output(new MemLoadStoreInfoNdPort)
 
     // Pipeline control signal
     // `Cu` -> `ExeStage`
@@ -114,9 +114,9 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   }
 
   // MemLoadStore
-  io.memLoadStorePort.exeOp := io.exeInstPort.exeOp
+  io.memLoadStoreInfoPort.exeOp := io.exeInstPort.exeOp
   // store : the data to write
   // preld, dbar, ibar : hint
-  io.memLoadStorePort.data  := io.exeInstPort.rightOperand
-  io.memLoadStorePort.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
+  io.memLoadStoreInfoPort.data  := io.exeInstPort.rightOperand
+  io.memLoadStoreInfoPort.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
 }
