@@ -1,6 +1,6 @@
 `include "CoreCpuTop.v"
 
-module cpu_top (
+module core_top (
     input logic aclk,
     input logic aresetn,
 
