@@ -158,7 +158,7 @@ class CoreCpuTop extends Module {
   regReadStage.io.gprReadPorts(1)     <> regFile.io.readPorts(1)
   regReadStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
 
-  // Execution stage
+// Execution stage
   exeStage.io.exeInstPort         := regReadStage.io.exeInstPort
   exeStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
 
