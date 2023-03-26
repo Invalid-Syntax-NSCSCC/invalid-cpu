@@ -11,6 +11,7 @@ import pipeline.execution.bundles.MemLoadStoreNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param.{ExeStageState => State}
+import pipeline.execution.Alu
 
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
@@ -35,8 +36,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   // Pass to the next stage in a sequential way
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   io.gprWritePort := gprWriteReg
-
-  // Start: state machine
+// Start: state machine
 
   /** State behaviors: --> exeInst store and select
     *   - Fallback : keep inst store reg
@@ -45,7 +45,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     *
     * State transitions:
     *   - `nonBlocking`: is blocking -> `blocking`, else `nonBlocking`
-    *   - `blocking`: is blocking -> `blocking`, else `nonBlocking`
+    *   - `blocking` : is blocking -> `blocking`, else `nonBlocking`
     */
   val nextState = WireDefault(State.nonBlocking)
   val stateReg  = RegNext(nextState, State.nonBlocking)
@@ -115,6 +115,8 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // MemLoadStore
   io.memLoadStorePort.exeOp := io.exeInstPort.exeOp
+  // store : the data to write
+  // preld, dbar, ibar : hint
   io.memLoadStorePort.data  := io.exeInstPort.rightOperand
   io.memLoadStorePort.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
 }

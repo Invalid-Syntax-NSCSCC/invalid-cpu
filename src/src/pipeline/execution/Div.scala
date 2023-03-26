@@ -25,7 +25,7 @@ class Div extends Module {
   io.divInst.ready := inputReady
 
   // 开始 正在运算或除零，忽略
-  val start = WireDefault(io.divInst.valid & inputReady & io.divInst.bits.rightOperand.orR)
+  val start = WireDefault(io.divInst.valid && inputReady && io.divInst.bits.rightOperand.orR)
 
   val op = WireDefault(io.divInst.bits.op)
   // 被除数

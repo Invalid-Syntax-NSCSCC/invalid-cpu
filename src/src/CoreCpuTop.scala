@@ -7,6 +7,8 @@ import pipeline.ctrl.Cu
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
+import pipeline.mem.MemStage
+import spec.PipelineStageIndex
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -31,6 +33,7 @@ class CoreCpuTop extends Module {
   val issueStage       = Module(new IssueStage)
   val regReadStage     = Module(new RegReadStage)
   val exeStage         = Module(new ExeStage)
+  val memStage         = Module(new MemStage)
   val wbStage          = Module(new WbStage)
   val cu               = Module(new Cu)
 
@@ -147,23 +150,29 @@ class CoreCpuTop extends Module {
   issueStage.io.fetchInstInfoPort   <> instQueue.io.dequeuePort
   issueStage.io.regScores           := scoreboard.io.regScores
   scoreboard.io.occupyPorts         := issueStage.io.occupyPorts
-  issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(0)
+  issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
 
   // Reg-read stage
   regReadStage.io.issuedInfoPort      := issueStage.io.issuedInfoPort
   regReadStage.io.gprReadPorts(0)     <> regFile.io.readPorts(0)
   regReadStage.io.gprReadPorts(1)     <> regFile.io.readPorts(1)
-  regReadStage.io.pipelineControlPort := cu.io.pipelineControlPorts(1)
+  regReadStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
 
   // Execution stage
   exeStage.io.exeInstPort         := regReadStage.io.exeInstPort
-  exeStage.io.pipelineControlPort := cu.io.pipelineControlPorts(2)
+  exeStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
+
+  // Mem stage
+  memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
+  memStage.io.memLoadStorePort           := exeStage.io.memLoadStorePort
+  memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
 
   // Write-back stage
-  wbStage.io.gprWriteInfoPort := exeStage.io.gprWritePort
+  wbStage.io.gprWriteInfoPort := memStage.io.gprWritePassThroughPort.out
   regFile.io.writePort        := wbStage.io.gprWritePort
   scoreboard.io.freePorts     := wbStage.io.freePorts
 
-  // ctrl
+  // ctrl unit
   cu.io.exeStallRequest := exeStage.io.stallRequest
+  cu.io.memStallRequest := memStage.io.stallRequest
 }

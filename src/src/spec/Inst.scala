@@ -61,6 +61,8 @@ object Inst {
     val st_w  = i("0010_1001_10")
     val ld_bu = i("0010_1010_00")
     val ld_hu = i("0010_1010_01")
+
+    val preld = i("0010_1010_11")
   }
 
   object _2RI14 {
@@ -85,8 +87,10 @@ object Inst {
   }
 
   object _special {
-    private def i(str: String, opcodeLength: Int) = b(str, opcodeLength.W, 1)
-    val lu12i_w   = i("0001_010", 7)
-    val pcaddu12i = i("0001_110", 7)
+    private def i(str: String, opcodeLength: Int, underLineNum: Int) = b(str, opcodeLength.W, underLineNum)
+    val lu12i_w   = i("0001_010", 7, 1)
+    val pcaddu12i = i("0001_110", 7, 1)
+    val dbar      = i("0011_1000_0111_0010_0", 17, 4)
+    val ibar      = i("0011_1000_0111_0010_1", 17, 4)
   }
 }

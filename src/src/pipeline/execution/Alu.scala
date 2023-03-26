@@ -6,6 +6,8 @@ import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}
 import spec._
 import ExeInst.Op
 import pipeline.ctrl.bundles.PipelineControlNDPort
+import pipeline.execution.bundles.JumpBranchInfoNdPort
+import spec.Param.{AluState => State}
 
 // Attention: if stallRequest is true, the exeInstPort needs to keep unchange
 class Alu extends Module {
@@ -18,19 +20,55 @@ class Alu extends Module {
     val divisorZeroException = Output(Bool())
   })
 
-  io.result := DontCare
+  io.result := AluResultNdPort.default
 
   def lop = io.aluInst.leftOperand
 
   def rop = io.aluInst.rightOperand
 
-  // def arithmetic = io.result.arithmetic
+  val stallRequest = WireDefault(false.B)
+  io.stallRequest := stallRequest
 
-  def logic = io.result.logic
+  /** State machine
+    *
+    * State behaviors for shift, logic, jump and
+    *   - `nonBlocking`: permit mulStage and divStage start running
+    *   - `blocking`: forbidden mulStage and divStage start running
+    *
+    * State transition
+    *   - `nonBlocking`: blocking from other stage -> `nonblocking` else `blocking`
+    *   - `blocking` : blocking from other stage -> `nonblocking` else `blocking`
+    */
 
-  def shift = io.result.shift
+  val nextState = WireDefault(State.nonBlocking)
+  val stateReg  = RegNext(nextState, State.nonBlocking)
 
-  // Logic computation
+  nextState := Mux(io.pipelineControlPort.stall, State.blocking, State.nonBlocking)
+
+  /** Result definition
+    */
+
+  val logic = WireDefault(zeroWord)
+
+  val shift = WireDefault(zeroWord)
+
+  val jumpBranchInfo = WireDefault(JumpBranchInfoNdPort.default)
+
+  // computed with one cycle
+  val arithmetic = WireDefault(zeroWord)
+
+  val computedResult = WireDefault(AluResultNdPort.default)
+  io.result := computedResult
+
+  when(!(io.pipelineControlPort.stall && stallRequest)) {
+    computedResult.arithmetic     := arithmetic
+    computedResult.logic          := logic
+    computedResult.jumpBranchInfo := jumpBranchInfo
+    computedResult.shift          := shift
+  }
+
+  /** Logic computation
+    */
   switch(io.aluInst.op) {
     is(Op.nor) {
       logic := ~(lop | rop)
@@ -46,7 +84,8 @@ class Alu extends Module {
     }
   }
 
-  // shift computation
+  /** shift computation
+    */
   switch(io.aluInst.op) {
     is(Op.sll) {
       shift := lop << rop(4, 0);
@@ -59,56 +98,57 @@ class Alu extends Module {
     }
   }
 
-  // jump and branch
-  io.result.jumpBranchInfo.en := false.B
+  /** jump and branch computation
+    */
   switch(io.aluInst.op) {
     is(Op.b, Op.bl) {
-      io.result.jumpBranchInfo.en     := true.B
-      io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      jumpBranchInfo.en     := true.B
+      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
     }
     is(Op.jirl) {
-      io.result.jumpBranchInfo.en     := true.B
-      io.result.jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr
+      jumpBranchInfo.en     := true.B
+      jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr
     }
     is(Op.beq) {
       when(lop === rop) {
-        io.result.jumpBranchInfo.en     := true.B
-        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+        jumpBranchInfo.en     := true.B
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
     }
     is(Op.bne) {
       when(lop =/= rop) {
-        io.result.jumpBranchInfo.en     := true.B
-        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+        jumpBranchInfo.en     := true.B
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
     }
     is(Op.blt) {
       when(lop.asSInt < rop.asSInt) {
-        io.result.jumpBranchInfo.en     := true.B
-        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+        jumpBranchInfo.en     := true.B
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
     }
     is(Op.bge) {
       when(lop.asSInt >= rop.asSInt) {
-        io.result.jumpBranchInfo.en     := true.B
-        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+        jumpBranchInfo.en     := true.B
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
     }
     is(Op.bltu) {
       when(lop < rop) {
-        io.result.jumpBranchInfo.en     := true.B
-        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+        jumpBranchInfo.en     := true.B
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
     }
     is(Op.bgeu) {
       when(lop >= rop) {
-        io.result.jumpBranchInfo.en     := true.B
-        io.result.jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+        jumpBranchInfo.en     := true.B
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
     }
   }
 
-  // arithmetic
+  /** arithmetic computation
+    */
 
   // mul
 
@@ -120,7 +160,7 @@ class Alu extends Module {
     ).contains(io.aluInst.op)
   )
 
-  val mulStart = Wire(Bool())
+  val mulStart = WireDefault(false.B)
 
   val mulStage = Module(new Mul)
   mulStage.io.mulInst.valid             := mulStart
@@ -130,7 +170,15 @@ class Alu extends Module {
 
   mulStage.io.mulResult.ready := DontCare
 
-  mulStart := useMul && !mulStage.io.mulResult.valid
+  // mulStart := useMul && !mulStage.io.mulResult.valid && !io.pipelineControlPort.stall
+  switch(stateReg) {
+    is(State.nonBlocking) {
+      mulStart := useMul && !mulStage.io.mulResult.valid && !io.pipelineControlPort.stall
+    }
+    is(State.blocking) {
+      mulStart := false.B
+    }
+  }
 
   val mulResult = WireDefault(mulStage.io.mulResult.bits)
 
@@ -139,6 +187,12 @@ class Alu extends Module {
   when(mulStage.io.mulResult.valid) {
     mulResultStoreReg := mulResult
   }
+
+  val selectedMulResult = Mux(
+    mulStage.io.mulResult.valid,
+    mulResult,
+    mulResultStoreReg
+  )
 
   // Div
 
@@ -151,7 +205,7 @@ class Alu extends Module {
     ).contains(io.aluInst.op)
   )
 
-  val divStart = Wire(Bool())
+  val divStart = WireDefault(false.B)
 
   val divStage = Module(new Div)
   divStage.io.divInst.valid             := divStart
@@ -164,7 +218,15 @@ class Alu extends Module {
   val divisorValid = WireDefault(rop.orR)
   io.divisorZeroException := !divisorValid && useDiv
 
-  divStart := (useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid)
+  // divStart := useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid && !io.pipelineControlPort.stall
+  switch(stateReg) {
+    is(State.nonBlocking) {
+      divStart := useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid
+    }
+    is(State.blocking) {
+      divStart := false.B
+    }
+  }
 
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
@@ -178,39 +240,37 @@ class Alu extends Module {
     remainderStoreReg := remainder
   }
 
-  io.stallRequest := (mulStart || divStart || divStage.io.isRunning)
+  val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
+  val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
 
-  val arithmetic = WireDefault(zeroWord)
-  io.result.arithmetic := arithmetic
-  arithmetic           := zeroWord
-  // when(!io.stallRequest) {
-  switch(io.aluInst.op) {
-    is(Op.add) {
-      arithmetic := (lop.asSInt + rop.asSInt).asUInt
-    }
-    is(Op.sub) {
-      arithmetic := (lop.asSInt - rop.asSInt).asUInt
-    }
-    is(Op.slt) {
-      arithmetic := (lop.asSInt < rop.asSInt).asUInt
-    }
-    is(Op.sltu) {
-      arithmetic := (lop < rop).asUInt
-    }
-    is(Op.mul) {
-      arithmetic := Mux(io.stallRequest, zeroWord, mulResult(wordLength - 1, 0))
-    }
-    is(Op.mulh, Op.mulhu) {
-      arithmetic := Mux(io.stallRequest, zeroWord, mulResult(doubleWordLength - 1, wordLength))
-    }
-    is(Op.div, Op.divu) {
-      arithmetic := Mux(io.stallRequest, zeroWord, quotient)
-    }
-    is(Op.mod, Op.modu) {
-      arithmetic := Mux(io.stallRequest, zeroWord, remainder)
+  stallRequest := (mulStart || divStart || divStage.io.isRunning)
+
+  when(!stallRequest) {
+    switch(io.aluInst.op) {
+      is(Op.add) {
+        arithmetic := (lop.asSInt + rop.asSInt).asUInt
+      }
+      is(Op.sub) {
+        arithmetic := (lop.asSInt - rop.asSInt).asUInt
+      }
+      is(Op.slt) {
+        arithmetic := (lop.asSInt < rop.asSInt).asUInt
+      }
+      is(Op.sltu) {
+        arithmetic := (lop < rop).asUInt
+      }
+      is(Op.mul) {
+        arithmetic := selectedMulResult(wordLength - 1, 0)
+      }
+      is(Op.mulh, Op.mulhu) {
+        arithmetic := selectedMulResult(doubleWordLength - 1, wordLength)
+      }
+      is(Op.div, Op.divu) {
+        arithmetic := selectedQuotient
+      }
+      is(Op.mod, Op.modu) {
+        arithmetic := selectedRemainder
+      }
     }
   }
-  // }
-
-  // io.result.arithmetic := Mux(io.pipelineControlPort.stall, )
 }

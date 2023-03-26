@@ -5,15 +5,25 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param
 import pipeline.ctrl.bundles.PipelineControlNDPort
+import spec.PipelineStageIndex
 
 class Cu(ctrlControlNum: Int = Param.ctrlControlNum) extends Module {
   val io = IO(new Bundle {
     // `ExeStage` -> `Cu`
     val exeStallRequest = Input(Bool())
-    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`
+    // `MemStage` -> `Cu`
+    val memStallRequest = Input(Bool())
+    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `MemStage`
     val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNDPort))
   })
 
   io.pipelineControlPorts := DontCare
-  io.pipelineControlPorts.take(3).foreach(_.stall := io.exeStallRequest)
+  // `ExeStage` --stall--> `IssueStage`, `RegReadStage` (DONT STALL ITSELF)
+  Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage)
+    .map(io.pipelineControlPorts(_))
+    .foreach(_.stall := io.exeStallRequest)
+  // `MemStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`  (DONT STALL ITSELF)
+  Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
+    .map(io.pipelineControlPorts(_))
+    .foreach(_.stall := io.memStallRequest)
 }
