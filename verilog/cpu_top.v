@@ -1,6 +1,7 @@
 `include "CoreCpuTop.v"
+parameter AXI_DATA_WIDTH = 32;
 
-module cpu_top (
+module core_top (
     input logic aclk,
     input logic aresetn,
 
