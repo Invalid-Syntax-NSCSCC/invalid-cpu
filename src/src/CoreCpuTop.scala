@@ -159,8 +159,9 @@ class CoreCpuTop extends Module {
 
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
-  memStage.io.memLoadStorePort           := exeStage.io.memLoadStorePort
+  memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort
   memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
+  memStage.io.memLoadStorePort           <> DontCare
   memStage.io.wbDebugPassthroughPort.in  := exeStage.io.wbDebugPassthroughPort.out
 
   // Write-back stage

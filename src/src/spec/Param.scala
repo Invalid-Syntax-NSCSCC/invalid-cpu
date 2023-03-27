@@ -21,6 +21,8 @@ object Param {
     val exeOp                 = 8.W
     val simpleFetchStageState = 2.W
 
+    val memSel = 4.W
+
     object Axi { // crossbar
       val slaveId  = 8
       val masterId = slaveId + log2Ceil(Count.Axi.slave)
