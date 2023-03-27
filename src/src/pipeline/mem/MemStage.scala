@@ -25,7 +25,7 @@ class MemStage extends Module {
     val stallRequest = Output(Bool())
     // `MemStage` -> ?Ram
     val memLoadStorePort = Flipped(new MemLoadStorePort)
-    
+
     val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
   })
 

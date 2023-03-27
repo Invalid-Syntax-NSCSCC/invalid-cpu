@@ -20,7 +20,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
     // TODO: Add `MemStage` in between
     // `ExeStage` -> `WbStage` (next clock pulse)
-    val memLoadStoreInfoPort = Output(new MemLoadStoreInfoNdPort)
+    val memLoadStoreInfoPort   = Output(new MemLoadStoreInfoNdPort)
     val gprWritePort           = Output(new RfWriteNdPort)
     val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
 
