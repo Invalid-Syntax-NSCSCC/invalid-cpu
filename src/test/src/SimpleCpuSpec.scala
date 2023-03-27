@@ -8,7 +8,7 @@ import utest._
 
 object SimpleCpuSpec extends ChiselUtestTester {
   val tests = Tests {
-    test("Test ADDI.W") {
+    test("Test instructions") {
       testCircuit(new CoreCpuTop, Seq(WriteVcdAnnotation)) { cpu =>
         val instSeq = Seq(
           "0000001010_000000000011_00000_00001", // addi $1, $0, 3
