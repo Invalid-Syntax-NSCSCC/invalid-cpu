@@ -34,6 +34,9 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     val pipelineControlPort = Input(new PipelineControlNDPort)
 
     val wbDebugInst = Output(UInt(Width.Reg.data))
+
+    // `Issue Stage` -> `Cu`
+    val instInvalidException = Output(Bool())
   })
 
   // Pass to the next stage in a sequential way
@@ -78,12 +81,14 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   io.fetchInstInfoPort.ready := isFetch
 
   // Implement output function
+  io.instInvalidException := false.B
   switch(stateReg) {
     is(State.nonBlocking) {
       isFetch := true.B
       when(io.fetchInstInfoPort.valid) {
-        selectedInstInfo := io.fetchInstInfoPort.bits
-        instStoreReg     := io.fetchInstInfoPort.bits
+        selectedInstInfo        := io.fetchInstInfoPort.bits
+        instStoreReg            := io.fetchInstInfoPort.bits
+        io.instInvalidException := !isInstValid
       }
     }
     is(State.blocking) {

@@ -15,6 +15,7 @@ import pipeline.execution.Alu
 import pipeline.writeback.bundles.WbDebugNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 
+// TODO: Add (flush ?) when jump / branch
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)

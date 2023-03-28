@@ -9,6 +9,7 @@ import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
 import pipeline.mem.MemStage
 import spec.PipelineStageIndex
+import spec.zeroWord
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -56,7 +57,12 @@ class CoreCpuTop extends Module {
   exeStage.io := DontCare
 
   // Pc
-  pc.io.branchSetPort := exeStage.io.branchSetPort
+  pc.io.branchSetPort       := exeStage.io.branchSetPort
+  pc.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.pc)
+
+  /** ************* TODO: Add flush new pc
+    */
+  pc.io.flushNewPc := zeroWord
 
   // AXI top <> AXI crossbar
   crossbar.io.slaves                       <> DontCare
@@ -181,6 +187,8 @@ class CoreCpuTop extends Module {
   io.debug0_wb.inst     := wbStage.io.wbDebugPassthroughPort.out.inst
 
   // Ctrl unit
-  cu.io.exeStallRequest := exeStage.io.stallRequest
-  cu.io.memStallRequest := memStage.io.stallRequest
+  cu.io.exeStallRequest      := exeStage.io.stallRequest
+  cu.io.memStallRequest      := memStage.io.stallRequest
+  cu.io.instInvalidException := issueStage.io.instInvalidException
+  cu.io.divisorZeroException := exeStage.io.divisorZeroException
 }

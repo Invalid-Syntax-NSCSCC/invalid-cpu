@@ -7,12 +7,19 @@ import spec.Param
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.PipelineStageIndex
 
+// TODO: Add stall to frontend ?
+// TODO: Add flush to stages
+// TODO: Add deal exceptions
 class Cu(ctrlControlNum: Int = Param.ctrlControlNum) extends Module {
   val io = IO(new Bundle {
     // `ExeStage` -> `Cu`
     val exeStallRequest = Input(Bool())
     // `MemStage` -> `Cu`
     val memStallRequest = Input(Bool())
+    // `IssueStage` -> `Cu`
+    val instInvalidException = Input(Bool())
+    // `ExeStage` -> `Cu`
+    val divisorZeroException = Input(Bool())
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `MemStage`
     val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNDPort))
   })
