@@ -8,6 +8,8 @@ import spec.PipelineStageIndex
 object Param {
   // Configurable self-defined parameters go here
 
+  val isDiffTest = true
+
   val instQueueLength     = 5
   val regFileReadNum      = 3
   val scoreboardChangeNum = 1
