@@ -11,7 +11,7 @@ class Pc extends Module {
     val pc     = Output(UInt(Width.Reg.data))
     val isNext = Input(Bool())
     // `ExeStage` -> `Pc` (no delay)
-    val branchSetPort = Output(new JumpBranchInfoNdPort)
+    val branchSetPort = Input(new JumpBranchInfoNdPort)
   })
 
   val pcReg = RegInit(zeroWord)
