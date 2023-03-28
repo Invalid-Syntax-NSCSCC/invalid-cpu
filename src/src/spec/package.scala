@@ -43,6 +43,11 @@ package object spec {
       val data = wordLength.W
     }
 
+    object CsrReg {
+      val addr = 14.W
+      val data = wordLength.W
+    }
+
     object Op {
       val _2RI12 = 10.W
       val _2RI14 = 8.W
@@ -65,7 +70,8 @@ package object spec {
   }
 
   object Count {
-    val reg = wordLength
+    val reg    = wordLength
+    val csrReg = CsrRegs.Index.getCount
   }
 
 }

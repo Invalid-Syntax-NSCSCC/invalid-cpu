@@ -55,6 +55,9 @@ class CoreCpuTop extends Module {
   // TODO: Other connections
   exeStage.io := DontCare
 
+  // Pc
+  pc.io.branchSetPort := exeStage.io.branchSetPort
+
   // AXI top <> AXI crossbar
   crossbar.io.slaves                       <> DontCare
   crossbar.io.masters(0).read.r.bits.user  <> DontCare

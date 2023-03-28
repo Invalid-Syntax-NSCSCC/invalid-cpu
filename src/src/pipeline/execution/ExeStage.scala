@@ -13,16 +13,19 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param.{ExeStageState => State}
 import pipeline.execution.Alu
 import pipeline.writeback.bundles.WbDebugNdPort
+import pipeline.execution.bundles.JumpBranchInfoNdPort
 
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)
 
-    // TODO: Add `MemStage` in between
-    // `ExeStage` -> `WbStage` (next clock pulse)
+    // `ExeStage` -> `MemStage` (next clock pulse)
     val memLoadStoreInfoPort   = Output(new MemLoadStoreInfoNdPort)
     val gprWritePort           = Output(new RfWriteNdPort)
     val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
+
+    // `ExeStage` -> `Pc` (no delay)
+    val branchSetPort = Output(new JumpBranchInfoNdPort)
 
     // Pipeline control signal
     // `Cu` -> `ExeStage`
@@ -119,10 +122,15 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   }
 
   // MemLoadStoreInfo
-  io.memLoadStoreInfoPort.exeOp := io.exeInstPort.exeOp
+  val memLoadStoreInfoReg = RegInit(MemLoadStoreInfoNdPort.default)
+  io.memLoadStoreInfoPort := memLoadStoreInfoReg
+
+  memLoadStoreInfoReg.exeOp := io.exeInstPort.exeOp
   // store : the data to write
   // preld, dbar, ibar : hint
-  io.memLoadStoreInfoPort.data  := io.exeInstPort.rightOperand
-  io.memLoadStoreInfoPort.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
+  memLoadStoreInfoReg.data  := io.exeInstPort.rightOperand
+  memLoadStoreInfoReg.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
 
+  // branch set
+  io.branchSetPort := alu.io.result.jumpBranchInfo
 }
