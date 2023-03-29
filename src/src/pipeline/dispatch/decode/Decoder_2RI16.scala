@@ -10,7 +10,7 @@ import pipeline.dispatch.bundles.DecodeOutNdPort
 class Decoder_2RI16 extends Decoder {
 
   io.out := DecodeOutNdPort.default
-  
+
   val opcode = WireDefault(io.instInfoPort.inst(31, 26))
   val imm16  = WireDefault(io.instInfoPort.inst(25, 10))
   val rj     = WireDefault(io.instInfoPort.inst(9, 5))

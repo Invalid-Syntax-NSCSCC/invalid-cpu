@@ -7,7 +7,7 @@ import spec.Inst.{_3R => Inst}
 import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_3R extends Decoder {
- 
+
   io.out := DecodeOutNdPort.default
 
   io.out.isMatched := false.B

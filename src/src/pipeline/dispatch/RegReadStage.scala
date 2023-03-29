@@ -27,11 +27,13 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     // `Cu` -> `RegReadStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
 
+    // (next clock pulse)
     val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
   })
 
   // Wb debug port connection
-  val wbDebugReg = RegInit(WbDebugNdPort.default)
+  // Wb debug port connection
+  val wbDebugReg = Reg(new WbDebugNdPort)
   wbDebugReg                    := io.wbDebugPassthroughPort.in
   io.wbDebugPassthroughPort.out := wbDebugReg
 

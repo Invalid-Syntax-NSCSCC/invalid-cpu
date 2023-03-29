@@ -6,14 +6,22 @@ import chisel3.util._
 import spec._
 
 class WbDebugNdPort extends Bundle {
-  val pc   = UInt(Width.Reg.data)
-  val inst = UInt(Width.Reg.data)
-  val exception = UInt(CsrRegs.Exception.width)
+  val pc               = UInt(Width.Reg.data)
+  val inst             = UInt(Width.Reg.data)
+  val exceptionRecords = Vec(CsrRegs.ExceptionIndex.width, Bool())
 }
 
 object WbDebugNdPort {
-  val default = (new WbDebugNdPort).Lit(
-    _.pc -> 0.U,
-    _.inst -> 0.U
-  )
+  // val default = (new WbDebugNdPort).Lit(
+  //   _.pc -> zeroWord,
+  //   _.inst -> zeroWord,
+  //   _.exceptionRecord -> VecInit(Seq.fill(CsrRegs.ExceptionIndex.width)(false.B))
+  // )
+  def setDefault(wbDebugPort: WbDebugNdPort): Unit = {
+    wbDebugPort.pc   := zeroWord
+    wbDebugPort.inst := zeroWord
+    wbDebugPort.exceptionRecords.foreach { record =>
+      record := false.B
+    }
+  }
 }

@@ -17,7 +17,9 @@ import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.Param.{IssueStageState => State}
 import pipeline.writeback.bundles.WbDebugNdPort
+import CsrRegs.ExceptionIndex
 
+// throws exceptions: 指令不存在异常ine
 class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
   val io = IO(new Bundle {
     // `InstQueue` -> `IssueStage`
@@ -35,10 +37,12 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     val pipelineControlPort = Input(new PipelineControlNDPort)
 
     val wbDebugPort = Output(new WbDebugNdPort)
-
-    // `Issue Stage` -> `Cu`
-    val instInvalidException = Output(Bool())
   })
+
+  // Wb debug port connection
+  val wbDebugReg = Reg(new WbDebugNdPort)
+  WbDebugNdPort.setDefault(wbDebugReg)
+  io.wbDebugPort := wbDebugReg
 
   // Pass to the next stage in a sequential way
   val issuedInfoReg = RegInit(IssuedInfoNdPort.default)
@@ -83,14 +87,14 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
 
   // Implement output function
   val isInstValid = Wire(Bool())
-  io.instInvalidException := false.B
   switch(stateReg) {
     is(State.nonBlocking) {
       isFetch := true.B
       when(io.fetchInstInfoPort.valid) {
-        selectedInstInfo        := io.fetchInstInfoPort.bits
-        instStoreReg            := io.fetchInstInfoPort.bits
-        io.instInvalidException := !isInstValid
+        selectedInstInfo := io.fetchInstInfoPort.bits
+        instStoreReg     := io.fetchInstInfoPort.bits
+        // 指令不存在异常
+        wbDebugReg.exceptionRecords(CsrRegs.ExceptionIndex.ine) := !isInstValid
       }
     }
     is(State.blocking) {
@@ -130,7 +134,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     *     - If inst invalid:
     *       - non-blocking
     */
-  isInstValid := decoderWires.map(_.isMatched).reduce(_||_)
+  isInstValid := decoderWires.map(_.isMatched).reduce(_ || _)
   val isScoreboardBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
     port.en && io.regScores(port.addr)
   }.reduce(_ || _))
@@ -167,9 +171,6 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     port.en   := false.B
     port.addr := DontCare
   }
-  val wbDebugReg = RegInit(WbDebugNdPort.default)
-  io.wbDebugPort := wbDebugReg
-  wbDebugReg     := WbDebugNdPort.default
 
   // Issue pre-execution instruction
 

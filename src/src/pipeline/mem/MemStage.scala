@@ -30,7 +30,8 @@ class MemStage extends Module {
   })
 
   // Wb debug port connection
-  val wbDebugReg = RegNext(io.wbDebugPassthroughPort.in, WbDebugNdPort.default)
+  val wbDebugReg = Reg(new WbDebugNdPort)
+  wbDebugReg                    := io.wbDebugPassthroughPort.in
   io.wbDebugPassthroughPort.out := wbDebugReg
 
   val gprWriteReg = RegInit(RfWriteNdPort.default)

@@ -16,6 +16,7 @@ import pipeline.writeback.bundles.WbDebugNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 
 // TODO: Add (flush ?) when jump / branch
+// throws exceptions : 除零终端int
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)
@@ -33,12 +34,11 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val pipelineControlPort = Input(new PipelineControlNDPort)
     // `ExeStage` -> `Cu`
     val stallRequest = Output(Bool())
-    // Exception
-    val divisorZeroException = Output(Bool())
   })
 
   // Wb debug port connection
-  val wbDebugReg = RegNext(io.wbDebugPassthroughPort.in, WbDebugNdPort.default)
+  val wbDebugReg = Reg(new WbDebugNdPort)
+  wbDebugReg                    := io.wbDebugPassthroughPort.in
   io.wbDebugPassthroughPort.out := wbDebugReg
 
   // Pass to the next stage in a sequential way
@@ -65,19 +65,19 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val pcStoreReg = RegInit(zeroWord)
   pcStoreReg := pcStoreReg
   val selectedExeInst = WireDefault(ExeInstNdPort.default)
-  val selectedPc = WireDefault(zeroWord)
+  val selectedPc      = WireDefault(zeroWord)
 
   // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
       selectedExeInst := io.exeInstPort
       exeInstStoreReg := io.exeInstPort
-      selectedPc := io.wbDebugPassthroughPort.in.pc
-      pcStoreReg := io.wbDebugPassthroughPort.in.pc
+      selectedPc      := io.wbDebugPassthroughPort.in.pc
+      pcStoreReg      := io.wbDebugPassthroughPort.in.pc
     }
     is(State.blocking) {
       selectedExeInst := exeInstStoreReg
-      selectedPc := pcStoreReg
+      selectedPc      := pcStoreReg
     }
   }
 
@@ -100,7 +100,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   alu.io.pipelineControlPort    := io.pipelineControlPort
 
   // ALU output
-  io.divisorZeroException := alu.io.divisorZeroException
+  wbDebugReg.exceptionRecords(CsrRegs.ExceptionIndex.int) := alu.io.divisorZeroException
 
   // write-back information fallback
   gprWriteReg.en   := false.B
