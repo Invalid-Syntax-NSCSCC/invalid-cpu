@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import pipeline.writeback.bundles.WbDebugNdPort
+import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec._
 
@@ -16,7 +16,7 @@ class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
     // Scoreboard
     val freePorts = Output(Vec(changeNum, new ScoreboardChangeNdPort))
 
-    val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
+    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
     val difftest =
       if (isDiffTest)
@@ -38,7 +38,7 @@ class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
   })
 
   // Wb debug port connection
-  io.wbDebugPassthroughPort.out := io.wbDebugPassthroughPort.in
+  io.instInfoPassThroughPort.out := io.instInfoPassThroughPort.in
 
   io.gprWritePort := io.gprWriteInfoPort
 
@@ -53,8 +53,8 @@ class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
   io.difftest match {
     case Some(dt) =>
       dt       := DontCare
-      dt.pc    := RegNext(io.wbDebugPassthroughPort.in.pc)
-      dt.instr := RegNext(io.wbDebugPassthroughPort.in.inst)
+      dt.pc    := RegNext(io.instInfoPassThroughPort.in.pc)
+      dt.instr := RegNext(io.instInfoPassThroughPort.in.inst)
       dt.wen   := RegNext(io.gprWriteInfoPort.en)
       dt.wdest := RegNext(io.gprWriteInfoPort.addr)
       dt.wdata := RegNext(io.gprWriteInfoPort.data)

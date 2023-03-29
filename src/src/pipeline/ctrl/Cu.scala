@@ -6,12 +6,15 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.PipelineStageIndex
+import pipeline.writeback.bundles.InstInfoNdPort
 
 // TODO: Add stall to frontend ?
 // TODO: Add flush to stages
 // TODO: Add deal exceptions
 class Cu(ctrlControlNum: Int = Param.ctrlControlNum) extends Module {
   val io = IO(new Bundle {
+    // `WbStage` -> `Cu`
+    val instInfoPort = Input(new InstInfoNdPort)
     // `ExeStage` -> `Cu`
     val exeStallRequest = Input(Bool())
     // `MemStage` -> `Cu`

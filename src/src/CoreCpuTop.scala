@@ -215,40 +215,41 @@ class CoreCpuTop extends Module {
   issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
 
   // Reg-read stage
-  regReadStage.io.issuedInfoPort            := issueStage.io.issuedInfoPort
-  regReadStage.io.gprReadPorts(0)           <> regFile.io.readPorts(0)
-  regReadStage.io.gprReadPorts(1)           <> regFile.io.readPorts(1)
-  regReadStage.io.pipelineControlPort       := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
-  regReadStage.io.wbDebugPassthroughPort.in := issueStage.io.wbDebugPort
+  regReadStage.io.issuedInfoPort             := issueStage.io.issuedInfoPort
+  regReadStage.io.gprReadPorts(0)            <> regFile.io.readPorts(0)
+  regReadStage.io.gprReadPorts(1)            <> regFile.io.readPorts(1)
+  regReadStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
+  regReadStage.io.instInfoPassThroughPort.in := issueStage.io.instInfoPort
 
   // Execution stage
-  exeStage.io.exeInstPort               := regReadStage.io.exeInstPort
-  exeStage.io.pipelineControlPort       := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
-  exeStage.io.wbDebugPassthroughPort.in := regReadStage.io.wbDebugPassthroughPort.out
+  exeStage.io.exeInstPort                := regReadStage.io.exeInstPort
+  exeStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
+  exeStage.io.instInfoPassThroughPort.in := regReadStage.io.instInfoPassThroughPort.out
 
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
   memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort
   memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
   memStage.io.memLoadStorePort           <> DontCare
-  memStage.io.wbDebugPassthroughPort.in  := exeStage.io.wbDebugPassthroughPort.out
+  memStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
 
   // Write-back stage
-  wbStage.io.gprWriteInfoPort          := memStage.io.gprWritePassThroughPort.out
-  wbStage.io.wbDebugPassthroughPort.in := memStage.io.wbDebugPassthroughPort.out
-  regFile.io.writePort                 := wbStage.io.gprWritePort
-  scoreboard.io.freePorts              := wbStage.io.freePorts
+  wbStage.io.gprWriteInfoPort           := memStage.io.gprWritePassThroughPort.out
+  wbStage.io.instInfoPassThroughPort.in := memStage.io.instInfoPassThroughPort.out
+  regFile.io.writePort                  := wbStage.io.gprWritePort
+  scoreboard.io.freePorts               := wbStage.io.freePorts
 
   // Ctrl unit
+  cu.io.instInfoPort    := wbStage.io.instInfoPassThroughPort.out
   cu.io.exeStallRequest := exeStage.io.stallRequest
   cu.io.memStallRequest := memStage.io.stallRequest
 
   // Debug ports
-  io.debug0_wb.pc       := wbStage.io.wbDebugPassthroughPort.out.pc
+  io.debug0_wb.pc       := wbStage.io.instInfoPassThroughPort.out.pc
   io.debug0_wb.rf.wen   := wbStage.io.gprWritePort.en
   io.debug0_wb.rf.wnum  := wbStage.io.gprWritePort.addr
   io.debug0_wb.rf.wdata := wbStage.io.gprWritePort.data
-  io.debug0_wb.inst     := wbStage.io.wbDebugPassthroughPort.out.inst
+  io.debug0_wb.inst     := wbStage.io.instInfoPassThroughPort.out.inst
 
   // Difftest
   // TODO: DifftestInstrCommit (partial), DifftestExcpEvent, DifftestTrapEvent, DifftestStoreEvent, DifftestLoadEvent, DifftestCSRRegState

@@ -16,7 +16,7 @@ import pipeline.dispatch.decode.{
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.Param.{IssueStageState => State}
-import pipeline.writeback.bundles.WbDebugNdPort
+import pipeline.writeback.bundles.InstInfoNdPort
 import CsrRegs.ExceptionIndex
 
 // throws exceptions: 指令不存在异常ine
@@ -36,13 +36,13 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     // `Cu` -> `IssueStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
 
-    val wbDebugPort = Output(new WbDebugNdPort)
+    val instInfoPort = Output(new InstInfoNdPort)
   })
 
   // Wb debug port connection
-  val wbDebugReg = Reg(new WbDebugNdPort)
-  WbDebugNdPort.setDefault(wbDebugReg)
-  io.wbDebugPort := wbDebugReg
+  val instInfoReg = Reg(new InstInfoNdPort)
+  InstInfoNdPort.setDefault(instInfoReg)
+  io.instInfoPort := instInfoReg
 
   // Pass to the next stage in a sequential way
   val issuedInfoReg = RegInit(IssuedInfoNdPort.default)
@@ -94,7 +94,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
         selectedInstInfo := io.fetchInstInfoPort.bits
         instStoreReg     := io.fetchInstInfoPort.bits
         // 指令不存在异常
-        wbDebugReg.exceptionRecords(CsrRegs.ExceptionIndex.ine) := !isInstValid
+        instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ine) := !isInstValid
       }
     }
     is(State.blocking) {
@@ -184,7 +184,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     }
 
     issuedInfoReg.info := selectedDecoder.info
-    wbDebugReg.inst    := selectedInstInfo.inst
-    wbDebugReg.pc      := selectedInstInfo.pcAddr
+    instInfoReg.inst   := selectedInstInfo.inst
+    instInfoReg.pc     := selectedInstInfo.pcAddr
   }
 }
