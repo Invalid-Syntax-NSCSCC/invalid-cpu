@@ -1,5 +1,6 @@
 import chisel3.stage._
 import circt.stage.{CIRCTTarget, CIRCTTargetAnnotation}
+import pipeline.dispatch.IssueStage
 
 object Elaborate extends App {
   val useMFC    = true // Use MLIR-based firrtl compiler

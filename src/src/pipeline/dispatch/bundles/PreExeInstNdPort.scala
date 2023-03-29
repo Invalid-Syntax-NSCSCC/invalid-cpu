@@ -23,7 +23,6 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   val imm      = UInt(Width.Reg.data)
 
   // Branch jump addr
-  val pcAddr         = UInt(Width.Reg.data)
   val jumpBranchAddr = UInt(Width.Reg.data)
 
   def loadStoreImm = jumpBranchAddr
@@ -39,7 +38,6 @@ object PreExeInstNdPort {
     _.gprWritePort -> RfAccessInfoNdPort.default,
     _.isHasImm -> false.B,
     _.imm -> 0.U,
-    _.pcAddr -> zeroWord,
     _.jumpBranchAddr -> zeroWord
   )
 }

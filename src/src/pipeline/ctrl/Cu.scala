@@ -7,6 +7,9 @@ import spec.Param
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.PipelineStageIndex
 
+// TODO: Add stall to frontend ?
+// TODO: Add flush to stages
+// TODO: Add deal exceptions
 class Cu(ctrlControlNum: Int = Param.ctrlControlNum) extends Module {
   val io = IO(new Bundle {
     // `ExeStage` -> `Cu`

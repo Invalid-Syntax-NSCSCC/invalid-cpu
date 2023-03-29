@@ -23,6 +23,7 @@ package object spec {
       count += 1
       idx
     }
+    val pc           = next
     val issueStage   = next
     val regReadStage = next
     val exeStage     = next
@@ -40,6 +41,11 @@ package object spec {
     val inst = wordLength.W
     object Reg {
       val addr = wordLog.W
+      val data = wordLength.W
+    }
+
+    object CsrReg {
+      val addr = 14.W
       val data = wordLength.W
     }
 
@@ -65,7 +71,8 @@ package object spec {
   }
 
   object Count {
-    val reg = wordLength
+    val reg    = wordLength
+    val csrReg = CsrRegs.Index.getCount
   }
 
 }

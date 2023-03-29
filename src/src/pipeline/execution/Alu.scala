@@ -8,6 +8,7 @@ import ExeInst.Op
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import spec.Param.{AluState => State}
+import pipeline.execution.Mul
 
 // Attention: if stallRequest is true, the exeInstPort needs to keep unchange
 class Alu extends Module {

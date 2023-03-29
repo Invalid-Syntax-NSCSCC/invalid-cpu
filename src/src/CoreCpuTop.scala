@@ -10,6 +10,7 @@ import pipeline.writeback.WbStage
 import pipeline.mem.MemStage
 import spec.Param.isDiffTest
 import spec.PipelineStageIndex
+import spec.zeroWord
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -115,6 +116,14 @@ class CoreCpuTop extends Module {
   // TODO: Other connections
   exeStage.io := DontCare
 
+  // Pc
+  pc.io.branchSetPort       := exeStage.io.branchSetPort
+  pc.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.pc)
+
+  /** ************* TODO: Add flush new pc
+    */
+  pc.io.flushNewPc := zeroWord
+
   // AXI top <> AXI crossbar
   crossbar.io.slaves                       <> DontCare
   crossbar.io.masters(0).read.r.bits.user  <> DontCare
@@ -206,16 +215,16 @@ class CoreCpuTop extends Module {
   issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
 
   // Reg-read stage
-  regReadStage.io.issuedInfoPort      := issueStage.io.issuedInfoPort
-  regReadStage.io.gprReadPorts(0)     <> regFile.io.readPorts(0)
-  regReadStage.io.gprReadPorts(1)     <> regFile.io.readPorts(1)
-  regReadStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
-  regReadStage.io.wbDebugInst         := issueStage.io.wbDebugInst
+  regReadStage.io.issuedInfoPort            := issueStage.io.issuedInfoPort
+  regReadStage.io.gprReadPorts(0)           <> regFile.io.readPorts(0)
+  regReadStage.io.gprReadPorts(1)           <> regFile.io.readPorts(1)
+  regReadStage.io.pipelineControlPort       := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
+  regReadStage.io.wbDebugPassthroughPort.in := issueStage.io.wbDebugPort
 
   // Execution stage
   exeStage.io.exeInstPort               := regReadStage.io.exeInstPort
   exeStage.io.pipelineControlPort       := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
-  exeStage.io.wbDebugPassthroughPort.in := regReadStage.io.wbDebugPort
+  exeStage.io.wbDebugPassthroughPort.in := regReadStage.io.wbDebugPassthroughPort.out
 
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort

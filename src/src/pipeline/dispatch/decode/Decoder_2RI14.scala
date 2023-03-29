@@ -5,8 +5,12 @@ import chisel3.util._
 import pipeline.dispatch.bundles.DecodePort
 import spec._
 import spec.Inst.{_2RI14 => Inst}
+import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_2RI14 extends Decoder {
+
+  io.out := DecodeOutNdPort.default
+
   val opcode = WireDefault(io.instInfoPort.inst(31, 24))
   val imm14  = WireDefault(io.instInfoPort.inst(23, 10))
   val rj     = WireDefault(io.instInfoPort.inst(9, 5))
@@ -37,7 +41,6 @@ class Decoder_2RI14 extends Decoder {
   io.out.info.imm            := DontCare
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
-  io.out.info.pcAddr         := DontCare
 
   switch(opcode) {
     is(Inst.ll) {
