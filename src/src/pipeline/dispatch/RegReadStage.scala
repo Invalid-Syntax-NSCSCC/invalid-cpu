@@ -27,15 +27,13 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     // `Cu` -> `RegReadStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
 
-    val wbDebugInst = Input(UInt(Width.Reg.data))
-    val wbDebugPort = Output(new WbDebugNdPort)
+    val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
   })
 
   // Wb debug port connection
   val wbDebugReg = RegInit(WbDebugNdPort.default)
-  wbDebugReg.pc   := io.exeInstPort.pcAddr
-  wbDebugReg.inst := io.wbDebugInst
-  io.wbDebugPort  := wbDebugReg
+  wbDebugReg                    := io.wbDebugPassthroughPort.in
+  io.wbDebugPassthroughPort.out := wbDebugReg
 
   val stallFromCtrl = WireDefault(io.pipelineControlPort.stall)
 
@@ -95,7 +93,6 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
       exeInstReg.exeOp          := io.issuedInfoPort.info.exeOp
       exeInstReg.gprWritePort   := io.issuedInfoPort.info.gprWritePort
       exeInstReg.jumpBranchAddr := io.issuedInfoPort.info.jumpBranchAddr
-      exeInstReg.pcAddr         := io.issuedInfoPort.info.pcAddr
     }
   }
 }

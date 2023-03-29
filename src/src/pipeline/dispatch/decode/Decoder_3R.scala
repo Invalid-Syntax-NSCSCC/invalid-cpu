@@ -4,9 +4,11 @@ import chisel3._
 import chisel3.util._
 import spec._
 import spec.Inst.{_3R => Inst}
+import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_3R extends Decoder {
-  // TODO: Fix bug where `isMatched` is always true
+ 
+  io.out := DecodeOutNdPort.default
 
   io.out.isMatched := false.B
 
@@ -33,7 +35,6 @@ class Decoder_3R extends Decoder {
   io.out.info.imm            := DontCare
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
-  io.out.info.pcAddr         := DontCare
 
   switch(opcode) {
     is(Inst.add_w) {

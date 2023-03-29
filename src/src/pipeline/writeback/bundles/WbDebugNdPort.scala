@@ -8,10 +8,11 @@ import spec._
 class WbDebugNdPort extends Bundle {
   val pc   = UInt(Width.Reg.data)
   val inst = UInt(Width.Reg.data)
+  val exception = UInt(CsrRegs.Exception.width)
 }
 
 object WbDebugNdPort {
-  def default = (new WbDebugNdPort).Lit(
+  val default = (new WbDebugNdPort).Lit(
     _.pc -> 0.U,
     _.inst -> 0.U
   )

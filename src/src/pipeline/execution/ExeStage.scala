@@ -62,16 +62,22 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   // State machine output (including fallback)
   val exeInstStoreReg = RegInit(ExeInstNdPort.default)
   exeInstStoreReg := exeInstStoreReg
+  val pcStoreReg = RegInit(zeroWord)
+  pcStoreReg := pcStoreReg
   val selectedExeInst = WireDefault(ExeInstNdPort.default)
+  val selectedPc = WireDefault(zeroWord)
 
   // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
       selectedExeInst := io.exeInstPort
       exeInstStoreReg := io.exeInstPort
+      selectedPc := io.wbDebugPassthroughPort.in.pc
+      pcStoreReg := io.wbDebugPassthroughPort.in.pc
     }
     is(State.blocking) {
       selectedExeInst := exeInstStoreReg
+      selectedPc := pcStoreReg
     }
   }
 
@@ -117,7 +123,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
         gprWriteReg.data := alu.io.result.arithmetic
       }
       is(Sel.jumpBranch) {
-        gprWriteReg.data := io.exeInstPort.pcAddr + 4.U
+        gprWriteReg.data := selectedPc + 4.U
       }
     }
   }

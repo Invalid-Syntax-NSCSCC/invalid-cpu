@@ -155,16 +155,16 @@ class CoreCpuTop extends Module {
   issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
 
   // Reg-read stage
-  regReadStage.io.issuedInfoPort      := issueStage.io.issuedInfoPort
-  regReadStage.io.gprReadPorts(0)     <> regFile.io.readPorts(0)
-  regReadStage.io.gprReadPorts(1)     <> regFile.io.readPorts(1)
-  regReadStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
-  regReadStage.io.wbDebugInst         := issueStage.io.wbDebugInst
+  regReadStage.io.issuedInfoPort            := issueStage.io.issuedInfoPort
+  regReadStage.io.gprReadPorts(0)           <> regFile.io.readPorts(0)
+  regReadStage.io.gprReadPorts(1)           <> regFile.io.readPorts(1)
+  regReadStage.io.pipelineControlPort       := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
+  regReadStage.io.wbDebugPassthroughPort.in := issueStage.io.wbDebugPort
 
   // Execution stage
   exeStage.io.exeInstPort               := regReadStage.io.exeInstPort
   exeStage.io.pipelineControlPort       := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
-  exeStage.io.wbDebugPassthroughPort.in := regReadStage.io.wbDebugPort
+  exeStage.io.wbDebugPassthroughPort.in := regReadStage.io.wbDebugPassthroughPort.out
 
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
@@ -187,8 +187,6 @@ class CoreCpuTop extends Module {
   io.debug0_wb.inst     := wbStage.io.wbDebugPassthroughPort.out.inst
 
   // Ctrl unit
-  cu.io.exeStallRequest      := exeStage.io.stallRequest
-  cu.io.memStallRequest      := memStage.io.stallRequest
-  cu.io.instInvalidException := issueStage.io.instInvalidException
-  cu.io.divisorZeroException := exeStage.io.divisorZeroException
+  cu.io.exeStallRequest := exeStage.io.stallRequest
+  cu.io.memStallRequest := memStage.io.stallRequest
 }

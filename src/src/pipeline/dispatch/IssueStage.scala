@@ -16,6 +16,7 @@ import pipeline.dispatch.decode.{
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.Param.{IssueStageState => State}
+import pipeline.writeback.bundles.WbDebugNdPort
 
 class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
   val io = IO(new Bundle {
@@ -33,7 +34,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     // `Cu` -> `IssueStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
 
-    val wbDebugInst = Output(UInt(Width.Reg.data))
+    val wbDebugPort = Output(new WbDebugNdPort)
 
     // `Issue Stage` -> `Cu`
     val instInvalidException = Output(Bool())
@@ -81,6 +82,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   io.fetchInstInfoPort.ready := isFetch
 
   // Implement output function
+  val isInstValid = Wire(Bool())
   io.instInvalidException := false.B
   switch(stateReg) {
     is(State.nonBlocking) {
@@ -103,9 +105,9 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     Module(new Decoder_2RI12),
     Module(new Decoder_2RI14),
     Module(new Decoder_2RI16),
-    Module(new Decoder_2R),
+    // Module(new Decoder_2R),
     Module(new Decoder_3R),
-    Module(new Decoder_4R),
+    // Module(new Decoder_4R),
     Module(new Decoder_special)
   )
   decoders.foreach(_.io.instInfoPort := selectedInstInfo)
@@ -128,7 +130,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     *     - If inst invalid:
     *       - non-blocking
     */
-  val isInstValid = WireDefault(decoderWires.map(_.isMatched).reduce(_ || _))
+  isInstValid := decoderWires.map(_.isMatched).reduce(_||_)
   val isScoreboardBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
     port.en && io.regScores(port.addr)
   }.reduce(_ || _))
@@ -165,9 +167,9 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     port.en   := false.B
     port.addr := DontCare
   }
-  val wbDebugInstReg = RegInit(0.U(Width.Reg.data))
-  io.wbDebugInst := wbDebugInstReg
-  wbDebugInstReg := 0.U
+  val wbDebugReg = RegInit(WbDebugNdPort.default)
+  io.wbDebugPort := wbDebugReg
+  wbDebugReg     := WbDebugNdPort.default
 
   // Issue pre-execution instruction
 
@@ -181,6 +183,7 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     }
 
     issuedInfoReg.info := selectedDecoder.info
-    wbDebugInstReg     := selectedInstInfo.inst
+    wbDebugReg.inst    := selectedInstInfo.inst
+    wbDebugReg.pc      := selectedInstInfo.pcAddr
   }
 }

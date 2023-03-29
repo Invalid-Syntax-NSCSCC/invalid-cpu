@@ -30,7 +30,7 @@ object ExeStageStallSpec extends ChiselUtestTester {
         instPort.exeOp.poke(op)
         instPort.exeSel.poke(sel)
         instPort.jumpBranchAddr.poke(zeroWord)
-        instPort.pcAddr.poke(zeroWord)
+        // instPort.pcAddr.poke(zeroWord)
         instPort.leftOperand.poke(lop.U)
         instPort.rightOperand.poke(rop.U)
 

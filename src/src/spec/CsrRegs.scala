@@ -78,4 +78,33 @@ object CsrRegs {
 
   }
 
+  object Exception {
+    private var count = 0
+
+    private def next = {
+      count += 1
+      count.U(Width.CsrReg.addr)
+    }
+
+    val int  = next
+    val pil  = next
+    val pis  = next
+    val pif  = next
+    val pme  = next
+    val ppi  = next
+    val adef = next
+    val adem = next
+    val ale  = next
+    val sys  = next
+    val brk  = next
+    val ine  = next
+    val ipe  = next
+    val fpd  = next
+    val fpe  =  next
+    val tlbr =  next
+
+
+    def width = count.W
+  }
+
 }

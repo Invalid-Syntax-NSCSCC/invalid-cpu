@@ -16,7 +16,6 @@ class ExeInstNdPort extends Bundle {
   val rightOperand = UInt(Width.Reg.data)
 
   // Branch jump addr
-  val pcAddr         = UInt(Width.Reg.data)
   val jumpBranchAddr = UInt(Width.Reg.data)
   def loadStoreImm   = jumpBranchAddr
 
@@ -33,7 +32,6 @@ object ExeInstNdPort {
     _.leftOperand -> 0.U,
     _.rightOperand -> 0.U,
     _.gprWritePort -> RfAccessInfoNdPort.default,
-    _.pcAddr -> zeroWord,
     _.jumpBranchAddr -> zeroWord
   )
 }
