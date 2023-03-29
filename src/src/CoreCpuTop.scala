@@ -11,6 +11,7 @@ import pipeline.mem.MemStage
 import spec.Param.isDiffTest
 import spec.PipelineStageIndex
 import spec.zeroWord
+import pipeline.ctrl.Csr
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -97,6 +98,7 @@ class CoreCpuTop extends Module {
   val memStage         = Module(new MemStage)
   val wbStage          = Module(new WbStage)
   val cu               = Module(new Cu)
+  val csr              = Module(new Csr)
 
   val crossbar = Module(new AxiCrossbar)
 
@@ -112,6 +114,7 @@ class CoreCpuTop extends Module {
   regFile.io      <> DontCare
   scoreboard.io   <> DontCare
   cu.io           <> DontCare
+  csr.io          <> DontCare
 
   // TODO: Other connections
   exeStage.io := DontCare
@@ -236,13 +239,21 @@ class CoreCpuTop extends Module {
   // Write-back stage
   wbStage.io.gprWriteInfoPort           := memStage.io.gprWritePassThroughPort.out
   wbStage.io.instInfoPassThroughPort.in := memStage.io.instInfoPassThroughPort.out
-  regFile.io.writePort                  := wbStage.io.gprWritePort
+  regFile.io.writePort                  := cu.io.gprWritePassThroughPort.out
   scoreboard.io.freePorts               := wbStage.io.freePorts
 
   // Ctrl unit
-  cu.io.instInfoPort    := wbStage.io.instInfoPassThroughPort.out
-  cu.io.exeStallRequest := exeStage.io.stallRequest
-  cu.io.memStallRequest := memStage.io.stallRequest
+  cu.io.instInfoPort               := wbStage.io.instInfoPassThroughPort.out
+  cu.io.exeStallRequest            := exeStage.io.stallRequest
+  cu.io.memStallRequest            := memStage.io.stallRequest
+  cu.io.gprWritePassThroughPort.in := wbStage.io.gprWritePort
+
+  // Csr
+  csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
+    case (dst, src) => {
+      dst := src
+    }
+  }
 
   // Debug ports
   io.debug0_wb.pc       := wbStage.io.instInfoPassThroughPort.out.pc
