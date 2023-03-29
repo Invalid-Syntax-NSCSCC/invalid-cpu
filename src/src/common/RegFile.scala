@@ -3,12 +3,20 @@ package common
 import chisel3._
 import chisel3.util._
 import common.bundles._
+import spec.Param.isDiffTest
 import spec._
 
 class RegFile(readNum: Int = Param.regFileReadNum) extends Module {
   val io = IO(new Bundle {
     val writePort = Input(new RfWriteNdPort)
     val readPorts = Vec(readNum, new RfReadPort)
+
+    val difftest =
+      if (isDiffTest)
+        Some(Output(new Bundle {
+          val gpr = Vec(Count.reg, UInt(Width.Reg.data))
+        }))
+      else None
   })
 
   // 32 bits registers of 32 number
@@ -40,5 +48,15 @@ class RegFile(readNum: Int = Param.regFileReadNum) extends Module {
         readPort.data := regs(readPort.addr)
       }
     }
+  }
+
+  // Diff test
+  io.difftest match {
+    case Some(dt) =>
+      dt.gpr.zip(regs).foreach {
+        case (port, reg) =>
+          port := reg
+      }
+    case _ =>
   }
 }

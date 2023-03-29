@@ -26,62 +26,64 @@ class CoreCpuTop extends Module {
       val inst = Output(UInt(32.W))
     }
 
-    val diffTest = if (isDiffTest) Some(Output(new Bundle {
-      val cmt_valid        = Bool()
-      val cmt_cnt_inst     = Bool()
-      val cmt_timer_64     = UInt(64.W)
-      val cmt_inst_ld_en   = UInt(8.W)
-      val cmt_ld_paddr     = UInt(32.W)
-      val cmt_ld_vaddr     = UInt(32.W)
-      val cmt_inst_st_en   = UInt(8.W)
-      val cmt_st_paddr     = UInt(32.W)
-      val cmt_st_vaddr     = UInt(32.W)
-      val cmt_st_data      = UInt(32.W)
-      val cmt_csr_rstat_en = Bool()
-      val cmt_csr_data     = UInt(32.W)
+    val diffTest =
+      if (isDiffTest)
+        Some(Output(new Bundle {
+          val cmt_valid        = Bool()
+          val cmt_cnt_inst     = Bool()
+          val cmt_timer_64     = UInt(64.W)
+          val cmt_inst_ld_en   = UInt(8.W)
+          val cmt_ld_paddr     = UInt(32.W)
+          val cmt_ld_vaddr     = UInt(32.W)
+          val cmt_inst_st_en   = UInt(8.W)
+          val cmt_st_paddr     = UInt(32.W)
+          val cmt_st_vaddr     = UInt(32.W)
+          val cmt_st_data      = UInt(32.W)
+          val cmt_csr_rstat_en = Bool()
+          val cmt_csr_data     = UInt(32.W)
 
-      val cmt_wen   = Bool()
-      val cmt_wdest = UInt(8.W)
-      val cmt_wdata = UInt(32.W)
-      val cmt_pc    = UInt(32.W)
-      val cmt_inst  = UInt(32.W)
+          val cmt_wen   = Bool()
+          val cmt_wdest = UInt(8.W)
+          val cmt_wdata = UInt(32.W)
+          val cmt_pc    = UInt(32.W)
+          val cmt_inst  = UInt(32.W)
 
-      val cmt_excp_flush = Bool()
-      val cmt_ertn       = Bool()
-      val cmt_csr_ecode  = UInt(6.W)
-      val cmt_tlbfill_en = Bool()
-      val cmt_rand_index = UInt(5.W)
+          val cmt_excp_flush = Bool()
+          val cmt_ertn       = Bool()
+          val cmt_csr_ecode  = UInt(6.W)
+          val cmt_tlbfill_en = Bool()
+          val cmt_rand_index = UInt(5.W)
 
-      val csr_crmd_diff_0      = UInt(32.W)
-      val csr_prmd_diff_0      = UInt(32.W)
-      val csr_ectl_diff_0      = UInt(32.W)
-      val csr_estat_diff_0     = UInt(32.W)
-      val csr_era_diff_0       = UInt(32.W)
-      val csr_badv_diff_0      = UInt(32.W)
-      val csr_eentry_diff_0    = UInt(32.W)
-      val csr_tlbidx_diff_0    = UInt(32.W)
-      val csr_tlbehi_diff_0    = UInt(32.W)
-      val csr_tlbelo0_diff_0   = UInt(32.W)
-      val csr_tlbelo1_diff_0   = UInt(32.W)
-      val csr_asid_diff_0      = UInt(32.W)
-      val csr_save0_diff_0     = UInt(32.W)
-      val csr_save1_diff_0     = UInt(32.W)
-      val csr_save2_diff_0     = UInt(32.W)
-      val csr_save3_diff_0     = UInt(32.W)
-      val csr_tid_diff_0       = UInt(32.W)
-      val csr_tcfg_diff_0      = UInt(32.W)
-      val csr_tval_diff_0      = UInt(32.W)
-      val csr_ticlr_diff_0     = UInt(32.W)
-      val csr_llbctl_diff_0    = UInt(32.W)
-      val csr_tlbrentry_diff_0 = UInt(32.W)
-      val csr_dmw0_diff_0      = UInt(32.W)
-      val csr_dmw1_diff_0      = UInt(32.W)
-      val csr_pgdl_diff_0      = UInt(32.W)
-      val csr_pgdh_diff_0      = UInt(32.W)
+          val csr_crmd_diff_0      = UInt(32.W)
+          val csr_prmd_diff_0      = UInt(32.W)
+          val csr_ectl_diff_0      = UInt(32.W)
+          val csr_estat_diff_0     = UInt(32.W)
+          val csr_era_diff_0       = UInt(32.W)
+          val csr_badv_diff_0      = UInt(32.W)
+          val csr_eentry_diff_0    = UInt(32.W)
+          val csr_tlbidx_diff_0    = UInt(32.W)
+          val csr_tlbehi_diff_0    = UInt(32.W)
+          val csr_tlbelo0_diff_0   = UInt(32.W)
+          val csr_tlbelo1_diff_0   = UInt(32.W)
+          val csr_asid_diff_0      = UInt(32.W)
+          val csr_save0_diff_0     = UInt(32.W)
+          val csr_save1_diff_0     = UInt(32.W)
+          val csr_save2_diff_0     = UInt(32.W)
+          val csr_save3_diff_0     = UInt(32.W)
+          val csr_tid_diff_0       = UInt(32.W)
+          val csr_tcfg_diff_0      = UInt(32.W)
+          val csr_tval_diff_0      = UInt(32.W)
+          val csr_ticlr_diff_0     = UInt(32.W)
+          val csr_llbctl_diff_0    = UInt(32.W)
+          val csr_tlbrentry_diff_0 = UInt(32.W)
+          val csr_dmw0_diff_0      = UInt(32.W)
+          val csr_dmw1_diff_0      = UInt(32.W)
+          val csr_pgdl_diff_0      = UInt(32.W)
+          val csr_pgdh_diff_0      = UInt(32.W)
 
-      val regs = Vec(32, UInt(32.W))
-    }))
-    else None
+          val regs = Vec(32, UInt(32.W))
+        }))
+      else None
   })
 
   io <> DontCare
@@ -228,6 +230,10 @@ class CoreCpuTop extends Module {
   regFile.io.writePort                 := wbStage.io.gprWritePort
   scoreboard.io.freePorts              := wbStage.io.freePorts
 
+  // Ctrl unit
+  cu.io.exeStallRequest := exeStage.io.stallRequest
+  cu.io.memStallRequest := memStage.io.stallRequest
+
   // Debug ports
   io.debug0_wb.pc       := wbStage.io.wbDebugPassthroughPort.out.pc
   io.debug0_wb.rf.wen   := wbStage.io.gprWritePort.en
@@ -235,7 +241,27 @@ class CoreCpuTop extends Module {
   io.debug0_wb.rf.wdata := wbStage.io.gprWritePort.data
   io.debug0_wb.inst     := wbStage.io.wbDebugPassthroughPort.out.inst
 
-  // Ctrl unit
-  cu.io.exeStallRequest := exeStage.io.stallRequest
-  cu.io.memStallRequest := memStage.io.stallRequest
+  // Difftest
+  // TODO: DifftestInstrCommit (partial), DifftestExcpEvent, DifftestTrapEvent, DifftestStoreEvent, DifftestLoadEvent, DifftestCSRRegState
+  (io.diffTest, wbStage.io.difftest) match {
+    case (Some(t), Some(w)) =>
+      t.cmt_valid        := w.valid
+      t.cmt_pc           := w.pc
+      t.cmt_inst         := w.instr
+      t.cmt_tlbfill_en   := w.is_TLBFILL
+      t.cmt_rand_index   := w.TLBFILL_index
+      t.cmt_cnt_inst     := w.is_CNTinst
+      t.cmt_timer_64     := w.timer_64_value
+      t.cmt_wen          := w.wen
+      t.cmt_wdest        := w.wdest
+      t.cmt_wdata        := w.wdata
+      t.cmt_csr_rstat_en := w.csr_rstat
+      t.cmt_csr_data     := w.csr_data
+    case _ =>
+  }
+  (io.diffTest, regFile.io.difftest) match {
+    case (Some(t), Some(r)) =>
+      t.regs := r.gpr
+    case _ =>
+  }
 }
