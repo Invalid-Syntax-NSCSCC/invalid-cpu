@@ -7,7 +7,7 @@ import bundles.{ExeInstNdPort, IssuedInfoNdPort}
 import chisel3.experimental.BundleLiterals._
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
-import pipeline.writeback.bundles.WbDebugNdPort
+import pipeline.writeback.bundles.InstInfoNdPort
 
 class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
@@ -28,14 +28,14 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
     val pipelineControlPort = Input(new PipelineControlNDPort)
 
     // (next clock pulse)
-    val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
+    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
   })
 
   // Wb debug port connection
   // Wb debug port connection
-  val wbDebugReg = Reg(new WbDebugNdPort)
-  wbDebugReg                    := io.wbDebugPassthroughPort.in
-  io.wbDebugPassthroughPort.out := wbDebugReg
+  val instInfoReg = Reg(new InstInfoNdPort)
+  instInfoReg                    := io.instInfoPassThroughPort.in
+  io.instInfoPassThroughPort.out := instInfoReg
 
   val stallFromCtrl = WireDefault(io.pipelineControlPort.stall)
 

@@ -11,6 +11,7 @@ import pipeline.ctrl.bundles.CsrWriteNdPort
 class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   val io = IO(new Bundle {
     val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
+    val csrValues  = Output(Vec(Count.csrReg, UInt(Width.Reg.data)))
   })
 
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
@@ -25,6 +26,11 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
         }
       }
     }
+  }
+
+  io.csrValues.zip(csrRegs).foreach {
+    case (output, reg) =>
+      output := reg
   }
 
   // ESTAT

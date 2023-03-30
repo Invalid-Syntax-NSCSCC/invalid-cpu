@@ -12,7 +12,7 @@ import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param.{ExeStageState => State}
 import pipeline.execution.Alu
-import pipeline.writeback.bundles.WbDebugNdPort
+import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 
 // TODO: Add (flush ?) when jump / branch
@@ -22,9 +22,9 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val exeInstPort = Input(new ExeInstNdPort)
 
     // `ExeStage` -> `MemStage` (next clock pulse)
-    val memLoadStoreInfoPort   = Output(new MemLoadStoreInfoNdPort)
-    val gprWritePort           = Output(new RfWriteNdPort)
-    val wbDebugPassthroughPort = new PassThroughPort(new WbDebugNdPort)
+    val memLoadStoreInfoPort    = Output(new MemLoadStoreInfoNdPort)
+    val gprWritePort            = Output(new RfWriteNdPort)
+    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
     // `ExeStage` -> `Pc` (no delay)
     val branchSetPort = Output(new JumpBranchInfoNdPort)
@@ -37,9 +37,9 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   })
 
   // Wb debug port connection
-  val wbDebugReg = Reg(new WbDebugNdPort)
-  wbDebugReg                    := io.wbDebugPassthroughPort.in
-  io.wbDebugPassthroughPort.out := wbDebugReg
+  val instInfoReg = Reg(new InstInfoNdPort)
+  instInfoReg                    := io.instInfoPassThroughPort.in
+  io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
   val gprWriteReg = RegInit(RfWriteNdPort.default)
@@ -72,8 +72,8 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     is(State.nonBlocking) {
       selectedExeInst := io.exeInstPort
       exeInstStoreReg := io.exeInstPort
-      selectedPc      := io.wbDebugPassthroughPort.in.pc
-      pcStoreReg      := io.wbDebugPassthroughPort.in.pc
+      selectedPc      := io.instInfoPassThroughPort.in.pc
+      pcStoreReg      := io.instInfoPassThroughPort.in.pc
     }
     is(State.blocking) {
       selectedExeInst := exeInstStoreReg
@@ -100,7 +100,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   alu.io.pipelineControlPort    := io.pipelineControlPort
 
   // ALU output
-  wbDebugReg.exceptionRecords(CsrRegs.ExceptionIndex.int) := alu.io.divisorZeroException
+  instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.int) := alu.io.divisorZeroException
 
   // write-back information fallback
   gprWriteReg.en   := false.B
