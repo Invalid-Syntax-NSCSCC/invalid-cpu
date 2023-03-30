@@ -8,6 +8,7 @@ import frontend.InstQueue
 import pipeline.dispatch.bundles.InstInfoBundle
 import utest._
 import pipeline.execution.Clz
+
 import scala.util.Random
 import pipeline.execution.ExeStage
 import spec.ExeInst
@@ -15,11 +16,13 @@ import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.zeroWord
 import spec.Width
 
+import scala.collection.immutable
+
 object ExeStageStallSpec extends ChiselUtestTester {
   val tests = Tests {
     test("Test exe stage stall") {
-      testCircuit(new ExeStage, Seq(WriteVcdAnnotation)) { exeStage =>
-        val op = ExeInst.Op.div
+      testCircuit(new ExeStage, immutable.Seq(WriteVcdAnnotation)) { exeStage =>
+        val op  = ExeInst.Op.div
         val sel = ExeInst.Sel.arithmetic
         val lop = 4756985
         val rop = 5
