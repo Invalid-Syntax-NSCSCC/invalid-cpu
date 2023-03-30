@@ -29,6 +29,9 @@ class Cu(ctrlControlNum: Int = Param.ctrlControlNum, writeNum: Int = Param.csrRe
     val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNDPort))
   })
 
+  // TODO: Finish correct connection
+  io.csrWritePorts := DontCare
+
   /** Stall
     */
 
