@@ -54,4 +54,6 @@ class Cu(ctrlControlNum: Int = Param.ctrlControlNum, writeNum: Int = Param.csrRe
     io.gprWritePassThroughPort.in,
     RfWriteNdPort.default
   )
+
+  io.csrWritePorts.foreach { port => port := CsrWriteNdPort.default }
 }

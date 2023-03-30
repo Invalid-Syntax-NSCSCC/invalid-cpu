@@ -100,7 +100,6 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   alu.io.pipelineControlPort    := io.pipelineControlPort
 
   // ALU output
-  instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.int) := alu.io.divisorZeroException
 
   // write-back information fallback
   gprWriteReg.en   := false.B

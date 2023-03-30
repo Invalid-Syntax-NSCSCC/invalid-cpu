@@ -16,9 +16,8 @@ class Alu extends Module {
     val aluInst = Input(new AluInstNdPort)
     val result  = Output(new AluResultNdPort)
 
-    val pipelineControlPort  = Input(new PipelineControlNDPort)
-    val stallRequest         = Output(Bool())
-    val divisorZeroException = Output(Bool())
+    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val stallRequest        = Output(Bool())
   })
 
   io.result := AluResultNdPort.default
@@ -217,7 +216,6 @@ class Alu extends Module {
   divStage.io.divResult.ready := DontCare
 
   val divisorValid = WireDefault(rop.orR)
-  io.divisorZeroException := !divisorValid && useDiv
 
   // divStart := useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid && !io.pipelineControlPort.stall
   switch(stateReg) {
