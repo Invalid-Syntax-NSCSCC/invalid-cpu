@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    for arg do
-      shift
-      case $arg in
-        (-disable-infer-rw) : ;;
-           (*) set -- "$@" "$arg" ;;
-      esac
-    done
 
+# Workaround
+for arg do
+  shift
+  case $arg in
+    (-disable-infer-rw) : ;;
+        (*) set -- "$@" "$arg" ;;
+  esac
+done
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
     firtool_darwin --disable-annotation-unknown "$@"
 else
     firtool_ubuntu2004 --disable-annotation-unknown "$@"
