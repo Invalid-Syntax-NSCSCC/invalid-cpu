@@ -16,18 +16,17 @@ object src extends ScalaModule with ScalafmtModule { m =>
   )
 
   override def ivyDeps = Agg(
-    ivy"edu.berkeley.cs::chisel3:3.6.0-M2",
-    ivy"com.sifive::chisel-circt:0.8.0"
+    ivy"edu.berkeley.cs::chisel3:3.6.0-RC2"
   )
 
   override def scalacPluginIvyDeps = Agg(
-    ivy"edu.berkeley.cs:::chisel3-plugin:3.6.0-M2"
+    ivy"edu.berkeley.cs:::chisel3-plugin:3.6.0-RC2"
   )
 
   object test extends Tests with Utest {
     override def ivyDeps = m.ivyDeps() ++ Agg(
       ivy"com.lihaoyi::utest:0.8.1",
-      ivy"edu.berkeley.cs::chiseltest:0.6.0-M2"
+      ivy"edu.berkeley.cs::chiseltest:0.6.0-RC2"
     )
   }
 }
