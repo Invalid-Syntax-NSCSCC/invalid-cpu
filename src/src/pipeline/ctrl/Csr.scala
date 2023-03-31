@@ -14,6 +14,19 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
     val csrValues  = Output(Vec(Count.csrReg, UInt(Width.Reg.data)))
   })
 
+  // Util: view UInt as Bundle
+  class BundlePassPort[T <: Bundle](port: T) extends Bundle {
+    val in = Wire(port)
+    val out = Wire(port)
+  }
+
+  def viewUInt[T <: Bundle](u: UInt, bun: T): BundlePassPort[T] = {
+    val passPort = new BundlePassPort(bun)
+    u := passPort.in.asUInt
+    passPort.out := u.asTypeOf(bun)
+    passPort
+  }
+
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
   io.writePorts.foreach { writePort =>
@@ -33,12 +46,29 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
       output := reg
   }
 
+  // CRMD 当前模式信息
+  
+  val crmd =  WireDefault(csrRegs(CsrRegs.Index.crmd))
+
+  // PRMD 例外前模式信息
+  val prmd =  WireDefault(csrRegs(CsrRegs.Index.prmd))
+
+  // EUEN扩展部件使能
+  val euen =  WireDefault(csrRegs(CsrRegs.Index.euen))
+
+  // ECFG 例外控制
+  val ecfg =  WireDefault(csrRegs(CsrRegs.Index.ecfg))
+
   // ESTAT
   val estatRegValue = WireDefault(csrRegs(CsrRegs.Index.estat))
-  val estat = new Bundle {
-    val is       = estatRegValue(12, 0)
-    val ecode    = estatRegValue(21, 16)
-    val esubcode = estatRegValue(30, 22)
-  }
+  val estat = viewUInt(csrRegs(CsrRegs.Index.estat), new Bundle {
+    val zero1 = Bool()
+    val esubcode = UInt(9.W)
+    val ecode = UInt(6.W)
+    val zero2 = UInt(3.W)
+    val is = UInt(13.W)
+  })
+  estat.in.zero1 := 0.U
+  estat.in.zero2 := 0.U
 
 }
