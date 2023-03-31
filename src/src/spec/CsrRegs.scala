@@ -119,5 +119,4 @@ object CsrRegs {
 
     def width = count
   }
-
 }

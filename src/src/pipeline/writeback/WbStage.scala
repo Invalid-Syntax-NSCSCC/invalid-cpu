@@ -10,12 +10,15 @@ import spec._
 
 class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
   val io = IO(new Bundle {
+    // `MemStage` -> `WbStage`
     val gprWriteInfoPort = Input(new RfWriteNdPort)
-    val gprWritePort     = Output(new RfWriteNdPort)
+    // `WbStage` -> `Cu` NO delay
+    val gprWritePort = Output(new RfWriteNdPort)
 
     // Scoreboard
     val freePorts = Output(Vec(changeNum, new ScoreboardChangeNdPort))
 
+    // `MemStage` -> `WbStage` -> `Cu`  NO delay
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
     val difftest =
