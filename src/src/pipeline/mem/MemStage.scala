@@ -49,4 +49,11 @@ class MemStage extends Module {
   val hint      = WireDefault(io.memLoadStoreInfoPort.data)
 
   io.memLoadStorePort <> DontCare
+
+  // flush or clear
+  when(io.pipelineControlPort.flush || io.pipelineControlPort.clear) {
+    gprWriteReg := RfWriteNdPort.default
+    InstInfoNdPort.setDefault(instInfoReg)
+  }
+
 }

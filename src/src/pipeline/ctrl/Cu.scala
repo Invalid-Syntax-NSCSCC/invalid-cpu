@@ -37,12 +37,17 @@ class Cu(
     */
 
   io.pipelineControlPorts.foreach(_ := PipelineControlNDPort.default)
-  // `ExeStage` --stall--> `IssueStage`, `RegReadStage` (DONT STALL ITSELF)
-  Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage)
+  // `ExeStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage` (STALL ITSELF)
+  Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
     .map(io.pipelineControlPorts(_))
     .foreach(_.stall := io.exeStallRequest)
-  // `MemStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`  (DONT STALL ITSELF)
-  Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
+  // `MemStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `MemStage`  (STALL ITSELF)
+  Seq(
+    PipelineStageIndex.issueStage,
+    PipelineStageIndex.regReadStage,
+    PipelineStageIndex.exeStage,
+    PipelineStageIndex.memStage
+  )
     .map(io.pipelineControlPorts(_))
     .foreach(_.stall := io.memStallRequest)
 

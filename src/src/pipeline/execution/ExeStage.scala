@@ -140,4 +140,20 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // branch set
   io.branchSetPort := alu.io.result.jumpBranchInfo
+
+  // clear
+  when(io.pipelineControlPort.clear) {
+    gprWriteReg := RfWriteNdPort.default
+    InstInfoNdPort.setDefault(instInfoReg)
+    memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
+  }
+  // flush all regs
+  when(io.pipelineControlPort.flush) {
+    gprWriteReg := RfWriteNdPort.default
+    InstInfoNdPort.setDefault(instInfoReg)
+    memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
+    stateReg            := State.nonBlocking
+    exeInstStoreReg     := ExeInstNdPort.default
+    pcStoreReg          := zeroWord
+  }
 }
