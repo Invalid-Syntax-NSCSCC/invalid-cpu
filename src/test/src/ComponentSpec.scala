@@ -6,10 +6,12 @@ import frontend.InstQueue
 import pipeline.dispatch.bundles.InstInfoBundle
 import utest._
 
+import scala.collection.immutable
+
  object ComponentSpec extends ChiselUtestTester {
   val tests = Tests {
     test("Test InstQueue module") {
-      testCircuit(new InstQueue, Seq(WriteVcdAnnotation)) { instQueue =>
+      testCircuit(new InstQueue, immutable.Seq(WriteVcdAnnotation)) { instQueue =>
         // Nothing in queue, then no dequeue
         instQueue.io.dequeuePort.valid.expect(false.B)
         instQueue.io.enqueuePort.ready.expect(true.B)
