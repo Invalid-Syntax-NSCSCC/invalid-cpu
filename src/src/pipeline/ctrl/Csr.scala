@@ -14,6 +14,7 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   val io = IO(new Bundle {
     val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
     val csrValues  = Output(Vec(Count.csrReg, UInt(Width.Reg.data)))
+    val csrMessage = Input(new CuToCsrNdPort)
   })
 
   // Util: view UInt as Bundle
@@ -31,6 +32,8 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
 
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
+  // 软件写csrRegs 
+  // 保留域断断续续的样子真是可爱捏
   io.writePorts.foreach { writePort =>
     when(writePort.en) {
       csrRegs(writePort.addr) := writePort.data
@@ -157,9 +160,18 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   val estat = viewUInt(csrRegs(CsrRegs.Index.estat), new EstatBundle)
   estat.in := EstatBundle.default
 
-  // ERA 例外返回地址
+  when(io.csrMessage.exceptionFlush) {
+    estat.in.ecode := io.csrMessage.ecodeBunle.ecode
+    estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
+  }
+
+  // ERA 例外返回地址: 触发例外指令的pc记录在此
   val era = viewUInt(csrRegs(CsrRegs.Index.era), new EraBundle)
   era.in := EraBundle.default
+
+  when(io.csrMessage.exceptionFlush) {
+    era.in.pc := io.csrMessage.era
+  }
 
   // BADV 出错虚地址
   val badv = viewUInt(csrRegs(CsrRegs.Index.badv), new BadvBundle)

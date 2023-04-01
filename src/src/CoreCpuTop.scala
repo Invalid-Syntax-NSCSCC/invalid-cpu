@@ -254,6 +254,7 @@ class CoreCpuTop extends Module {
       dst := src
     }
   }
+  csr.io.csrMessage := cu.io.csrMessage
 
   // Debug ports
   io.debug0_wb.pc       := wbStage.io.instInfoPassThroughPort.out.pc

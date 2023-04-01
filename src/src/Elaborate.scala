@@ -5,7 +5,7 @@ import pipeline.dispatch.IssueStage
 object Elaborate extends App {
   val useMFC    = true // Use MLIR-based firrtl compiler
   val generator = Seq(chisel3.stage.ChiselGeneratorAnnotation(() => top))
-  def top       = new CoreCpuTop
+  def top       = new TestType
 
   if (useMFC) {
     (new circt.stage.ChiselStage)

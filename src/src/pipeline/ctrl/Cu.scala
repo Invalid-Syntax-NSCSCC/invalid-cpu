@@ -10,10 +10,13 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import common.bundles.RfWriteNdPort
 import common.bundles.PassThroughPort
 import pipeline.ctrl.bundles.CsrWriteNdPort
+import pipeline.ctrl.bundles.CuToCsrNdPort
+import spec.CsrRegs
 
 // TODO: Add stall to frontend ?
 // TODO: Add flush to stages
 // TODO: Add deal exceptions
+// 优先解决多发射中index小的流水线
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
@@ -23,8 +26,10 @@ class Cu(
     // `WbStage` -> `Cu`
     val gprWritePassThroughPorts = new PassThroughPort(Vec(dispatchNum, new RfWriteNdPort))
     val instInfoPorts            = Input(Vec(dispatchNum, new InstInfoNdPort))
-    // `Cu` -> `Csr`
+    // `Cu` -> `Csr`, 软件写
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
+    // `Cu` -> `Csr`, 硬件写
+    val csrMessage = Output(new CuToCsrNdPort)
     // `ExeStage` -> `Cu`
     val exeStallRequest = Input(Bool())
     // `MemStage` -> `Cu`
@@ -32,6 +37,8 @@ class Cu(
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `MemStage`
     val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNDPort))
   })
+
+  io.csrMessage := CuToCsrNdPort.default
 
   /** Stall 暂停流水线前面部分
     */
@@ -68,7 +75,9 @@ class Cu(
 
   /** Exception
     */
-  val hasException = WireDefault(io.instInfoPorts.map(_.exceptionRecords.reduce(_ || _)).reduce(_ || _))
+  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map(_.exceptionRecords.reduce(_ || _))))
+  val hasException = WireDefault(linesHasException.reduce(_ || _))
+
 
   /** Write Regfile
     */
@@ -79,11 +88,80 @@ class Cu(
     RfWriteNdPort.default
   )
 
-  io.csrWritePorts.foreach { port => port := CsrWriteNdPort.default }
+  // 软件写csr
+  io.csrWritePorts.zip(io.instInfoPorts).foreach{case (dst, src) =>
+    dst := src.csrWritePort
+  }
 
   /** flush
     */
 
   val flush = WireDefault(hasException)
   io.pipelineControlPorts.foreach(_.flush := flush)
+
+  /**
+    * 硬件写csr 
+    */
+
+  io.csrMessage.exceptionFlush := hasException
+  // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
+  // 使用时仍需判断是否有exception
+  val selectLineNum = PriorityEncoder(linesHasException)
+  val selectInstInfo = io.instInfoPorts(selectLineNum)
+  val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
+
+  when(hasException) {
+    io.csrMessage.era := selectInstInfo
+    switch(selectException) {
+      is(CsrRegs.ExceptionIndex.int) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.int
+      }
+      is(CsrRegs.ExceptionIndex.pil) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.pil
+      }
+      is(CsrRegs.ExceptionIndex.pis) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.pis
+      }
+      is(CsrRegs.ExceptionIndex.pif) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.pif
+      }
+      is(CsrRegs.ExceptionIndex.pme) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.pme
+      }
+      is(CsrRegs.ExceptionIndex.ppi) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.ppi
+      }
+      is(CsrRegs.ExceptionIndex.adef) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.adef
+      }
+      is(CsrRegs.ExceptionIndex.adem) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.adem
+      }
+      is(CsrRegs.ExceptionIndex.ale) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.ale
+      }
+      is(CsrRegs.ExceptionIndex.sys) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.sys
+      }
+      is(CsrRegs.ExceptionIndex.brk) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.brk
+      }
+      is(CsrRegs.ExceptionIndex.ine) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.ine
+      }
+      is(CsrRegs.ExceptionIndex.ipe) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.ipe
+      }
+      is(CsrRegs.ExceptionIndex.fpd) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.fpd
+      }
+      is(CsrRegs.ExceptionIndex.fpe) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.fpe
+      }
+      is(CsrRegs.ExceptionIndex.tlbr) {
+        io.csrMessage.ecodeBunle := CsrRegs.Estat.tlbr
+      }
+
+    }
+  }
 }

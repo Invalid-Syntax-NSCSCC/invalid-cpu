@@ -17,7 +17,6 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 
 // TODO: Add (flush ?) when jump / branch
-// throws exceptions : 除零终端int
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)
