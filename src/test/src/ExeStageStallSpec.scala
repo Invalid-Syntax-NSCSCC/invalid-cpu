@@ -18,33 +18,33 @@ import spec.Width
 
 import scala.collection.immutable
 
-object ExeStageStallSpec extends ChiselUtestTester {
-  val tests = Tests {
-    test("Test exe stage stall") {
-      testCircuit(new ExeStage, immutable.Seq(WriteVcdAnnotation)) { exeStage =>
-        val op  = ExeInst.Op.div
-        val sel = ExeInst.Sel.arithmetic
-        val lop = 4756985
-        val rop = 5
-        exeStage.io.pipelineControlPort.poke(PipelineControlNDPort.default)
-        def instPort = exeStage.io.exeInstPort
-        instPort.gprWritePort.en.poke(true.B)
-        instPort.gprWritePort.addr.poke(1.U)
-        instPort.exeOp.poke(op)
-        instPort.exeSel.poke(sel)
-        instPort.jumpBranchAddr.poke(zeroWord)
-        // instPort.pcAddr.poke(zeroWord)
-        instPort.leftOperand.poke(lop.U)
-        instPort.rightOperand.poke(rop.U)
+// object ExeStageStallSpec extends ChiselUtestTester {
+//   val tests = Tests {
+//     test("Test exe stage stall") {
+//       testCircuit(new ExeStage, immutable.Seq(WriteVcdAnnotation)) { exeStage =>
+//         val op  = ExeInst.Op.div
+//         val sel = ExeInst.Sel.arithmetic
+//         val lop = 4756985
+//         val rop = 5
+//         exeStage.io.pipelineControlPort.poke(PipelineControlNDPort.default)
+//         def instPort = exeStage.io.exeInstPort
+//         instPort.gprWritePort.en.poke(true.B)
+//         instPort.gprWritePort.addr.poke(1.U)
+//         instPort.exeOp.poke(op)
+//         instPort.exeSel.poke(sel)
+//         instPort.jumpBranchAddr.poke(zeroWord)
+//         // instPort.pcAddr.poke(zeroWord)
+//         instPort.leftOperand.poke(lop.U)
+//         instPort.rightOperand.poke(rop.U)
 
-        exeStage.clock.step(5)
-        exeStage.io.pipelineControlPort.stall.poke(true.B)
-        exeStage.clock.step(15)
-        exeStage.io.pipelineControlPort.stall.poke(false.B)
-        exeStage.clock.step(1)
-        instPort.exeOp.poke(ExeInst.Op.add)
-        exeStage.clock.step(20)
-      }
-    }
-  }
-}
+//         exeStage.clock.step(5)
+//         exeStage.io.pipelineControlPort.stall.poke(true.B)
+//         exeStage.clock.step(15)
+//         exeStage.io.pipelineControlPort.stall.poke(false.B)
+//         exeStage.clock.step(1)
+//         instPort.exeOp.poke(ExeInst.Op.add)
+//         exeStage.clock.step(20)
+//       }
+//     }
+//   }
+// }

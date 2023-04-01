@@ -13,6 +13,7 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param.{ExeStageState => State}
 import pipeline.execution.Alu
 import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 
 // TODO: Add (flush ?) when jump / branch
@@ -100,7 +101,6 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   alu.io.pipelineControlPort    := io.pipelineControlPort
 
   // ALU output
-  instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.int) := alu.io.divisorZeroException
 
   // write-back information fallback
   gprWriteReg.en   := false.B
@@ -140,4 +140,20 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // branch set
   io.branchSetPort := alu.io.result.jumpBranchInfo
+
+  // clear
+  when(io.pipelineControlPort.clear) {
+    gprWriteReg := RfWriteNdPort.default
+    InstInfoNdPort.setDefault(instInfoReg)
+    memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
+  }
+  // flush all regs
+  when(io.pipelineControlPort.flush) {
+    gprWriteReg := RfWriteNdPort.default
+    InstInfoNdPort.setDefault(instInfoReg)
+    memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
+    stateReg            := State.nonBlocking
+    exeInstStoreReg     := ExeInstNdPort.default
+    pcStoreReg          := zeroWord
+  }
 }

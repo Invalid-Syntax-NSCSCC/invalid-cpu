@@ -239,14 +239,14 @@ class CoreCpuTop extends Module {
   // Write-back stage
   wbStage.io.gprWriteInfoPort           := memStage.io.gprWritePassThroughPort.out
   wbStage.io.instInfoPassThroughPort.in := memStage.io.instInfoPassThroughPort.out
-  regFile.io.writePort                  := cu.io.gprWritePassThroughPort.out
+  regFile.io.writePort                  := cu.io.gprWritePassThroughPorts.out(0)
   scoreboard.io.freePorts               := wbStage.io.freePorts
 
   // Ctrl unit
-  cu.io.instInfoPort               := wbStage.io.instInfoPassThroughPort.out
-  cu.io.exeStallRequest            := exeStage.io.stallRequest
-  cu.io.memStallRequest            := memStage.io.stallRequest
-  cu.io.gprWritePassThroughPort.in := wbStage.io.gprWritePort
+  cu.io.instInfoPorts(0)               := wbStage.io.instInfoPassThroughPort.out
+  cu.io.exeStallRequest                := exeStage.io.stallRequest
+  cu.io.memStallRequest                := memStage.io.stallRequest
+  cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {

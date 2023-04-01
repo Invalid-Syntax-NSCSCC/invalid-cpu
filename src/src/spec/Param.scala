@@ -3,6 +3,7 @@ package spec
 import chisel3._
 import chisel3.util._
 import spec.PipelineStageIndex
+import chisel3.experimental.ChiselEnum
 
 object Param {
   // Configurable self-defined parameters go here
@@ -15,7 +16,7 @@ object Param {
   val instRegReadNum      = 2
   val ctrlControlNum      = PipelineStageIndex.getCount
   val issueInstInfoMaxNum = 1
-  val dispatchInstNum     = 1 // 发射shuliang
+  val dispatchInstNum     = 1 // 发射数量
   val csrRegsWriteNum     = 1
 
   object Width {

@@ -1,8 +1,8 @@
 package spec
 
 import chisel3._
-import pipeline.ctrl.bundles.EstatBundle
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import pipeline.ctrl.bundles.EcodeBundle
 
 object CsrRegs {
 
@@ -45,7 +45,7 @@ object CsrRegs {
     val dmw0      = next
     val dmw1      = next
 
-    def getCount: Int = count
+    def getCount: Int = count + 1
   }
 
   object Estat {
@@ -54,7 +54,7 @@ object CsrRegs {
       val esubcode = 9.W
     }
 
-    def e(ecode: String, esubcode: Int = 0) = (new EstatBundle).Lit(
+    def e(ecode: String, esubcode: Int = 0) = (new EcodeBundle).Lit(
       _.ecode -> ("h" + ecode).U(Width.ecode),
       _.esubcode -> esubcode.U(Width.esubcode)
     )
@@ -76,6 +76,20 @@ object CsrRegs {
     val fpe  = e("12", 0)
     val tlbr = e("3f")
 
+  }
+
+  object TimeVal {
+    object Width {
+      // 待修改
+      val timeVal = 16
+    }
+  }
+
+  object Tlbidx {
+    object Width {
+      // Attention: 这与TLB实现有关，待修改
+      val index = 12
+    }
   }
 
   object ExceptionIndex {
@@ -105,5 +119,4 @@ object CsrRegs {
 
     def width = count
   }
-
 }

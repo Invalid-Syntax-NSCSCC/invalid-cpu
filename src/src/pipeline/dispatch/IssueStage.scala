@@ -19,6 +19,7 @@ import spec.Param.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
 import CsrRegs.ExceptionIndex
 
+// TODO: clear不知道会不会使指令丢失，待验证
 // throws exceptions: 指令不存在异常ine
 class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
   val io = IO(new Bundle {
@@ -31,12 +32,11 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPort = Output(new IssuedInfoNdPort)
+    val instInfoPort   = Output(new InstInfoNdPort)
 
     // pipeline control signal
     // `Cu` -> `IssueStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
-
-    val instInfoPort = Output(new InstInfoNdPort)
   })
 
   // Wb debug port connection
@@ -186,5 +186,18 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     issuedInfoReg.info := selectedDecoder.info
     instInfoReg.inst   := selectedInstInfo.inst
     instInfoReg.pc     := selectedInstInfo.pcAddr
+  }
+
+  // clear
+  when(io.pipelineControlPort.clear) {
+    InstInfoNdPort.setDefault(instInfoReg)
+    issuedInfoReg := IssuedInfoNdPort.default
+  }
+  // flush all regs
+  when(io.pipelineControlPort.flush) {
+    InstInfoNdPort.setDefault(instInfoReg)
+    issuedInfoReg := IssuedInfoNdPort.default
+    stateReg      := State.nonBlocking
+    instStoreReg  := InstInfoBundle.default
   }
 }

@@ -32,7 +32,6 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   })
 
   // Wb debug port connection
-  // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
   instInfoReg                    := io.instInfoPassThroughPort.in
   io.instInfoPassThroughPort.out := instInfoReg
@@ -96,5 +95,16 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
       exeInstReg.gprWritePort   := io.issuedInfoPort.info.gprWritePort
       exeInstReg.jumpBranchAddr := io.issuedInfoPort.info.jumpBranchAddr
     }
+  }
+
+  // clear
+  when(io.pipelineControlPort.clear) {
+    InstInfoNdPort.setDefault(instInfoReg)
+    exeInstReg := ExeInstNdPort.default
+  }
+  // flush all regs
+  when(io.pipelineControlPort.flush) {
+    InstInfoNdPort.setDefault(instInfoReg)
+    exeInstReg := ExeInstNdPort.default
   }
 }
