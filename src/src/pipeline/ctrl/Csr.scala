@@ -175,7 +175,7 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
     era.in.pc := io.csrMessage.era
   }
 
-  // BADV 出错虚地址
+   // BADV 出错虚地址
   val badv = viewUInt(csrRegs(CsrRegs.Index.badv), new BadvBundle)
   badv.in := BadvBundle.default
 
@@ -254,5 +254,9 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   // TICLR 定时器中断清除
   val ticlr = viewUInt(csrRegs(CsrRegs.Index.ticlr), new TiclrBundle)
   ticlr.in := TiclrBundle.default
+
+ 
+
+ 
 
 }

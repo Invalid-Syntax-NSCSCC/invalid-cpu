@@ -86,7 +86,6 @@ class Cu(
 
   /** Exception
     */
-
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := zeroWord
 
