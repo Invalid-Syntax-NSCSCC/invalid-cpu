@@ -12,6 +12,9 @@ import common.bundles.PassThroughPort
 import pipeline.ctrl.bundles.CsrWriteNdPort
 import pipeline.ctrl.bundles.CuToCsrNdPort
 import spec.CsrRegs
+import pipeline.ctrl.bundles.CsrToCuNdPort
+import spec.Width
+import spec.zeroWord
 
 // TODO: Add stall to frontend ?
 // TODO: Add flush to stages
@@ -23,6 +26,9 @@ class Cu(
   dispatchNum:    Int = Param.dispatchInstNum)
     extends Module {
   val io = IO(new Bundle {
+
+    /** 回写与异常处理
+      */
     // `WbStage` -> `Cu`
     val gprWritePassThroughPorts = new PassThroughPort(Vec(dispatchNum, new RfWriteNdPort))
     val instInfoPorts            = Input(Vec(dispatchNum, new InstInfoNdPort))
@@ -30,6 +36,13 @@ class Cu(
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写
     val csrMessage = Output(new CuToCsrNdPort)
+    // `Csr` -> `Cu`
+    val csrValues = Input(new CsrToCuNdPort)
+    // `Csr` -> `Pc`  待接入
+    val newPc = Output(UInt(Width.Reg.data))
+
+    /** 暂停信号
+      */
     // `ExeStage` -> `Cu`
     val exeStallRequest = Input(Bool())
     // `MemStage` -> `Cu`
@@ -37,8 +50,6 @@ class Cu(
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `MemStage`
     val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNDPort))
   })
-
-  io.csrMessage := CuToCsrNdPort.default
 
   /** Stall 暂停流水线前面部分
     */
@@ -75,6 +86,10 @@ class Cu(
 
   /** Exception
     */
+
+  io.csrMessage := CuToCsrNdPort.default
+  io.newPc      := zeroWord
+
   val linesHasException = WireDefault(VecInit(io.instInfoPorts.map(_.exceptionRecords.reduce(_ || _))))
   val hasException      = WireDefault(linesHasException.reduce(_ || _))
 
@@ -108,7 +123,10 @@ class Cu(
   val selectLineNum   = PriorityEncoder(linesHasException)
   val selectInstInfo  = io.instInfoPorts(selectLineNum)
   val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
+  // 是否tlb重写异常
+  val isTlbException = selectException(CsrRegs.ExceptionIndex.tlbr)
 
+  // select era, ecodeBundle
   when(hasException) {
     io.csrMessage.era := selectInstInfo
     switch(selectException) {
@@ -160,7 +178,16 @@ class Cu(
       is(CsrRegs.ExceptionIndex.tlbr) {
         io.csrMessage.ecodeBunle := CsrRegs.Estat.tlbr
       }
-
     }
+  }
+
+  // select new pc
+  when(hasException) {
+    when(isTlbException) {
+      io.newPc := io.csrValues.tlbrentry
+    }.otherwise {
+      io.newPc := io.csrValues.eentry
+    }
+
   }
 }

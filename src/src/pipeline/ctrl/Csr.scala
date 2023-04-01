@@ -12,9 +12,11 @@ import pipeline.ctrl.bundles.TlbehiBundle
 
 class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   val io = IO(new Bundle {
+    // `Cu` -> `Csr`
     val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
-    val csrValues  = Output(Vec(Count.csrReg, UInt(Width.Reg.data)))
     val csrMessage = Input(new CuToCsrNdPort)
+    // `Csr` -> `Cu`
+    val csrValues = Output(new CsrToCuNdPort)
   })
 
   // Util: view UInt as Bundle
@@ -31,6 +33,11 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   }
 
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
+
+  // 输出
+  io.csrValues.era       := csrRegs(CsrRegs.Index.era)
+  io.csrValues.eentry    := csrRegs(CsrRegs.Index.eentry)
+  io.csrValues.tlbrentry := csrRegs(CsrRegs.Index.tlbrentry)
 
   // 软件写csrRegs
   // 保留域断断续续的样子真是可爱捏
@@ -132,11 +139,6 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
         }
       }
     }
-  }
-
-  io.csrValues.zip(csrRegs).foreach {
-    case (output, reg) =>
-      output := reg
   }
 
   // CRMD 当前模式信息
