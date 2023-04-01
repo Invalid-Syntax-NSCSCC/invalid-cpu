@@ -10,7 +10,7 @@ class InstInfoNdPort extends Bundle {
   val pc               = UInt(Width.Reg.data)
   val inst             = UInt(Width.Reg.data)
   val exceptionRecords = Vec(CsrRegs.ExceptionIndex.width, Bool())
-  val csrWritePort = new CsrWriteNdPort
+  val csrWritePort     = new CsrWriteNdPort
 }
 
 object InstInfoNdPort {

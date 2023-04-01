@@ -32,7 +32,7 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
 
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
-  // 软件写csrRegs 
+  // 软件写csrRegs
   // 保留域断断续续的样子真是可爱捏
   io.writePorts.foreach { writePort =>
     when(writePort.en) {
@@ -161,7 +161,7 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   estat.in := EstatBundle.default
 
   when(io.csrMessage.exceptionFlush) {
-    estat.in.ecode := io.csrMessage.ecodeBunle.ecode
+    estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
     estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
   }
 

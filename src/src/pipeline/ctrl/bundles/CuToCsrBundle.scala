@@ -6,8 +6,8 @@ import spec._
 
 class CuToCsrNdPort extends Bundle {
   val exceptionFlush = Bool()
-  val era = UInt(Width.Reg.data)
-  val ecodeBunle = new EcodeBundle
+  val era            = UInt(Width.Reg.data)
+  val ecodeBunle     = new EcodeBundle
 }
 
 object CuToCsrNdPort {

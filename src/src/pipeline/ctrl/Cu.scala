@@ -76,8 +76,7 @@ class Cu(
   /** Exception
     */
   val linesHasException = WireDefault(VecInit(io.instInfoPorts.map(_.exceptionRecords.reduce(_ || _))))
-  val hasException = WireDefault(linesHasException.reduce(_ || _))
-
+  val hasException      = WireDefault(linesHasException.reduce(_ || _))
 
   /** Write Regfile
     */
@@ -89,8 +88,9 @@ class Cu(
   )
 
   // 软件写csr
-  io.csrWritePorts.zip(io.instInfoPorts).foreach{case (dst, src) =>
-    dst := src.csrWritePort
+  io.csrWritePorts.zip(io.instInfoPorts).foreach {
+    case (dst, src) =>
+      dst := src.csrWritePort
   }
 
   /** flush
@@ -99,15 +99,14 @@ class Cu(
   val flush = WireDefault(hasException)
   io.pipelineControlPorts.foreach(_.flush := flush)
 
-  /**
-    * 硬件写csr 
+  /** 硬件写csr
     */
 
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  val selectLineNum = PriorityEncoder(linesHasException)
-  val selectInstInfo = io.instInfoPorts(selectLineNum)
+  val selectLineNum   = PriorityEncoder(linesHasException)
+  val selectInstInfo  = io.instInfoPorts(selectLineNum)
   val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
 
   when(hasException) {
