@@ -94,7 +94,16 @@ class Csr(
           csrRegs(writePort.addr) := Cat(0.U(23.W), writePort.data(8, 0))
         }
         is(CsrRegs.Index.llbctl) {
-          csrRegs(writePort.addr) := Cat(0.U(29.W), writePort.data(2, 0))
+          csrRegs(writePort.addr) := Cat(
+            0.U(29.W),
+            writePort.data(2),
+            Mux( // wcllb: 软件写1时清零，写0时忽略
+              writePort.data(1),
+              false.B,
+              csrRegs(CsrRegs.Index.llbctl(1))
+            ),
+            writePort.data(0)
+          )
         }
         is(CsrRegs.Index.tlbidx) {
           csrRegs(writePort.addr) := Cat(
