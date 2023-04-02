@@ -12,6 +12,7 @@ import pipeline.ctrl.csrRegsBundles._
 // TODO: 中断：ecfg, estat.is
 // TODO: 同时读写csrRegs时候读端口的赋值
 // TODO: TLB相关寄存器
+// TODO: 计时器中断
 class Csr(
   writeNum: Int = Param.csrRegsWriteNum,
   readNum:  Int = Param.csrRegsReadNum)
@@ -39,6 +40,9 @@ class Csr(
     passPort.out := u.asTypeOf(bun)
     passPort
   }
+
+  // 定时器中断
+  val timeInterrupt = RegInit(false.B)
 
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
@@ -162,6 +166,9 @@ class Csr(
             0.U(31.W),
             false.B
           )
+          when(writePort.data(0) === true.B) {
+            timeInterrupt := false.B
+          }
         }
       }
     }
@@ -300,5 +307,18 @@ class Csr(
   }
   when(io.csrMessage.ertnFlush) {
     llbctl.in.klo := false.B
+  }
+
+  // TimeVal
+
+  when(tval.out.timeVal.orR) { // 定时器不为0
+    when(tcfg.out.en) {
+      tval.in.timeVal := tval.out.timeVal - 1.U
+    }
+  }.otherwise { // 减到0
+    when(tcfg.out.periodic) {
+      timeInterrupt   := true.B
+      tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
+    } // 为0时停止计数
   }
 }
