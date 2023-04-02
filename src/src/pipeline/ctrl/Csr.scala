@@ -35,7 +35,7 @@ class Csr(
   def viewUInt[T <: Bundle](u: UInt, bun: T): BundlePassPort[T] = {
     val passPort = new BundlePassPort(bun)
     u            := passPort.in.asUInt
-    passPort.in := u.asTypeOf(bun)
+    passPort.in  := u.asTypeOf(bun)
     passPort.out := u.asTypeOf(bun)
     passPort
   }
