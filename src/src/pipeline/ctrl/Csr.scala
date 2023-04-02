@@ -162,20 +162,11 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   val estat = viewUInt(csrRegs(CsrRegs.Index.estat), new EstatBundle)
   estat.in := EstatBundle.default
 
-  when(io.csrMessage.exceptionFlush) {
-    estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
-    estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
-  }
-
   // ERA 例外返回地址: 触发例外指令的pc记录在此
   val era = viewUInt(csrRegs(CsrRegs.Index.era), new EraBundle)
   era.in := EraBundle.default
 
-  when(io.csrMessage.exceptionFlush) {
-    era.in.pc := io.csrMessage.era
-  }
-
-   // BADV 出错虚地址
+  // BADV 出错虚地址
   val badv = viewUInt(csrRegs(CsrRegs.Index.badv), new BadvBundle)
   badv.in := BadvBundle.default
 
@@ -255,8 +246,15 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   val ticlr = viewUInt(csrRegs(CsrRegs.Index.ticlr), new TiclrBundle)
   ticlr.in := TiclrBundle.default
 
- 
+  // estat
+  when(io.csrMessage.exceptionFlush) {
+    estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
+    estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
+  }
 
- 
+  // era
+  when(io.csrMessage.exceptionFlush) {
+    era.in.pc := io.csrMessage.era
+  }
 
 }
