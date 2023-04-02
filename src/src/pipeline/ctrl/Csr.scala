@@ -160,7 +160,7 @@ class Csr(
         is(CsrRegs.Index.ticlr) {
           csrRegs(writePort.addr) := Cat(
             0.U(31.W),
-            writePort.data(0)
+            false.B
           )
         }
       }
