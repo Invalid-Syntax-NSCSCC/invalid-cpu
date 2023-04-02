@@ -131,7 +131,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val memLoadStoreInfoReg = RegInit(MemLoadStoreInfoNdPort.default)
   io.memLoadStoreInfoPort := memLoadStoreInfoReg
 
-  memLoadStoreInfoReg.exeOp := io.exeInstPort.exeOp
+  io.instInfoPassThroughPort.out.exeOp := io.exeInstPort.exeOp
   // store : the data to write
   // preld, dbar, ibar : hint
   memLoadStoreInfoReg.data  := io.exeInstPort.rightOperand
