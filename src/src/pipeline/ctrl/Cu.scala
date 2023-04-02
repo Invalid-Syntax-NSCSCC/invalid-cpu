@@ -203,7 +203,7 @@ class Cu(
 
   // badv
   // TODO: 记录出错的虚地址，多数情况不是pc，待补
-  io.csrMessage.isBadVAddr := VecInit(
+  io.csrMessage.badVAddrSet.en := VecInit(
     CsrRegs.ExceptionIndex.tlbr,
     CsrRegs.ExceptionIndex.adef,
     CsrRegs.ExceptionIndex.adem,
@@ -214,5 +214,5 @@ class Cu(
     CsrRegs.ExceptionIndex.pme,
     CsrRegs.ExceptionIndex.ppi
   ).contains(selectException)
-  io.csrMessage.badAddr := selectInstInfo.pc
+  io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
 }

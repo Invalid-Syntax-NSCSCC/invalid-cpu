@@ -313,8 +313,8 @@ class Csr(
   }
 
   // BADV 出错虚地址
-  when(io.csrMessage.isBadVAddr) {
-    badv.in.vaddr := io.csrMessage.badAddr
+  when(io.csrMessage.badVAddrSet.en) {
+    badv.in.vaddr := io.csrMessage.badVAddrSet.addr
   }
 
 }

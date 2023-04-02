@@ -8,3 +8,7 @@ class LLBitSetBundle extends Bundle {
   val en       = Bool()
   val setValue = Bool()
 }
+
+object LLBitSetBundle {
+  val default = 0.U.asTypeOf(new LLBitSetBundle)
+}

@@ -12,8 +12,9 @@ class CuToCsrNdPort extends Bundle {
   // tlb重填失效
   val tlbRefillException = Bool()
   // 出错虚地址
-  val isBadVAddr = Bool()
-  val badAddr    = UInt(Width.Reg.data)
+  val badVAddrSet = new BadVAddrSetBundle
+  // llbit设置
+  val llbitSet = new LLBitSetBundle
 }
 
 object CuToCsrNdPort {
