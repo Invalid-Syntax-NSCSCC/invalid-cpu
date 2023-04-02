@@ -15,11 +15,13 @@ import spec.CsrRegs
 import pipeline.ctrl.bundles.CsrToCuNdPort
 import spec.Width
 import spec.zeroWord
+import spec.ExeInst
 
 // TODO: Add stall to frontend ?
 // TODO: Add deal exceptions
 // TODO: 出错虚地址badv的赋值
 // 优先解决多发射中index小的流水线
+// Attention: ll与sc指令只能从第0条流水线发射（按满洋的设计）
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
@@ -192,7 +194,7 @@ class Cu(
 
   // etrn flush (完成异常？)
   val extnFlush = WireDefault(false.B) // 指令控制，待实现
-  io.csrMessage.etrnFlush := extnFlush
+  io.csrMessage.ertnFlush := extnFlush
 
   when(extnFlush) {
     io.newPc := io.csrValues.era
@@ -215,4 +217,11 @@ class Cu(
     CsrRegs.ExceptionIndex.ppi
   ).contains(selectException)
   io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
+
+  // llbit control
+  val line0Is_ll = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.ll)
+  val line0Is_sc = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.sc)
+  io.csrMessage.llbitSet.en := line0Is_ll || line0Is_sc
+  // ll -> 1, sc -> 0
+  io.csrMessage.llbitSet.setValue := line0Is_ll
 }

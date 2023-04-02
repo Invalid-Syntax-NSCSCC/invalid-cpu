@@ -6,7 +6,7 @@ import spec._
 
 class CuToCsrNdPort extends Bundle {
   val exceptionFlush = Bool()
-  val etrnFlush      = Bool()
+  val ertnFlush      = Bool()
   val era            = UInt(Width.Reg.data)
   val ecodeBunle     = new EcodeBundle
   // tlb重填失效

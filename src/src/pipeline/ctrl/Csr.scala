@@ -97,12 +97,12 @@ class Csr(
           csrRegs(writePort.addr) := Cat(
             0.U(29.W),
             writePort.data(2),
-            Mux( // wcllb: 软件写1时清零，写0时忽略
+            false.B,
+            Mux( // 软件向wcllb写1时清零llbit，写0时忽略
               writePort.data(1),
               false.B,
               csrRegs(CsrRegs.Index.llbctl(1))
-            ),
-            writePort.data(0)
+            )
           )
         }
         is(CsrRegs.Index.tlbidx) {
@@ -285,7 +285,7 @@ class Csr(
   }
 
   // 从例外处理程序返回
-  when(io.csrMessage.etrnFlush) {
+  when(io.csrMessage.ertnFlush) {
     crmd.in.plv := prmd.out.pplv
     crmd.in.ie  := prmd.out.pie
     when(estat.out.ecode === CsrRegs.Estat.tlbr.ecode) {
@@ -317,4 +317,11 @@ class Csr(
     badv.in.vaddr := io.csrMessage.badVAddrSet.addr
   }
 
+  // LLBit Control
+  when(io.csrMessage.llbitSet.en) {
+    llbctl.in.rollb := io.csrMessage.llbitSet.setValue
+  }
+  when(io.csrMessage.ertnFlush) {
+    llbctl.in.klo := false.B
+  }
 }
