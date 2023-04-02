@@ -4,19 +4,24 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec._
-import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.PipelineStageIndex
 import pipeline.ctrl.bundles._
-import pipeline.ctrl.bundles.EentryBundle
-import pipeline.ctrl.bundles.TlbehiBundle
+import common.bundles.RfReadPort
 
-class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
+// TODO: 中断：ecfg, estat.is
+// TODO: 同时读写csrRegs时候读端口的赋值
+class Csr(
+  writeNum: Int = Param.csrRegsWriteNum,
+  readNum:  Int = Param.csrRegsReadNum)
+    extends Module {
   val io = IO(new Bundle {
     // `Cu` -> `Csr`
     val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
     val csrMessage = Input(new CuToCsrNdPort)
     // `Csr` -> `Cu`
     val csrValues = Output(new CsrToCuNdPort)
+    // `Csr` <-> `IssueStage` / `RegReadStage` ???
+    val readPorts = Vec(Param.csrRegsReadNum, new RfReadPort)
   })
 
   // Util: view UInt as Bundle
@@ -33,6 +38,15 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   }
 
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
+
+  // read
+  io.readPorts.foreach { readPort =>
+    readPort.data := Mux(
+      readPort.en,
+      csrRegs(readPort.addr),
+      zeroWord
+    )
+  }
 
   // 输出
   io.csrValues.era       := csrRegs(CsrRegs.Index.era)
@@ -246,16 +260,32 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   val ticlr = viewUInt(csrRegs(CsrRegs.Index.ticlr), new TiclrBundle)
   ticlr.in := TiclrBundle.default
 
-  // crmd
+  /** CRMD 当前模式信息
+    */
+  // 普通例外
   when(io.csrMessage.exceptionFlush) {
     crmd.in.plv := 0.U
     crmd.in.ie  := 0.U
-  }.elsewhen(io.csrMessage.etrnFlush) {
-    crmd.in.plv := prmd.out.pplv
-    crmd.in.ie  := prmd.out.pie
   }
 
-  // prmd
+  // tlb重填例外
+  when(io.csrMessage.tlbRefillException) {
+    crmd.in.da := true.B
+    crmd.in.pg := false.B
+  }
+
+  // 从例外处理程序返回
+  when(io.csrMessage.etrnFlush) {
+    crmd.in.plv := prmd.out.pplv
+    crmd.in.ie  := prmd.out.pie
+    when(estat.out.ecode === CsrRegs.Estat.tlbr.ecode) {
+      crmd.in.da := false.B
+      crmd.in.pg := true.B
+    }
+  }
+
+  /** PRMD 例外前模式信息
+    */
   when(io.csrMessage.exceptionFlush) {
     prmd.in.pplv := crmd.out.plv
     prmd.in.pie  := crmd.out.ie
@@ -270,6 +300,11 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   // era
   when(io.csrMessage.exceptionFlush) {
     era.in.pc := io.csrMessage.era
+  }
+
+  // BADV 出错虚地址
+  when(io.csrMessage.isBadVAddr) {
+    badv.in.vaddr := io.csrMessage.badAddr
   }
 
 }

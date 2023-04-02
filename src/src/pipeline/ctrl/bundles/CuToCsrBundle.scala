@@ -9,6 +9,11 @@ class CuToCsrNdPort extends Bundle {
   val etrnFlush      = Bool()
   val era            = UInt(Width.Reg.data)
   val ecodeBunle     = new EcodeBundle
+  // tlb重填失效
+  val tlbRefillException = Bool()
+  // 出错虚地址
+  val isBadVAddr = Bool()
+  val badAddr    = UInt(Width.Reg.data)
 }
 
 object CuToCsrNdPort {

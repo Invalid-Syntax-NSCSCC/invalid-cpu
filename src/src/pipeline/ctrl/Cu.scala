@@ -17,8 +17,8 @@ import spec.Width
 import spec.zeroWord
 
 // TODO: Add stall to frontend ?
-// TODO: Add flush to stages
 // TODO: Add deal exceptions
+// TODO: 出错虚地址badv的赋值
 // 优先解决多发射中index小的流水线
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
@@ -119,11 +119,12 @@ class Cu(
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  val selectLineNum   = PriorityEncoder(linesHasException)
-  val selectInstInfo  = io.instInfoPorts(selectLineNum)
-  val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
-  // 是否tlb重写异常
-  val isTlbException = selectException(CsrRegs.ExceptionIndex.tlbr)
+  val selectLineNum          = PriorityEncoder(linesHasException)
+  val selectInstInfo         = WireDefault(io.instInfoPorts(selectLineNum))
+  val selectException        = PriorityEncoder(selectInstInfo.exceptionRecords)
+  val selectExceptionAsBools = selectException.asBools
+  // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
+  val isTlbRefillException = !(selectExceptionAsBools.take(selectExceptionAsBools.length - 1).reduce(_ || _))
 
   // select era, ecodeBundle
   when(hasException) {
@@ -182,12 +183,11 @@ class Cu(
 
   // select new pc
   when(hasException) {
-    when(isTlbException) {
+    when(isTlbRefillException) {
       io.newPc := io.csrValues.tlbrentry
     }.otherwise {
       io.newPc := io.csrValues.eentry
     }
-
   }
 
   // etrn flush (完成异常？)
@@ -197,4 +197,22 @@ class Cu(
   when(extnFlush) {
     io.newPc := io.csrValues.era
   }
+
+  // tlb
+  io.csrMessage.tlbRefillException := isTlbRefillException
+
+  // badv
+  // TODO: 记录出错的虚地址，多数情况不是pc，待补
+  io.csrMessage.isBadVAddr := VecInit(
+    CsrRegs.ExceptionIndex.tlbr,
+    CsrRegs.ExceptionIndex.adef,
+    CsrRegs.ExceptionIndex.adem,
+    CsrRegs.ExceptionIndex.ale,
+    CsrRegs.ExceptionIndex.pil,
+    CsrRegs.ExceptionIndex.pis,
+    CsrRegs.ExceptionIndex.pif,
+    CsrRegs.ExceptionIndex.pme,
+    CsrRegs.ExceptionIndex.ppi
+  ).contains(selectException)
+  io.csrMessage.badAddr := selectInstInfo.pc
 }
