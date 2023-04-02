@@ -127,7 +127,7 @@ class Cu(
 
   // select era, ecodeBundle
   when(hasException) {
-    io.csrMessage.era := selectInstInfo
+    io.csrMessage.era := selectInstInfo.pc
     switch(selectException) {
       is(CsrRegs.ExceptionIndex.int) {
         io.csrMessage.ecodeBunle := CsrRegs.Estat.int
@@ -188,5 +188,13 @@ class Cu(
       io.newPc := io.csrValues.eentry
     }
 
+  }
+
+  // etrn flush (完成异常？)
+  val extnFlush = WireDefault(false.B) // 指令控制，待实现
+  io.csrMessage.etrnFlush := extnFlush
+
+  when(extnFlush) {
+    io.newPc := io.csrValues.era
   }
 }

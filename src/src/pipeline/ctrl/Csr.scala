@@ -246,6 +246,21 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   val ticlr = viewUInt(csrRegs(CsrRegs.Index.ticlr), new TiclrBundle)
   ticlr.in := TiclrBundle.default
 
+  // crmd
+  when(io.csrMessage.exceptionFlush) {
+    crmd.in.plv := 0.U
+    crmd.in.ie  := 0.U
+  }.elsewhen(io.csrMessage.etrnFlush) {
+    crmd.in.plv := prmd.out.pplv
+    crmd.in.ie  := prmd.out.pie
+  }
+
+  // prmd
+  when(io.csrMessage.exceptionFlush) {
+    prmd.in.pplv := crmd.out.plv
+    prmd.in.pie  := crmd.out.ie
+  }
+
   // estat
   when(io.csrMessage.exceptionFlush) {
     estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
