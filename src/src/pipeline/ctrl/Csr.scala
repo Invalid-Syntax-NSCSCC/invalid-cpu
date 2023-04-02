@@ -11,6 +11,7 @@ import pipeline.ctrl.csrRegsBundles._
 
 // TODO: 中断：ecfg, estat.is
 // TODO: 同时读写csrRegs时候读端口的赋值
+// TODO: TLB相关寄存器
 class Csr(
   writeNum: Int = Param.csrRegsWriteNum,
   readNum:  Int = Param.csrRegsReadNum)
@@ -34,6 +35,7 @@ class Csr(
   def viewUInt[T <: Bundle](u: UInt, bun: T): BundlePassPort[T] = {
     val passPort = new BundlePassPort(bun)
     u            := passPort.in.asUInt
+    passPort.in := u.asTypeOf(bun)
     passPort.out := u.asTypeOf(bun)
     passPort
   }
@@ -168,23 +170,18 @@ class Csr(
   // CRMD 当前模式信息
 
   val crmd = viewUInt(csrRegs(CsrRegs.Index.crmd), new CrmdBundle)
-  crmd.in := CrmdBundle.default
 
   // PRMD 例外前模式信息
   val prmd = viewUInt(csrRegs(CsrRegs.Index.prmd), new PrmdBundle)
-  prmd.in := PrmdBundle.default
 
   // EUEN扩展部件使能
   val euen = viewUInt(csrRegs(CsrRegs.Index.euen), new EuenBundle)
-  euen.in := EuenBundle.default
 
   // ECFG 例外控制
   val ecfg = viewUInt(csrRegs(CsrRegs.Index.ecfg), new EcfgBundle)
-  ecfg.in := EcfgBundle.default
 
   // ESTAT
   val estat = viewUInt(csrRegs(CsrRegs.Index.estat), new EstatBundle)
-  estat.in := EstatBundle.default
 
   // ERA 例外返回地址: 触发例外指令的pc记录在此
   val era = viewUInt(csrRegs(CsrRegs.Index.era), new EraBundle)
@@ -192,83 +189,63 @@ class Csr(
 
   // BADV 出错虚地址
   val badv = viewUInt(csrRegs(CsrRegs.Index.badv), new BadvBundle)
-  badv.in := BadvBundle.default
 
   // EENTRY 例外入口地址
   val eentry = viewUInt(csrRegs(CsrRegs.Index.eentry), new EentryBundle)
-  eentry.in := EentryBundle.default
 
   // CPUID 处理器编号
   val cpuid = viewUInt(csrRegs(CsrRegs.Index.cpuid), new CpuidBundle)
-  cpuid.in := CpuidBundle.default
 
   // SAVE0-3 数据保存
   val saves = VecInit(CsrRegs.Index.save0, CsrRegs.Index.save1, CsrRegs.Index.save2, CsrRegs.Index.save3).map { idx =>
     viewUInt(csrRegs(idx), new CsrSaveBundle)
   }
-  saves.foreach { save => save.in := CsrSaveBundle.default }
 
   // LLBCTL  LLBit控制
   val llbctl = viewUInt(csrRegs(CsrRegs.Index.llbctl), new LlbctlBundle)
-  llbctl.in := LlbctlBundle.default
 
   // TLBIDX  TLB索引
   val tlbidx = viewUInt(csrRegs(CsrRegs.Index.tlbidx), new TlbidxBundle)
-  tlbidx.in := TlbidxBundle.default
 
   // TLBEHI  TLB表项高位
   val tlbehi = viewUInt(csrRegs(CsrRegs.Index.tlbehi), new TlbehiBundle)
-  tlbehi.in := TlbehiBundle.default
 
   // TLBELO 0-1  TLB表项低位
   val tlbelo0 = viewUInt(csrRegs(CsrRegs.Index.tlbelo0), new TlbeloBundle)
-  tlbelo0.in := TlbeloBundle.default
 
   val tlbelo1 = viewUInt(csrRegs(CsrRegs.Index.tlbelo1), new TlbeloBundle)
-  tlbelo1.in := TlbeloBundle.default
 
   // ASID 地址空间标识符
   val asid = viewUInt(csrRegs(CsrRegs.Index.asid), new AsidBundle)
-  asid.in := AsidBundle.default
 
   // PGDL 低半地址空间全局目录基址
   val pgdl = viewUInt(csrRegs(CsrRegs.Index.pgdl), new PgdlBundle)
-  pgdl.in := PgdlBundle.default
 
   // PGDH 高半地址空间全局目录基址
   val pgdh = viewUInt(csrRegs(CsrRegs.Index.pgdh), new PgdhBundle)
-  pgdh.in := PgdhBundle.default
 
   // PGD 全局地址空间全局目录基址
   val pgd = viewUInt(csrRegs(CsrRegs.Index.pgd), new PgdBundle)
-  pgd.in := PgdBundle.default
 
   // TLBRENTRY  TLB重填例外入口地址
   val tlbrentry = viewUInt(csrRegs(CsrRegs.Index.tlbrentry), new TlbrentryBundle)
-  tlbrentry.in := TlbrentryBundle.default
 
   // DMW 0-1 直接映射配置窗口
   val dmw0 = viewUInt(csrRegs(CsrRegs.Index.dmw0), new DmwBundle)
-  dmw0.in := DmwBundle.default
 
   val dmw1 = viewUInt(csrRegs(CsrRegs.Index.dmw1), new DmwBundle)
-  dmw1.in := DmwBundle.default
 
   // TID 定时器编号
   val tid = viewUInt(csrRegs(CsrRegs.Index.tid), new TidBundle)
-  tid.in := TidBundle.default
 
   // TCFG 定时器配置
   val tcfg = viewUInt(csrRegs(CsrRegs.Index.tcfg), new TcfgBundle)
-  tcfg.in := TcfgBundle.default
 
   // TVAL 定时器数值
   val tval = viewUInt(csrRegs(CsrRegs.Index.tval), new TvalBundle)
-  tval.in := TvalBundle.default
 
   // TICLR 定时器中断清除
   val ticlr = viewUInt(csrRegs(CsrRegs.Index.ticlr), new TiclrBundle)
-  ticlr.in := TiclrBundle.default
 
   /** CRMD 当前模式信息
     */
