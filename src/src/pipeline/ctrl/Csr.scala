@@ -7,6 +7,7 @@ import spec._
 import spec.PipelineStageIndex
 import pipeline.ctrl.bundles._
 import common.bundles.RfReadPort
+import pipeline.ctrl.csrRegsBundles._
 
 // TODO: 中断：ecfg, estat.is
 // TODO: 同时读写csrRegs时候读端口的赋值

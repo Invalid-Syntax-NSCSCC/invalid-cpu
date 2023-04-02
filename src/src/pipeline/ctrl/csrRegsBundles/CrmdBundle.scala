@@ -1,4 +1,4 @@
-package pipeline.ctrl.bundles
+package pipeline.ctrl.csrRegsBundles
 
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
