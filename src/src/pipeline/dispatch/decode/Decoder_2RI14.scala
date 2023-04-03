@@ -68,6 +68,7 @@ class Decoder_2RI14 extends Decoder {
         outInfo.exeOp             := ExeInst.Op.csrrd
         outInfo.gprWritePort.en   := true.B
         outInfo.gprWritePort.addr := rd
+        outInfo.csrReadEn         := true.B
       }.elsewhen(rj === "b00001".U) {
         outInfo.exeOp                := ExeInst.Op.csrwr
         outInfo.gprReadPorts(0).en   := true.B
@@ -78,6 +79,8 @@ class Decoder_2RI14 extends Decoder {
         outInfo.gprReadPorts(0).addr := rd
         outInfo.gprReadPorts(1).en   := true.B
         outInfo.gprReadPorts(1).addr := rj
+        outInfo.gprWritePort.addr    := rd
+        outInfo.csrReadEn            := true.B
       }
 
     }

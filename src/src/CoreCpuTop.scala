@@ -256,7 +256,7 @@ class CoreCpuTop extends Module {
     }
   }
   csr.io.csrMessage := cu.io.csrMessage
-  csr.io.readPorts.foreach { readPort => DontCare }
+  csr.io.readPorts  <> regReadStage.io.csrReadPorts
 
   // Debug ports
   io.debug0_wb.pc       := wbStage.io.instInfoPassThroughPort.out.pc

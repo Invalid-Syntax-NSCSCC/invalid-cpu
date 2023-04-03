@@ -2,6 +2,7 @@ package pipeline.writeback.bundles
 
 import chisel3._
 import chisel3.experimental.BundleLiterals._
+import chisel3.experimental.VecLiterals._
 import chisel3.util._
 import spec._
 import pipeline.ctrl.bundles.CsrWriteNdPort
@@ -16,6 +17,8 @@ class InstInfoNdPort extends Bundle {
 }
 
 object InstInfoNdPort {
+  val default = 0.U.asTypeOf(new InstInfoNdPort)
+
   def setDefault(instInfoPort: InstInfoNdPort): Unit = {
     instInfoPort.pc   := zeroWord
     instInfoPort.inst := zeroWord
@@ -25,4 +28,5 @@ object InstInfoNdPort {
     instInfoPort.csrWritePort := CsrWriteNdPort.default
     instInfoPort.exeOp        := 0.U
   }
+
 }

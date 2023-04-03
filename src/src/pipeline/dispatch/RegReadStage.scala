@@ -8,13 +8,17 @@ import chisel3.experimental.BundleLiterals._
 import spec._
 import pipeline.ctrl.bundles.PipelineControlNDPort
 import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.ctrl.bundles.CsrReadPort
 
-class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
+class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum) extends Module {
   val io = IO(new Bundle {
     // `IssueStage` -> `RegReadStage`
     val issuedInfoPort = Input(new IssuedInfoNdPort)
     // `RegReadStage` <-> `Regfile`
     val gprReadPorts = Vec(readNum, Flipped(new RfReadPort))
+
+    // `RegReadStage <-> `Csr`
+    val csrReadPorts = Vec(csrRegsReadNum, Flipped(new CsrReadPort))
 
     // `RegReadStage` -> `ExeStage` (next clock pulse)
     val exeInstPort = Output(new ExeInstNdPort)
@@ -49,21 +53,14 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
       port.addr := info.addr
   }
 
+  // Read from CSR
+  io.csrReadPorts(0).en   := io.issuedInfoPort.info.csrReadEn
+  io.csrReadPorts(0).addr := io.issuedInfoPort.info.csrAddr
+
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
   when(!stallFromCtrl) {
-    // when(io.issuedInfoPort.info.gprReadPorts(0).en) {
-    //   exeInstReg.leftOperand := io.gprReadPorts(0).data
-
-    // }
-
-    // when(io.issuedInfoPort.info.gprReadPorts(1).en) {
-    //   exeInstReg.rightOperand := io.gprReadPorts(1).data
-
-    // }.elsewhen(io.issuedInfoPort.info.isHasImm) {
-    //   exeInstReg.rightOperand := io.issuedInfoPort.info.imm
-    // }
     when(io.issuedInfoPort.info.isHasImm) {
       exeInstReg.rightOperand := io.issuedInfoPort.info.imm
     }
@@ -90,10 +87,29 @@ class RegReadStage(readNum: Int = Param.instRegReadNum) extends Module {
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
   when(!stallFromCtrl) {
     when(io.issuedInfoPort.isValid) {
-      exeInstReg.exeSel         := io.issuedInfoPort.info.exeSel
-      exeInstReg.exeOp          := io.issuedInfoPort.info.exeOp
-      exeInstReg.gprWritePort   := io.issuedInfoPort.info.gprWritePort
+      exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
+      exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
+      exeInstReg.gprWritePort := io.issuedInfoPort.info.gprWritePort
+      // jumbBranch / memLoadStort / csr
       exeInstReg.jumpBranchAddr := io.issuedInfoPort.info.jumpBranchAddr
+      when(io.issuedInfoPort.info.csrReadEn) {
+        exeInstReg.csrData := io.csrReadPorts(0).data
+      }
+
+      switch(io.issuedInfoPort.info.exeOp) {
+        is(ExeInst.Op.csrrd) {
+          instInfoReg.csrWritePort.en   := false.B
+          instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
+        }
+        is(ExeInst.Op.csrwr) {
+          instInfoReg.csrWritePort.en   := true.B
+          instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
+        }
+        is(ExeInst.Op.csrxchg) {
+          instInfoReg.csrWritePort.en   := true.B
+          instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
+        }
+      }
     }
   }
 

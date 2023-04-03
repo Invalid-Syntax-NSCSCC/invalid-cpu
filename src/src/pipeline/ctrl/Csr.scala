@@ -24,7 +24,7 @@ class Csr(
     // `Csr` -> `Cu`
     val csrValues = Output(new CsrToCuNdPort)
     // `Csr` <-> `IssueStage` / `RegReadStage` ???
-    val readPorts = Vec(Param.csrRegsReadNum, new RfReadPort)
+    val readPorts = Vec(Param.csrRegsReadNum, new CsrReadPort)
   })
 
   // Util: view UInt as Bundle
