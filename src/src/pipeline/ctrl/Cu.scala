@@ -31,7 +31,7 @@ class Cu(
 
     /** 回写与异常处理
       */
-    // `WbStage` -> `Cu`
+    // `WbStage` -> `Cu` -> `Regfile`
     val gprWritePassThroughPorts = new PassThroughPort(Vec(dispatchNum, new RfWriteNdPort))
     val instInfoPorts            = Input(Vec(dispatchNum, new InstInfoNdPort))
     // `Cu` -> `Csr`, 软件写

@@ -17,6 +17,7 @@ class ExeInstNdPort extends Bundle {
   // Branch jump addr
   val jumpBranchAddr = UInt(Width.Reg.data)
   def loadStoreImm   = jumpBranchAddr
+  def csrAddr        = jumpBranchAddr
 
   // GPR write (writeback)
   val gprWritePort = new RfAccessInfoNdPort

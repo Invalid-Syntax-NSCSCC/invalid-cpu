@@ -71,5 +71,10 @@ object ExeInst {
     val preld = next
     val dbar  = next
     val ibar  = next
+
+    // csr
+    val csrrd   = next
+    val csrwr   = next
+    val csrxchg = next
   }
 }

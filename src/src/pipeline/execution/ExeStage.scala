@@ -38,7 +38,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
-  instInfoReg                    := io.instInfoPassThroughPort.in
+  instInfoReg                    := instInfoReg
   io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
@@ -127,18 +127,57 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     }
   }
 
-  // MemLoadStoreInfo
+  /** MemLoadStoreInfo
+    */
   val memLoadStoreInfoReg = RegInit(MemLoadStoreInfoNdPort.default)
+  memLoadStoreInfoReg     := memLoadStoreInfoReg
   io.memLoadStoreInfoPort := memLoadStoreInfoReg
 
-  io.instInfoPassThroughPort.out.exeOp := io.exeInstPort.exeOp
   // store : the data to write
   // preld, dbar, ibar : hint
-  memLoadStoreInfoReg.data  := io.exeInstPort.rightOperand
-  memLoadStoreInfoReg.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
+  switch(stateReg) {
+    is(State.nonBlocking) {
+      memLoadStoreInfoReg.data  := io.exeInstPort.rightOperand
+      memLoadStoreInfoReg.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
+    }
+    is(State.blocking) {
+      memLoadStoreInfoReg := memLoadStoreInfoReg
+    }
+  }
 
   // branch set
   io.branchSetPort := alu.io.result.jumpBranchInfo
+
+  /** InstInfo Csr read or write info
+    */
+
+  switch(stateReg) {
+    is(State.nonBlocking) {
+      instInfoReg       := io.instInfoPassThroughPort.in
+      instInfoReg.exeOp := io.exeInstPort.exeOp
+      def csrInfo = instInfoReg.csrWritePort
+      switch(io.exeInstPort.exeOp) {
+        is(ExeInst.Op.csrrd) {
+          csrInfo.en   := false.B
+          csrInfo.addr := io.exeInstPort.csrAddr
+        }
+        is(ExeInst.Op.csrwr) {
+          csrInfo.en   := true.B
+          csrInfo.addr := io.exeInstPort.csrAddr
+          csrInfo.data := io.exeInstPort.leftOperand
+        }
+        is(ExeInst.Op.csrxchg) {
+          csrInfo.en       := true.B
+          csrInfo.addr     := io.exeInstPort.csrAddr
+          csrInfo.data     := io.exeInstPort.leftOperand
+          gprWriteReg.data := io.exeInstPort.rightOperand // ***
+        }
+      }
+    }
+    is(State.blocking) {
+      instInfoReg := instInfoReg
+    }
+  }
 
   // clear
   when(io.pipelineControlPort.clear) {

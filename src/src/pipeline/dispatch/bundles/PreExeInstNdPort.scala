@@ -27,6 +27,8 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 
   def loadStoreImm = jumpBranchAddr
 
+  def csrAddr = jumpBranchAddr
+
   // TODO: Signals in this port is not sufficient
 }
 
