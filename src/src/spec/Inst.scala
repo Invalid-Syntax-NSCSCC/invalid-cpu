@@ -67,8 +67,9 @@ object Inst {
 
   object _2RI14 {
     private def i(str: String) = b(str, wd._2RI14, 1)
-    val ll = i("0010_0000")
-    val sc = i("0010_0001")
+    val ll   = i("0010_0000")
+    val sc   = i("0010_0001")
+    val csr_ = i("0000_0100")
   }
 
   object _2RI16 {

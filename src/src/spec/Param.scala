@@ -17,6 +17,7 @@ object Param {
   val ctrlControlNum      = PipelineStageIndex.getCount
   val issueInstInfoMaxNum = 1
   val dispatchInstNum     = 1 // 发射数量
+  val csrRegsReadNum      = 1
   val csrRegsWriteNum     = 1
 
   object Width {

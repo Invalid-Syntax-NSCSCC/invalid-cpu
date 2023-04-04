@@ -247,6 +247,7 @@ class CoreCpuTop extends Module {
   cu.io.exeStallRequest                := exeStage.io.stallRequest
   cu.io.memStallRequest                := memStage.io.stallRequest
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
+  cu.io.csrValues                      := csr.io.csrValues
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -254,6 +255,8 @@ class CoreCpuTop extends Module {
       dst := src
     }
   }
+  csr.io.csrMessage := cu.io.csrMessage
+  csr.io.readPorts  <> regReadStage.io.csrReadPorts
 
   // Debug ports
   io.debug0_wb.pc       := wbStage.io.instInfoPassThroughPort.out.pc

@@ -4,16 +4,27 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec._
-import pipeline.ctrl.bundles.PipelineControlNDPort
 import spec.PipelineStageIndex
 import pipeline.ctrl.bundles._
-import pipeline.ctrl.bundles.EentryBundle
-import pipeline.ctrl.bundles.TlbehiBundle
+import common.bundles.RfReadPort
+import pipeline.ctrl.csrRegsBundles._
 
-class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
+// TODO: 中断：ecfg, estat.is
+// TODO: 同时读写csrRegs时候读端口的赋值
+// TODO: TLB相关寄存器
+// TODO: 计时器中断
+class Csr(
+  writeNum: Int = Param.csrRegsWriteNum,
+  readNum:  Int = Param.csrRegsReadNum)
+    extends Module {
   val io = IO(new Bundle {
+    // `Cu` -> `Csr`
     val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
-    val csrValues  = Output(Vec(Count.csrReg, UInt(Width.Reg.data)))
+    val csrMessage = Input(new CuToCsrNdPort)
+    // `Csr` -> `Cu`
+    val csrValues = Output(new CsrToCuNdPort)
+    // `Csr` <-> `IssueStage` / `RegReadStage` ???
+    val readPorts = Vec(Param.csrRegsReadNum, new CsrReadPort)
   })
 
   // Util: view UInt as Bundle
@@ -25,12 +36,32 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
   def viewUInt[T <: Bundle](u: UInt, bun: T): BundlePassPort[T] = {
     val passPort = new BundlePassPort(bun)
     u            := passPort.in.asUInt
+    passPort.in  := u.asTypeOf(bun)
     passPort.out := u.asTypeOf(bun)
     passPort
   }
 
+  // 定时器中断
+  val timeInterrupt = RegInit(false.B)
+
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
+  // read
+  io.readPorts.foreach { readPort =>
+    readPort.data := Mux(
+      readPort.en,
+      csrRegs(readPort.addr),
+      zeroWord
+    )
+  }
+
+  // 输出
+  io.csrValues.era       := csrRegs(CsrRegs.Index.era)
+  io.csrValues.eentry    := csrRegs(CsrRegs.Index.eentry)
+  io.csrValues.tlbrentry := csrRegs(CsrRegs.Index.tlbrentry)
+
+  // 软件写csrRegs
+  // 保留域断断续续的样子真是可爱捏
   io.writePorts.foreach { writePort =>
     when(writePort.en) {
       csrRegs(writePort.addr) := writePort.data
@@ -69,7 +100,16 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
           csrRegs(writePort.addr) := Cat(0.U(23.W), writePort.data(8, 0))
         }
         is(CsrRegs.Index.llbctl) {
-          csrRegs(writePort.addr) := Cat(0.U(29.W), writePort.data(2, 0))
+          csrRegs(writePort.addr) := Cat(
+            0.U(29.W),
+            writePort.data(2),
+            false.B,
+            Mux( // 软件向wcllb写1时清零llbit，写0时忽略
+              writePort.data(1),
+              false.B,
+              csrRegs(CsrRegs.Index.llbctl(1))
+            )
+          )
         }
         is(CsrRegs.Index.tlbidx) {
           csrRegs(writePort.addr) := Cat(
@@ -124,121 +164,161 @@ class Csr(writeNum: Int = Param.csrRegsWriteNum) extends Module {
         is(CsrRegs.Index.ticlr) {
           csrRegs(writePort.addr) := Cat(
             0.U(31.W),
-            writePort.data(0)
+            false.B
           )
+          when(writePort.data(0) === true.B) {
+            timeInterrupt := false.B
+          }
         }
       }
     }
   }
 
-  io.csrValues.zip(csrRegs).foreach {
-    case (output, reg) =>
-      output := reg
-  }
-
   // CRMD 当前模式信息
 
   val crmd = viewUInt(csrRegs(CsrRegs.Index.crmd), new CrmdBundle)
-  crmd.in := CrmdBundle.default
 
   // PRMD 例外前模式信息
   val prmd = viewUInt(csrRegs(CsrRegs.Index.prmd), new PrmdBundle)
-  prmd.in := PrmdBundle.default
 
   // EUEN扩展部件使能
   val euen = viewUInt(csrRegs(CsrRegs.Index.euen), new EuenBundle)
-  euen.in := EuenBundle.default
 
   // ECFG 例外控制
   val ecfg = viewUInt(csrRegs(CsrRegs.Index.ecfg), new EcfgBundle)
-  ecfg.in := EcfgBundle.default
 
   // ESTAT
   val estat = viewUInt(csrRegs(CsrRegs.Index.estat), new EstatBundle)
-  estat.in := EstatBundle.default
 
-  // ERA 例外返回地址
+  // ERA 例外返回地址: 触发例外指令的pc记录在此
   val era = viewUInt(csrRegs(CsrRegs.Index.era), new EraBundle)
   era.in := EraBundle.default
 
   // BADV 出错虚地址
   val badv = viewUInt(csrRegs(CsrRegs.Index.badv), new BadvBundle)
-  badv.in := BadvBundle.default
 
   // EENTRY 例外入口地址
   val eentry = viewUInt(csrRegs(CsrRegs.Index.eentry), new EentryBundle)
-  eentry.in := EentryBundle.default
 
   // CPUID 处理器编号
   val cpuid = viewUInt(csrRegs(CsrRegs.Index.cpuid), new CpuidBundle)
-  cpuid.in := CpuidBundle.default
 
   // SAVE0-3 数据保存
   val saves = VecInit(CsrRegs.Index.save0, CsrRegs.Index.save1, CsrRegs.Index.save2, CsrRegs.Index.save3).map { idx =>
     viewUInt(csrRegs(idx), new CsrSaveBundle)
   }
-  saves.foreach { save => save.in := CsrSaveBundle.default }
 
   // LLBCTL  LLBit控制
   val llbctl = viewUInt(csrRegs(CsrRegs.Index.llbctl), new LlbctlBundle)
-  llbctl.in := LlbctlBundle.default
 
   // TLBIDX  TLB索引
   val tlbidx = viewUInt(csrRegs(CsrRegs.Index.tlbidx), new TlbidxBundle)
-  tlbidx.in := TlbidxBundle.default
 
   // TLBEHI  TLB表项高位
   val tlbehi = viewUInt(csrRegs(CsrRegs.Index.tlbehi), new TlbehiBundle)
-  tlbehi.in := TlbehiBundle.default
 
   // TLBELO 0-1  TLB表项低位
   val tlbelo0 = viewUInt(csrRegs(CsrRegs.Index.tlbelo0), new TlbeloBundle)
-  tlbelo0.in := TlbeloBundle.default
 
   val tlbelo1 = viewUInt(csrRegs(CsrRegs.Index.tlbelo1), new TlbeloBundle)
-  tlbelo1.in := TlbeloBundle.default
 
   // ASID 地址空间标识符
   val asid = viewUInt(csrRegs(CsrRegs.Index.asid), new AsidBundle)
-  asid.in := AsidBundle.default
 
   // PGDL 低半地址空间全局目录基址
   val pgdl = viewUInt(csrRegs(CsrRegs.Index.pgdl), new PgdlBundle)
-  pgdl.in := PgdlBundle.default
 
   // PGDH 高半地址空间全局目录基址
   val pgdh = viewUInt(csrRegs(CsrRegs.Index.pgdh), new PgdhBundle)
-  pgdh.in := PgdhBundle.default
 
   // PGD 全局地址空间全局目录基址
   val pgd = viewUInt(csrRegs(CsrRegs.Index.pgd), new PgdBundle)
-  pgd.in := PgdBundle.default
 
   // TLBRENTRY  TLB重填例外入口地址
   val tlbrentry = viewUInt(csrRegs(CsrRegs.Index.tlbrentry), new TlbrentryBundle)
-  tlbrentry.in := TlbrentryBundle.default
 
   // DMW 0-1 直接映射配置窗口
   val dmw0 = viewUInt(csrRegs(CsrRegs.Index.dmw0), new DmwBundle)
-  dmw0.in := DmwBundle.default
 
   val dmw1 = viewUInt(csrRegs(CsrRegs.Index.dmw1), new DmwBundle)
-  dmw1.in := DmwBundle.default
 
   // TID 定时器编号
   val tid = viewUInt(csrRegs(CsrRegs.Index.tid), new TidBundle)
-  tid.in := TidBundle.default
 
   // TCFG 定时器配置
   val tcfg = viewUInt(csrRegs(CsrRegs.Index.tcfg), new TcfgBundle)
-  tcfg.in := TcfgBundle.default
 
   // TVAL 定时器数值
   val tval = viewUInt(csrRegs(CsrRegs.Index.tval), new TvalBundle)
-  tval.in := TvalBundle.default
 
   // TICLR 定时器中断清除
   val ticlr = viewUInt(csrRegs(CsrRegs.Index.ticlr), new TiclrBundle)
-  ticlr.in := TiclrBundle.default
 
+  /** CRMD 当前模式信息
+    */
+  // 普通例外
+  when(io.csrMessage.exceptionFlush) {
+    crmd.in.plv := 0.U
+    crmd.in.ie  := 0.U
+  }
+
+  // tlb重填例外
+  when(io.csrMessage.tlbRefillException) {
+    crmd.in.da := true.B
+    crmd.in.pg := false.B
+  }
+
+  // 从例外处理程序返回
+  when(io.csrMessage.ertnFlush) {
+    crmd.in.plv := prmd.out.pplv
+    crmd.in.ie  := prmd.out.pie
+    when(estat.out.ecode === CsrRegs.Estat.tlbr.ecode) {
+      crmd.in.da := false.B
+      crmd.in.pg := true.B
+    }
+  }
+
+  /** PRMD 例外前模式信息
+    */
+  when(io.csrMessage.exceptionFlush) {
+    prmd.in.pplv := crmd.out.plv
+    prmd.in.pie  := crmd.out.ie
+  }
+
+  // estat
+  when(io.csrMessage.exceptionFlush) {
+    estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
+    estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
+  }
+
+  // era
+  when(io.csrMessage.exceptionFlush) {
+    era.in.pc := io.csrMessage.era
+  }
+
+  // BADV 出错虚地址
+  when(io.csrMessage.badVAddrSet.en) {
+    badv.in.vaddr := io.csrMessage.badVAddrSet.addr
+  }
+
+  // LLBit Control
+  when(io.csrMessage.llbitSet.en) {
+    llbctl.in.rollb := io.csrMessage.llbitSet.setValue
+  }
+  when(io.csrMessage.ertnFlush) {
+    llbctl.in.klo := false.B
+  }
+
+  // TimeVal
+
+  when(tval.out.timeVal.orR) { // 定时器不为0
+    when(tcfg.out.en) {
+      tval.in.timeVal := tval.out.timeVal - 1.U
+    }
+  }.otherwise { // 减到0
+    when(tcfg.out.periodic) {
+      timeInterrupt   := true.B
+      tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
+    } // 为0时停止计数
+  }
 }
