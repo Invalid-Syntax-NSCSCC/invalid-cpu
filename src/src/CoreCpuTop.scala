@@ -120,12 +120,8 @@ class CoreCpuTop extends Module {
   exeStage.io := DontCare
 
   // Pc
-  pc.io.branchSetPort       := exeStage.io.branchSetPort
-  pc.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.pc)
-
-  /** ************* TODO: Add flush new pc
-    */
-  pc.io.flushNewPc := zeroWord
+  pc.io.branchSetPort := exeStage.io.branchSetPort
+  pc.io.flushNewPc    := cu.io.newPc
 
   // AXI top <> AXI crossbar
   crossbar.io.slaves                       <> DontCare

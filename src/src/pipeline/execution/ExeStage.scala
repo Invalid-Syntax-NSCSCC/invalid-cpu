@@ -14,6 +14,7 @@ import spec.Param.{ExeStageState => State}
 import pipeline.execution.Alu
 import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
+import common.bundles.PcSetPort
 
 // TODO: Add (flush ?) when jump / branch
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
@@ -26,7 +27,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
     // `ExeStage` -> `Pc` (no delay)
-    val branchSetPort = Output(new JumpBranchInfoNdPort)
+    val branchSetPort = Output(new PcSetPort)
 
     // Pipeline control signal
     // `Cu` -> `ExeStage`

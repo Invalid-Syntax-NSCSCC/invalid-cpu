@@ -23,7 +23,6 @@ package object spec {
       count += 1
       idx
     }
-    val pc           = next
     val issueStage   = next
     val regReadStage = next
     val exeStage     = next

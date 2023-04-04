@@ -21,6 +21,7 @@ import CsrRegs.ExceptionIndex
 
 // TODO: clear不知道会不会使指令丢失，待验证
 // throws exceptions: 指令不存在异常ine
+// TODO: 添加csr的scoreboard
 class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
   val io = IO(new Bundle {
     // `InstQueue` -> `IssueStage`

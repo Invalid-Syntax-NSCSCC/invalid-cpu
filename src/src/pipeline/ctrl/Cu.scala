@@ -16,6 +16,7 @@ import pipeline.ctrl.bundles.CsrToCuNdPort
 import spec.Width
 import spec.zeroWord
 import spec.ExeInst
+import common.bundles.PcSetPort
 
 // TODO: Add stall to frontend ?
 // TODO: Add deal exceptions
@@ -41,7 +42,8 @@ class Cu(
     // `Csr` -> `Cu`
     val csrValues = Input(new CsrToCuNdPort)
     // `Csr` -> `Pc`  待接入
-    val newPc = Output(UInt(Width.Reg.data))
+    // val newPc = Output(UInt(Width.Reg.data))
+    val newPc = Output(new PcSetPort)
 
     /** 暂停信号
       */
@@ -89,7 +91,7 @@ class Cu(
   /** Exception
     */
   io.csrMessage := CuToCsrNdPort.default
-  io.newPc      := zeroWord
+  io.newPc      := PcSetPort.default
 
   val linesHasException = WireDefault(VecInit(io.instInfoPorts.map(_.exceptionRecords.reduce(_ || _))))
   val hasException      = WireDefault(linesHasException.reduce(_ || _))
@@ -186,9 +188,9 @@ class Cu(
   // select new pc
   when(hasException) {
     when(isTlbRefillException) {
-      io.newPc := io.csrValues.tlbrentry
+      io.newPc.pcAddr := io.csrValues.tlbrentry
     }.otherwise {
-      io.newPc := io.csrValues.eentry
+      io.newPc.pcAddr := io.csrValues.eentry
     }
   }
 
@@ -197,7 +199,7 @@ class Cu(
   io.csrMessage.ertnFlush := extnFlush
 
   when(extnFlush) {
-    io.newPc := io.csrValues.era
+    io.newPc.pcAddr := io.csrValues.era
   }
 
   // tlb

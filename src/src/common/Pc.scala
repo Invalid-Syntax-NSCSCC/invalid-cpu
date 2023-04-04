@@ -12,18 +12,17 @@ class Pc extends Module {
     val pc     = Output(UInt(Width.Reg.data))
     val isNext = Input(Bool())
     // `ExeStage` -> `Pc` (no delay)
-    val branchSetPort = Input(new JumpBranchInfoNdPort)
+    val branchSetPort = Input(new PcSetPort)
     // 异常处理
-    val pipelineControlPort = Input(new PipelineControlNDPort)
-    val flushNewPc          = Input(UInt(Width.Reg.data))
+    val flushNewPc = Input(new PcSetPort)
   })
 
   val pcReg = RegInit(zeroWord)
   io.pc := pcReg
 
   pcReg := pcReg
-  when(io.pipelineControlPort.flush) {
-    pcReg := io.flushNewPc
+  when(io.flushNewPc.en) {
+    pcReg := io.flushNewPc.pcAddr
   }.elsewhen(io.branchSetPort.en) {
     pcReg := io.branchSetPort.pcAddr
   }.elsewhen(io.isNext) {
