@@ -207,6 +207,7 @@ class CoreCpuTop extends Module {
 
   // Simple fetch stage
   instQueue.io.enqueuePort <> simpleFetchStage.io.instEnqueuePort
+  instQueue.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
   simpleFetchStage.io.pc   := pc.io.pc
   pc.io.isNext             := simpleFetchStage.io.isPcNext
 
