@@ -31,12 +31,36 @@ object Param {
       val slaveId  = 8
       val masterId = slaveId + log2Ceil(Count.Axi.slave)
     }
+
+    object Mem {
+      val _addr = wordLength
+      val _data = wordLength
+
+      val addr = _addr.W
+      val data = _data.W
+    }
+
+    object DCache {
+      val _addr       = 6 // TODO: Choose an optimal value
+      val _byteOffset = log2Ceil(Count.DCache.dataPerLine) + log2Ceil(wordLength / byteLength)
+
+      val addr       = _addr.W
+      val byteOffset = _byteOffset.W
+      val tag        = (Width.Mem._addr - _addr - _byteOffset).W
+      val dataLine   = (Count.DCache.dataPerLine * Width.Mem._data).W
+    }
   }
 
   object Count {
     object Axi { // crossbar
       val master = 1
       val slave  = 3
+    }
+
+    object DCache {
+      val setSize     = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
+      val dataPerLine = 4 // TODO: Choose an optimal value
+      val sizePerRam  = math.pow(2, Width.DCache._addr).toInt
     }
   }
 
