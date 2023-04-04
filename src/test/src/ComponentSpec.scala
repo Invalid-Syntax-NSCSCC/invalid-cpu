@@ -42,7 +42,8 @@ import scala.collection.immutable
         instQueue.io.enqueuePort.ready.expect(false.B)
 
         // Flush the queue, then cannot dequeue
-        instQueue.io.isFlush.poke(true.B)
+        // instQueue.io.isFlush.poke(true.B)
+        instQueue.io.pipelineControlPort.flush.poke(true.B)
         instQueue.clock.step()
         instQueue.io.dequeuePort.valid.expect(false.B)
       }
