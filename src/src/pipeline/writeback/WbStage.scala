@@ -16,7 +16,8 @@ class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
     val gprWritePort = Output(new RfWriteNdPort)
 
     // Scoreboard
-    val freePorts = Output(Vec(changeNum, new ScoreboardChangeNdPort))
+    val freePorts    = Output(Vec(changeNum, new ScoreboardChangeNdPort))
+    val csrFreePorts = Output(Vec(changeNum, new ScoreboardChangeNdPort))
 
     // `MemStage` -> `WbStage` -> `Cu`  NO delay
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
@@ -47,6 +48,12 @@ class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
 
   // Indicate the availability in scoreboard
   io.freePorts.zip(Seq(io.gprWritePort)).foreach {
+    case (freePort, accessInfo) =>
+      freePort.en   := accessInfo.en
+      freePort.addr := accessInfo.addr
+  }
+
+  io.csrFreePorts.zip(Seq(io.instInfoPassThroughPort.in.csrWritePort)).foreach {
     case (freePort, accessInfo) =>
       freePort.en   := accessInfo.en
       freePort.addr := accessInfo.addr

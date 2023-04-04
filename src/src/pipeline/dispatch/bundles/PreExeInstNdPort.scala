@@ -15,6 +15,7 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   // GPR read (`readNum`)
   val gprReadPorts = Vec(readNum, new RfAccessInfoNdPort)
   val csrReadEn    = Bool()
+  val csrWriteEn   = Bool()
 
   // GPR write
   val gprWritePort = new RfAccessInfoNdPort
@@ -42,6 +43,7 @@ object PreExeInstNdPort {
     _.isHasImm -> false.B,
     _.imm -> 0.U,
     _.jumpBranchAddr -> zeroWord,
-    _.csrReadEn -> false.B
+    _.csrReadEn -> false.B,
+    _.csrWriteEn -> false.B
   )
 }

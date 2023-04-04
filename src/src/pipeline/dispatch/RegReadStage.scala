@@ -55,7 +55,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
 
   // Read from CSR
   io.csrReadPorts(0).en   := io.issuedInfoPort.info.csrReadEn
-  io.csrReadPorts(0).addr := io.issuedInfoPort.info.csrAddr
+  io.csrReadPorts(0).addr := io.instInfoPassThroughPort.in.csrWritePort.addr
 
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
@@ -96,20 +96,20 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
         exeInstReg.csrData := io.csrReadPorts(0).data
       }
 
-      switch(io.issuedInfoPort.info.exeOp) {
-        is(ExeInst.Op.csrrd) {
-          instInfoReg.csrWritePort.en   := false.B
-          instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
-        }
-        is(ExeInst.Op.csrwr) {
-          instInfoReg.csrWritePort.en   := true.B
-          instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
-        }
-        is(ExeInst.Op.csrxchg) {
-          instInfoReg.csrWritePort.en   := true.B
-          instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
-        }
-      }
+      // switch(io.issuedInfoPort.info.exeOp) {
+      //   is(ExeInst.Op.csrrd) {
+      //     instInfoReg.csrWritePort.en   := false.B
+      //     instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
+      //   }
+      //   is(ExeInst.Op.csrwr) {
+      //     instInfoReg.csrWritePort.en   := true.B
+      //     instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
+      //   }
+      //   is(ExeInst.Op.csrxchg) {
+      //     instInfoReg.csrWritePort.en   := true.B
+      //     instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
+      //   }
+      // }
     }
   }
 
