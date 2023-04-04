@@ -59,6 +59,14 @@ package object spec {
       val _4R    = 12.W
     }
 
+    object Mem {
+      val _addr = wordLength
+      val _data = wordLength
+
+      val addr = _addr.W
+      val data = _data.W
+    }
+
     object Axi {
       val addr   = wordLength.W
       val data   = 32.W
