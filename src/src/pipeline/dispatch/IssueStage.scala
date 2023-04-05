@@ -19,7 +19,6 @@ import pipeline.dispatch.enums.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
 import CsrRegs.ExceptionIndex
 
-// TODO: clear不知道会不会使指令丢失，待验证
 // throws exceptions: 指令不存在异常ine
 class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
   val io = IO(new Bundle {
@@ -29,6 +28,10 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     // `IssueStage` <-> `Scoreboard`
     val occupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
     val regScores   = Input(Vec(Count.reg, Bool()))
+
+    // `IssueStage` <-> `Scoreboard(csr)`
+    val csrOccupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
+    val csrRegScores   = Input(Vec(Count.csrReg, Bool()))
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPort = Output(new IssuedInfoNdPort)
@@ -171,6 +174,10 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     port.en   := false.B
     port.addr := DontCare
   }
+  io.csrOccupyPorts.foreach { port =>
+    port.en   := false.B
+    port.addr := DontCare
+  }
 
   // Issue pre-execution instruction
 
@@ -183,9 +190,17 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
         occupyPort.addr := accessInfo.addr
     }
 
-    issuedInfoReg.info := selectedDecoder.info
-    instInfoReg.inst   := selectedInstInfo.inst
-    instInfoReg.pc     := selectedInstInfo.pcAddr
+    io.csrOccupyPorts.zip(Seq(selectedDecoder.info)).foreach {
+      case (csrOccupyPort, accessInfo) =>
+        csrOccupyPort.en   := accessInfo.csrWriteEn
+        csrOccupyPort.addr := accessInfo.csrAddr
+    }
+
+    issuedInfoReg.info            := selectedDecoder.info
+    instInfoReg.inst              := selectedInstInfo.inst
+    instInfoReg.pc                := selectedInstInfo.pcAddr
+    instInfoReg.csrWritePort.en   := selectedDecoder.info.csrWriteEn
+    instInfoReg.csrWritePort.addr := selectedDecoder.info.csrAddr
   }
 
   // clear

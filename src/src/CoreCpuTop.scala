@@ -12,6 +12,8 @@ import spec.Param.isDiffTest
 import spec.PipelineStageIndex
 import spec.zeroWord
 import pipeline.ctrl.Csr
+import spec.Param
+import spec.Count
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -102,7 +104,8 @@ class CoreCpuTop extends Module {
 
   val crossbar = Module(new AxiCrossbar)
 
-  val scoreboard = Module(new Scoreboard)
+  val scoreboard    = Module(new Scoreboard)
+  val csrScoreBoard = Module(new Scoreboard(regNum = Count.csrReg))
 
   val regFile = Module(new RegFile)
   val pc      = Module(new Pc)
@@ -120,12 +123,8 @@ class CoreCpuTop extends Module {
   exeStage.io := DontCare
 
   // Pc
-  pc.io.branchSetPort       := exeStage.io.branchSetPort
-  pc.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.pc)
-
-  /** ************* TODO: Add flush new pc
-    */
-  pc.io.flushNewPc := zeroWord
+  pc.io.branchSetPort := exeStage.io.branchSetPort
+  pc.io.flushNewPc    := cu.io.newPc
 
   // AXI top <> AXI crossbar
   crossbar.io.slaves                       <> DontCare
@@ -208,6 +207,7 @@ class CoreCpuTop extends Module {
 
   // Simple fetch stage
   instQueue.io.enqueuePort <> simpleFetchStage.io.instEnqueuePort
+  instQueue.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
   simpleFetchStage.io.pc   := pc.io.pc
   pc.io.isNext             := simpleFetchStage.io.isPcNext
 
@@ -216,6 +216,8 @@ class CoreCpuTop extends Module {
   issueStage.io.regScores           := scoreboard.io.regScores
   scoreboard.io.occupyPorts         := issueStage.io.occupyPorts
   issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
+  issueStage.io.csrRegScores        := csrScoreBoard.io.regScores
+  csrScoreBoard.io.occupyPorts      := issueStage.io.csrOccupyPorts
 
   // Reg-read stage
   regReadStage.io.issuedInfoPort             := issueStage.io.issuedInfoPort
@@ -241,6 +243,7 @@ class CoreCpuTop extends Module {
   wbStage.io.instInfoPassThroughPort.in := memStage.io.instInfoPassThroughPort.out
   regFile.io.writePort                  := cu.io.gprWritePassThroughPorts.out(0)
   scoreboard.io.freePorts               := wbStage.io.freePorts
+  csrScoreBoard.io.freePorts            := wbStage.io.csrFreePorts
 
   // Ctrl unit
   cu.io.instInfoPorts(0)               := wbStage.io.instInfoPassThroughPort.out
