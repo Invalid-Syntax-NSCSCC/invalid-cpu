@@ -206,10 +206,10 @@ class CoreCpuTop extends Module {
   simpleFetchStage.io.axiMasterInterface.bready  <> crossbar.io.slaves(0).write.b.ready
 
   // Simple fetch stage
-  instQueue.io.enqueuePort <> simpleFetchStage.io.instEnqueuePort
+  instQueue.io.enqueuePort         <> simpleFetchStage.io.instEnqueuePort
   instQueue.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
-  simpleFetchStage.io.pc   := pc.io.pc
-  pc.io.isNext             := simpleFetchStage.io.isPcNext
+  simpleFetchStage.io.pc           := pc.io.pc
+  pc.io.isNext                     := simpleFetchStage.io.isPcNext
 
   // Issue stage
   issueStage.io.fetchInstInfoPort   <> instQueue.io.dequeuePort
