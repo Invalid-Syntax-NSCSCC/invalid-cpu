@@ -83,5 +83,4 @@ package object spec {
     val reg    = wordLength
     val csrReg = CsrRegs.Index.getCount
   }
-
 }

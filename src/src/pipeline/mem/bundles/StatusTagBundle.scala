@@ -9,3 +9,7 @@ class StatusTagBundle extends Bundle {
   val isDirty = Bool()
   val tag     = UInt(Param.Width.DCache.tag)
 }
+
+object StatusTagBundle {
+  val width = 2 + Param.Width.DCache._tag
+}

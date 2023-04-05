@@ -12,12 +12,13 @@ class DCacheAccessPort extends Bundle {
   val addr    = Input(UInt(Width.Mem.addr))
 
   val read = new Bundle {
-    val isValid = Input(Bool())
+    val isValid = Output(Bool())
     val data    = Output(UInt(Width.Mem.data))
   }
   val write = new Bundle {
     val isComplete = Output(Bool())
     val data       = Input(UInt(Width.Mem.data))
+    val mask       = Input(UInt(Width.Mem.data))
   }
 
   // TODO: Ports are not sufficient

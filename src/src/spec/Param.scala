@@ -36,10 +36,11 @@ object Param {
       val _addr       = 6 // TODO: Choose an optimal value
       val _byteOffset = log2Ceil(Count.DCache.dataPerLine) + log2Ceil(wordLength / byteLength)
       val _dataLine   = Count.DCache.dataPerLine * spec.Width.Mem._data
+      val _tag        = spec.Width.Mem._addr - _addr - _byteOffset
 
       val addr       = _addr.W
       val byteOffset = _byteOffset.W
-      val tag        = (spec.Width.Mem._addr - _addr - _byteOffset).W
+      val tag        = _tag.W
       val dataLine   = _dataLine.W
     }
   }

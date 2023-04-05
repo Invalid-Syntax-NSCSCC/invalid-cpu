@@ -8,7 +8,13 @@ import spec._
 
 import scala.collection.immutable
 
-class DCache extends Module {
+class DCache(
+  isDebug:           Boolean   = false,
+  debugAddrSeq:      Seq[UInt] = Seq(),
+  debugDataLineSeq:  Seq[UInt] = Seq(),
+  debugStatusTagSeq: Seq[UInt] = Seq(),
+  debugSetNumSeq:    Seq[Int]  = Seq())
+    extends Module {
   val io = IO(new Bundle {
     val accessPort = new DCacheAccessPort
   })
@@ -85,26 +91,40 @@ class DCache extends Module {
 
   // Note: Number of RAMs is the same as the size of a set
 
-  val statusTagWidth = (new StatusTagBundle).getWidth
+  // Functions for calculation
+  def byteOffsetFromMemAddr(addr: UInt) = addr(Param.Width.DCache._byteOffset - 1, 0)
+  def dataIndexFromByteOffset(offset: UInt) =
+    offset(Param.Width.DCache._byteOffset - 1, log2Ceil(wordLength / byteLength))
+  def dataIndexFromMemAddr(addr: UInt) = dataIndexFromByteOffset(byteOffsetFromMemAddr(addr))
+  def queryIndexFromMemAddr(addr: UInt) =
+    addr(Param.Width.DCache._byteOffset + Param.Width.DCache._addr - 1, Param.Width.DCache._byteOffset)
+
+  // Debug: Prepare cache
+  assert(debugAddrSeq.length == debugDataLineSeq.length)
+  assert(debugAddrSeq.length == debugStatusTagSeq.length)
+  assert(debugAddrSeq.length == debugSetNumSeq.length)
+  val debugWriteNum = debugAddrSeq.length
 
   // RAMs for valid, dirty, and tag
-  val statusTagRams = Vec(
-    Param.Count.DCache.setSize,
+  val statusTagRams = Seq.fill(Param.Count.DCache.setSize)(
     Module(
       new SimpleRam(
         Param.Count.DCache.sizePerRam,
-        statusTagWidth
+        StatusTagBundle.width,
+        isDebug,
+        debugWriteNum
       )
     )
   )
 
   // RAMs for data line
-  val dataLineRams = Vec(
-    Param.Count.DCache.setSize,
+  val dataLineRams = Seq.fill(Param.Count.DCache.setSize)(
     Module(
       new SimpleRam(
         Param.Count.DCache.sizePerRam,
-        Param.Width.DCache._dataLine
+        Param.Width.DCache._dataLine,
+        isDebug,
+        debugWriteNum
       )
     )
   )
@@ -112,6 +132,37 @@ class DCache extends Module {
   (statusTagRams ++ dataLineRams).foreach { ram =>
     ram.io              := DontCare
     ram.io.writePort.en := false.B // Fallback: Not write
+  }
+
+  // Debug: Init cache
+  if (isDebug) {
+    val debugEnReg = RegNext(false.B, true.B)
+
+    statusTagRams.zip(dataLineRams).foreach {
+      case (tRam, dRam) =>
+        (tRam.io.debugPorts, dRam.io.debugPorts) match {
+          case (Some(tPorts), Some(dPorts)) =>
+            tPorts.zip(dPorts).foreach {
+              case (tPort, dPort) =>
+                tPort.en := false.B
+                dPort.en := false.B
+            }
+        }
+    }
+    debugAddrSeq.lazyZip(debugStatusTagSeq).lazyZip(debugDataLineSeq).lazyZip(debugSetNumSeq).zipWithIndex.foreach {
+      case ((addr, st, dl, num), i) =>
+        (statusTagRams(num).io.debugPorts, dataLineRams(num).io.debugPorts) match {
+          case (Some(tPorts), Some(dPorts)) =>
+            val tPort = tPorts(i)
+            val dPort = dPorts(i)
+            tPort.en   := debugEnReg
+            tPort.addr := addr
+            tPort.data := st
+            dPort.en   := debugEnReg
+            dPort.addr := addr
+            dPort.data := dl
+        }
+    }
   }
 
   val stateReg  = RegInit(State.Ready)
@@ -125,7 +176,19 @@ class DCache extends Module {
   readDataReg             := readDataReg // Fallback: Keep data
   io.accessPort.read.data := readDataReg
 
-  io.accessPort.isReady := false.B // Fallback: Not ready
+  io.accessPort.isReady          := false.B // Fallback: Not ready
+  io.accessPort.write.isComplete := false.B // Fallback: Not complete
+
+  // Keep request and cache query information
+  val lastReg = Reg(new Bundle {
+    val memAddr        = UInt(Width.Mem.addr)
+    val statusTagLines = Vec(Param.Count.DCache.setSize, new StatusTagBundle)
+    val setIndex       = UInt(log2Ceil(Param.Count.DCache.setSize).W)
+    val dataLine       = Vec(Param.Count.DCache.dataPerLine, UInt(Width.Mem.data))
+    val writeData      = UInt(Width.Mem.data)
+    val writeMask      = UInt(Width.Mem.data)
+  })
+  lastReg := lastReg // Fallback: Keep data
 
   switch(stateReg) {
     is(State.Ready) {
@@ -135,13 +198,11 @@ class DCache extends Module {
         // Stage 1: Cache query
 
         // Decode
-        val memAddr = WireDefault(io.accessPort.addr)
-        val tag     = WireDefault(memAddr(Width.Mem._addr - 1, Width.Mem._addr - Param.Width.DCache.tag))
-        val queryIndex = WireDefault(
-          memAddr(Param.Width.DCache._byteOffset + Param.Width.DCache._addr - 1, Param.Width.DCache._byteOffset)
-        )
-        val byteOffset = WireDefault(memAddr(Param.Width.DCache._byteOffset - 1, 0))
-        val dataIndex  = WireDefault(byteOffset(Param.Width.DCache._byteOffset - 1, log2Ceil(wordLength / byteLength)))
+        val memAddr    = WireDefault(io.accessPort.addr)
+        val tag        = WireDefault(memAddr(Width.Mem._addr - 1, Width.Mem._addr - Param.Width.DCache._tag))
+        val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
+        val byteOffset = WireDefault(byteOffsetFromMemAddr(memAddr))
+        val dataIndex  = WireDefault(dataIndexFromByteOffset(byteOffset))
 
         // Read status-tag
         statusTagRams.foreach { ram =>
@@ -150,26 +211,16 @@ class DCache extends Module {
         val statusTagLines = Wire(Vec(Param.Count.DCache.setSize, new StatusTagBundle))
         statusTagLines.zip(statusTagRams.map(_.io.readPort.data)).foreach {
           case (line, data) =>
-            line.isValid := data(statusTagWidth - 1)
-            line.isDirty := data(statusTagWidth - 2)
-            line.tag     := data(statusTagWidth - 3, 0)
+            line.isValid := data(StatusTagBundle.width - 1)
+            line.isDirty := data(StatusTagBundle.width - 2)
+            line.tag     := data(StatusTagBundle.width - 3, 0)
         }
 
-        // Read data (for read)
+        // Read data (for read and write)
         dataLineRams.foreach { ram =>
           ram.io.readPort.addr := queryIndex
         }
-        val dataLines = WireDefault(
-          VecInit(
-            Seq.fill(Param.Count.DCache.setSize)(0.U(Param.Width.DCache.dataLine))
-          )
-        )
-        when(io.accessPort.rw === ReadWriteSel.read) {
-          dataLines.zip(dataLineRams).foreach {
-            case (line, ram) =>
-              line := ram.io.readPort.data
-          }
-        }
+        val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.readPort.data)))
 
         // Calculate if hit and select
         val isSelectedVec = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
@@ -193,24 +244,61 @@ class DCache extends Module {
         )
         val isCacheHit = WireDefault(isSelectedVec.reduce(_ || _))
 
+        // Save data for later use
+        lastReg.memAddr        := memAddr
+        lastReg.statusTagLines := statusTagLines
+        lastReg.setIndex       := setIndex
+        lastReg.dataLine       := selectedDataLine
+        lastReg.writeData      := io.accessPort.write.data
+        lastReg.writeMask      := io.accessPort.write.mask
+
         // Select data by data index from byte offset
         val selectedData = WireDefault(selectedDataLine(dataIndex))
 
         when(isCacheHit) {
           switch(io.accessPort.rw) {
             is(ReadWriteSel.read) {
-              nextState := State.Ready
-
               // Remember to use regs
               isReadValidReg := true.B
               readDataReg    := selectedData
 
-              // TODO: Last edited
+              // Next Stage 1
+              nextState := State.Ready
             }
-            is(ReadWriteSel.write) {}
+            is(ReadWriteSel.write) {
+              // Next Stage 2.a
+              nextState := State.Write
+            }
           }
-        }.otherwise {}
+        }.otherwise {
+          // TODO: Cache miss
+        }
       }
+    }
+
+    is(State.Write) {
+      // Stage 2.a: Write to cache (previous hit)
+
+      // Substitute write data in data line, with mask
+      val dataIndex     = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
+      val oldData       = WireDefault(lastReg.dataLine(dataIndex))
+      val writeDataLine = WireDefault(lastReg.dataLine)
+      writeDataLine(dataIndex) := (lastReg.writeData & lastReg.writeMask) | (oldData & (~lastReg.writeMask).asUInt)
+
+      // Write to data line RAM
+      val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+      dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
+        case (writePort, index) =>
+          writePort.en   := index.U === lastReg.setIndex
+          writePort.data := writeDataLine.asUInt
+          writePort.addr := queryIndex
+      }
+
+      // Mark write as complete
+      io.accessPort.write.isComplete := true.B
+
+      // Next Stage 1
+      nextState := State.Ready
     }
   }
 }
