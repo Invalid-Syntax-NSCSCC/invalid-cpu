@@ -54,12 +54,14 @@ object DCacheSpec extends ChiselUtestTester {
         new DCache(true, debugAddrSeq, debugDataLineSeq, debugStatusTagSeq, debugSetNumSeq),
         immutable.Seq(WriteVcdAnnotation)
       ) { cache =>
+        // Wait for cache debug init
         cache.io.accessPort.isValid.poke(false.B)
         cache.clock.step(2)
 
-        debugAddrSeq.lazyZip(debugStatusTagSeq).lazyZip(debugDataLineSeq).lazyZip(memAddrSeq).foreach {
-          case (addr, st, dl, mAddr) =>
-            val tag        = st(st.getWidth - 3, 0)
+        // Test read (cache hit)
+        debugDataLineSeq.lazyZip(memAddrSeq).foreach {
+          case (dl, mAddr) =>
+            // Request
             val byteOffset = _byteOffset.U(Param.Width.DCache.byteOffset)
             val data       = dl(32 * (byteOffset.litValue / 4 + 1) - 1, 32 * (byteOffset.litValue / 4))
 
@@ -69,9 +71,33 @@ object DCacheSpec extends ChiselUtestTester {
 
             cache.clock.step()
 
+            // Get data
             cache.io.accessPort.read.isValid.expect(true.B)
             println(f"Read data: ${cache.io.accessPort.read.data.peekInt()}%X")
             cache.io.accessPort.read.data.expect(data)
+        }
+
+        cache.io.accessPort.isValid.poke(false.B)
+        cache.clock.step()
+
+        // Test write (cache hit)
+        memAddrSeq.foreach { mAddr =>
+          // Request
+          val data = "h_AAAA_AAAA".U
+          val mask = "h_F0F0_FFFF".U
+          cache.io.accessPort.isValid.poke(true.B)
+          cache.io.accessPort.rw.poke(ReadWriteSel.write)
+          cache.io.accessPort.addr.poke(mAddr)
+          cache.io.accessPort.write.data.poke(data)
+          cache.io.accessPort.write.mask.poke(mask)
+
+          cache.clock.step()
+
+          // Will complete write
+          cache.io.accessPort.write.isComplete.expect(true.B)
+
+          // Allow next write
+          cache.clock.step()
         }
 
         cache.clock.step(5)
