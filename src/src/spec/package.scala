@@ -68,9 +68,11 @@ package object spec {
     }
 
     object Axi {
+      val _data = 128
+
       val addr   = wordLength.W
-      val data   = 32.W
-      val strb   = 4.W // = (data / 8)
+      val data   = _data.W
+      val strb   = (_data / byteLength).W // = (data / 8)
       val aruser = 1.W
       val ruser  = 1.W
       val awuser = 1.W

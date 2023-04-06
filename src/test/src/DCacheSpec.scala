@@ -19,21 +19,23 @@ object DCacheSpec extends ChiselUtestTester {
       )
       val debugAddrSeq = _debugAddrSeq.map(_.U(Param.Width.DCache.addr))
 
+      def getDataLine(str: String) = ("h_" + "0" * (12 * 8) + str).U(Param.Width.DCache.dataLine)
+
       val debugDataLineSeq = Seq(
-        "h_0000000F_000000FF_00000FFF_0000FFFF".U(Param.Width.DCache.dataLine),
-        "h_0000000F_000000FF_00000EEE_0000FFFF".U(Param.Width.DCache.dataLine),
-        "h_0000000F_000000FF_00000DDD_0000FFFF".U(Param.Width.DCache.dataLine)
+        getDataLine("0000000F_000000FF_00000FFF_0000FFFF"),
+        getDataLine("0000000F_000000FF_00000EEE_0000FFFF"),
+        getDataLine("0000000F_000000FF_00000DDD_0000FFFF")
       )
 
       // Width: 22 + 2
       val _debugStatusTagSeq = Seq(
-        "b_10_0000000000000000111100",
-        "b_10_0000000000000000111101",
-        "b_10_0000000000000000111110"
+        "b_10_00000000000000111100",
+        "b_10_00000000000000111101",
+        "b_10_00000000000000111110"
       )
       val debugStatusTagSeq = _debugStatusTagSeq.map(_.U(StatusTagBundle.width.W))
 
-      val _byteOffset = "b_01_00"
+      val _byteOffset = "b_0001_00"
 
       val debugSetNumSeq = Seq(
         0,
@@ -95,10 +97,25 @@ object DCacheSpec extends ChiselUtestTester {
 
           // Will complete write
           cache.io.accessPort.write.isComplete.expect(true.B)
-
-          // Allow next write
-          cache.clock.step()
         }
+
+        // Test read (hit) after write (hit) back to back
+        val mAddr = memAddrSeq.head
+        val data  = "h_FFFF_FFFF".U
+        val mask  = "h_0000_FFFF".U
+        cache.io.accessPort.isValid.poke(true.B)
+        cache.io.accessPort.rw.poke(ReadWriteSel.write)
+        cache.io.accessPort.addr.poke(mAddr)
+        cache.io.accessPort.write.data.poke(data)
+        cache.io.accessPort.write.mask.poke(mask)
+
+        cache.clock.step()
+
+        cache.io.accessPort.isValid.poke(true.B)
+        cache.io.accessPort.rw.poke(ReadWriteSel.read)
+        cache.io.accessPort.addr.poke(mAddr)
+
+        // TODO: Finish this test
 
         cache.clock.step(5)
       }

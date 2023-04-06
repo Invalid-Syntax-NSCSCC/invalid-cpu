@@ -1,12 +1,11 @@
 package pipeline.mem
 
+import axi.bundles.AxiMasterPort
 import chisel3._
 import chisel3.util._
 import pipeline.mem.bundles.{DCacheAccessPort, StatusTagBundle}
 import pipeline.mem.enums.{DCacheState => State, ReadWriteSel}
 import spec._
-
-import scala.collection.immutable
 
 class DCache(
   isDebug:           Boolean   = false,
@@ -16,8 +15,13 @@ class DCache(
   debugSetNumSeq:    Seq[Int]  = Seq())
     extends Module {
   val io = IO(new Bundle {
-    val accessPort = new DCacheAccessPort
+    val accessPort    = new DCacheAccessPort
+    val refillAxiPort = new AxiMasterPort
+    val wbAxiPort     = new AxiMasterPort
   })
+
+  // TODO: Remove DontCare
+  io <> DontCare
 
   // Read cache hit diagram:
   // clock: ^_____________________________^___________________
@@ -26,7 +30,9 @@ class DCache(
   //        rw = Read                     read.data = *data*
   //        (stored as previous request)
   //
-  // state: Ready                         Ready
+  // state: ready                         ready
+  // note:
+  //   - Read from write info if current cycle has write cache operation
 
   // Read cache miss diagram:
   // clock: ^_____________________________^_________________________________^...^___________________^_____________________________________________________^...^______________
@@ -39,13 +45,14 @@ class DCache(
   //                                                                                                [else]:
   //                                                                                                  isReady = T
   //
-  // state: Ready                         [if swap out dirty]:                                      [if previous swap out dirty and write not complete]:      [if previous swap out dirty and write complete]:
-  //                                        FetchForReadAndWb                                         OnlyWb                                                    Ready
+  // state: ready                         [if swap out dirty]:                                      [if previous swap out dirty and write not complete]:      [if previous swap out dirty and write complete]:
+  //                                        refillForReadAndWb                                        onlyWb                                                    ready
   //                                      [else]:                                                   [else]:
-  //                                        FetchForRead                                              Ready
+  //                                        refillForRead                                             ready
   // note:
   //   - Set reg `isRequestSent` to F before entering state for cache miss,
   //     then set reg `isRequestSent` to T after entering
+  //   - Read from write info if current cycle has write cache operation
 
   // Write cache hit diagram:
   // clock: ^_____________________________^_______________^____________
@@ -54,7 +61,7 @@ class DCache(
   //        rw = Write                    (write cache)
   //        (stored as previous request)
   //
-  // state: Ready                         Write           Ready
+  // state: ready                         write           ready
 
   // Write cache miss diagram:
   // clock: ^_____________________________^_________________________________^...^________________________^_____________________________________________________^...^______________
@@ -67,10 +74,10 @@ class DCache(
   //                                                                                                     [else]:
   //                                                                                                       isReady = T
   //
-  // state: Ready                         [if swap out dirty]:                                           [if previous swap out dirty and write not complete]:      [if previous swap out dirty and write complete]:
-  //                                        FetchForWriteAndWb                                             OnlyWb                                                    Ready
+  // state: ready                         [if swap out dirty]:                                           [if previous swap out dirty and write not complete]:      [if previous swap out dirty and write complete]:
+  //                                        refillForWriteAndWb                                            onlyWb                                                    ready
   //                                      [else]:                                                        [else]:
-  //                                        FetchForWrite                                                  Ready
+  //                                        refillForWrite                                                 ready
   // note:
   //   - Set reg `isRequestSent` to F before entering state for cache miss,
   //     then set reg `isRequestSent` to T after entering
@@ -165,7 +172,7 @@ class DCache(
     }
   }
 
-  val stateReg  = RegInit(State.Ready)
+  val stateReg  = RegInit(State.ready)
   val nextState = WireDefault(stateReg)
   stateReg := nextState // Fallback: Keep state
 
@@ -189,13 +196,18 @@ class DCache(
     val writeMask      = UInt(Width.Mem.data)
   })
   lastReg := lastReg // Fallback: Keep data
+  val last = new Bundle {
+    val selectedStatusTag = WireDefault(lastReg.statusTagLines(lastReg.setIndex))
+  }
 
   switch(stateReg) {
-    is(State.Ready) {
+    // Note: Can accept request when in the second cycle of write (hit),
+    //       as long as the write information is passed to cache query
+    is(State.ready, State.write) {
       io.accessPort.isReady := true.B
 
       when(io.accessPort.isValid) {
-        // Stage 1: Cache query
+        // Stage 1 and Stage 2.a: Cache query
 
         // Decode
         val memAddr    = WireDefault(io.accessPort.addr)
@@ -244,6 +256,17 @@ class DCache(
         )
         val isCacheHit = WireDefault(isSelectedVec.reduce(_ || _))
 
+        // If writing, then also query from write info
+        when(
+          stateReg === State.write &&
+            queryIndexFromMemAddr(lastReg.memAddr) === queryIndex &&
+            last.selectedStatusTag.tag === tag
+        ) {
+          setIndex              := lastReg.setIndex
+          selectedStatusTagLine := last.selectedStatusTag
+          selectedDataLine      := lastReg.dataLine
+        }
+
         // Save data for later use
         lastReg.memAddr        := memAddr
         lastReg.statusTagLines := statusTagLines
@@ -263,42 +286,52 @@ class DCache(
               readDataReg    := selectedData
 
               // Next Stage 1
-              nextState := State.Ready
+              nextState := State.ready
             }
             is(ReadWriteSel.write) {
               // Next Stage 2.a
-              nextState := State.Write
+              nextState := State.write
             }
           }
         }.otherwise {
           // TODO: Cache miss
         }
+
+        when(stateReg === State.write) {
+          // Stage 2.a: Write to cache (previous hit)
+
+          // Substitute write data in data line, with mask
+          val dataIndex     = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
+          val oldData       = WireDefault(lastReg.dataLine(dataIndex))
+          val writeDataLine = WireDefault(lastReg.dataLine)
+          writeDataLine(dataIndex) := (lastReg.writeData & lastReg.writeMask) | (oldData & (~lastReg.writeMask).asUInt)
+
+          val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+
+          // Set dirty bit
+          val writeStatusTag = WireDefault(last.selectedStatusTag)
+          writeStatusTag.isDirty := true.B
+
+          // Write status-tag (especially dirty bit) to RAM
+          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := writeStatusTag.asUInt
+              writePort.addr := queryIndex
+          }
+
+          // Write to data line RAM
+          dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := writeDataLine.asUInt
+              writePort.addr := queryIndex
+          }
+
+          // Mark write as complete
+          io.accessPort.write.isComplete := true.B
+        }
       }
-    }
-
-    is(State.Write) {
-      // Stage 2.a: Write to cache (previous hit)
-
-      // Substitute write data in data line, with mask
-      val dataIndex     = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
-      val oldData       = WireDefault(lastReg.dataLine(dataIndex))
-      val writeDataLine = WireDefault(lastReg.dataLine)
-      writeDataLine(dataIndex) := (lastReg.writeData & lastReg.writeMask) | (oldData & (~lastReg.writeMask).asUInt)
-
-      // Write to data line RAM
-      val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
-      dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
-        case (writePort, index) =>
-          writePort.en   := index.U === lastReg.setIndex
-          writePort.data := writeDataLine.asUInt
-          writePort.addr := queryIndex
-      }
-
-      // Mark write as complete
-      io.accessPort.write.isComplete := true.B
-
-      // Next Stage 1
-      nextState := State.Ready
     }
   }
 }
