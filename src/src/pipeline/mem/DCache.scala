@@ -258,7 +258,7 @@ class DCache(
 
         // If writing, then also query from write info
         // Predefine write info for passing through to read
-        val writeDataLine = WireDefault(lastReg.dataLine)
+        val writeDataLine  = WireDefault(lastReg.dataLine)
         val writeStatusTag = WireDefault(last.selectedStatusTag)
         when(
           stateReg === State.write &&
@@ -305,8 +305,8 @@ class DCache(
           // Stage 2.a: Write to cache (previous hit)
 
           // Substitute write data in data line, with mask
-          val dataIndex     = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
-          val oldData       = WireDefault(lastReg.dataLine(dataIndex))
+          val dataIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
+          val oldData   = WireDefault(lastReg.dataLine(dataIndex))
           writeDataLine(dataIndex) := (lastReg.writeData & lastReg.writeMask) | (oldData & (~lastReg.writeMask).asUInt)
 
           val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
