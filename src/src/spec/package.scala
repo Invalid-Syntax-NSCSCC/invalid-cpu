@@ -85,4 +85,47 @@ package object spec {
     val reg    = wordLength
     val csrReg = CsrRegs.Index.getCount
   }
+
+  object Value {
+    object Axi {
+      object Burst {
+        val fixed    = 0.U(2.W)
+        val incr     = 1.U(2.W)
+        val wrap     = 2.U(2.W)
+        val reserved = 3.U(2.W)
+      }
+
+      object Size {
+        def get(sizeInBytes: Int) = log2Ceil(sizeInBytes).U(3.W)
+
+        val _4_B   = get(4)
+        val _128_B = get(128)
+      }
+
+      // AXI 3
+      object Lock {
+        val normal = 0.U(2.W)
+      }
+
+      object Cache {
+        val nonBufferable = 0.U(4.W)
+      }
+
+      object Protect {
+        def get(isPrivileged: Boolean, isSecure: Boolean, isInst: Boolean) =
+          Cat(
+            if (isInst) true.B else false.B,
+            if (isSecure) false.B else true.B,
+            if (isPrivileged) true.B else false.B
+          )
+      }
+
+      object Response {
+        val Okay          = 0.U(2.W)
+        val ExclusiveOkay = 1.U(2.W)
+        val SlaveErr      = 2.U(2.W)
+        val DecodeErr     = 3.U(2.W)
+      }
+    }
+  }
 }
