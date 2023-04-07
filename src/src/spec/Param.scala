@@ -3,7 +3,7 @@ package spec
 import chisel3._
 import chisel3.util._
 import spec.PipelineStageIndex
-import chisel3.experimental.ChiselEnum
+import chisel3.ChiselEnum
 
 object Param {
   // Configurable self-defined parameters go here
@@ -31,12 +31,30 @@ object Param {
       val slaveId  = 8
       val masterId = slaveId + log2Ceil(Count.Axi.slave)
     }
+
+    object DCache {
+      val _addr       = 6 // TODO: Choose an optimal value
+      val _byteOffset = log2Ceil(Count.DCache.dataPerLine) + log2Ceil(wordLength / byteLength)
+      val _dataLine   = Count.DCache.dataPerLine * spec.Width.Mem._data
+      val _tag        = spec.Width.Mem._addr - _addr - _byteOffset
+
+      val addr       = _addr.W
+      val byteOffset = _byteOffset.W
+      val tag        = _tag.W
+      val dataLine   = _dataLine.W
+    }
   }
 
   object Count {
     object Axi { // crossbar
       val master = 1
       val slave  = 3
+    }
+
+    object DCache {
+      val setSize     = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
+      val dataPerLine = 4 // TODO: Choose an optimal value
+      val sizePerRam  = math.pow(2, Width.DCache._addr).toInt
     }
   }
 
@@ -59,10 +77,6 @@ object Param {
 
   object SimpleFetchStageState extends ChiselEnum {
     val idle, requestInst, waitInst = Value
-  }
-
-  object IssueStageState extends ChiselEnum {
-    val nonBlocking, blocking = Value
   }
 
   object ExeStageState extends ChiselEnum {

@@ -4,6 +4,7 @@ import chisel3.util._
 package object spec {
   // Immutable definitions according to LA32R documentation go here
 
+  val byteLength       = 8
   val wordLength       = 32
   val doubleWordLength = wordLength * 2
   val wordLog          = log2Ceil(wordLength)
@@ -58,6 +59,14 @@ package object spec {
       val _4R    = 12.W
     }
 
+    object Mem {
+      val _addr = wordLength
+      val _data = wordLength
+
+      val addr = _addr.W
+      val data = _data.W
+    }
+
     object Axi {
       val addr   = wordLength.W
       val data   = 32.W
@@ -74,5 +83,4 @@ package object spec {
     val reg    = wordLength
     val csrReg = CsrRegs.Index.getCount
   }
-
 }
