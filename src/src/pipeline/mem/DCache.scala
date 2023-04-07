@@ -257,14 +257,18 @@ class DCache(
         val isCacheHit = WireDefault(isSelectedVec.reduce(_ || _))
 
         // If writing, then also query from write info
+        // Predefine write info for passing through to read
+        val writeDataLine = WireDefault(lastReg.dataLine)
+        val writeStatusTag = WireDefault(last.selectedStatusTag)
         when(
           stateReg === State.write &&
             queryIndexFromMemAddr(lastReg.memAddr) === queryIndex &&
             last.selectedStatusTag.tag === tag
         ) {
+          // Pass write status-tag and data line to read
           setIndex              := lastReg.setIndex
-          selectedStatusTagLine := last.selectedStatusTag
-          selectedDataLine      := lastReg.dataLine
+          selectedStatusTagLine := writeStatusTag
+          selectedDataLine      := writeDataLine
         }
 
         // Save data for later use
@@ -303,13 +307,11 @@ class DCache(
           // Substitute write data in data line, with mask
           val dataIndex     = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
           val oldData       = WireDefault(lastReg.dataLine(dataIndex))
-          val writeDataLine = WireDefault(lastReg.dataLine)
           writeDataLine(dataIndex) := (lastReg.writeData & lastReg.writeMask) | (oldData & (~lastReg.writeMask).asUInt)
 
           val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
 
           // Set dirty bit
-          val writeStatusTag = WireDefault(last.selectedStatusTag)
           writeStatusTag.isDirty := true.B
 
           // Write status-tag (especially dirty bit) to RAM

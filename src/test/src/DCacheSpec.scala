@@ -75,9 +75,10 @@ object DCacheSpec extends ChiselUtestTester {
 
             // Get data
             cache.io.accessPort.read.isValid.expect(true.B)
-            println(f"Read data: ${cache.io.accessPort.read.data.peekInt()}%X")
+            println(f"Read data: 0x${cache.io.accessPort.read.data.peekInt()}%08X")
             cache.io.accessPort.read.data.expect(data)
         }
+        println("✅ All read operations completed.\n")
 
         cache.io.accessPort.isValid.poke(false.B)
         cache.clock.step()
@@ -98,16 +99,18 @@ object DCacheSpec extends ChiselUtestTester {
           // Will complete write
           cache.io.accessPort.write.isComplete.expect(true.B)
         }
+        println("✅ All write operations completed.\n")
 
         // Test read (hit) after write (hit) back to back
         val mAddr = memAddrSeq.head
         val data  = "h_FFFF_FFFF".U
-        val mask  = "h_0000_FFFF".U
+        val mask  = "h_FFFF_FFFF".U
         cache.io.accessPort.isValid.poke(true.B)
         cache.io.accessPort.rw.poke(ReadWriteSel.write)
         cache.io.accessPort.addr.poke(mAddr)
         cache.io.accessPort.write.data.poke(data)
         cache.io.accessPort.write.mask.poke(mask)
+        println(f"Write data: 0x${data.litValue}%08X")
 
         cache.clock.step()
 
@@ -115,7 +118,18 @@ object DCacheSpec extends ChiselUtestTester {
         cache.io.accessPort.rw.poke(ReadWriteSel.read)
         cache.io.accessPort.addr.poke(mAddr)
 
-        // TODO: Finish this test
+        cache.clock.step()
+
+        cache.io.accessPort.read.isValid.expect(true.B)
+        cache.io.accessPort.read.data.expect(data)
+        val readData = cache.io.accessPort.read.data.peek()
+        println(f"Read data: 0x${readData.litValue}%08X")
+
+        println("✅ Read-after-write operation completed.\n")
+
+        cache.clock.step()
+
+        cache.io.accessPort.isValid.poke(false.B)
 
         cache.clock.step(5)
       }
