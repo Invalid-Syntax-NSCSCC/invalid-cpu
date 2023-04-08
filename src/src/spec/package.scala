@@ -11,6 +11,10 @@ package object spec {
 
   val zeroWord = 0.U(wordLength.W)
 
+  object Pc {
+    val init = "h1C000000".U(wordLength.W)
+  }
+
   object RegIndex {
     val r0 = 0.U
     val r1 = 1.U
@@ -24,7 +28,7 @@ package object spec {
       count += 1
       idx
     }
-    val instQueue = next
+    val instQueue    = next
     val issueStage   = next
     val regReadStage = next
     val exeStage     = next
