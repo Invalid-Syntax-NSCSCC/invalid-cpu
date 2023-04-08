@@ -1,4 +1,4 @@
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor

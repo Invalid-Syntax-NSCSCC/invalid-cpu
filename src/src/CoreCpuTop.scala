@@ -3,7 +3,7 @@ import axi.bundles.AxiMasterPort
 import chisel3._
 import common.{Pc, RegFile}
 import frontend.{InstQueue, SimpleFetchStage}
-import pipeline.ctrl.Cu
+import control.Cu
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
@@ -11,7 +11,7 @@ import pipeline.mem.MemStage
 import spec.Param.isDiffTest
 import spec.PipelineStageIndex
 import spec.zeroWord
-import pipeline.ctrl.Csr
+import control.Csr
 import spec.Param
 import spec.Count
 
@@ -254,9 +254,8 @@ class CoreCpuTop extends Module {
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
-    case (dst, src) => {
+    case (dst, src) =>
       dst := src
-    }
   }
   csr.io.csrMessage := cu.io.csrMessage
   csr.io.readPorts  <> regReadStage.io.csrReadPorts

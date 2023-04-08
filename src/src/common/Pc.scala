@@ -5,7 +5,7 @@ import chisel3.util._
 import common.bundles._
 import spec._
 import pipeline.execution.bundles.JumpBranchInfoNdPort
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 
 class Pc extends Module {
   val io = IO(new Bundle {

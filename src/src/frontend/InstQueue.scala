@@ -5,7 +5,7 @@ import chisel3.util._
 
 import spec._
 import pipeline.dispatch.bundles.InstInfoBundle
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 
 class InstQueue(val queueLength: Int = Param.instQueueLength) extends Module {
   val io = IO(new Bundle {

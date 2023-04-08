@@ -14,14 +14,14 @@ class Div extends Module {
       val quotient  = Output(UInt(wordLength.W)) // 商
       val remainder = Output(UInt(wordLength.W)) // 余数
     })
-    val isRunning = (Output(Bool()))
+    val isRunning = Output(Bool())
   })
 
   // 正在运行
   val running = RegInit(false.B)
   io.isRunning := running // | io.divInst.valid
 
-  val inputReady = WireDefault(~running)
+  val inputReady = WireDefault(!running)
   io.divInst.ready := inputReady
 
   // 开始 正在运算或除零，忽略
@@ -104,7 +104,7 @@ class Div extends Module {
   // sub2x = remainder - 2 * shiftDivisor
   val sub2x = Wire(UInt((wordLength + 2).W))
   // sub2x := Cat(0.U(1.W), remainder) -& Cat(shiftedDivisor, 0.U(1.W))
-  sub2x := remainder -& (shiftedDivisor << 1)
+  sub2x := remainder -& (shiftedDivisor << 1).asUInt
 
   // shiftDivider过大
   val sub2xOverflow = WireDefault(getSign(sub2x, wordLength + 2))
@@ -144,7 +144,7 @@ class Div extends Module {
     start ||
       (running && newQuotientBits.orR) // 若00 余数不变，则不处理
   ) {
-    when(~running) {
+    when(!running) {
       remainder := dividendAbs
     }.elsewhen(sub1xOverflow) {
       remainder := sub2xValue // sub2x = remainder - 2 * shiftDivisor
@@ -162,7 +162,7 @@ class Div extends Module {
   val cyclesRemainingSub1 = Wire(UInt(wordLog.W))
   cyclesRemainingSub1 := cyclesRemaining -& 1.U
   terminate           := getSign(cyclesRemainingSub1, wordLog)
-  cyclesRemainingNext := cyclesRemainingSub1((wordLog - 2), 0)
+  cyclesRemainingNext := cyclesRemainingSub1(wordLog - 2, 0)
 
   cyclesRemaining := Mux(
     running,
@@ -170,8 +170,8 @@ class Div extends Module {
     clzDelta(wordLog - 1, 1) // not run : init
   )
 
-  running := (running && ~terminate) ||
-    (start && ~divisorGreaterThanDividend)
+  running := (running && !terminate) ||
+    (start && !divisorGreaterThanDividend)
 
   val runningDelay                    = RegNext(running, false.B)
   val terminateDelay                  = RegNext(terminate, false.B)
@@ -182,7 +182,7 @@ class Div extends Module {
     dividend.orR,
     Mux(
       quotientSign,
-      ~quotient + 1.U,
+      (~quotient).asUInt + 1.U,
       quotient
     ),
     zeroWord // 被除数为0
@@ -191,7 +191,7 @@ class Div extends Module {
     remainder.orR,
     Mux(
       remainderSign,
-      ~remainder + 1.U,
+      (~remainder).asUInt + 1.U,
       remainder
     ),
     zeroWord // 被除数为0

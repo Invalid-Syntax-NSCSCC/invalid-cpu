@@ -52,8 +52,8 @@ object Param {
     }
 
     object DCache {
-      val setSize     = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
-      val dataPerLine = 4 // TODO: Choose an optimal value
+      val setLen      = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
+      val dataPerLine = 4 // TODO: One data line is 64 bytes
       val sizePerRam  = math.pow(2, Width.DCache._addr).toInt
     }
   }
@@ -72,6 +72,11 @@ object Param {
       val awuserEnable = false
       val wuserEnable  = false
       val buserEnable  = false
+    }
+
+    object Id {
+      val iCache = 0
+      val dCache = 1
     }
   }
 

@@ -6,9 +6,9 @@ import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfReadPort, RfWriteN
 import bundles.{ExeInstNdPort, IssuedInfoNdPort}
 import chisel3.experimental.BundleLiterals._
 import spec._
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 import pipeline.writeback.bundles.InstInfoNdPort
-import pipeline.ctrl.bundles.CsrReadPort
+import control.bundles.CsrReadPort
 
 class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum) extends Module {
   val io = IO(new Bundle {
