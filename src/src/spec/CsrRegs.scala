@@ -2,7 +2,7 @@ package spec
 
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import pipeline.ctrl.bundles.EcodeBundle
+import control.bundles.EcodeBundle
 
 object CsrRegs {
 

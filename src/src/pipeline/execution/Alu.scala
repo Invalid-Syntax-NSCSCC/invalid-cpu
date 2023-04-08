@@ -5,7 +5,7 @@ import chisel3.util._
 import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}
 import spec._
 import ExeInst.Op
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import spec.Param.{AluState => State}
 import pipeline.execution.Mul

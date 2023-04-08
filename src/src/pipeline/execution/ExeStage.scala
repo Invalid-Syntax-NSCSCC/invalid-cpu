@@ -6,7 +6,7 @@ import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
 import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 import pipeline.execution.bundles.MemLoadStoreInfoNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor

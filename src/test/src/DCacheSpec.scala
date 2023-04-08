@@ -1,10 +1,10 @@
 import chiseltest._
-import pipeline.mem.DCache
 import utest._
 import chisel3._
 import chisel3.util._
-import pipeline.mem.bundles.StatusTagBundle
-import pipeline.mem.enums.ReadWriteSel
+import memory.DCache
+import memory.bundles.StatusTagBundle
+import memory.enums.ReadWriteSel
 import spec.Param
 
 import scala.collection.immutable

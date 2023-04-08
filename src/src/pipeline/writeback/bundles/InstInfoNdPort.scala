@@ -5,7 +5,7 @@ import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.VecLiterals._
 import chisel3.util._
 import spec._
-import pipeline.ctrl.bundles.CsrWriteNdPort
+import control.bundles.CsrWriteNdPort
 
 class InstInfoNdPort extends Bundle {
   val pc               = UInt(Width.Reg.data)
