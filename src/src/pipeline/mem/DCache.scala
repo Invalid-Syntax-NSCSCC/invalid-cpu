@@ -65,6 +65,7 @@ class DCache(
   //
   // state: ready                         write           ready
 
+  // TODO: Write cache miss doesn't need to read from memory
   // Write cache miss diagram:
   // clock: ^_____________________________^_________________________________^...^________________________^_____________________________________________________^...^______________
   //        isReady = T                   isReady = F                           (get axi data)
