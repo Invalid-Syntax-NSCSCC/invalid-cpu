@@ -9,7 +9,7 @@ class BetterAxiMaster(
   val readSize:        Int,
   val writeSize:       Int,
   val sizePerTransfer: Int     = 4,
-  val Id:              Int,
+  val id:              Int,
   isInst:              Boolean = false)
     extends Module {
   val io = IO(new Bundle {
@@ -44,7 +44,7 @@ class BetterAxiMaster(
 
   // Use the largest possible size per transfer (default: 4 bytes [32 bits])
   // Note: Bytes in transfer is 2^AxSIZE
-  assert((sizePerTransfer != 0) && ((sizePerTransfer & (sizePerTransfer - 1)) == 0)) // Check if is power of 2
+  assert(isPow2(sizePerTransfer))
   io.axi.arsize := Value.Axi.Size.get(sizePerTransfer)
   io.axi.awsize := Value.Axi.Size.get(sizePerTransfer)
 
@@ -58,8 +58,8 @@ class BetterAxiMaster(
   io.axi.awlen := writeLen - 1.U
 
   // Set others
-  io.axi.arid    := Id.U
-  io.axi.awid    := Id.U
+  io.axi.arid    := id.U
+  io.axi.awid    := id.U
   io.axi.arlock  := Value.Axi.Lock.normal
   io.axi.awlock  := Value.Axi.Lock.normal
   io.axi.arcache := Value.Axi.Cache.nonBufferable
