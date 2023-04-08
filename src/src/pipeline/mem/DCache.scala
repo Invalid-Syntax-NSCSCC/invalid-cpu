@@ -55,6 +55,7 @@ class DCache(
   //   - Set reg `isRequestSent` to F before entering state for cache miss,
   //     then set reg `isRequestSent` to T after entering
   //   - Read from write info if current cycle has write cache operation
+  //   - `refillForReadAndWb` is merged to `refillForRead` with `isNeedWbReg`
 
   // Write cache hit diagram:
   // clock: ^_____________________________^_______________^____________
@@ -83,6 +84,7 @@ class DCache(
   // note:
   //   - Set reg `isRequestSent` to F before entering state for cache miss,
   //     then set reg `isRequestSent` to T after entering
+  //   - `refillForWriteAndWb` is merged to `refillForWrite` with `isNeedWbReg`
 
   // Status-tag line:
   // 1.W      1.W      TagW
@@ -114,6 +116,7 @@ class DCache(
       .toSeq
       .map(VecInit(_).asUInt)
   )
+  def writeWithMask(oldData: UInt, newData: UInt, mask: UInt) = (newData & mask) | (oldData & (~mask).asUInt)
 
   // Debug: Prepare cache
   assert(debugAddrSeq.length == debugDataLineSeq.length)
@@ -241,6 +244,28 @@ class DCache(
   isWriteReqSentReg := isWriteReqSentReg // Fallback: Keep data
   isNeedWbReg       := isNeedWbReg
 
+  def handleWb(): Unit = {
+    when(!isWriteReqSentReg) {
+      // Stage 2.b/c.3, 3.1: Send write request
+
+      axiMaster.io.write.req.isValid := true.B
+      axiMaster.io.write.req.addr    := last.wbMemAddr
+      axiMaster.io.write.req.data    := lastReg.dataLine.asUInt
+
+      when(axiMaster.io.write.req.isReady) {
+        // Next Stage 2.b/c.4, 3.2
+        isWriteReqSentReg := true.B
+      }
+    }.otherwise {
+      // Stage 2.b/c.4, 3.2: Wait for write complete
+      // Note: When write complete, set `isNeedWbReg` to F
+
+      when(axiMaster.io.write.res.isComplete) {
+        isNeedWbReg := false.B
+      }
+    }
+  }
+
   switch(stateReg) {
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
@@ -341,7 +366,7 @@ class DCache(
             refillSetIndex := PriorityEncoder(isNotDirtyVec)
             when(!isNotDirtyHit) {
               // Finally, select randomly (using LFSR)
-              // Also, don't forget to write back
+              // Also, don't forget to write back (now there is no invalid and not-dirty)
               refillSetIndex := randomNum(log2Ceil(Param.Count.DCache.setLen) - 1, 0)
               isNeedWbReg    := true.B
 
@@ -363,7 +388,8 @@ class DCache(
               nextState := State.refillForRead
             }
             is(ReadWriteSel.write) {
-              // TODO: Write not hit
+              // Next Stage 2.c.1
+              nextState := State.refillForWrite
             }
           }
         }
@@ -374,7 +400,7 @@ class DCache(
           // Substitute write data in data line, with mask
           val dataIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
           val oldData   = WireDefault(lastReg.dataLine(dataIndex))
-          writeDataLine(dataIndex) := (lastReg.writeData & lastReg.writeMask) | (oldData & (~lastReg.writeMask).asUInt)
+          writeDataLine(dataIndex) := writeWithMask(oldData, lastReg.writeData, lastReg.writeMask)
 
           val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
 
@@ -458,13 +484,82 @@ class DCache(
         }
       }
 
+      // Handle writing back
       when(isNeedWbReg) {
-        when(!isWriteReqSentReg) {
-          // Stage 2.b.3: Send write request
-        }.otherwise {
-          // Stage 2.b.4: Wait for write complete
-          // Note: When write complete, set `isNeedWbReg` to F
+        handleWb()
+      }
+    }
+
+    is(State.refillForWrite) {
+      // Stage 2.c: Refill for write (previous miss)
+
+      when(!isReadReqSentReg) {
+        // Stage 2.b.1: Send read request
+
+        axiMaster.io.read.req.isValid := true.B
+        axiMaster.io.read.req.addr    := lastReg.memAddr
+
+        when(axiMaster.io.read.req.isReady) {
+          // Next Stage 2.b.2
+          isReadReqSentReg := true.B
         }
+      }.otherwise {
+        // Stage 2.b.2: Wait for refill data line
+
+        when(axiMaster.io.read.res.isValid) {
+          val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+          val statusTag  = Wire(new StatusTagBundle)
+          statusTag.isValid := true.B
+          statusTag.isDirty := true.B
+          statusTag.tag     := tagFromMemAddr(lastReg.memAddr)
+
+          // Write status-tag to RAM
+          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := statusTag.asUInt
+              writePort.addr := queryIndex
+          }
+
+          // Write to data line RAM
+          val dataIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
+          val dataLine  = WireDefault(toDataLine(axiMaster.io.read.res.data))
+          val oldData   = WireDefault(toDataLine(axiMaster.io.read.res.data)(dataIndex))
+          dataLine(dataIndex) := writeWithMask(oldData, lastReg.writeData, lastReg.writeMask)
+          dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := dataLine.asUInt
+              writePort.addr := queryIndex
+          }
+
+          // Mark write complete (in the same cycle)
+          io.accessPort.write.isComplete := true.B
+
+          when(isNeedWbReg) {
+            // Next Stage 3
+            nextState := State.onlyWb
+          }.otherwise {
+            // Next Stage 1
+            nextState := State.ready
+          }
+        }
+      }
+
+      // Handle writing back
+      when(isNeedWbReg) {
+        handleWb()
+      }
+    }
+
+    is(State.onlyWb) {
+      // Stage 3: Wait for writing back complete
+
+      handleWb()
+
+      when(isWriteReqSentReg && axiMaster.io.write.res.isComplete) {
+        // Next Stage 1
+        nextState := State.ready
       }
     }
   }
