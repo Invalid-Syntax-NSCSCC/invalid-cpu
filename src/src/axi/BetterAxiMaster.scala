@@ -6,11 +6,11 @@ import chisel3.util._
 import spec._
 
 class BetterAxiMaster(
-  val readSize:        Int,
-  val writeSize:       Int,
-  val sizePerTransfer: Int     = 4,
-  val id:              Int,
-  isInst:              Boolean = false)
+  val readSize:         Int,
+  val writeSize:        Int,
+  val bytesPerTransfer: Int     = 4,
+  val id:               Int,
+  isInst:               Boolean = false)
     extends Module {
   val io = IO(new Bundle {
     val axi = new AxiMasterPort
@@ -37,6 +37,8 @@ class BetterAxiMaster(
       }
     }
   })
+  // Fallback
+  io.axi <> DontCare
 
   // Only need to use incremental burst
   io.axi.arburst := Value.Axi.Burst.incr
@@ -44,22 +46,23 @@ class BetterAxiMaster(
 
   // Use the largest possible size per transfer (default: 4 bytes [32 bits])
   // Note: Bytes in transfer is 2^AxSIZE
-  assert(isPow2(sizePerTransfer))
-  io.axi.arsize := Value.Axi.Size.get(sizePerTransfer)
-  io.axi.awsize := Value.Axi.Size.get(sizePerTransfer)
+  assert(isPow2(bytesPerTransfer))
+  io.axi.arsize := Value.Axi.Size.get(bytesPerTransfer)
+  io.axi.awsize := Value.Axi.Size.get(bytesPerTransfer)
 
   // Set burst number
   // Note: Burst length is AxLEN + 1
-  assert(readSize % sizePerTransfer == 0)
-  assert(writeSize % sizePerTransfer == 0)
-  val writeLen = WireDefault((writeSize / sizePerTransfer).U)
+  assert(readSize % (bytesPerTransfer * byteLength) == 0)
+  assert(writeSize % (bytesPerTransfer * byteLength) == 0)
+  val writeLen = WireDefault((writeSize / (bytesPerTransfer * byteLength)).U)
   assert(writeLen <= "b_1111_1111".U)
-  io.axi.arlen := ((readSize / sizePerTransfer) - 1).U
+  io.axi.arlen := ((readSize / (bytesPerTransfer * byteLength)) - 1).U
   io.axi.awlen := writeLen - 1.U
 
   // Set others
   io.axi.arid    := id.U
   io.axi.awid    := id.U
+  io.axi.wid     := id.U
   io.axi.arlock  := Value.Axi.Lock.normal
   io.axi.awlock  := Value.Axi.Lock.normal
   io.axi.arcache := Value.Axi.Cache.nonBufferable
@@ -67,9 +70,12 @@ class BetterAxiMaster(
   io.axi.arprot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
   io.axi.awprot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
   io.axi.wstrb   := "b_1111".U(Width.Axi.strb)
+  io.axi.wvalid  := false.B
+  io.axi.rready  := false.B
+  io.axi.bready  := false.B
 
   // Size per transfer in bits
-  val transferSize = sizePerTransfer * 8
+  val transferSize = bytesPerTransfer * 8
 
   // Handle read
 
@@ -100,11 +106,17 @@ class BetterAxiMaster(
     when(io.axi.rvalid) {
       switch(io.axi.rresp) {
         is(Value.Axi.Response.Okay, Value.Axi.Response.ExclusiveOkay) {
-          nextReadData := Cat(readDataReg(readDataReg.getWidth - transferSize - 1, 0), io.axi.rdata)
+          nextReadData := Cat(
+            io.axi.rdata(transferSize - 1, 0),
+            readDataReg(readDataReg.getWidth - 1, transferSize)
+          )
         }
 
         is(Value.Axi.Response.SlaveErr, Value.Axi.Response.DecodeErr) {
-          nextReadData := Cat(readDataReg(readDataReg.getWidth - transferSize - 1, 0), 0.U(transferSize.W))
+          nextReadData := Cat(
+            0.U(transferSize.W),
+            readDataReg(readDataReg.getWidth - 1, transferSize)
+          )
         }
       }
     }
@@ -145,12 +157,12 @@ class BetterAxiMaster(
     // Writing
     io.axi.bready := true.B
     io.axi.wvalid := true.B
-    io.axi.wdata  := writeDataReg(writeSize - 1, 0)
+    io.axi.wdata  := writeDataReg(transferSize - 1, 0)
 
     when(io.axi.wready) {
       // Next cycle write the next data
       writeCountUpReg := writeCountUpReg + 1.U
-      writeDataReg    := Cat(0.U(writeSize.U), writeDataReg(writeDataReg.getWidth - 1, writeSize))
+      writeDataReg    := Cat(0.U(transferSize.W), writeDataReg(writeDataReg.getWidth - 1, transferSize))
     }
 
     // The last transfer

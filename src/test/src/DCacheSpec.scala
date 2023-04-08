@@ -19,7 +19,7 @@ object DCacheSpec extends ChiselUtestTester {
       )
       val debugAddrSeq = _debugAddrSeq.map(_.U(Param.Width.DCache.addr))
 
-      def getDataLine(str: String) = ("h_" + "0" * (12 * 8) + str).U(Param.Width.DCache.dataLine)
+      def getDataLine(str: String) = ("h_" + "0" * 0 + str).U(Param.Width.DCache.dataLine)
 
       val debugDataLineSeq = Seq(
         getDataLine("0000000F_000000FF_00000FFF_0000FFFF"),
@@ -29,13 +29,13 @@ object DCacheSpec extends ChiselUtestTester {
 
       // Width: 22 + 2
       val _debugStatusTagSeq = Seq(
-        "b_10_00000000000000111100",
-        "b_10_00000000000000111101",
-        "b_10_00000000000000111110"
+        "b_10_0000000000000000111100",
+        "b_10_0000000000000000111101",
+        "b_10_0000000000000000111110"
       )
       val debugStatusTagSeq = _debugStatusTagSeq.map(_.U(StatusTagBundle.width.W))
 
-      val _byteOffset = "b_0001_00"
+      val _byteOffset = "b_01_00"
 
       val debugSetNumSeq = Seq(
         0,
@@ -51,6 +51,17 @@ object DCacheSpec extends ChiselUtestTester {
           val memAddrS = "b" + tagS + addrS + offsetS
           memAddrS.U(spec.Width.Mem.data)
       }
+
+      // Query index: 1
+      val readRefillMemAddr   = "b_1000000000000000111100_000001_0100".U
+      val readRefillWbMemAddr = "b_1100000000000000111100_000001_0100".U
+
+      // Query index: 2
+      val writeRefillMemAddr   = "b_1000000000000000111101_000010_0100".U
+      val writeRefillWbMemAddr = "b_1100000000000000111101_000010_0100".U
+
+      val memReadDataSeq        = Seq("h_F".U, "h_FF".U, "h_FFF".U, "h_FFFF".U)
+      val anotherMemReadDataSeq = Seq("h_E".U, "h_EE".U, "h_EEE".U, "h_EEEE".U)
 
       testCircuit(
         new DCache(true, debugAddrSeq, debugDataLineSeq, debugStatusTagSeq, debugSetNumSeq),
@@ -99,6 +110,7 @@ object DCacheSpec extends ChiselUtestTester {
           // Will complete write
           cache.io.accessPort.write.isComplete.expect(true.B)
         }
+        println("Note: Please check waveform to confirm correctness")
         println("✅ All write operations completed.\n")
 
         // Test read (hit) after write (hit) back to back
@@ -127,9 +139,165 @@ object DCacheSpec extends ChiselUtestTester {
 
         println("✅ Read-after-write operation completed.\n")
 
+        cache.io.accessPort.isValid.poke(false.B)
+        cache.clock.step()
+
+        // Test read (miss, no write back)
+        cache.io.axiMasterPort.arready.poke(false.B)
+        cache.io.axiMasterPort.rvalid.poke(false.B)
+        cache.io.axiMasterPort.rlast.poke(false.B)
+        cache.io.axiMasterPort.rresp.poke(spec.Value.Axi.Response.Okay)
+        cache.io.axiMasterPort.bresp.poke(spec.Value.Axi.Response.Okay)
+        cache.io.axiMasterPort.awready.poke(false.B)
+        cache.io.axiMasterPort.wready.poke(false.B)
+        cache.io.axiMasterPort.bvalid.poke(false.B)
+
+        cache.io.accessPort.isValid.poke(true.B)
+        cache.io.accessPort.rw.poke(ReadWriteSel.read)
+        cache.io.accessPort.addr.poke(readRefillMemAddr)
+
+        cache.clock.step()
+
+        cache.io.accessPort.read.isValid.expect(false.B)
+
+        cache.clock.step()
+
+        cache.io.axiMasterPort.arvalid.expect(true.B)
+        var burstMax = cache.io.axiMasterPort.arlen.peekInt()
+        cache.io.axiMasterPort.arready.poke(true.B)
+        cache.io.axiMasterPort.araddr.expect(readRefillMemAddr)
+
         cache.clock.step()
 
         cache.io.accessPort.isValid.poke(false.B)
+        cache.io.axiMasterPort.arready.poke(false.B)
+        for (i <- 0 to burstMax.toInt) {
+          cache.io.axiMasterPort.rready.expect(true.B)
+          cache.io.axiMasterPort.rvalid.poke(true.B)
+          cache.io.axiMasterPort.rdata.poke(memReadDataSeq(i % memReadDataSeq.length))
+          cache.io.axiMasterPort.rready.expect(true.B)
+
+          if (i == burstMax.toInt) {
+            cache.io.axiMasterPort.rlast.poke(true.B)
+          }
+
+          cache.clock.step()
+        }
+
+        cache.io.axiMasterPort.rvalid.poke(false.B)
+        cache.io.axiMasterPort.rlast.poke(false.B)
+        cache.io.accessPort.read.isValid.expect(true.B)
+        println(f"Read data: 0x${cache.io.accessPort.read.data.peekInt()}%08X")
+        cache.io.accessPort.read.data.expect(memReadDataSeq(1))
+
+        println("✅ Read (miss, no write back) operation completed.\n")
+
+        cache.clock.step()
+
+        // Test write (miss, no write back)
+        cache.io.axiMasterPort.arready.poke(false.B)
+        cache.io.axiMasterPort.rvalid.poke(false.B)
+        cache.io.axiMasterPort.rlast.poke(false.B)
+
+        cache.io.accessPort.isValid.poke(true.B)
+        cache.io.accessPort.rw.poke(ReadWriteSel.write)
+        cache.io.accessPort.addr.poke(writeRefillMemAddr)
+        cache.io.accessPort.write.data.poke("h_AAAA_AAAA".U)
+        cache.io.accessPort.write.mask.poke("h_F0F0_FFFF".U)
+
+        cache.clock.step()
+
+        cache.io.accessPort.write.isComplete.expect(false.B)
+
+        cache.clock.step()
+
+        cache.io.axiMasterPort.arvalid.expect(true.B)
+        burstMax = cache.io.axiMasterPort.arlen.peekInt()
+        cache.io.axiMasterPort.arready.poke(true.B)
+        cache.io.axiMasterPort.araddr.expect(writeRefillMemAddr)
+
+        cache.clock.step()
+
+        cache.io.accessPort.isValid.poke(false.B)
+        cache.io.axiMasterPort.arready.poke(false.B)
+        for (i <- 0 to burstMax.toInt) {
+          cache.io.axiMasterPort.rready.expect(true.B)
+          cache.io.axiMasterPort.rvalid.poke(true.B)
+          cache.io.axiMasterPort.rdata.poke(memReadDataSeq(i % memReadDataSeq.length))
+          cache.io.axiMasterPort.rready.expect(true.B)
+
+          if (i == burstMax.toInt) {
+            cache.io.axiMasterPort.rlast.poke(true.B)
+            cache.io.accessPort.write.isComplete.expect(true.B)
+            cache.io.accessPort.isReady.expect(false.B)
+          }
+
+          cache.clock.step()
+        }
+
+        cache.io.axiMasterPort.rvalid.poke(false.B)
+        cache.io.axiMasterPort.rlast.poke(false.B)
+        cache.io.accessPort.isReady.expect(true.B)
+        cache.io.accessPort.write.isComplete.expect(false.B)
+
+        println("Note: Please check waveform to confirm correctness")
+        println("✅ Write (miss, no write back) operation completed.\n")
+
+        cache.clock.step()
+
+        // Test read (miss, write back)
+        cache.io.axiMasterPort.arready.poke(false.B)
+        cache.io.axiMasterPort.rvalid.poke(false.B)
+        cache.io.axiMasterPort.rlast.poke(false.B)
+
+        cache.io.accessPort.isValid.poke(true.B)
+        cache.io.accessPort.rw.poke(ReadWriteSel.read)
+        cache.io.accessPort.addr.poke(readRefillWbMemAddr)
+
+        cache.clock.step()
+
+        cache.io.accessPort.read.isValid.expect(false.B)
+
+        cache.clock.step()
+
+        cache.io.axiMasterPort.arvalid.expect(true.B)
+        burstMax = cache.io.axiMasterPort.arlen.peekInt()
+        cache.io.axiMasterPort.arready.poke(true.B)
+        cache.io.axiMasterPort.araddr.expect(readRefillWbMemAddr)
+        cache.io.axiMasterPort.awvalid.expect(true.B)
+        cache.io.axiMasterPort.awready.poke(true.B)
+        println(f"Write back addr: 0x${cache.io.axiMasterPort.awaddr.peekInt()}%08X")
+
+        cache.clock.step()
+
+        cache.io.accessPort.isValid.poke(false.B)
+        cache.io.axiMasterPort.arready.poke(false.B)
+        cache.io.axiMasterPort.awready.poke(false.B)
+        cache.io.axiMasterPort.wready.poke(true.B)
+        cache.io.axiMasterPort.bvalid.poke(true.B)
+        for (i <- 0 to burstMax.toInt) {
+          cache.io.axiMasterPort.rready.expect(true.B)
+          cache.io.axiMasterPort.rvalid.poke(true.B)
+          cache.io.axiMasterPort.rdata.poke(anotherMemReadDataSeq(i % memReadDataSeq.length))
+          cache.io.axiMasterPort.rready.expect(true.B)
+
+          if (i == burstMax.toInt) {
+            cache.io.axiMasterPort.rlast.poke(true.B)
+          }
+
+          cache.clock.step()
+        }
+
+        cache.io.axiMasterPort.wready.poke(false.B)
+        cache.io.axiMasterPort.bvalid.poke(false.B)
+        cache.io.axiMasterPort.rvalid.poke(false.B)
+        cache.io.axiMasterPort.rlast.poke(false.B)
+        cache.io.accessPort.read.isValid.expect(true.B)
+        println(f"Read data: 0x${cache.io.accessPort.read.data.peekInt()}%08X")
+        cache.io.accessPort.read.data.expect(anotherMemReadDataSeq(1))
+
+        println("Note: Please check waveform to confirm correctness")
+        println("✅ Read (miss, write back) operation completed.\n")
 
         cache.clock.step(5)
       }
