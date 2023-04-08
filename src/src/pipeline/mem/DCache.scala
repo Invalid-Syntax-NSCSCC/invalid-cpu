@@ -65,7 +65,6 @@ class DCache(
   //
   // state: ready                         write           ready
 
-  // TODO: Write cache miss doesn't need to read from memory
   // Write cache miss diagram:
   // clock: ^_____________________________^_________________________________^...^________________________^_____________________________________________________^...^______________
   //        isReady = T                   isReady = F                           (get axi data)
@@ -160,7 +159,7 @@ class DCache(
 
   // Random set index
   assert(isPow2(Param.Count.DCache.setLen))
-  val randomSetIndex = LFSR(log2Ceil(Param.Count.DCache.setLen))
+  val randomNum = LFSR(log2Ceil(Param.Count.DCache.setLen) + 1)
 
   // Debug: Init cache
   if (isDebug) {
@@ -341,7 +340,7 @@ class DCache(
                 }.otherwise {
                   // Finally, select randomly (using LFSR)
                   // Also, don't forget to write back
-                  refillSetIndex := randomSetIndex
+                  refillSetIndex := randomNum(log2Ceil(Param.Count.DCache.setLen) - 1, 0)
 
                   // Next Stage 2.c.1
                   nextState := State.refillForReadAndWb
@@ -394,70 +393,67 @@ class DCache(
           io.accessPort.write.isComplete := true.B
         }
       }
+    }
 
-      is(State.refillForRead) {
-        // Stage 2.b: Refill for read (previous miss)
-        // TODO: Write unit test
+    is(State.refillForRead) {
+      // Stage 2.b: Refill for read (previous miss)
+      // TODO: Write unit test
 
-        when(!isReadReqSentReg) {
-          // Stage 2.b.1: Send read request
+      when(!isReadReqSentReg) {
+        // Stage 2.b.1: Send read request
 
-          axiMaster.io.read.req.isValid := true.B
-          axiMaster.io.read.req.addr    := lastReg.memAddr
+        axiMaster.io.read.req.isValid := true.B
+        axiMaster.io.read.req.addr    := lastReg.memAddr
 
-          when(axiMaster.io.read.req.isReady) {
-            // Next Stage 2.b.2
-            isReadReqSentReg := true.B
+        when(axiMaster.io.read.req.isReady) {
+          // Next Stage 2.b.2
+          isReadReqSentReg := true.B
+        }
+      }.otherwise {
+        // Stage 2.b.2: Wait for refill data line
+
+        when(axiMaster.io.read.res.isValid) {
+          val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+          val statusTag  = Wire(new StatusTagBundle)
+          statusTag.isValid := true.B
+          statusTag.isDirty := false.B
+          statusTag.tag     := tagFromMemAddr(lastReg.memAddr)
+
+          // Write status-tag to RAM
+          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := statusTag.asUInt
+              writePort.addr := queryIndex
           }
-        }.otherwise {
-          // Stage 2.b.2: Wait for refill data line
 
-          when(axiMaster.io.read.res.isValid) {
-            val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
-            val statusTag = WireDefault(
-              (new StatusTagBundle).Lit(
-                _.isValid -> true.B,
-                _.isDirty -> false.B,
-                _.tag -> tagFromMemAddr(lastReg.memAddr)
-              )
-            )
-
-            // Write status-tag to RAM
-            statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
-              case (writePort, index) =>
-                writePort.en   := index.U === lastReg.setIndex
-                writePort.data := statusTag
-                writePort.addr := queryIndex
-            }
-
-            // Write to data line RAM
-            dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
-              case (writePort, index) =>
-                writePort.en   := index.U === lastReg.setIndex
-                writePort.data := axiMaster.io.read.res.data
-                writePort.addr := queryIndex
-            }
-
-            // Return read data
-            val dataLine = WireDefault(
-              VecInit(
-                axiMaster.io.read.res.data.asBools
-                  .grouped(Width.Mem._data)
-                  .toSeq
-                  .map(VecInit(_).asUInt)
-              )
-            )
-            val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
-            isReadValidReg := true.B
-            readDataReg    := readData
-
-            // Next Stage 1
-            nextState := State.ready
+          // Write to data line RAM
+          dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := axiMaster.io.read.res.data
+              writePort.addr := queryIndex
           }
+
+          // Return read data
+          val dataLine = WireDefault(
+            VecInit(
+              axiMaster.io.read.res.data.asBools
+                .grouped(Width.Mem._data)
+                .toSeq
+                .map(VecInit(_).asUInt)
+            )
+          )
+          val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
+          isReadValidReg := true.B
+          readDataReg    := readData
+
+          // Next Stage 1
+          nextState := State.ready
         }
       }
-
-      is(State.refillForReadAndWb) {}
     }
+
+    is(State.refillForReadAndWb) {}
   }
 }
