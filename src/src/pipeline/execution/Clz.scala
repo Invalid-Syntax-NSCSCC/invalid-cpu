@@ -58,17 +58,17 @@ class Clz extends Module {
     subClz(7, 6).andR // upper  8 all zero
   )
 
-  clzResult2 := (subClz(7) & ~subClz(6)) | // upper 4 all zero
-    (subClz(7, 5).andR & ~subClz(4)) | // upper 12
-    (subClz(7, 3).andR & ~subClz(2)) | // upper 20
-    (subClz(7, 1).andR & ~subClz(0)) // upper 28
+  clzResult2 := (subClz(7) && !subClz(6)) || // upper 4 all zero
+    (subClz(7, 5).andR && !subClz(4)) || // upper 12
+    (subClz(7, 3).andR && !subClz(2)) || // upper 20
+    (subClz(7, 1).andR && !subClz(0)) // upper 28
 
   /** 切分成4块，分别求解clzResult末两位值 如末8位，i = 0，若subClz(1)===1，7-4位全0，看3-0位 否则7-4位有1，看7-4位
     */
 
-  val clzResult10Selector = (VecInit(
+  val clzResult10Selector = VecInit(
     Seq.range(3, -1, -1).map(i => subsubClz(Cat(i.U(2.W), ~subClz(i * 2 + 1))))
-  ))
+  )
 
   val clzResult10 = clzResult10Selector(Cat(clzResult4, clzResult3))
 

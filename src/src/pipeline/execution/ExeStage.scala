@@ -68,7 +68,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   pcStoreReg := pcStoreReg
   val memLoadStoreInfoStoreReg = RegInit(MemLoadStoreInfoNdPort.default)
   memLoadStoreInfoStoreReg := memLoadStoreInfoStoreReg
-  val instInfoStoreReg = Reg((new InstInfoNdPort))
+  val instInfoStoreReg = Reg(new InstInfoNdPort)
   instInfoStoreReg := instInfoStoreReg
 
   val selectedExeInst          = WireDefault(ExeInstNdPort.default)
@@ -172,7 +172,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
           .lazyZip(selectedExeInst.rightOperand.asBools)
           .lazyZip(selectedExeInst.csrData.asBools)
           .lazyZip(gprWriteDataVec)
-          .map {
+          .foreach {
             case (write, mask, origin, target) =>
               target := Mux(mask, write, origin)
           }
