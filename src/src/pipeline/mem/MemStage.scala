@@ -9,6 +9,7 @@ import spec._
 import pipeline.execution.bundles.MemLoadStoreInfoNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import control.bundles.PipelineControlNDPort
 import pipeline.mem.bundles.MemLoadStorePort
 import pipeline.writeback.bundles.InstInfoNdPort
 

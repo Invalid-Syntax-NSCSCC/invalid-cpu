@@ -63,7 +63,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       val storeTempToOutput  = Wire(Bool())
 
       // enable ready input next cycle if output is ready or the temp reg will not be filled on the next cycle (output reg empty or no input)
-      val slaveReadyEarly = io.master.aw.ready | (~tempMasterValidReg & (!masterValidReg | !io.slave.aw.valid))
+      val slaveReadyEarly = io.master.aw.ready || (!tempMasterValidReg && (!masterValidReg || !io.slave.aw.valid))
       val slaveReadyReg   = RegNext(slaveReadyEarly, false.B)
 
       // datapath control
@@ -161,7 +161,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       val storeTempToOutput  = Wire(Bool())
 
       // enable ready input next cycle if output is ready or the temp reg will not be filled on the next cycle (output reg empty or no input)
-      val slaveReadyEarly = io.master.w.ready | (~tempMasterValidReg & (!masterValidReg | !io.slave.w.valid))
+      val slaveReadyEarly = io.master.w.ready || (!tempMasterValidReg && (!masterValidReg || !io.slave.w.valid))
       val slaveReadyReg   = RegNext(slaveReadyEarly, false.B)
 
       // datapath control
@@ -259,7 +259,7 @@ class AxiRegisterWrite(val awRegType: RegType, val wRegType: RegType, val bRegTy
       val storeTempToOutput  = Wire(Bool())
 
       // enable ready input next cycle if output is ready or the temp reg will not be filled on the next cycle (output reg empty or no input)
-      val masterReadyEarly = io.slave.b.ready | (~tempSlaveValidReg & (!slaveValidReg | !io.master.b.valid))
+      val masterReadyEarly = io.slave.b.ready || (!tempSlaveValidReg && (!slaveValidReg || !io.master.b.valid))
       val masterReadyReg   = RegNext(masterReadyEarly, false.B)
 
       // datapath control

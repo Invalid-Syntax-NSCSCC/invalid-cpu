@@ -88,10 +88,10 @@ class Alu extends Module {
     */
   switch(io.aluInst.op) {
     is(Op.sll) {
-      shift := lop << rop(4, 0);
+      shift := lop << rop(4, 0)
     }
     is(Op.srl) {
-      shift := lop >> rop(4, 0);
+      shift := lop >> rop(4, 0)
     }
     is(Op.sra) {
       shift := (lop.asSInt << rop(4, 0)).asUInt

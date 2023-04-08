@@ -6,7 +6,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import memory.bundles.{DCacheAccessPort, StatusTagBundle}
-import memory.enums.{ReadWriteSel, DCacheState => State}
+import memory.enums.{DCacheState => State, ReadWriteSel}
 import spec._
 
 class DCache(

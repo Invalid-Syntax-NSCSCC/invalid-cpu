@@ -254,9 +254,8 @@ class CoreCpuTop extends Module {
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
-    case (dst, src) => {
+    case (dst, src) =>
       dst := src
-    }
   }
   csr.io.csrMessage := cu.io.csrMessage
   csr.io.readPorts  <> regReadStage.io.csrReadPorts
