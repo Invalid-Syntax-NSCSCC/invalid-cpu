@@ -40,7 +40,7 @@ class Mul extends Module {
       } else {
         a1 := 0.U
       }
-      weight := a1.asSInt + a2.asSInt + -(a3.asSInt << 1).asUInt
+      weight := a1.asSInt + a2.asSInt + -(a3.asSInt << 1).asSInt
       if (index == 15) {
         when(isUnsigned) {
           weight := a1.asSInt + a2.asSInt + (a3.asSInt << 1)
