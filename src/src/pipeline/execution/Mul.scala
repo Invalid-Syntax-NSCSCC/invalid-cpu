@@ -40,10 +40,10 @@ class Mul extends Module {
       } else {
         a1 := 0.U
       }
-      weight := ((a1.asSInt + a2.asSInt + -(a3.asSInt << 1)))
+      weight := a1.asSInt + a2.asSInt + -(a3.asSInt << 1).asUInt
       if (index == 15) {
         when(isUnsigned) {
-          weight := ((a1.asSInt + a2.asSInt + (a3.asSInt << 1)))
+          weight := a1.asSInt + a2.asSInt + (a3.asSInt << 1)
         }
       }
   }
@@ -66,7 +66,7 @@ class Mul extends Module {
   }
 
   def c(a: UInt, b: UInt, c: UInt): UInt = {
-    ((a & b) | (a & c) | (b & c)) << 1
+    (((a & b) | (a & c) | (b & c)) << 1).asUInt
   }
 
   val wallance1 = Wire(Vec(11, UInt(doubleWordLength.W)))

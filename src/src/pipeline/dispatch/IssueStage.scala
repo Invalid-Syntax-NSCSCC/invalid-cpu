@@ -14,7 +14,7 @@ import pipeline.dispatch.decode.{
   Decoder_special
 }
 import spec._
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 import pipeline.dispatch.enums.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
 import CsrRegs.ExceptionIndex

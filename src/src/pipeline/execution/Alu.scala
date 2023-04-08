@@ -5,7 +5,7 @@ import chisel3.util._
 import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}
 import spec._
 import ExeInst.Op
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import spec.Param.{AluState => State}
 import pipeline.execution.Mul
@@ -88,10 +88,10 @@ class Alu extends Module {
     */
   switch(io.aluInst.op) {
     is(Op.sll) {
-      shift := lop << rop(4, 0);
+      shift := lop << rop(4, 0)
     }
     is(Op.srl) {
-      shift := lop >> rop(4, 0);
+      shift := lop >> rop(4, 0)
     }
     is(Op.sra) {
       shift := (lop.asSInt << rop(4, 0)).asUInt
