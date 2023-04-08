@@ -108,6 +108,12 @@ class DCache(
   def queryIndexFromMemAddr(addr: UInt) =
     addr(Param.Width.DCache._byteOffset + Param.Width.DCache._addr - 1, Param.Width.DCache._byteOffset)
   def tagFromMemAddr(addr: UInt) = addr(Width.Mem._addr - 1, Width.Mem._addr - Param.Width.DCache._tag)
+  def toDataLine(line: UInt) = VecInit(
+    line.asBools
+      .grouped(Width.Mem._data)
+      .toSeq
+      .map(VecInit(_).asUInt)
+  )
 
   // Debug: Prepare cache
   assert(debugAddrSeq.length == debugDataLineSeq.length)
@@ -218,13 +224,22 @@ class DCache(
   lastReg := lastReg // Fallback: Keep data
   val last = new Bundle {
     val selectedStatusTag = WireDefault(lastReg.statusTagLines(lastReg.setIndex))
+    val wbMemAddr = WireDefault(
+      Cat(
+        lastReg.statusTagLines(lastReg.setIndex).tag,
+        queryIndexFromMemAddr(lastReg.memAddr),
+        byteOffsetFromMemAddr(lastReg.memAddr)
+      )
+    )
   }
 
   // Refill state regs
+  val isNeedWbReg       = RegInit(false.B)
   val isReadReqSentReg  = RegInit(false.B)
   val isWriteReqSentReg = RegInit(false.B)
   isReadReqSentReg  := isReadReqSentReg // Fallback: Keep data
   isWriteReqSentReg := isWriteReqSentReg // Fallback: Keep data
+  isNeedWbReg       := isNeedWbReg
 
   switch(stateReg) {
     // Note: Can accept request when in the second cycle of write (hit),
@@ -264,15 +279,8 @@ class DCache(
         val isSelectedVec         = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
         val setIndex              = WireDefault(OHToUInt(isSelectedVec))
         val selectedStatusTagLine = WireDefault(statusTagLines(setIndex))
-        val selectedDataLine = WireDefault(
-          VecInit(
-            dataLines(setIndex).asBools
-              .grouped(Width.Mem._data)
-              .toSeq
-              .map(VecInit(_).asUInt)
-          )
-        )
-        val isCacheHit = WireDefault(isSelectedVec.reduce(_ || _))
+        val selectedDataLine      = WireDefault(toDataLine(dataLines(setIndex)))
+        val isCacheHit            = WireDefault(isSelectedVec.reduce(_ || _))
 
         // If writing, then also query from write info
         // Predefine write info for passing through to read
@@ -318,41 +326,41 @@ class DCache(
           }
         }.otherwise {
           // Cache miss
-          switch(io.accessPort.rw) {
-            is(ReadWriteSel.read) {
-              // Select a set to refill
+          isNeedWbReg := false.B // Fallback: No write back
 
-              // First, select from invalid, if it can
-              val isInvalidVec   = statusTagLines.map(!_.isValid)
-              val isInvalidHit   = WireDefault(isInvalidVec.reduce(_ || _))
-              val refillSetIndex = WireDefault(PriorityEncoder(isInvalidVec))
-              when(isInvalidHit) {
-                // Next Stage 2.b.1
-                nextState := State.refillForRead
-              }.otherwise {
-                // Second, select from not dirty, if it can
-                val isNotDirtyVec = statusTagLines.map(!_.isDirty)
-                val isNotDirtyHit = WireDefault(isInvalidVec.reduce(_ || _))
-                refillSetIndex := PriorityEncoder(isNotDirtyVec)
-                when(isNotDirtyHit) {
-                  // Next Stage 2.b.1
-                  nextState := State.refillForRead
-                }.otherwise {
-                  // Finally, select randomly (using LFSR)
-                  // Also, don't forget to write back
-                  refillSetIndex := randomNum(log2Ceil(Param.Count.DCache.setLen) - 1, 0)
+          // Select a set to refill
 
-                  // Next Stage 2.c.1
-                  nextState := State.refillForReadAndWb
-                }
-              }
+          // First, select from invalid, if it can
+          val isInvalidVec   = statusTagLines.map(!_.isValid)
+          val isInvalidHit   = WireDefault(isInvalidVec.reduce(_ || _))
+          val refillSetIndex = WireDefault(PriorityEncoder(isInvalidVec))
+          when(!isInvalidHit) {
+            // Second, select from not dirty, if it can
+            val isNotDirtyVec = statusTagLines.map(!_.isDirty)
+            val isNotDirtyHit = WireDefault(isInvalidVec.reduce(_ || _))
+            refillSetIndex := PriorityEncoder(isNotDirtyVec)
+            when(!isNotDirtyHit) {
+              // Finally, select randomly (using LFSR)
+              // Also, don't forget to write back
+              refillSetIndex := randomNum(log2Ceil(Param.Count.DCache.setLen) - 1, 0)
+              isNeedWbReg    := true.B
 
               // Save data for later use
-              lastReg.setIndex := refillSetIndex
+              lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
+            }
+          }
 
-              // Init refill state regs
-              isReadReqSentReg  := false.B
-              isWriteReqSentReg := false.B
+          // Save data for later use
+          lastReg.setIndex := refillSetIndex
+
+          // Init refill state regs
+          isReadReqSentReg  := false.B
+          isWriteReqSentReg := false.B
+
+          switch(io.accessPort.rw) {
+            is(ReadWriteSel.read) {
+              // Next Stage 2.b.1
+              nextState := State.refillForRead
             }
             is(ReadWriteSel.write) {
               // TODO: Write not hit
@@ -397,7 +405,6 @@ class DCache(
 
     is(State.refillForRead) {
       // Stage 2.b: Refill for read (previous miss)
-      // TODO: Write unit test
 
       when(!isReadReqSentReg) {
         // Stage 2.b.1: Send read request
@@ -436,24 +443,29 @@ class DCache(
           }
 
           // Return read data
-          val dataLine = WireDefault(
-            VecInit(
-              axiMaster.io.read.res.data.asBools
-                .grouped(Width.Mem._data)
-                .toSeq
-                .map(VecInit(_).asUInt)
-            )
-          )
+          val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
           val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
           isReadValidReg := true.B
           readDataReg    := readData
 
-          // Next Stage 1
-          nextState := State.ready
+          when(isNeedWbReg) {
+            // Next Stage 3
+            nextState := State.onlyWb
+          }.otherwise {
+            // Next Stage 1
+            nextState := State.ready
+          }
+        }
+      }
+
+      when(isNeedWbReg) {
+        when(!isWriteReqSentReg) {
+          // Stage 2.b.3: Send write request
+        }.otherwise {
+          // Stage 2.b.4: Wait for write complete
+          // Note: When write complete, set `isNeedWbReg` to F
         }
       }
     }
-
-    is(State.refillForReadAndWb) {}
   }
 }
