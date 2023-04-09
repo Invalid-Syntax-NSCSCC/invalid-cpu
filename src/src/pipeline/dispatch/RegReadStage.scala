@@ -9,6 +9,7 @@ import spec._
 import control.bundles.PipelineControlNDPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import control.bundles.CsrReadPort
+import pipeline.dataforward.bundles.DataForwardReadPort
 
 class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum) extends Module {
   val io = IO(new Bundle {
@@ -24,8 +25,8 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
     val exeInstPort = Output(new ExeInstNdPort)
 
     // 数据前推
-    // `ExeStage` -> `RegReadStage`
-    val exeRfWriteFeedbackPort = Input(new RfWriteNdPort)
+    // `DataForwardStage` -> `RegReadStage`
+    val dataforwardPorts = Vec(readNum, Flipped(new DataForwardReadPort))
 
     // `pipeline control signal
     // `Cu` -> `RegReadStage`
@@ -57,6 +58,13 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   io.csrReadPorts(0).en   := io.issuedInfoPort.info.csrReadEn
   io.csrReadPorts(0).addr := io.instInfoPassThroughPort.in.csrWritePort.addr
 
+  // read from dataforward
+  io.gprReadPorts.zip(io.dataforwardPorts).foreach {
+    case ((gprRead, dataforward)) =>
+      dataforward.en   := gprRead.en
+      dataforward.addr := gprRead.addr
+  }
+
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
@@ -65,17 +73,21 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
       exeInstReg.rightOperand := io.issuedInfoPort.info.imm
     }
     Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
-      .zip(io.gprReadPorts)
+      .lazyZip(io.gprReadPorts)
+      .lazyZip(io.dataforwardPorts)
       .foreach {
-        case (oprand, gprReadPort) =>
-          when(
-            gprReadPort.en &&
-              io.exeRfWriteFeedbackPort.en &&
-              gprReadPort.addr === io.exeRfWriteFeedbackPort.addr
-          ) {
-            oprand := io.exeRfWriteFeedbackPort.data
-          }.elsewhen(gprReadPort.en) {
-            oprand := gprReadPort.data
+        case (oprand, gprReadPort, dataforward) =>
+          // when(
+          //   gprReadPort.en &&
+          //     io.exeRfWriteFeedbackPort.en &&
+          //     gprReadPort.addr === io.exeRfWriteFeedbackPort.addr
+          // ) {
+          //   oprand := io.exeRfWriteFeedbackPort.data
+          // }.elsewhen(gprReadPort.en) {
+          //   oprand := gprReadPort.data
+          // }
+          when(gprReadPort.en) {
+            oprand := Mux(dataforward.valid, dataforward.data, gprReadPort.data)
           }
       }
   }

@@ -20,7 +20,7 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import CsrRegs.ExceptionIndex
 
 // throws exceptions: 指令不存在异常ine
-class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
+class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   val io = IO(new Bundle {
     // `InstQueue` -> `IssueStage`
     val fetchInstInfoPort = Flipped(Decoupled(new InstInfoBundle))

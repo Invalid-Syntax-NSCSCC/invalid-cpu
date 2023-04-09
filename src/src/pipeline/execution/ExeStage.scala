@@ -15,6 +15,7 @@ import pipeline.execution.Alu
 import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
+import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 
 // TODO: Add (flush ?) when jump / branch
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
@@ -29,12 +30,22 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     // `ExeStage` -> `Pc` (no delay)
     val branchSetPort = Output(new PcSetPort)
 
+    // Scoreboard
+    val freePorts = Output(new ScoreboardChangeNdPort)
+
     // Pipeline control signal
     // `Cu` -> `ExeStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
     // `ExeStage` -> `Cu`
     val stallRequest = Output(Bool())
   })
+
+  // Indicate the availability in scoreboard
+  // 当再ExeStage计算出结果，则free scoreboard
+  val freePortEn = RegInit(false.B)
+  freePortEn        := false.B
+  io.freePorts.en   := freePortEn
+  io.freePorts.addr := io.gprWritePort.addr
 
   // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
@@ -132,21 +143,26 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
     switch(selectedExeInst.exeSel) {
       is(Sel.logic) {
+        io.freePorts.en  := gprWriteReg.en
         gprWriteReg.data := alu.io.result.logic
       }
       is(Sel.shift) {
+        io.freePorts.en  := gprWriteReg.en
         gprWriteReg.data := alu.io.result.shift
       }
       is(Sel.arithmetic) {
+        io.freePorts.en  := gprWriteReg.en
         gprWriteReg.data := alu.io.result.arithmetic
       }
       is(Sel.jumpBranch) {
+        io.freePorts.en  := gprWriteReg.en
         gprWriteReg.data := selectedPc + 4.U
       }
     }
 
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.csrrd) {
+        io.freePorts.en  := gprWriteReg.en
         gprWriteReg.data := selectedExeInst.csrData
       }
 

@@ -12,6 +12,7 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import control.bundles.PipelineControlNDPort
 import pipeline.mem.bundles.MemLoadStorePort
 import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 
 class MemStage extends Module {
   val io = IO(new Bundle {
@@ -25,6 +26,9 @@ class MemStage extends Module {
     val stallRequest = Output(Bool())
     // `MemStage` -> ?Ram
     val memLoadStorePort = Flipped(new MemLoadStorePort)
+
+    // Scoreboard
+    val freePorts = Output(new ScoreboardChangeNdPort)
 
     // (next clock pause)
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
@@ -49,6 +53,10 @@ class MemStage extends Module {
   val hint      = WireDefault(io.memLoadStoreInfoPort.data)
 
   io.memLoadStorePort <> DontCare
+
+  // Indicate the availability in scoreboard
+  io.freePorts.en   := false.B
+  io.freePorts.addr := io.gprWritePassThroughPort.out.addr
 
   // flush or clear
   when(io.pipelineControlPort.flush || io.pipelineControlPort.clear) {

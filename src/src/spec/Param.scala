@@ -10,15 +10,19 @@ object Param {
 
   val isDiffTest = true
 
-  val instQueueLength     = 5
-  val regFileReadNum      = 3
-  val scoreboardChangeNum = 1
-  val instRegReadNum      = 2
-  val ctrlControlNum      = PipelineStageIndex.getCount
-  val issueInstInfoMaxNum = 1
-  val dispatchInstNum     = 1 // 发射数量
-  val csrRegsReadNum      = 1
-  val csrRegsWriteNum     = 1
+  val instQueueLength        = 5
+  val regFileReadNum         = 2
+  val regFileWriteNum        = 1
+  val scoreboardChangeNum    = 3
+  val csrScoreBoardChangeNum = 1
+  val instRegReadNum         = 2
+  val ctrlControlNum         = PipelineStageIndex.getCount
+  val issueInstInfoMaxNum    = 1
+  val dispatchInstNum        = 1 // 发射数量
+  val csrRegsReadNum         = 1
+  val csrRegsWriteNum        = 1
+
+  val dataForwardInputNum = 2
 
   object Width {
     val exeSel                = 3.W
