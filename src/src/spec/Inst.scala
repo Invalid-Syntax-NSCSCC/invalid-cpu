@@ -13,6 +13,8 @@ object Inst {
 
   object _2R {
     private def i(str: String) = b(str, wd._2R, 0)
+    val rdcnt_id_vl = i("0000_0000_0000_0000_0110_00")
+    val rdcnt_vh    = i("0000_0000_0000_0000_0110_01")
   }
 
   object _3R {
@@ -38,6 +40,8 @@ object Inst {
     val slli_w  = i("0000_0000_0100_0000_1")
     val srli_w  = i("0000_0000_0100_0100_1")
     val srai_w  = i("0000_0000_0100_1000_1")
+    val break_  = i("0000_0000_0010_1010_0")
+    val syscall = i("0000_0000_0010_011_0")
   }
 
   object _4R {

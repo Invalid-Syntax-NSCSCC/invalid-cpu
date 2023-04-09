@@ -17,10 +17,12 @@ import spec.Width
 import spec.zeroWord
 import spec.ExeInst
 import common.bundles.PcSetPort
+import control.bundles.StableCounterReadPort
 
 // TODO: Add stall to frontend ?
 // TODO: Add deal exceptions
 // TODO: 出错虚地址badv的赋值
+// TODO: 处理break和syscall指令
 // 优先解决多发射中index小的流水线
 // Attention: ll与sc指令只能从第0条流水线发射（按满洋的设计）
 class Cu(
@@ -44,6 +46,9 @@ class Cu(
     // `Csr` -> `Pc`  待接入
     // val newPc = Output(UInt(Width.Reg.data))
     val newPc = Output(new PcSetPort)
+
+    // `Cu` <-> `StableCounter`
+    val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
     /** 暂停信号
       */
@@ -96,14 +101,19 @@ class Cu(
   val linesHasException = WireDefault(VecInit(io.instInfoPorts.map(_.exceptionRecords.reduce(_ || _))))
   val hasException      = WireDefault(linesHasException.reduce(_ || _))
 
+  /** stable counter
+    */
+  io.stableCounterReadPort.exeOp := io.instInfoPorts(0).exeOp
+
   /** Write Regfile
     */
   // temp
-  io.gprWritePassThroughPorts.out(0) := Mux(
-    hasException,
-    io.gprWritePassThroughPorts.in(0),
-    RfWriteNdPort.default
-  )
+  io.gprWritePassThroughPorts.out(0) := io.gprWritePassThroughPorts.in(0)
+  when(hasException) {
+    io.gprWritePassThroughPorts.out(0) := RfWriteNdPort.default
+  }.elsewhen(io.stableCounterReadPort.isMatch) {
+    io.gprWritePassThroughPorts.out(0) := io.stableCounterReadPort.output
+  }
 
   // 软件写csr
   io.csrWritePorts.zip(io.instInfoPorts).foreach {

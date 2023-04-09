@@ -14,6 +14,7 @@ import spec.zeroWord
 import control.Csr
 import spec.Param
 import spec.Count
+import control.StableCounter
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -101,6 +102,7 @@ class CoreCpuTop extends Module {
   val wbStage          = Module(new WbStage)
   val cu               = Module(new Cu)
   val csr              = Module(new Csr)
+  val stableCounter    = Module(new StableCounter)
 
   val crossbar = Module(new AxiCrossbar)
 
@@ -251,6 +253,7 @@ class CoreCpuTop extends Module {
   cu.io.memStallRequest                := memStage.io.stallRequest
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
+  cu.io.stableCounterReadPort          <> stableCounter.io
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
