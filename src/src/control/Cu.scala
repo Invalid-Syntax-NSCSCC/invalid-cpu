@@ -112,7 +112,7 @@ class Cu(
   when(hasException) {
     io.gprWritePassThroughPorts.out(0) := RfWriteNdPort.default
   }.elsewhen(io.stableCounterReadPort.isMatch) {
-    io.gprWritePassThroughPorts.out(0) := io.stableCounterReadPort.output
+    io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
   }
 
   // 软件写csr
