@@ -80,6 +80,7 @@ object ExeInst {
     // exception
     val break_  = next
     val syscall = next
+    val ertn    = next
 
     // stable counter
     val rdcntvl_w = next

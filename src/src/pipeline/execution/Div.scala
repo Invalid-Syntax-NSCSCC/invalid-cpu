@@ -55,17 +55,17 @@ class Div extends Module {
   val dividendSign = getSign(dividend, wordLength)
   val divisorSign  = getSign(divisor, wordLength)
 
-  val quotientSign  = isSigned & (dividendSign ^ divisorSign)
-  val remainderSign = isSigned & dividendSign
+  val quotientSign  = isSigned && (dividendSign ^ divisorSign)
+  val remainderSign = isSigned && dividendSign
 
   val dividendAbs = Mux(
     isSigned,
-    getAbs(dividend, dividendSign & isSigned),
+    getAbs(dividend, dividendSign && isSigned),
     dividend
   )
   val divisorAbs = Mux(
     isSigned,
-    getAbs(divisor, divisorSign & isSigned),
+    getAbs(divisor, divisorSign && isSigned),
     divisor
   )
 

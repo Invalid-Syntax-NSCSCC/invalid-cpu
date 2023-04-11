@@ -13,6 +13,8 @@ class Decoder_special extends Decoder {
 
   val rd = WireDefault(io.instInfoPort.inst(4, 0))
 
+  val opcode32 = WireDefault(io.instInfoPort.inst)
+
   val opcode7 = WireDefault(io.instInfoPort.inst(31, 25))
   val imm20   = WireDefault(io.instInfoPort.inst(24, 5))
 
@@ -71,6 +73,10 @@ class Decoder_special extends Decoder {
       immSext                      := (imm20 << 12).asSInt
       outInfo.imm                  := immSext.asUInt
     }
+
+  }
+
+  switch(opcode17) {
     is(Inst.dbar) {
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.dbar
@@ -87,6 +93,12 @@ class Decoder_special extends Decoder {
       immZext          := hint
       outInfo.imm      := immZext
     }
+  }
 
+  switch(opcode32) {
+    is(Inst.ertn) {
+      io.out.isMatched := true.B
+      outInfo.exeOp    := ExeInst.Op.ertn
+    }
   }
 }

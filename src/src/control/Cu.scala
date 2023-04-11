@@ -205,7 +205,9 @@ class Cu(
   }
 
   // etrn flush (完成异常？)
-  val extnFlush = WireDefault(false.B) // 指令控制，待实现
+  val extnFlush = WireDefault(
+    io.instInfoPorts.map(_.exeOp === ExeInst.Op.ertn).reduce(_ || _)
+  ) // 指令控制
   io.csrMessage.ertnFlush := extnFlush
 
   when(extnFlush) {
