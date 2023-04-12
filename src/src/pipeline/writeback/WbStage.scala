@@ -8,7 +8,7 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec._
 
-class WbStage(changeNum: Int = Param.scoreboardChangeNum) extends Module {
+class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
   val io = IO(new Bundle {
     // `MemStage` -> `WbStage`
     val gprWriteInfoPort = Input(new RfWriteNdPort)

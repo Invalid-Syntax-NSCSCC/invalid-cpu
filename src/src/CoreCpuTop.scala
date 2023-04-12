@@ -4,6 +4,7 @@ import chisel3._
 import common.{Pc, RegFile}
 import frontend.{InstQueue, SimpleFetchStage}
 import control.Cu
+import pipeline.dataforward.DataForwardStage
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
@@ -14,6 +15,8 @@ import spec.zeroWord
 import control.Csr
 import spec.Param
 import spec.Count
+import control.StableCounter
+import spec.ExeInst
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -101,11 +104,14 @@ class CoreCpuTop extends Module {
   val wbStage          = Module(new WbStage)
   val cu               = Module(new Cu)
   val csr              = Module(new Csr)
+  val stableCounter    = Module(new StableCounter)
 
   val crossbar = Module(new AxiCrossbar)
 
   val scoreboard    = Module(new Scoreboard)
-  val csrScoreBoard = Module(new Scoreboard(regNum = Count.csrReg))
+  val csrScoreBoard = Module(new Scoreboard(changeNum = Param.csrScoreBoardChangeNum, regNum = Count.csrReg))
+
+  val dataforward = Module(new DataForwardStage)
 
   val regFile = Module(new RegFile)
   val pc      = Module(new Pc)
@@ -219,12 +225,20 @@ class CoreCpuTop extends Module {
   issueStage.io.csrRegScores        := csrScoreBoard.io.regScores
   csrScoreBoard.io.occupyPorts      := issueStage.io.csrOccupyPorts
 
+  scoreboard.io.freePorts(0)    := exeStage.io.freePorts
+  scoreboard.io.freePorts(1)    := memStage.io.freePorts
+  scoreboard.io.freePorts(2)    := wbStage.io.freePorts(0)
+  csrScoreBoard.io.freePorts(0) := wbStage.io.csrFreePorts(0)
+
   // Reg-read stage
   regReadStage.io.issuedInfoPort             := issueStage.io.issuedInfoPort
   regReadStage.io.gprReadPorts(0)            <> regFile.io.readPorts(0)
   regReadStage.io.gprReadPorts(1)            <> regFile.io.readPorts(1)
   regReadStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
   regReadStage.io.instInfoPassThroughPort.in := issueStage.io.instInfoPort
+  regReadStage.io.dataforwardPorts.zip(dataforward.io.readPorts).foreach {
+    case (regRead, df) => regRead <> df
+  }
 
   // Execution stage
   exeStage.io.exeInstPort                := regReadStage.io.exeInstPort
@@ -242,8 +256,10 @@ class CoreCpuTop extends Module {
   wbStage.io.gprWriteInfoPort           := memStage.io.gprWritePassThroughPort.out
   wbStage.io.instInfoPassThroughPort.in := memStage.io.instInfoPassThroughPort.out
   regFile.io.writePort                  := cu.io.gprWritePassThroughPorts.out(0)
-  scoreboard.io.freePorts               := wbStage.io.freePorts
-  csrScoreBoard.io.freePorts            := wbStage.io.csrFreePorts
+
+  // data forward
+  dataforward.io.writePorts(0) := exeStage.io.gprWritePort
+  dataforward.io.writePorts(1) := memStage.io.gprWritePassThroughPort.out
 
   // Ctrl unit
   cu.io.instInfoPorts(0)               := wbStage.io.instInfoPassThroughPort.out
@@ -251,6 +267,7 @@ class CoreCpuTop extends Module {
   cu.io.memStallRequest                := memStage.io.stallRequest
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
+  cu.io.stableCounterReadPort          <> stableCounter.io
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {

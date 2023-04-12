@@ -20,7 +20,7 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import CsrRegs.ExceptionIndex
 
 // throws exceptions: 指令不存在异常ine
-class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
+class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   val io = IO(new Bundle {
     // `InstQueue` -> `IssueStage`
     val fetchInstInfoPort = Flipped(Decoupled(new InstInfoBundle))
@@ -138,9 +138,14 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     *       - non-blocking
     */
   isInstValid := decoderWires.map(_.isMatched).reduce(_ || _)
-  val isScoreboardBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
+  val isGprScoreboardBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
     port.en && io.regScores(port.addr)
   }.reduce(_ || _))
+  val isCsrScoreboardBlocking = WireDefault(
+    selectedDecoder.info.csrWriteEn &&
+      io.csrRegScores(selectedDecoder.info.csrAddr)
+  )
+  val isScoreboardBlocking = WireDefault(isGprScoreboardBlocking && isCsrScoreboardBlocking)
   val isBlocking = WireDefault(
     io.pipelineControlPort.stall || (
       isInstValid && isScoreboardBlocking

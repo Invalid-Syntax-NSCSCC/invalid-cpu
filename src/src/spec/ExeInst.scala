@@ -76,5 +76,15 @@ object ExeInst {
     val csrrd   = next
     val csrwr   = next
     val csrxchg = next
+
+    // exception
+    val break_  = next
+    val syscall = next
+    val ertn    = next
+
+    // stable counter
+    val rdcntvl_w = next
+    val rdcntvh_w = next
+    val rdcntid   = next
   }
 }

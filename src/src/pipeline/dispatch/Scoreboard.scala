@@ -5,9 +5,13 @@ import chisel3.util._
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec._
 
-class Scoreboard(changeNum: Int = Param.scoreboardChangeNum, regNum: Int = Count.reg) extends Module {
+class Scoreboard(
+  changeNum: Int = Param.scoreboardChangeNum,
+  regNum:    Int = Count.reg,
+  occupyNum: Int = Param.regFileWriteNum)
+    extends Module {
   val io = IO(new Bundle {
-    val occupyPorts = Input(Vec(changeNum, new ScoreboardChangeNdPort))
+    val occupyPorts = Input(Vec(occupyNum, new ScoreboardChangeNdPort))
     val freePorts   = Input(Vec(changeNum, new ScoreboardChangeNdPort))
     val regScores   = Output(Vec(regNum, Bool()))
   })

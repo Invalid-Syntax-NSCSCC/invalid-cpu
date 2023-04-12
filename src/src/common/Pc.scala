@@ -17,7 +17,7 @@ class Pc extends Module {
     val flushNewPc = Input(new PcSetPort)
   })
 
-  val pcReg = RegInit(zeroWord)
+  val pcReg = RegInit(spec.Pc.init)
   io.pc := pcReg
 
   pcReg := pcReg
