@@ -4,9 +4,11 @@ import chisel3._
 import chisel3.util._
 import spec._
 import spec.Inst.{_3R => Inst}
+import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_3R extends Decoder {
-  // TODO: Fix bug where `isMatched` is always true
+
+  io.out := DecodeOutNdPort.default
 
   io.out.isMatched := false.B
 
@@ -33,7 +35,6 @@ class Decoder_3R extends Decoder {
   io.out.info.imm            := DontCare
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
-  io.out.info.pcAddr         := DontCare
 
   switch(opcode) {
     is(Inst.add_w) {
@@ -152,6 +153,26 @@ class Decoder_3R extends Decoder {
       outInfo.gprReadPorts(1).addr := DontCare
       outInfo.isHasImm             := true.B
       outInfo.imm                  := ui5
+    }
+    is(Inst.break_) {
+      io.out.isMatched             := true.B
+      outInfo.exeOp                := ExeInst.Op.break_
+      outInfo.gprReadPorts(0).en   := false.B
+      outInfo.gprReadPorts(0).addr := DontCare
+      outInfo.gprReadPorts(1).en   := false.B
+      outInfo.gprReadPorts(1).addr := DontCare
+      outInfo.gprWritePort.en      := false.B
+      outInfo.gprWritePort.addr    := DontCare
+    }
+    is(Inst.syscall) {
+      io.out.isMatched             := true.B
+      outInfo.exeOp                := ExeInst.Op.syscall
+      outInfo.gprReadPorts(0).en   := false.B
+      outInfo.gprReadPorts(0).addr := DontCare
+      outInfo.gprReadPorts(1).en   := false.B
+      outInfo.gprReadPorts(1).addr := DontCare
+      outInfo.gprWritePort.en      := false.B
+      outInfo.gprWritePort.addr    := DontCare
     }
   }
 }

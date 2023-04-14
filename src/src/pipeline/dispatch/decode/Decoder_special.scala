@@ -5,10 +5,15 @@ import chisel3.util._
 import pipeline.dispatch.bundles.DecodePort
 import spec._
 import spec.Inst.{_special => Inst}
+import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_special extends Decoder {
 
+  io.out := DecodeOutNdPort.default
+
   val rd = WireDefault(io.instInfoPort.inst(4, 0))
+
+  val opcode32 = WireDefault(io.instInfoPort.inst)
 
   val opcode7 = WireDefault(io.instInfoPort.inst(31, 25))
   val imm20   = WireDefault(io.instInfoPort.inst(24, 5))
@@ -42,7 +47,6 @@ class Decoder_special extends Decoder {
   io.out.info.imm            := DontCare
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
-  io.out.info.pcAddr         := DontCare
 
   switch(opcode7) {
     is(Inst.pcaddu12i) {
@@ -69,6 +73,10 @@ class Decoder_special extends Decoder {
       immSext                      := (imm20 << 12).asSInt
       outInfo.imm                  := immSext.asUInt
     }
+
+  }
+
+  switch(opcode17) {
     is(Inst.dbar) {
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.dbar
@@ -85,6 +93,12 @@ class Decoder_special extends Decoder {
       immZext          := hint
       outInfo.imm      := immZext
     }
+  }
 
+  switch(opcode32) {
+    is(Inst.ertn) {
+      io.out.isMatched := true.B
+      outInfo.exeOp    := ExeInst.Op.ertn
+    }
   }
 }

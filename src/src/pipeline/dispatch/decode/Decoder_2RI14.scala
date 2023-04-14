@@ -5,8 +5,12 @@ import chisel3.util._
 import pipeline.dispatch.bundles.DecodePort
 import spec._
 import spec.Inst.{_2RI14 => Inst}
+import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_2RI14 extends Decoder {
+
+  io.out := DecodeOutNdPort.default
+
   val opcode = WireDefault(io.instInfoPort.inst(31, 24))
   val imm14  = WireDefault(io.instInfoPort.inst(23, 10))
   val rj     = WireDefault(io.instInfoPort.inst(9, 5))
@@ -24,8 +28,8 @@ class Decoder_2RI14 extends Decoder {
   immZext := imm14
 
   // Read and write GPR
-  io.out.info.gprReadPorts(0).en   := true.B
-  io.out.info.gprReadPorts(0).addr := rj
+  io.out.info.gprReadPorts(0).en   := false.B
+  io.out.info.gprReadPorts(0).addr := DontCare
   io.out.info.gprReadPorts(1).en   := false.B
   io.out.info.gprReadPorts(1).addr := DontCare
   io.out.info.gprWritePort.en      := false.B
@@ -37,7 +41,6 @@ class Decoder_2RI14 extends Decoder {
   io.out.info.imm            := DontCare
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
-  io.out.info.pcAddr         := DontCare
 
   switch(opcode) {
     is(Inst.ll) {
@@ -56,5 +59,33 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprReadPorts(1).addr := rd
       outInfo.loadStoreImm         := immSext.asUInt
     }
+    // csr读写指令
+    is(Inst.csr_) {
+      io.out.isMatched := true.B
+      outInfo.exeSel   := ExeInst.Sel.none
+      outInfo.csrAddr  := immZext
+      when(rj === "b00000".U) { // csrrd csr -> rd
+        outInfo.exeOp             := ExeInst.Op.csrrd
+        outInfo.gprWritePort.en   := true.B
+        outInfo.gprWritePort.addr := rd
+        outInfo.csrReadEn         := true.B
+      }.elsewhen(rj === "b00001".U) {
+        outInfo.exeOp                := ExeInst.Op.csrwr
+        outInfo.gprReadPorts(0).en   := true.B
+        outInfo.gprReadPorts(0).addr := rd
+        outInfo.csrWriteEn           := true.B
+      }.otherwise {
+        outInfo.exeOp                := ExeInst.Op.csrxchg
+        outInfo.gprReadPorts(0).en   := true.B
+        outInfo.gprReadPorts(0).addr := rd
+        outInfo.gprReadPorts(1).en   := true.B
+        outInfo.gprReadPorts(1).addr := rj
+        outInfo.gprWritePort.addr    := rd
+        outInfo.csrReadEn            := true.B
+        outInfo.csrWriteEn           := true.B
+      }
+
+    }
   }
+
 }

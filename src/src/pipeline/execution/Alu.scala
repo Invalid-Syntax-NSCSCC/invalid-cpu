@@ -5,9 +5,10 @@ import chisel3.util._
 import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}
 import spec._
 import ExeInst.Op
-import pipeline.ctrl.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNDPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import spec.Param.{AluState => State}
+import pipeline.execution.Mul
 
 // Attention: if stallRequest is true, the exeInstPort needs to keep unchange
 class Alu extends Module {
@@ -15,9 +16,8 @@ class Alu extends Module {
     val aluInst = Input(new AluInstNdPort)
     val result  = Output(new AluResultNdPort)
 
-    val pipelineControlPort  = Input(new PipelineControlNDPort)
-    val stallRequest         = Output(Bool())
-    val divisorZeroException = Output(Bool())
+    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val stallRequest        = Output(Bool())
   })
 
   io.result := AluResultNdPort.default
@@ -88,10 +88,10 @@ class Alu extends Module {
     */
   switch(io.aluInst.op) {
     is(Op.sll) {
-      shift := lop << rop(4, 0);
+      shift := lop << rop(4, 0)
     }
     is(Op.srl) {
-      shift := lop >> rop(4, 0);
+      shift := lop >> rop(4, 0)
     }
     is(Op.sra) {
       shift := (lop.asSInt << rop(4, 0)).asUInt
@@ -216,7 +216,6 @@ class Alu extends Module {
   divStage.io.divResult.ready := DontCare
 
   val divisorValid = WireDefault(rop.orR)
-  io.divisorZeroException := !divisorValid && useDiv
 
   // divStart := useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid && !io.pipelineControlPort.stall
   switch(stateReg) {

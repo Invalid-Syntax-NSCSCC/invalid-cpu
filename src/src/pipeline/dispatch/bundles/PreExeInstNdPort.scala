@@ -14,6 +14,8 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 
   // GPR read (`readNum`)
   val gprReadPorts = Vec(readNum, new RfAccessInfoNdPort)
+  val csrReadEn    = Bool()
+  val csrWriteEn   = Bool()
 
   // GPR write
   val gprWritePort = new RfAccessInfoNdPort
@@ -23,10 +25,11 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   val imm      = UInt(Width.Reg.data)
 
   // Branch jump addr
-  val pcAddr         = UInt(Width.Reg.data)
   val jumpBranchAddr = UInt(Width.Reg.data)
 
   def loadStoreImm = jumpBranchAddr
+
+  def csrAddr = jumpBranchAddr
 
   // TODO: Signals in this port is not sufficient
 }
@@ -39,7 +42,8 @@ object PreExeInstNdPort {
     _.gprWritePort -> RfAccessInfoNdPort.default,
     _.isHasImm -> false.B,
     _.imm -> 0.U,
-    _.pcAddr -> zeroWord,
-    _.jumpBranchAddr -> zeroWord
+    _.jumpBranchAddr -> zeroWord,
+    _.csrReadEn -> false.B,
+    _.csrWriteEn -> false.B
   )
 }

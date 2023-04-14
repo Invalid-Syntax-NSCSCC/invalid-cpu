@@ -6,10 +6,12 @@ import frontend.InstQueue
 import pipeline.dispatch.bundles.InstInfoBundle
 import utest._
 
+import scala.collection.immutable
+
  object ComponentSpec extends ChiselUtestTester {
   val tests = Tests {
     test("Test InstQueue module") {
-      testCircuit(new InstQueue, Seq(WriteVcdAnnotation)) { instQueue =>
+      testCircuit(new InstQueue, immutable.Seq(WriteVcdAnnotation)) { instQueue =>
         // Nothing in queue, then no dequeue
         instQueue.io.dequeuePort.valid.expect(false.B)
         instQueue.io.enqueuePort.ready.expect(true.B)
@@ -40,7 +42,8 @@ import utest._
         instQueue.io.enqueuePort.ready.expect(false.B)
 
         // Flush the queue, then cannot dequeue
-        instQueue.io.isFlush.poke(true.B)
+        // instQueue.io.isFlush.poke(true.B)
+        instQueue.io.pipelineControlPort.flush.poke(true.B)
         instQueue.clock.step()
         instQueue.io.dequeuePort.valid.expect(false.B)
       }

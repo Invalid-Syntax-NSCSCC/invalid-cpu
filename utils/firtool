@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+
+# Workaround
+for arg do
+  shift
+  case $arg in
+    (-disable-infer-rw) : ;;
+        (*) set -- "$@" "$arg" ;;
+  esac
+done
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
     firtool_darwin --disable-annotation-unknown "$@"
 else

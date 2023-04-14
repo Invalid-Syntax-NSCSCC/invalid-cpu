@@ -14,10 +14,13 @@ import pipeline.dispatch.decode.{
   Decoder_special
 }
 import spec._
-import pipeline.ctrl.bundles.PipelineControlNDPort
-import spec.Param.{IssueStageState => State}
+import control.bundles.PipelineControlNDPort
+import pipeline.dispatch.enums.{IssueStageState => State}
+import pipeline.writeback.bundles.InstInfoNdPort
+import CsrRegs.ExceptionIndex
 
-class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module {
+// throws exceptions: 指令不存在异常ine
+class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   val io = IO(new Bundle {
     // `InstQueue` -> `IssueStage`
     val fetchInstInfoPort = Flipped(Decoupled(new InstInfoBundle))
@@ -26,15 +29,23 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     val occupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
     val regScores   = Input(Vec(Count.reg, Bool()))
 
+    // `IssueStage` <-> `Scoreboard(csr)`
+    val csrOccupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
+    val csrRegScores   = Input(Vec(Count.csrReg, Bool()))
+
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPort = Output(new IssuedInfoNdPort)
+    val instInfoPort   = Output(new InstInfoNdPort)
 
     // pipeline control signal
     // `Cu` -> `IssueStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
-
-    val wbDebugInst = Output(UInt(Width.Reg.data))
   })
+
+  // Wb debug port connection
+  val instInfoReg = Reg(new InstInfoNdPort)
+  InstInfoNdPort.setDefault(instInfoReg)
+  io.instInfoPort := instInfoReg
 
   // Pass to the next stage in a sequential way
   val issuedInfoReg = RegInit(IssuedInfoNdPort.default)
@@ -78,12 +89,15 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
   io.fetchInstInfoPort.ready := isFetch
 
   // Implement output function
+  val isInstValid = Wire(Bool())
   switch(stateReg) {
     is(State.nonBlocking) {
       isFetch := true.B
       when(io.fetchInstInfoPort.valid) {
         selectedInstInfo := io.fetchInstInfoPort.bits
         instStoreReg     := io.fetchInstInfoPort.bits
+        // 指令不存在异常
+        instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ine) := !isInstValid
       }
     }
     is(State.blocking) {
@@ -98,9 +112,9 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     Module(new Decoder_2RI12),
     Module(new Decoder_2RI14),
     Module(new Decoder_2RI16),
-    Module(new Decoder_2R),
+    // Module(new Decoder_2R),
     Module(new Decoder_3R),
-    Module(new Decoder_4R),
+    // Module(new Decoder_4R),
     Module(new Decoder_special)
   )
   decoders.foreach(_.io.instInfoPort := selectedInstInfo)
@@ -123,10 +137,15 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     *     - If inst invalid:
     *       - non-blocking
     */
-  val isInstValid = WireDefault(decoderWires.map(_.isMatched).reduce(_ || _))
-  val isScoreboardBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
+  isInstValid := decoderWires.map(_.isMatched).reduce(_ || _)
+  val isGprScoreboardBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
     port.en && io.regScores(port.addr)
   }.reduce(_ || _))
+  val isCsrScoreboardBlocking = WireDefault(
+    selectedDecoder.info.csrWriteEn &&
+      io.csrRegScores(selectedDecoder.info.csrAddr)
+  )
+  val isScoreboardBlocking = WireDefault(isGprScoreboardBlocking && isCsrScoreboardBlocking)
   val isBlocking = WireDefault(
     io.pipelineControlPort.stall || (
       isInstValid && isScoreboardBlocking
@@ -160,9 +179,10 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
     port.en   := false.B
     port.addr := DontCare
   }
-  val wbDebugInstReg = RegInit(0.U(Width.Reg.data))
-  io.wbDebugInst := wbDebugInstReg
-  wbDebugInstReg := 0.U
+  io.csrOccupyPorts.foreach { port =>
+    port.en   := false.B
+    port.addr := DontCare
+  }
 
   // Issue pre-execution instruction
 
@@ -175,7 +195,29 @@ class IssueStage(scoreChangeNum: Int = Param.scoreboardChangeNum) extends Module
         occupyPort.addr := accessInfo.addr
     }
 
-    issuedInfoReg.info := selectedDecoder.info
-    wbDebugInstReg     := selectedInstInfo.inst
+    io.csrOccupyPorts.zip(Seq(selectedDecoder.info)).foreach {
+      case (csrOccupyPort, accessInfo) =>
+        csrOccupyPort.en   := accessInfo.csrWriteEn
+        csrOccupyPort.addr := accessInfo.csrAddr
+    }
+
+    issuedInfoReg.info            := selectedDecoder.info
+    instInfoReg.inst              := selectedInstInfo.inst
+    instInfoReg.pc                := selectedInstInfo.pcAddr
+    instInfoReg.csrWritePort.en   := selectedDecoder.info.csrWriteEn
+    instInfoReg.csrWritePort.addr := selectedDecoder.info.csrAddr
+  }
+
+  // clear
+  when(io.pipelineControlPort.clear) {
+    InstInfoNdPort.setDefault(instInfoReg)
+    issuedInfoReg := IssuedInfoNdPort.default
+  }
+  // flush all regs
+  when(io.pipelineControlPort.flush) {
+    InstInfoNdPort.setDefault(instInfoReg)
+    issuedInfoReg := IssuedInfoNdPort.default
+    stateReg      := State.nonBlocking
+    instStoreReg  := InstInfoBundle.default
   }
 }

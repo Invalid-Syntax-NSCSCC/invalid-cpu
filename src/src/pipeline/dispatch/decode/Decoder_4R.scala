@@ -4,9 +4,11 @@ import chisel3._
 import chisel3.util._
 import spec._
 import spec.Inst.{_4R => Inst}
+import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_4R extends Decoder {
-  io.out := DontCare
+
+  io.out := DecodeOutNdPort.default
 
   val opcode = WireDefault(io.instInfoPort.inst(31, 20))
   val ra     = WireDefault(io.instInfoPort.inst(19, 15))
