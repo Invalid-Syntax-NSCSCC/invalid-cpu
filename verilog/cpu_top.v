@@ -1,5 +1,5 @@
-`include "CoreCpuTop.v"
-parameter AXI_DATA_WIDTH = 32;
+// `include "CoreCpuTop.v"
+parameter AXI_DATA_WIDTH = 128;
 
 module core_top (
     input aclk,
@@ -53,7 +53,8 @@ module core_top (
     output       [                  31:0] debug0_wb_pc,
     output       [                   3:0] debug0_wb_rf_wen,
     output       [                   4:0] debug0_wb_rf_wnum,
-    output       [                  31:0] debug0_wb_rf_wdata
+    output       [                  31:0] debug0_wb_rf_wdata,
+    output       [                  31:0] debug0_wb_inst
 );
 
 `ifdef DIFFTEST_EN
@@ -270,7 +271,7 @@ module core_top (
         .exceptionPC        (cmt_pc         ),
         .exceptionInst      (cmt_inst       )
     );
-
+/*
     DifftestTrapEvent DifftestTrapEvent(
         .clock              (aclk           ),
         .coreid             (0              ),
@@ -280,7 +281,7 @@ module core_top (
         .cycleCnt           (cycleCnt       ),
         .instrCnt           (instrCnt       )
     );
-
+*/
     DifftestStoreEvent DifftestStoreEvent(
         .clock              (aclk           ),
         .coreid             (0              ),
@@ -368,6 +369,7 @@ module core_top (
         .gpr_30             (regs[30]   ),
         .gpr_31             (regs[31]   )
     );
+
 `endif
 
 endmodule
