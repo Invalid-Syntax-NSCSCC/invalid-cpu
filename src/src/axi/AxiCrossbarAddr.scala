@@ -85,8 +85,8 @@ class axi_crossbar_addr(
         "M_COUNT" -> Param.Count.Axi.master,
         "ADDR_WIDTH" -> Width.Axi.addr.get,
         "ID_WIDTH" -> idWidth,
-        "S_THREADS" -> "32'd2",
-        "S_ACCEPT" -> "32'd16",
+//        "S_THREADS" -> "32'd2",
+//        "S_ACCEPT" -> "32'd16",
         "M_REGIONS" -> 1,
         "M_BASE_ADDR" -> masterBaseAddr,
         "WC_OUTPUT" -> (if (writeCommandOutputEnable) 1 else 0)
