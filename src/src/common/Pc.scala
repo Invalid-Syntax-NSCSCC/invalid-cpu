@@ -7,7 +7,10 @@ import spec._
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import control.bundles.PipelineControlNDPort
 
-class Pc extends Module {
+// attention: 从cache不一定能一次性全部取出，待修改
+class Pc(
+  val issueNum: Int = Param.issueInstInfoMaxNum)
+    extends Module {
   val io = IO(new Bundle {
     val pc     = Output(UInt(Width.Reg.data))
     val isNext = Input(Bool())
@@ -22,6 +25,6 @@ class Pc extends Module {
   when(io.newPc.en) {
     pcReg := io.newPc.pcAddr
   }.elsewhen(io.isNext) {
-    pcReg := pcReg + 4.U
+    pcReg := pcReg + (4 * issueNum).U
   }
 }
