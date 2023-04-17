@@ -129,8 +129,7 @@ class CoreCpuTop extends Module {
   exeStage.io := DontCare
 
   // Pc
-  pc.io.branchSetPort := exeStage.io.branchSetPort
-  pc.io.flushNewPc    := cu.io.newPc
+  pc.io.newPc := cu.io.newPc
 
   // AXI top <> AXI crossbar
   crossbar.io.slaves                       <> DontCare
@@ -268,6 +267,7 @@ class CoreCpuTop extends Module {
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
+  cu.io.jumpPc                         := exeStage.io.branchSetPort
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {

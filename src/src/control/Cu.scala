@@ -43,8 +43,9 @@ class Cu(
     val csrMessage = Output(new CuToCsrNdPort)
     // `Csr` -> `Cu`
     val csrValues = Input(new CsrToCuNdPort)
-    // `Csr` -> `Pc`  待接入
-    // val newPc = Output(UInt(Width.Reg.data))
+    // `ExeStage` -> `Cu`
+    val jumpPc = Input(new PcSetPort)
+    // `Csr` -> `Pc`
     val newPc = Output(new PcSetPort)
 
     // `Cu` <-> `StableCounter`
@@ -124,8 +125,17 @@ class Cu(
   /** flush
     */
 
-  val flush = WireDefault(hasException)
-  io.pipelineControlPorts.foreach(_.flush := flush)
+  when(io.jumpPc.en) {
+    Seq(
+      PipelineStageIndex.issueStage,
+      PipelineStageIndex.regReadStage,
+      PipelineStageIndex.instQueue
+    ).map(io.pipelineControlPorts(_))
+      .foreach(_.flush := true.B)
+  }
+
+  val exceptionFlush = WireDefault(hasException)
+  io.pipelineControlPorts.foreach(_.flush := exceptionFlush)
 
   /** 硬件写csr
     */
@@ -194,24 +204,25 @@ class Cu(
       }
     }
   }
-
-  // select new pc
-  when(hasException) {
-    when(isTlbRefillException) {
-      io.newPc.pcAddr := io.csrValues.tlbrentry
-    }.otherwise {
-      io.newPc.pcAddr := io.csrValues.eentry
-    }
-  }
-
   // etrn flush (完成异常？)
   val extnFlush = WireDefault(
     io.instInfoPorts.map(_.exeOp === ExeInst.Op.ertn).reduce(_ || _)
   ) // 指令控制
   io.csrMessage.ertnFlush := extnFlush
 
+  // select new pc
   when(extnFlush) {
+    io.newPc.en     := true.B
     io.newPc.pcAddr := io.csrValues.era
+  }.elsewhen(hasException) {
+    io.newPc.en := true.B
+    when(isTlbRefillException) {
+      io.newPc.pcAddr := io.csrValues.tlbrentry
+    }.otherwise {
+      io.newPc.pcAddr := io.csrValues.eentry
+    }
+  }.elsewhen(io.jumpPc.en) {
+    io.newPc := io.jumpPc
   }
 
   // tlb

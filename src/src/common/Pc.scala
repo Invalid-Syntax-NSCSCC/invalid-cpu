@@ -11,20 +11,16 @@ class Pc extends Module {
   val io = IO(new Bundle {
     val pc     = Output(UInt(Width.Reg.data))
     val isNext = Input(Bool())
-    // `ExeStage` -> `Pc` (no delay)
-    val branchSetPort = Input(new PcSetPort)
     // 异常处理
-    val flushNewPc = Input(new PcSetPort)
+    val newPc = Input(new PcSetPort)
   })
 
   val pcReg = RegInit(spec.Pc.init)
   io.pc := pcReg
 
   pcReg := pcReg
-  when(io.flushNewPc.en) {
-    pcReg := io.flushNewPc.pcAddr
-  }.elsewhen(io.branchSetPort.en) {
-    pcReg := io.branchSetPort.pcAddr
+  when(io.newPc.en) {
+    pcReg := io.newPc.pcAddr
   }.elsewhen(io.isNext) {
     pcReg := pcReg + 4.U
   }
