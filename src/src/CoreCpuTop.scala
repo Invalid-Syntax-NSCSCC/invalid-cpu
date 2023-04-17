@@ -217,12 +217,15 @@ class CoreCpuTop extends Module {
   pc.io.isNext                     := simpleFetchStage.io.isPcNext
 
   // Issue stage
-  issueStage.io.fetchInstInfoPort   <> instQueue.io.dequeuePort
-  issueStage.io.regScores           := scoreboard.io.regScores
-  scoreboard.io.occupyPorts         := issueStage.io.occupyPorts
-  issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
-  issueStage.io.csrRegScores        := csrScoreBoard.io.regScores
-  csrScoreBoard.io.occupyPorts      := issueStage.io.csrOccupyPorts
+  issueStage.io.fetchInstInfoPort.bits     := instQueue.io.dequeuePort.bits.decode
+  issueStage.io.instInfoPassThroughPort.in := instQueue.io.dequeuePort.bits.instInfo
+  issueStage.io.fetchInstInfoPort.valid    := instQueue.io.dequeuePort.valid
+  instQueue.io.dequeuePort.ready           := issueStage.io.fetchInstInfoPort.ready
+  issueStage.io.regScores                  := scoreboard.io.regScores
+  scoreboard.io.occupyPorts                := issueStage.io.occupyPorts
+  issueStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
+  issueStage.io.csrRegScores               := csrScoreBoard.io.regScores
+  csrScoreBoard.io.occupyPorts             := issueStage.io.csrOccupyPorts
 
   scoreboard.io.freePorts(0)    := exeStage.io.freePorts
   scoreboard.io.freePorts(1)    := memStage.io.freePorts
@@ -234,7 +237,7 @@ class CoreCpuTop extends Module {
   regReadStage.io.gprReadPorts(0)            <> regFile.io.readPorts(0)
   regReadStage.io.gprReadPorts(1)            <> regFile.io.readPorts(1)
   regReadStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
-  regReadStage.io.instInfoPassThroughPort.in := issueStage.io.instInfoPort
+  regReadStage.io.instInfoPassThroughPort.in := issueStage.io.instInfoPassThroughPort.out
   regReadStage.io.dataforwardPorts.zip(dataforward.io.readPorts).foreach {
     case (regRead, df) => regRead <> df
   }
