@@ -217,10 +217,10 @@ class CoreCpuTop extends Module {
   pc.io.isNext                     := simpleFetchStage.io.isPcNext
 
   // Issue stage
-  issueStage.io.fetchInstInfoPort.bits     := instQueue.io.dequeuePort.bits.decode
+  issueStage.io.fetchInstDecodePort.bits   := instQueue.io.dequeuePort.bits.decode
   issueStage.io.instInfoPassThroughPort.in := instQueue.io.dequeuePort.bits.instInfo
-  issueStage.io.fetchInstInfoPort.valid    := instQueue.io.dequeuePort.valid
-  instQueue.io.dequeuePort.ready           := issueStage.io.fetchInstInfoPort.ready
+  issueStage.io.fetchInstDecodePort.valid  := instQueue.io.dequeuePort.valid
+  instQueue.io.dequeuePort.ready           := issueStage.io.fetchInstDecodePort.ready
   issueStage.io.regScores                  := scoreboard.io.regScores
   scoreboard.io.occupyPorts                := issueStage.io.occupyPorts
   issueStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
