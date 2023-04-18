@@ -40,9 +40,12 @@ object BiInstQueueSpec extends ChiselUtestTester {
 
             instQueue.clock.step(1)
             println(s"********************")
-            println(s"(0) valid: ${instQueue.io.dequeuePorts(0).valid.peek()}; inst: ${instQueue.io.dequeuePorts(0).bits.inst.peek().litValue.toString(16)}")
-            println(s"(1) valid: ${instQueue.io.dequeuePorts(1).valid.peek()}; inst: ${instQueue.io.dequeuePorts(1).bits.inst.peek().litValue.toString(16)}")
-        }
+            println(s"(0) valid: ${instQueue.io.dequeuePorts(0).valid.peek()}; inst: ${instQueue.io.dequeuePorts(0).bits.instInfo.inst.peek()}")
+            // println(s"${instQueue.io.debugPort(0).inst.peek()}")
+            println(s"(1) valid: ${instQueue.io.dequeuePorts(1).valid.peek()}; inst: ${instQueue.io.dequeuePorts(1).bits.instInfo.inst.peek().litValue.toString(16)}")
+            // println(s"${instQueue.io.debugPort(1).inst.peek()}")
+        
+          }
       }
     }
   }

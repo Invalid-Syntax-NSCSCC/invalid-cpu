@@ -7,6 +7,18 @@ import spec._
 import pipeline.dispatch.bundles.InstInfoBundle
 import control.bundles.PipelineControlNDPort
 import frontend._
+import pipeline.dispatch.bundles.{DecodeOutNdPort, DecodePort, InstInfoBundle, IssuedInfoNdPort, ScoreboardChangeNdPort}
+import pipeline.dispatch.decode.{
+  Decoder,
+  Decoder_2R,
+  Decoder_2RI12,
+  Decoder_2RI14,
+  Decoder_2RI16,
+  Decoder_3R,
+  Decoder_4R,
+  Decoder_special
+}
+import pipeline.writeback.bundles.InstInfoNdPort
 
 // 尝试写双发射的queue，未接入，不用管它
 // assert: enqueuePorts总是最低的几位有效
@@ -20,7 +32,15 @@ class BiInstQueue(
     val enqueuePorts        = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
-    val dequeuePorts = Vec(issueNum, Decoupled(new InstInfoBundle))
+    val dequeuePorts = Vec(
+      issueNum,
+      Decoupled(new Bundle {
+        val decode   = new DecodeOutNdPort
+        val instInfo = new InstInfoNdPort
+      })
+    )
+
+    // val debugPort = Output(Vec(issueNum, new InstInfoBundle))
   })
   require(issueNum == 2)
 //   val queue =
@@ -32,8 +52,10 @@ class BiInstQueue(
   val enq_ptr = Module(new BiCounter(queueLength))
   val deq_ptr = Module(new BiCounter(queueLength))
 
-  enq_ptr.io.inc := 0.U
-  deq_ptr.io.inc := 0.U
+  enq_ptr.io.inc   := 0.U
+  enq_ptr.io.flush := io.pipelineControlPort.flush
+  deq_ptr.io.inc   := 0.U
+  deq_ptr.io.flush := io.pipelineControlPort.flush
 
   val maybeFull = RegInit(false.B)
   val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
@@ -117,9 +139,70 @@ class BiInstQueue(
       deq_ptr.io.inc := 1.U
     }
   }
+  // Decode
 
-  io.dequeuePorts(0).bits := ram(deq_ptr.io.value)
-  io.dequeuePorts(1).bits := ram(deq_ptr.io.value + 1.U)
+  val decodeInstInfos = WireDefault(VecInit(ram(deq_ptr.io.value), ram(deq_ptr.io.value + 1.U)))
+
+  // io.debugPort(0) := decodeInstInfos(0)
+  // io.debugPort(1) := decodeInstInfos(1)
+
+  // Select a decoder
+
+  val decoders0 = Seq(
+    Module(new Decoder_2RI12),
+    Module(new Decoder_2RI14),
+    Module(new Decoder_2RI16),
+    Module(new Decoder_2R),
+    Module(new Decoder_3R),
+    // Module(new Decoder_4R),
+    Module(new Decoder_special)
+  )
+
+  val decoders1 = Seq(
+    Module(new Decoder_2RI12),
+    Module(new Decoder_2RI14),
+    Module(new Decoder_2RI16),
+    Module(new Decoder_2R),
+    Module(new Decoder_3R),
+    // Module(new Decoder_4R),
+    Module(new Decoder_special)
+  )
+
+  decoders0.foreach(_.io.instInfoPort := decodeInstInfos(0))
+  decoders1.foreach(_.io.instInfoPort := decodeInstInfos(1))
+
+  val decoderWires = Wire(Vec(2, Vec(decoders0.length, new DecodeOutNdPort)))
+  // decoderWires.zip(decoders).foreach {
+  //   case (port, decoder) =>
+  //     port := decoder.io.out
+  // }
+  decoderWires.zip(Seq(decoders0, decoders1)).foreach {
+    case (decoderWire, decoders) =>
+      decoderWire.zip(decoders).foreach {
+        case (port, decoder) =>
+          port := decoder.io.out
+      }
+  }
+
+  // val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
+  // val selectedDecoder = WireDefault(decoderWires(decoderIndex))
+  val decoderIndices = WireDefault(VecInit(decoderWires.map { decoderWire =>
+    OHToUInt(Cat(decoderWire.map(_.isMatched).reverse))
+  }))
+  val selectedDecoders = WireDefault(VecInit(decoderWires.zip(decoderIndices).map {
+    case (decoderWire, decoderIndex) =>
+      decoderWire(decoderIndex)
+  }))
+
+  io.dequeuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
+    case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
+      dequeuePort.bits.decode := selectedDecoder
+      InstInfoNdPort.setDefault(dequeuePort.bits.instInfo)
+      dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
+      dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
+      dequeuePort.bits.instInfo
+        .exceptionRecords(CsrRegs.ExceptionIndex.ine) := !decoderWires(index).map(_.isMatched).reduce(_ || _)
+  }
 
   when(io.pipelineControlPort.flush) {
     ram.foreach(_ := InstInfoBundle.default)

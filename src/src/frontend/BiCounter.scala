@@ -10,6 +10,7 @@ class BiCounter(count: Int) extends Module {
   val io = IO(new Bundle {
     // inc =/= `11`
     val inc   = Input(UInt(2.W))
+    val flush = Input(Bool())
     val value = Output(UInt(w))
   })
 
@@ -30,5 +31,10 @@ class BiCounter(count: Int) extends Module {
     }.otherwise {
       counter := counter + 2.U
     }
+  }
+
+  when(io.flush) {
+    io.value := false.B
+    counter  := 0.U
   }
 }

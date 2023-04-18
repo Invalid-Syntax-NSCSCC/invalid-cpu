@@ -12,7 +12,7 @@ object Inst {
   }
 
   object _2R {
-    private def i(str: String) = b(str, wd._2R, 0)
+    private def i(str: String) = b(str, wd._2R, 5)
     val rdcnt_id_vl = i("0000_0000_0000_0000_0110_00")
     val rdcnt_vh    = i("0000_0000_0000_0000_0110_01")
   }
