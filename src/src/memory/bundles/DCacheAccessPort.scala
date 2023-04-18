@@ -1,7 +1,7 @@
 package memory.bundles
 
 import chisel3._
-import memory.enums.ReadWriteSel
+import common.enums.ReadWriteSel
 import spec._
 
 class DCacheAccessPort extends Bundle {

@@ -17,12 +17,14 @@ import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 
+// TODO: MemLoadStoreInfoNdPort is deprecated
+
 // TODO: Add (flush ?) when jump / branch
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)
 
-    // `ExeStage` -> `MemStage` (next clock pulse)
+    // `ExeStage` -> `AddrTransStage` (next clock pulse)
     val memLoadStoreInfoPort    = Output(new MemLoadStoreInfoNdPort)
     val gprWritePort            = Output(new RfWriteNdPort)
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
