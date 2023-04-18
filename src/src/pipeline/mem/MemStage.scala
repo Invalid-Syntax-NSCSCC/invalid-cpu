@@ -3,14 +3,9 @@ package pipeline.mem
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfWriteNdPort}
-import pipeline.dispatch.bundles.ExeInstNdPort
-import spec.ExeInst.Sel
-import spec._
 import pipeline.execution.bundles.MemLoadStoreInfoNdPort
-import chisel3.experimental.VecLiterals._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import control.bundles.PipelineControlNDPort
-import pipeline.mem.bundles.MemLoadStorePort
+import pipeline.mem.bundles.MemAccessNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 
@@ -23,14 +18,13 @@ class MemStage extends Module {
     // `Cu` -> `MemStage`
     val pipelineControlPort = Input(new PipelineControlNDPort)
     // `MemStage` -> Cu
-    val stallRequest = Output(Bool())
-    // `MemStage` -> ?Ram
-    val memLoadStorePort = Flipped(new MemLoadStorePort)
+    val stallRequest     = Output(Bool())
+    val memLoadStorePort = Flipped(new MemAccessNdPort)
 
     // Scoreboard
     val freePorts = Output(new ScoreboardChangeNdPort)
 
-    // (next clock pause)
+    // (Next clock pulse)
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
   })
 
@@ -49,16 +43,9 @@ class MemStage extends Module {
 
   io.stallRequest := false.B
 
-  val storeData = WireDefault(io.memLoadStoreInfoPort.data)
-  val hint      = WireDefault(io.memLoadStoreInfoPort.data)
-
   io.memLoadStorePort <> DontCare
 
-  // Indicate the availability in scoreboard
-  io.freePorts.en   := false.B
-  io.freePorts.addr := io.gprWritePassThroughPort.out.addr
-
-  // flush or clear
+  // Flush or clear
   when(io.pipelineControlPort.flush || io.pipelineControlPort.clear) {
     gprWriteReg := RfWriteNdPort.default
     InstInfoNdPort.setDefault(instInfoReg)
