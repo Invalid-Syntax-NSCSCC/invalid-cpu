@@ -55,9 +55,9 @@ class Cu(
       */
     // `ExeStage` -> `Cu`
     val exeStallRequest = Input(Bool())
-    // `MemStage` -> `Cu`
+    // `AddrTransStage` -> `Cu`
     val memStallRequest = Input(Bool())
-    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `MemStage`
+    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`
     val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNDPort))
   })
 
@@ -69,7 +69,7 @@ class Cu(
   Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
     .map(io.pipelineControlPorts(_))
     .foreach(_.stall := io.exeStallRequest)
-  // `MemStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `MemStage`  (STALL ITSELF)
+  // `AddrTransStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`  (STALL ITSELF)
   Seq(
     PipelineStageIndex.issueStage,
     PipelineStageIndex.regReadStage,
