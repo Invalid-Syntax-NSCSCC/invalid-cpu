@@ -55,8 +55,8 @@ class Mul extends Module {
       val resultSInt = Wire(SInt(doubleWordLength.W))
       // resultSInt := ((lop.asSInt * weight) << shiftNum)
       resultSInt := (
-        ((lop.asSInt << shiftNum) * weight(0) + (lop.asSInt << (shiftNum + 1)) * weight(1)) +
-          ((lop.asSInt << (shiftNum + 2)) * weight(2) - (lop.asSInt << (shiftNum + 3)) * weight(3))
+        ((lop.asSInt << shiftNum).asSInt * weight(0) + (lop.asSInt << (shiftNum + 1)).asSInt * weight(1)) +
+          ((lop.asSInt << (shiftNum + 2)).asSInt * weight(2) - (lop.asSInt << (shiftNum + 3)).asSInt * weight(3))
       )
       when(isUnsigned) {
         resultSInt := ((Cat(false.B, lop).asSInt * weight) << shiftNum)

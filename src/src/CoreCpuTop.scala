@@ -8,7 +8,7 @@ import pipeline.dataforward.DataForwardStage
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
-import pipeline.mem.MemStage
+import pipeline.mem.AddrTransStage
 import spec.Param.isDiffTest
 import spec.PipelineStageIndex
 import spec.zeroWord
@@ -100,7 +100,7 @@ class CoreCpuTop extends Module {
   val issueStage       = Module(new IssueStage)
   val regReadStage     = Module(new RegReadStage)
   val exeStage         = Module(new ExeStage)
-  val memStage         = Module(new MemStage)
+  val memStage         = Module(new AddrTransStage)
   val wbStage          = Module(new WbStage)
   val cu               = Module(new Cu)
   val csr              = Module(new Csr)
@@ -249,9 +249,9 @@ class CoreCpuTop extends Module {
 
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
-  memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort
+  memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort // TODO: MemLoadStoreInfoPort is deprecated
   memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
-  memStage.io.memLoadStorePort           <> DontCare
+  memStage.io.memAccessPort              <> DontCare
   memStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
 
   // Write-back stage
