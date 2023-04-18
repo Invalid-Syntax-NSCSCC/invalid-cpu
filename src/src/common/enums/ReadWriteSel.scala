@@ -1,4 +1,4 @@
-package memory.enums
+package common.enums
 
 import chisel3.ChiselEnum
 
