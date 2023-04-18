@@ -7,7 +7,6 @@ import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
 import control.bundles.PipelineControlNDPort
-import pipeline.execution.bundles.MemLoadStoreInfoNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param.{ExeStageState => State}
@@ -25,7 +24,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val exeInstPort = Input(new ExeInstNdPort)
 
     // `ExeStage` -> `AddrTransStage` (next clock pulse)
-    val memLoadStoreInfoPort    = Output(new MemLoadStoreInfoNdPort)
+    // val memLoadStoreInfoPort    = Output(new MemLoadStoreInfoNdPort)
     val gprWritePort            = Output(new RfWriteNdPort)
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
@@ -57,8 +56,8 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   io.gprWritePort := gprWriteReg
 
-  val memLoadStoreInfoReg = RegInit(MemLoadStoreInfoNdPort.default)
-  io.memLoadStoreInfoPort := memLoadStoreInfoReg
+  // val memLoadStoreInfoReg = RegInit(MemLoadStoreInfoNdPort.default)
+  // io.memLoadStoreInfoPort := memLoadStoreInfoReg
 
   // Start: state machine
 
@@ -79,15 +78,15 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   exeInstStoreReg := exeInstStoreReg
   val pcStoreReg = RegInit(zeroWord)
   pcStoreReg := pcStoreReg
-  val memLoadStoreInfoStoreReg = RegInit(MemLoadStoreInfoNdPort.default)
-  memLoadStoreInfoStoreReg := memLoadStoreInfoStoreReg
+  // val memLoadStoreInfoStoreReg = RegInit(MemLoadStoreInfoNdPort.default)
+  // memLoadStoreInfoStoreReg := memLoadStoreInfoStoreReg
   val instInfoStoreReg = Reg(new InstInfoNdPort)
   instInfoStoreReg := instInfoStoreReg
 
-  val selectedExeInst          = WireDefault(ExeInstNdPort.default)
-  val selectedPc               = WireDefault(zeroWord)
-  val selectedMemLoadStoreInfo = WireDefault(MemLoadStoreInfoNdPort.default)
-  val selectedInstInfo         = WireDefault(instInfoStoreReg)
+  val selectedExeInst = WireDefault(ExeInstNdPort.default)
+  val selectedPc      = WireDefault(zeroWord)
+  // val selectedMemLoadStoreInfo = WireDefault(MemLoadStoreInfoNdPort.default)
+  val selectedInstInfo = WireDefault(instInfoStoreReg)
 
   // Implement output function
   switch(stateReg) {
@@ -97,19 +96,19 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
       selectedPc      := io.instInfoPassThroughPort.in.pc
       pcStoreReg      := io.instInfoPassThroughPort.in.pc
 
-      val inMemLoadStoreInfo = Wire(new MemLoadStoreInfoNdPort)
-      inMemLoadStoreInfo.data  := io.exeInstPort.rightOperand
-      inMemLoadStoreInfo.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
-      selectedMemLoadStoreInfo := inMemLoadStoreInfo
-      memLoadStoreInfoStoreReg := inMemLoadStoreInfo
-      selectedInstInfo         := io.instInfoPassThroughPort.in
-      instInfoStoreReg         := io.instInfoPassThroughPort.in
+      // val inMemLoadStoreInfo = Wire(new MemLoadStoreInfoNdPort)
+      // inMemLoadStoreInfo.data  := io.exeInstPort.rightOperand
+      // inMemLoadStoreInfo.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
+      // selectedMemLoadStoreInfo := inMemLoadStoreInfo
+      // memLoadStoreInfoStoreReg := inMemLoadStoreInfo
+      selectedInstInfo := io.instInfoPassThroughPort.in
+      instInfoStoreReg := io.instInfoPassThroughPort.in
     }
     is(State.blocking) {
-      selectedExeInst          := exeInstStoreReg
-      selectedPc               := pcStoreReg
-      selectedMemLoadStoreInfo := memLoadStoreInfoStoreReg
-      selectedInstInfo         := instInfoStoreReg
+      selectedExeInst := exeInstStoreReg
+      selectedPc      := pcStoreReg
+      // selectedMemLoadStoreInfo := memLoadStoreInfoStoreReg
+      selectedInstInfo := instInfoStoreReg
     }
   }
 
@@ -176,8 +175,8 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // io.memLoadStoreInfoPort := memLoadStoreInfoReg
   when(!isBlocking) {
-    memLoadStoreInfoReg := selectedMemLoadStoreInfo
-    instInfoReg         := instInfoStoreReg
+    // memLoadStoreInfoReg := selectedMemLoadStoreInfo
+    instInfoReg := instInfoStoreReg
     def csrWriteData = instInfoReg.csrWritePort.data
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.csrwr) {
@@ -209,15 +208,15 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   when(io.pipelineControlPort.clear) {
     gprWriteReg := RfWriteNdPort.default
     InstInfoNdPort.setDefault(instInfoReg)
-    memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
+    // memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
   }
   // flush all regs
   when(io.pipelineControlPort.flush) {
     gprWriteReg := RfWriteNdPort.default
     InstInfoNdPort.setDefault(instInfoReg)
-    memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
-    stateReg            := State.nonBlocking
-    exeInstStoreReg     := ExeInstNdPort.default
-    pcStoreReg          := zeroWord
+    // memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
+    stateReg        := State.nonBlocking
+    exeInstStoreReg := ExeInstNdPort.default
+    pcStoreReg      := zeroWord
   }
 }

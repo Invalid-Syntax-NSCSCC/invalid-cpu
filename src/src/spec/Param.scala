@@ -13,7 +13,7 @@ object Param {
   val instQueueLength        = 5
   val regFileReadNum         = 2
   val regFileWriteNum        = 1
-  val scoreboardChangeNum    = 3
+  val scoreboardChangeNum    = 1 // 3
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
   val ctrlControlNum         = PipelineStageIndex.getCount
