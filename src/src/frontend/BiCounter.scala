@@ -3,7 +3,7 @@ package frontend
 import chisel3._
 import chisel3.util._
 
-// 尝试写多发射的queue，未接入，不用管它
+// 尝试双多发射的queue，未接入，不用管它
 class BiCounter(count: Int) extends Module {
   require(count > 1)
   val w = log2Ceil(count).W
