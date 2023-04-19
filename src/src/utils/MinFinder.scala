@@ -16,7 +16,7 @@ class MinFinder(num: Int, wordLength: Int) extends Module {
     VecInit(io.values.map(_(bitNum))).asUInt
   })
 
-  val flags = VecInit(compareVec.scanRight(io.masks.asUInt)((high, now) => {
+  val flags = VecInit(compareVec.scanRight(io.masks.asUInt)((now, high) => {
     val tmp = (~high | now)
     Mux(
       tmp.andR,
