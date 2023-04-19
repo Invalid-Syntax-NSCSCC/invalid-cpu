@@ -69,7 +69,7 @@ class BetterAxiMaster(
   io.axi.awcache := Value.Axi.Cache.nonBufferable
   io.axi.arprot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
   io.axi.awprot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
-  io.axi.wstrb   := "b_1111".U(Width.Axi.strb)
+  io.axi.wstrb   := "b_1111".U(Width.Axi.strb) // TODO: Support other write masks
   io.axi.wvalid  := false.B
   io.axi.rready  := false.B
   io.axi.bready  := false.B

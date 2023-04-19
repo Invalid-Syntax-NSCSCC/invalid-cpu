@@ -112,19 +112,19 @@ class AxiCrossbarRead(
     masterAReady      := IntArReady(aSelect)(index)
 
     // decode error handling
-    val decerrMasterRidReg  = Reg(UInt(slaveCount.W))
     val decerrMasterRidNext = Wire(UInt(slaveCount.W))
+    val decerrMasterRidReg  = RegNext(decerrMasterRidNext)
     decerrMasterRidReg := 0.U
-    val decerrMasterRlastReg  = Reg(Bool())
     val decerrMasterRlastNext = Wire(Bool())
+    val decerrMasterRlastReg  = RegNext(decerrMasterRlastNext)
     decerrMasterRlastReg := false.B
-    val decerrMasterRvalidReg  = RegInit(false.B)
     val decerrMasterRvalidNext = Wire(Bool())
+    val decerrMasterRvalidReg  = RegNext(decerrMasterRvalidNext, false.B)
     decerrMasterRvalidReg := false.B
     val decerrMasterRready = Wire(Bool())
 
-    val decerrLenReg  = Reg(UInt(8.W))
     val decerrLenNext = Wire(UInt(8.W))
+    val decerrLenReg  = RegNext(decerrLenNext)
     decerrLenReg := 0.U
 
     masterRcReady := !decerrMasterRvalidReg
@@ -146,14 +146,10 @@ class AxiCrossbarRead(
       }
     }.elsewhen(masterRcValid && masterRcReady) {
       decerrLenNext          := IntSlavesAr(index).len
-      decerrMasterRidNext    := IntSlavesAr(index).id(index)
+      decerrMasterRidNext    := IntSlavesAr(index).id
       decerrMasterRlastNext  := (decerrLenNext === 0.U)
       decerrMasterRvalidNext := true.B
     }
-
-    decerrMasterRidReg   := decerrMasterRidNext
-    decerrMasterRlastReg := decerrMasterRlastNext
-    decerrLenReg         := decerrLenNext
 
     // read response arbitration
     val rRequest      = Wire(Vec(masterCount + 1, Bool()))
@@ -177,22 +173,24 @@ class AxiCrossbarRead(
     val masterRvalidMux = Wire(Bool())
     val masterRreadyMux = Wire(Bool())
 
-    masterRidMux := IntMastersR.foldLeft(decerrMasterRidReg)((result, item) =>
+    masterRidMux := IntMastersR.reverse.foldLeft(decerrMasterRidReg)((result, item) =>
       Cat(result, item.id)
     ) >> (rGrantEncoded * Param.Width.Axi.masterId.U)
-    masterRdataMux := IntMastersR.foldLeft(0.U(Width.Axi.addr))((result, item) =>
+    masterRdataMux := IntMastersR.reverse.foldLeft(0.U(Width.Axi.addr))((result, item) =>
       Cat(result, item.data)
     ) >> (rGrantEncoded * Width.Axi.data.get.U)
-    masterRrespMux := IntMastersR.foldLeft(3.U(2.W))((result, item) => Cat(result, item.resp)) >> (rGrantEncoded * 2.U)
-    masterRlastMux := IntMastersR.foldLeft(decerrMasterRlastReg.asUInt)((result, item) =>
+    masterRrespMux := IntMastersR.reverse.foldLeft(3.U(2.W))((result, item) =>
+      Cat(result, item.resp)
+    ) >> (rGrantEncoded * 2.U)
+    masterRlastMux := IntMastersR.reverse.foldLeft(decerrMasterRlastReg.asUInt)((result, item) =>
       Cat(result, item.last)
     ) >> rGrantEncoded
-    masterRuserMux := IntMastersR.foldLeft(0.U(Width.Axi.ruser))((result, item) =>
+    masterRuserMux := IntMastersR.reverse.foldLeft(0.U(Width.Axi.ruser))((result, item) =>
       Cat(result, item.user)
     ) >> (rGrantEncoded * Width.Axi.ruser.get.U)
-    masterRvalidMux := IntMastersR.foldLeft(decerrMasterRvalidReg.asUInt)((result, item) =>
+    masterRvalidMux := (IntMastersR.reverse.foldLeft(decerrMasterRvalidReg.asUInt)((result, item) =>
       Cat(result, item.valid)
-    ) >> rGrantValid
+    ) >> rGrantEncoded) & rGrantValid
 
     IntRReady(index)   := (rGrantValid && masterRreadyMux) << rGrantEncoded
     decerrMasterRready := (rGrantValid && masterRreadyMux) && (rGrantEncoded === masterCount.U)
@@ -232,7 +230,7 @@ class AxiCrossbarRead(
     regInst.io.master.ar.bits.cache  <> IntSlavesAr(index).cache
     regInst.io.master.ar.bits.prot   <> IntSlavesAr(index).prot
     regInst.io.master.ar.bits.qos    <> IntSlavesAr(index).qos
-    regInst.io.master.ar.bits.region <> IntSlavesAr(index).region
+    regInst.io.master.ar.bits.region <> DontCare
     regInst.io.master.ar.bits.user   <> IntSlavesAr(index).user
     regInst.io.master.ar.valid       <> IntSlavesAr(index).valid
     regInst.io.master.ar.ready       <> IntSlavesAr(index).ready
@@ -251,7 +249,7 @@ class AxiCrossbarRead(
     val transComplete = Wire(Bool())
     val transCountReg = RegInit(0.U(log2Ceil(masterIssue(index) + 1).W))
 
-    val transLimit = transCountReg >= masterIssue(index).U && !transComplete
+    val transLimit = (transCountReg >= masterIssue(index).U) && !transComplete
     when(transStart && !transComplete) {
       transCountReg := transCountReg + 1.U
     }.elsewhen(!transStart && transComplete) {
@@ -272,30 +270,19 @@ class AxiCrossbarRead(
     aArb.io.grantEncoded <> aGrantEncoded
 
     val slaveAridMux     = Wire(UInt(Param.Width.Axi.masterId.W))
-    val slaveAraddrMux   = Wire(UInt(Width.Axi.addr))
-    val slaveArlenMux    = Wire(UInt(8.W))
-    val slaveArsizeMux   = Wire(UInt(3.W))
-    val slaveArburstMux  = Wire(UInt(2.W))
-    val slaveArlockMux   = Wire(Bool())
-    val slaveArcacheMux  = Wire(UInt(4.W))
-    val slaveArprotMux   = Wire(UInt(3.W))
-    val slaveArqosMux    = Wire(UInt(4.W))
-    val slaveArregionMux = Wire(UInt(4.W))
-    val slaveAruserMux   = Wire(UInt(Width.Axi.aruser))
-    val slaveArvalidMux  = Wire(Bool())
+    val slaveAraddrMux   = WireInit(IntSlavesAr(aGrantEncoded).addr)
+    val slaveArlenMux    = WireInit(IntSlavesAr(aGrantEncoded).len)
+    val slaveArsizeMux   = WireInit(IntSlavesAr(aGrantEncoded).size)
+    val slaveArburstMux  = WireInit(IntSlavesAr(aGrantEncoded).burst)
+    val slaveArlockMux   = WireInit(IntSlavesAr(aGrantEncoded).lock)
+    val slaveArcacheMux  = WireInit(IntSlavesAr(aGrantEncoded).cache)
+    val slaveArprotMux   = WireInit(IntSlavesAr(aGrantEncoded).prot)
+    val slaveArqosMux    = WireInit(IntSlavesAr(aGrantEncoded).qos)
+    val slaveArregionMux = WireInit(IntSlavesAr(aGrantEncoded).region)
+    val slaveAruserMux   = WireInit(IntSlavesAr(aGrantEncoded).user)
+    val slaveArvalidMux  = WireInit(IntArValid(aGrantEncoded)(index) && aGrantValid)
     val slaveArreadyMux  = Wire(Bool())
     slaveAridMux     := IntSlavesAr(aGrantEncoded).id | (aGrantEncoded << Param.Width.Axi.slaveId).asUInt
-    slaveAraddrMux   := IntSlavesAr(aGrantEncoded).addr
-    slaveArlenMux    := IntSlavesAr(aGrantEncoded).len
-    slaveArsizeMux   := IntSlavesAr(aGrantEncoded).size
-    slaveArburstMux  := IntSlavesAr(aGrantEncoded).burst
-    slaveArlockMux   := IntSlavesAr(aGrantEncoded).lock
-    slaveArcacheMux  := IntSlavesAr(aGrantEncoded).cache
-    slaveArprotMux   := IntSlavesAr(aGrantEncoded).prot
-    slaveArqosMux    := IntSlavesAr(aGrantEncoded).qos
-    slaveArregionMux := IntSlavesAr(aGrantEncoded).region
-    slaveAruserMux   := IntSlavesAr(aGrantEncoded).user
-    slaveArvalidMux  := IntArValid(aGrantEncoded)(index) && aGrantValid
 
     IntArReady(index) := (aGrantValid && slaveArreadyMux) << aGrantEncoded
 

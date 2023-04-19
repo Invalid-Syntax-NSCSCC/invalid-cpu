@@ -131,5 +131,18 @@ package object spec {
         val DecodeErr     = 3.U(2.W)
       }
     }
+
+    object Csr {
+      object Crmd {
+        object Plv {
+          val high = 0.U(2.W)
+          val low  = 3.U(2.W)
+        }
+        object Datm {
+          val suc = 0.U(2.W)
+          val cc  = 1.U(2.W)
+        }
+      }
+    }
   }
 }

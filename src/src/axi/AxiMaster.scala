@@ -29,7 +29,7 @@ class AxiMaster(val Id: Int = 0) extends Module {
   // read constants
   io.axi.arlen   := 0.U // 1 request
   io.axi.arburst := 0.U // burst type does not matter
-  io.axi.rready  := 1.U // always ready to receive data
+  io.axi.rready  := true.B // always ready to receive data
 
   val addrReg   = RegNext(io.addr)
   val sizeReg   = RegNext(io.size)
@@ -58,7 +58,7 @@ class AxiMaster(val Id: Int = 0) extends Module {
   io.axi.bready  := true.B
 
   val readyMod = Module(new SetClrReg(setOverClr = false, width = 1, resetValue = 1))
-  readyMod.io.set := (io.axi.rvalid & (io.axi.rid === Id.U)) | (io.axi.bvalid & (io.axi.bid === Id.U))
+  readyMod.io.set := (io.axi.rvalid && (io.axi.rid === Id.U)) || (io.axi.bvalid && (io.axi.bid === Id.U))
   readyMod.io.clr := io.newRequest
   io.readyOut     := readyMod.io.result
 
@@ -67,7 +67,7 @@ class AxiMaster(val Id: Int = 0) extends Module {
 
   // read channel
   val arvalidMod = Module(new SetClrReg(setOverClr = true, width = 1, resetValue = 0))
-  arvalidMod.io.set := io.newRequest & ~io.we
+  arvalidMod.io.set := io.newRequest && !io.we
   arvalidMod.io.clr := io.axi.arready
   io.axi.arvalid    := arvalidMod.io.result
 
