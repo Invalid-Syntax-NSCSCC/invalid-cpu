@@ -92,8 +92,6 @@ class BiIssueStage(
     })
 
   /** Combine stage 2 : Select to issue ; decide input
-    *
-    * TODO fix bug when two issue's write addr are the same
     */
 
   // 优先valid第0个
@@ -174,7 +172,15 @@ class BiIssueStage(
         selectValidWires(0) := fetchInfosStoreReg(0)
         // get second issue
         when(fetchInfosStoreReg(1).valid) {
-          when(fetchStoreRegCanIssue(1)) {
+          when(
+            fetchStoreRegCanIssue(1) &&
+              !(
+                fetchInfosStoreReg(0).issueInfo.info.gprWritePort.en &&
+                  fetchInfosStoreReg(1).issueInfo.info.gprReadPorts.map { readPort =>
+                    readPort.en && (readPort.addr === fetchInfosStoreReg(0).issueInfo.info.gprWritePort.addr)
+                  }.reduce(_ || _)
+              )
+          ) {
             // issue store reg 0, 1
             selectValidWires(1)              := fetchInfosStoreReg(1)
             fetchInfosStoreReg(0)            := fetchInfos(0)
@@ -189,7 +195,15 @@ class BiIssueStage(
           }
         }.otherwise { // store reg 1 not valid
           when(fetchInfos(0).valid) {
-            when(fetchCanIssue(0)) {
+            when(
+              fetchCanIssue(0) &&
+                !(
+                  fetchInfosStoreReg(0).issueInfo.info.gprWritePort.en &&
+                    fetchInfos(0).issueInfo.info.gprReadPorts.map { readPort =>
+                      readPort.en && (readPort.addr === fetchInfosStoreReg(0).issueInfo.info.gprWritePort.addr)
+                    }.reduce(_ || _)
+                )
+            ) {
               // issue store reg 0, fetch 0
               selectValidWires(1)              := fetchInfos(0)
               io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid // true.B
@@ -215,7 +229,15 @@ class BiIssueStage(
           selectValidWires(0)              := fetchInfos(0)
           io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid // true.B
           when(fetchInfos(1).valid) {
-            when(fetchCanIssue(1)) {
+            when(
+              fetchCanIssue(1) &&
+                !(
+                  fetchInfos(0).issueInfo.info.gprWritePort.en &&
+                    fetchInfos(1).issueInfo.info.gprReadPorts.map { readPort =>
+                      readPort.en && (readPort.addr === fetchInfos(0).issueInfo.info.gprWritePort.addr)
+                    }.reduce(_ || _)
+                )
+            ) {
               // issue fetch 0, 1
               selectValidWires(1)              := fetchInfos(1)
               io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid // true.B
@@ -230,7 +252,7 @@ class BiIssueStage(
           io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid // true.B
           io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid
         }
-      } // fetch 0 no valid
+      } // fetch 0 not valid
     }
   }
 
