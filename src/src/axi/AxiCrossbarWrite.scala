@@ -178,7 +178,7 @@ class AxiCrossbarWrite(
         decerrMasterBvalidNext := false.B
       }
     }.elsewhen(masterRcValid && masterRcReady) {
-      decerrMasterBidNext    := IntSlavesAw(index).id(index)
+      decerrMasterBidNext    := IntSlavesAw(index).id
       decerrMasterBvalidNext := true.B
     }
 
