@@ -21,12 +21,14 @@ object InstInfoNdPort {
   val default = 0.U.asTypeOf(new InstInfoNdPort)
 
   def setDefault(instInfoPort: InstInfoNdPort): Unit = {
-    instInfoPort.pc   := zeroWord
-    instInfoPort.inst := zeroWord
-    instInfoPort.exceptionRecords.foreach { record =>
-      record := false.B
-    }
-    instInfoPort.csrWritePort := CsrWriteNdPort.default
-    instInfoPort.exeOp        := 0.U
+    // instInfoPort.pc   := zeroWord
+    // instInfoPort.inst := zeroWord
+    // instInfoPort.exceptionRecords.foreach { record =>
+    //   record := false.B
+    // }
+    // instInfoPort.csrWritePort := CsrWriteNdPort.default
+    // instInfoPort.exeOp        := 0.U
+    // instInfoPort.robId := 0.U
+    instInfoPort := 0.U.asTypeOf(new InstInfoNdPort)
   }
 }

@@ -12,6 +12,7 @@ import pipeline.dispatch.bundles.DecodeOutNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.bundles.IssuedInfoNdPort
 import pipeline.dataforward.bundles.ReadPortWithValid
+import pipeline.dispatch.bundles.IssueInfoWithValidBundle
 
 class BiIssueStage(
   issueNum:       Int = 2,
@@ -48,8 +49,9 @@ class BiIssueStage(
     val pipelineControlPorts = Vec(issueNum, Input(new PipelineControlNDPort))
   })
 
-  val instInfosReg = Reg(Vec(issueNum, new InstInfoNdPort))
-  instInfosReg.foreach(InstInfoNdPort.setDefault(_))
+  // val instInfosReg = Reg(Vec(issueNum, new InstInfoNdPort))
+  // instInfosReg.foreach(InstInfoNdPort.setDefault(_))
+  val instInfosReg = RegInit(VecInit(Seq.fill(issueNum)(InstInfoNdPort.default)))
   io.instInfoPorts := instInfosReg
 
   val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(IssuedInfoNdPort.default)))
@@ -69,42 +71,58 @@ class BiIssueStage(
       port.addr := zeroWord
     })
     io.issuedInfoPorts.foreach(_ := IssuedInfoNdPort.default)
-    io.instInfoPorts.foreach(InstInfoNdPort.setDefault(_))
+    io.instInfoPorts.foreach(_ := InstInfoNdPort.default)
   }
 
-  val nextStates = WireDefault(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
-  val statesReg  = RegInit(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
+  // val nextStates = WireDefault(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
+  // val statesReg  = RegInit(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
 
-  // 优先valid第0个
-  val selectWires = Wire(
+  val selectInstWires = Wire(
     Vec(
       issueNum,
-      new Bundle {
-        val valid     = Bool()
-        val instInfo  = new InstInfoNdPort
-        val issueInfo = new IssuedInfoNdPort
-      }
+      new IssueInfoWithValidBundle
     )
   )
-  selectWires.foreach(_ := 0.U.asTypeOf(selectWires(0)))
 
-  // select --> issue
-  when(selectWires(0).valid) {
+  // 优先valid第0个
+  val selectValidWires = Wire(
+    Vec(
+      issueNum,
+      new IssueInfoWithValidBundle
+    )
+  )
+  selectValidWires.foreach(_ := 0.U.asTypeOf(selectValidWires(0)))
+
+  /** valid inst --> issue
+    */
+  when(selectValidWires(0).valid) {
     when(!io.pipelineControlPorts(0).stall) {
       // select 0 -> issue 0
-      instInfosReg(0)  := selectWires(0).instInfo
-      issueInfosReg(0) := selectWires(0).issueInfo
+      instInfosReg(0)  := selectValidWires(0).instInfo
+      issueInfosReg(0) := selectValidWires(0).issueInfo
 
-      when(selectWires(1).valid && !io.pipelineControlPorts(1).stall) {
+      when(selectValidWires(1).valid && !io.pipelineControlPorts(1).stall) {
         // select 1 -> issue 1
-        instInfosReg(1)  := selectWires(1).instInfo
-        issueInfosReg(1) := selectWires(1).issueInfo
+        instInfosReg(1)  := selectValidWires(1).instInfo
+        issueInfosReg(1) := selectValidWires(1).issueInfo
       }
     }.elsewhen(!io.pipelineControlPorts(1).stall) {
       // select 0 -> issue 1
-      instInfosReg(1)  := selectWires(0).instInfo
-      issueInfosReg(1) := selectWires(0).issueInfo
+      instInfosReg(1)  := selectValidWires(0).instInfo
+      issueInfosReg(1) := selectValidWires(0).issueInfo
     }
+  }
+
+  // clear
+  when(io.pipelineControlPorts.map(_.clear).reduce(_ || _)) {
+    instInfosReg.foreach(_ := InstInfoNdPort.default)
+    issueInfosReg.foreach(_ := IssuedInfoNdPort.default)
+  }
+  // flush all regs
+  when(io.pipelineControlPorts.map(_.flush).reduce(_ || _)) {
+    instInfosReg.foreach(_ := InstInfoNdPort.default)
+    issueInfosReg.foreach(_ := IssuedInfoNdPort.default)
+    // statesReg.foreach(_ := State.nonBlocking)
   }
 
 }
