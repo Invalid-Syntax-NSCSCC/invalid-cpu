@@ -21,8 +21,8 @@ class RobStage(
     val emptyNum          = Output(UInt(robLengthLog.W))
     val idDistributePorts = Vec(issueNum, new RobIdDistributePort(idLength = idLength))
     val writeReadyPorts   = Input(Vec(issueNum, new RfWriteNdPort))
-    val instIds           = Input(Vec(commitNum, 0.U(idLength.W)))
-    val commitPorts       = Output(Vec(issueNum, new RfWriteNdPort))
+    val instIds           = Input(Vec(issueNum, 0.U(idLength.W)))
+    val commitPorts       = Output(Vec(commitNum, new RfWriteNdPort))
   })
   require(issueNum == 2)
 
@@ -32,7 +32,8 @@ class RobStage(
   val counter = RegInit(1.U(idLength.W))
   val buffer  = RegInit(VecInit(Seq.fill(robLength)(new RobInstStoreBundle)))
 
-  // commit
+  /** Commit
+    */
   val areReady               = WireDefault(VecInit(buffer.map(_.state === State.ready)))
   val firstCommitIndexFinder = Module(new MinFinder(robLength, idLength))
   firstCommitIndexFinder.io.index := WireDefault(VecInit(buffer.map(_.id)))
@@ -54,7 +55,8 @@ class RobStage(
     buffer(secondCommitIndexFinder.io.index) := State.empty
   }
 
-  // id distribute 考虑一下加入同时写入和commit的判断
+  /** id distribute TODO: 加入同时写入和commit的判断
+    */
   val areEmpty = WireDefault(VecInit(buffer.map(_.state === State.empty)))
   val emptyNum = WireDefault(areEmpty.count(_.asBool))
   io.emptyNum := emptyNum
@@ -84,5 +86,17 @@ class RobStage(
     buffer(biWriteMux.io.selectIndices(1).index).id    := counter + 1.U
     buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
     counter                                            := counter + 2.U
+  }
+
+  // ready
+  io.writeReadyPorts.zip(io.instIds).foreach {
+    case (readyPort, readyId) => {
+      buffer.foreach { robStore =>
+        when(robStore.state === State.busy && robStore.id === readyId) {
+          robStore.state     := State.ready
+          robStore.writePort := readyPort
+        }
+      }
+    }
   }
 }
