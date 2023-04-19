@@ -9,7 +9,7 @@ import spec._
 import control.bundles.PipelineControlNDPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import control.bundles.CsrReadPort
-import pipeline.dataforward.bundles.DataForwardReadPort
+// import pipeline.dataforward.bundles.DataForwardReadPort
 
 class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum) extends Module {
   val io = IO(new Bundle {

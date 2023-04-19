@@ -8,12 +8,14 @@ import pipeline.rob.bundles.RobInstStoreBundle
 import pipeline.rob.enums.{RobInstState => State}
 import utils._
 import spec.wordLength
+import pipeline.dataforward.bundles.ReadPortWithValid
 
 // 重排序缓冲区，未接入cpu
 class RobStage(
   robLength: Int = 8,
   issueNum:  Int = 2,
   commitNum: Int = 2,
+  readNum:   Int = 2,
   idLength:  Int = 32 // 分配id长度
 ) extends Module {
   val io = IO(new Bundle {
@@ -22,6 +24,7 @@ class RobStage(
     val idDistributePorts = Vec(issueNum, new RobIdDistributePort(idLength = idLength))
     val writeReadyPorts   = Input(Vec(issueNum, new RfWriteNdPort))
     val instIds           = Input(Vec(issueNum, 0.U(idLength.W)))
+    val readPorts         = Vec(readNum, new ReadPortWithValid)
     val commitPorts       = Output(Vec(commitNum, new RfWriteNdPort))
   })
   require(issueNum == 2)
@@ -96,6 +99,20 @@ class RobStage(
           robStore.state     := State.ready
           robStore.writePort := readyPort
         }
+      }
+    }
+  }
+
+  // read
+  io.readPorts.foreach { readPort =>
+    readPort.valid := false.B
+    readPort.data  := DontCare
+  }
+  io.readPorts.foreach { readPort =>
+    buffer.foreach { robStore =>
+      when(robStore.state === State.ready && robStore.writePort.en && robStore.writePort.addr === readPort.addr) {
+        readPort.valid := true.B
+        readPort.data  := robStore.writePort.data
       }
     }
   }

@@ -4,7 +4,7 @@ import chisel3._
 import common.bundles.RfReadPort
 import spec._
 
-class DataForwardReadPort extends Bundle {
+class ReadPortWithValid extends Bundle {
   val en    = Input(Bool())
   val addr  = Input(UInt(Width.Reg.addr))
   val valid = Output(Bool())
