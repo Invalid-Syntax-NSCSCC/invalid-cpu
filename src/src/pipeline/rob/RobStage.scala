@@ -7,6 +7,7 @@ import pipeline.rob.bundles.RobIdDistributePort
 import pipeline.rob.bundles.RobInstStoreBundle
 import pipeline.rob.enums.{RobInstState => State}
 import utils._
+import spec.wordLength
 
 // 重排序缓冲区，未接入cpu
 class RobStage(
@@ -31,17 +32,26 @@ class RobStage(
   val counter = RegInit(1.U(idLength.W))
   val buffer  = RegInit(VecInit(Seq.fill(robLength)(new RobInstStoreBundle)))
 
-  // commit 有逻辑错误，应选id最小的输出
-  val areReady    = WireDefault(VecInit(buffer.map(_.state === State.ready)))
-  val biCommitMux = Module(new BiPriorityMux(robLength))
-  biCommitMux.io.inVector := areReady
+  // commit
+  val areReady               = WireDefault(VecInit(buffer.map(_.state === State.ready)))
+  val firstCommitIndexFinder = Module(new MinFinder(robLength, idLength))
+  firstCommitIndexFinder.io.index := WireDefault(VecInit(buffer.map(_.id)))
+  firstCommitIndexFinder.io.masks := areReady
 
-  biCommitMux.io.selectIndices.zip(io.commitPorts).foreach {
-    case (commitIndexInfo, port) =>
-      when(commitIndexInfo.valid) {
-        port                                := buffer(commitIndexInfo.index).writePort
-        buffer(commitIndexInfo.index).state := State.empty
-      }
+  val secondCommitIndexFinder = Module(new MinFinder(robLength, idLength))
+  secondCommitIndexFinder.io.index := WireDefault(VecInit(buffer.map(_.id)))
+  val secondAreReady = WireDefault(areReady)
+  secondAreReady(firstCommitIndexFinder.io.index) := false.B
+  secondCommitIndexFinder.io.masks                := secondAreReady
+
+  when(areReady.reduce(_ || _)) {
+    io.commitPorts(0)                       := buffer(firstCommitIndexFinder.io.index).writePort
+    buffer(firstCommitIndexFinder.io.index) := State.empty
+  }
+
+  when(secondAreReady.reduce(_ || _)) {
+    io.commitPorts(1)                        := buffer(secondCommitIndexFinder.io.index).writePort
+    buffer(secondCommitIndexFinder.io.index) := State.empty
   }
 
   // id distribute 考虑一下加入同时写入和commit的判断
