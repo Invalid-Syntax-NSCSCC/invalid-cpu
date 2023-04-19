@@ -77,12 +77,24 @@ class BiIssueStage(
   // val nextStates = WireDefault(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
   // val statesReg  = RegInit(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
 
-  val selectInstWires = Wire(
-    Vec(
-      issueNum,
-      new IssueInfoWithValidBundle
-    )
-  )
+  /** Combine stage 1 Get fetch infos
+    *
+    * TODO: 赋值reg
+    */
+
+  val fetchInfos         = WireDefault(VecInit(Seq.fill(issueNum)(IssueInfoWithValidBundle.default)))
+  val fetchInfosStoreReg = RegInit(VecInit(Seq.fill(issueNum)(IssueInfoWithValidBundle.default)))
+
+  fetchInfos
+    .lazyZip(io.fetchInstDecodePorts)
+    .foreach((dst, src) => {
+      dst.valid     := src.valid
+      dst.instInfo  := src.bits.instInfo
+      dst.issueInfo := src.bits.instInfo
+    })
+
+  /** Combine stage 2 Select to issue
+    */
 
   // 优先valid第0个
   val selectValidWires = Wire(
@@ -92,6 +104,8 @@ class BiIssueStage(
     )
   )
   selectValidWires.foreach(_ := 0.U.asTypeOf(selectValidWires(0)))
+
+  val canIssueMaxNum = io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _)
 
   /** valid inst --> issue
     */
