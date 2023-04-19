@@ -33,11 +33,11 @@ class BiIssueStage(
 
     // `IssueStage` <-> `Scoreboard`
     val occupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-    val regScoress   = Vec(issueNum, Input(Vec(Count.reg, Bool())))
+    val regScores    = Input(Vec(Count.reg, Bool()))
 
     // `IssueStage` <-> `Scoreboard(csr)`
     val csrOccupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-    val csrRegScoress   = Vec(issueNum, Input(Vec(Count.csrReg, Bool())))
+    val csrRegScores    = Input(Vec(Count.csrReg, Bool()))
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPorts = Vec(issueNum, Output(new IssuedInfoNdPort))
@@ -77,9 +77,7 @@ class BiIssueStage(
   // val nextStates = WireDefault(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
   // val statesReg  = RegInit(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
 
-  /** Combine stage 1 Get fetch infos
-    *
-    * TODO: 赋值reg
+  /** Combine stage 1 : get fetch infos
     */
 
   val fetchInfos         = WireDefault(VecInit(Seq.fill(issueNum)(IssueInfoWithValidBundle.default)))
@@ -93,7 +91,9 @@ class BiIssueStage(
       dst.issueInfo := src.bits.instInfo
     })
 
-  /** Combine stage 2 Select to issue
+  /** Combine stage 2 : Select to issue ; decide input
+    *
+    * TODO fix bug when two issue's write addr are the same
     */
 
   // 优先valid第0个
@@ -107,23 +107,154 @@ class BiIssueStage(
 
   val canIssueMaxNum = io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _)
 
-  /** valid inst --> issue
+  val fetchStoreRegCanIssue = WireDefault(VecInit(fetchInfosStoreReg.map { fetchInfos =>
+    fetchInfos.valid &&
+    !((fetchInfos.issueInfo.info.gprReadPorts
+      .map({ readPort =>
+        readPort.en && io.regScores(readPort.addr)
+      }))
+      .reduce(_ || _)) &&
+    !(fetchInfos.issueInfo.info.csrReadEn && io.csrRegScores(fetchInfos.issueInfo.info.csrAddr))
+  }))
+
+  val fetchCanIssue = WireDefault(VecInit(fetchInfos.map { fetchInfos =>
+    fetchInfos.valid &&
+    !((fetchInfos.issueInfo.info.gprReadPorts
+      .map({ readPort =>
+        readPort.en && io.regScores(readPort.addr)
+      }))
+      .reduce(_ || _)) &&
+    !(fetchInfos.issueInfo.info.csrReadEn && io.csrRegScores(fetchInfos.issueInfo.info.csrAddr))
+  }))
+
+  when(canIssueMaxNum === 1.U) {
+    // issue 1 inst
+    // check : store reg 0 -> fetch 0
+    when(fetchInfosStoreReg(0).valid) {
+      // store reg 0 valid
+      when(fetchStoreRegCanIssue(0)) {
+        selectValidWires(0) := fetchInfosStoreReg(0)
+        when(fetchInfosStoreReg(1).valid) {
+          fetchInfosStoreReg(0)            := fetchInfosStoreReg(1)
+          fetchInfosStoreReg(1)            := fetchInfos(0)
+          io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid
+        }.otherwise {
+          fetchInfosStoreReg(0) := fetchInfos(0)
+          fetchInfosStoreReg(1) := fetchInfos(1)
+          // assumption : it do not exist fetch 1 valid but fetch 0 not valid
+          io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid
+          io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid
+        }
+      }.elsewhen(!fetchInfosStoreReg(1).valid) {
+        fetchInfosStoreReg(1)            := fetchInfos(0)
+        io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid
+      }
+
+    }.elsewhen(fetchInfos(0).valid) {
+      // fetch 0 valid && store reg no valid : issue fetch 0
+      when(fetchCanIssue(0)) {
+        selectValidWires(0)              := fetchInfos(0)
+        io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid // true.B
+        fetchInfosStoreReg(0)            := fetchInfos(1)
+        io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid
+      }.otherwise {
+        fetchInfosStoreReg(0)            := fetchInfos(0)
+        fetchInfosStoreReg(1)            := fetchInfos(1)
+        io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid
+        io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid
+      }
+    }
+  }.elsewhen(canIssueMaxNum === 2.U) {
+    // issue 2 inst
+    // check : store reg 0 [ -> store reg 1] -> fetch 0 [ -> fetch 1 ]
+
+    // get first issue
+    when(fetchInfosStoreReg(0).valid) {
+      when(fetchStoreRegCanIssue(0)) {
+        selectValidWires(0) := fetchInfosStoreReg(0)
+        // get second issue
+        when(fetchInfosStoreReg(1).valid) {
+          when(fetchStoreRegCanIssue(1)) {
+            // issue store reg 0, 1
+            selectValidWires(1)              := fetchInfosStoreReg(1)
+            fetchInfosStoreReg(0)            := fetchInfos(0)
+            fetchInfosStoreReg(1)            := fetchInfos(1)
+            io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid
+            io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid
+          }.otherwise { // store reg 1 valid but no issue
+            // only issue store reg 0
+            fetchInfosStoreReg(0)            := fetchInfosStoreReg(1)
+            fetchInfosStoreReg(1)            := fetchInfos(0)
+            io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid
+          }
+        }.otherwise { // store reg 1 not valid
+          when(fetchInfos(0).valid) {
+            when(fetchCanIssue(0)) {
+              // issue store reg 0, fetch 0
+              selectValidWires(1)              := fetchInfos(0)
+              io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid // true.B
+              fetchInfosStoreReg(0)            := fetchInfos(1)
+              io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid
+            }.otherwise { // fetch 0 valid but no issue
+              // only issue store reg 0
+              fetchInfosStoreReg(0)            := fetchInfos(0)
+              io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid // true.B
+            }
+          }
+        }
+      }.otherwise { // store reg 0 valid but no issue
+        when(!fetchInfosStoreReg(1).valid) {
+          fetchInfosStoreReg(1)            := fetchInfos(0)
+          io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid
+        }
+      }
+    }.otherwise { // store reg 0, 1 not valid
+      when(fetchInfos(0).valid) {
+        when(fetchCanIssue(0)) {
+          // issue fetch 0
+          selectValidWires(0)              := fetchInfos(0)
+          io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid // true.B
+          when(fetchInfos(1).valid) {
+            when(fetchCanIssue(1)) {
+              // issue fetch 0, 1
+              selectValidWires(1)              := fetchInfos(1)
+              io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid // true.B
+            }.otherwise { // fetch 1 valid but no issue
+              fetchInfosStoreReg(0)            := fetchInfos(1)
+              io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid
+            }
+          } // fetch 1 not valid
+        }.otherwise { // fetch 0 valid but no issue
+          fetchInfosStoreReg(0)            := fetchInfos(0)
+          fetchInfosStoreReg(1)            := fetchInfos(1)
+          io.fetchInstDecodePorts(0).ready := io.fetchInstDecodePorts(0).valid // true.B
+          io.fetchInstDecodePorts(1).ready := io.fetchInstDecodePorts(1).valid
+        }
+      } // fetch 0 no valid
+    }
+  }
+
+  /** Combine stage 3 : valid inst --> issue ; connect score board
     */
+  // default : no issue
   when(selectValidWires(0).valid) {
     when(!io.pipelineControlPorts(0).stall) {
       // select 0 -> issue 0
-      instInfosReg(0)  := selectValidWires(0).instInfo
-      issueInfosReg(0) := selectValidWires(0).issueInfo
+      instInfosReg(0)       := selectValidWires(0).instInfo
+      issueInfosReg(0)      := selectValidWires(0).issueInfo
+      io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.info.gprWritePort
 
       when(selectValidWires(1).valid && !io.pipelineControlPorts(1).stall) {
         // select 1 -> issue 1
-        instInfosReg(1)  := selectValidWires(1).instInfo
-        issueInfosReg(1) := selectValidWires(1).issueInfo
+        instInfosReg(1)       := selectValidWires(1).instInfo
+        issueInfosReg(1)      := selectValidWires(1).issueInfo
+        io.occupyPortss(1)(0) := selectValidWires(1).issueInfo.info.gprWritePort
       }
     }.elsewhen(!io.pipelineControlPorts(1).stall) {
       // select 0 -> issue 1
-      instInfosReg(1)  := selectValidWires(0).instInfo
-      issueInfosReg(1) := selectValidWires(0).issueInfo
+      instInfosReg(1)       := selectValidWires(0).instInfo
+      issueInfosReg(1)      := selectValidWires(0).issueInfo
+      io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.info.gprWritePort
     }
   }
 
@@ -136,6 +267,7 @@ class BiIssueStage(
   when(io.pipelineControlPorts.map(_.flush).reduce(_ || _)) {
     instInfosReg.foreach(_ := InstInfoNdPort.default)
     issueInfosReg.foreach(_ := IssuedInfoNdPort.default)
+    fetchInfosStoreReg.foreach(_ := IssueInfoWithValidBundle.default)
     // statesReg.foreach(_ := State.nonBlocking)
   }
 
