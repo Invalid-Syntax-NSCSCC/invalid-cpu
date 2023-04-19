@@ -14,6 +14,7 @@ class InstInfoNdPort extends Bundle {
   val csrWritePort     = new CsrWriteNdPort
 
   val exeOp = UInt(Param.Width.exeOp)
+  val robId = UInt(Param.robIdLength.W)
 }
 
 object InstInfoNdPort {

@@ -21,6 +21,7 @@ object Param {
   val dispatchInstNum        = 1 // 发射数量
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
+  val robIdLength            = 32 // rob给出的id
 
   val dataForwardInputNum = 2
 
