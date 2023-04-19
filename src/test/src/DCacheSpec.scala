@@ -2,9 +2,9 @@ import chiseltest._
 import utest._
 import chisel3._
 import chisel3.util._
+import common.enums.ReadWriteSel
 import memory.DCache
 import memory.bundles.StatusTagBundle
-import memory.enums.ReadWriteSel
 import spec.Param
 
 import scala.collection.immutable

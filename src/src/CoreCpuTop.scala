@@ -8,7 +8,7 @@ import pipeline.dataforward.DataForwardStage
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
-import pipeline.mem.MemStage
+import pipeline.mem.AddrTransStage
 import spec.Param.isDiffTest
 import spec.PipelineStageIndex
 import spec.zeroWord
@@ -100,7 +100,7 @@ class CoreCpuTop extends Module {
   val issueStage       = Module(new IssueStage)
   val regReadStage     = Module(new RegReadStage)
   val exeStage         = Module(new ExeStage)
-  val memStage         = Module(new MemStage)
+  val memStage         = Module(new AddrTransStage)
   val wbStage          = Module(new WbStage)
   val cu               = Module(new Cu)
   val csr              = Module(new Csr)
@@ -129,8 +129,7 @@ class CoreCpuTop extends Module {
   exeStage.io := DontCare
 
   // Pc
-  pc.io.branchSetPort := exeStage.io.branchSetPort
-  pc.io.flushNewPc    := cu.io.newPc
+  pc.io.newPc := cu.io.newPc
 
 
   // TODO: debug crossbar
@@ -222,12 +221,15 @@ class CoreCpuTop extends Module {
   pc.io.isNext                     := simpleFetchStage.io.isPcNext
 
   // Issue stage
-  issueStage.io.fetchInstInfoPort   <> instQueue.io.dequeuePort
-  issueStage.io.regScores           := scoreboard.io.regScores
-  scoreboard.io.occupyPorts         := issueStage.io.occupyPorts
-  issueStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
-  issueStage.io.csrRegScores        := csrScoreBoard.io.regScores
-  csrScoreBoard.io.occupyPorts      := issueStage.io.csrOccupyPorts
+  issueStage.io.fetchInstDecodePort.bits   := instQueue.io.dequeuePort.bits.decode
+  issueStage.io.instInfoPassThroughPort.in := instQueue.io.dequeuePort.bits.instInfo
+  issueStage.io.fetchInstDecodePort.valid  := instQueue.io.dequeuePort.valid
+  instQueue.io.dequeuePort.ready           := issueStage.io.fetchInstDecodePort.ready
+  issueStage.io.regScores                  := scoreboard.io.regScores
+  scoreboard.io.occupyPorts                := issueStage.io.occupyPorts
+  issueStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
+  issueStage.io.csrRegScores               := csrScoreBoard.io.regScores
+  csrScoreBoard.io.occupyPorts             := issueStage.io.csrOccupyPorts
 
   scoreboard.io.freePorts(0)    := exeStage.io.freePorts
   scoreboard.io.freePorts(1)    := memStage.io.freePorts
@@ -239,7 +241,7 @@ class CoreCpuTop extends Module {
   regReadStage.io.gprReadPorts(0)            <> regFile.io.readPorts(0)
   regReadStage.io.gprReadPorts(1)            <> regFile.io.readPorts(1)
   regReadStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
-  regReadStage.io.instInfoPassThroughPort.in := issueStage.io.instInfoPort
+  regReadStage.io.instInfoPassThroughPort.in := issueStage.io.instInfoPassThroughPort.out
   regReadStage.io.dataforwardPorts.zip(dataforward.io.readPorts).foreach {
     case (regRead, df) => regRead <> df
   }
@@ -251,9 +253,9 @@ class CoreCpuTop extends Module {
 
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
-  memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort
+  memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort // TODO: MemLoadStoreInfoPort is deprecated
   memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
-  memStage.io.memLoadStorePort           <> DontCare
+  memStage.io.memAccessPort              <> DontCare
   memStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
 
   // Write-back stage
@@ -272,6 +274,7 @@ class CoreCpuTop extends Module {
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
+  cu.io.jumpPc                         := exeStage.io.branchSetPort
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {

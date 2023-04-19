@@ -5,8 +5,9 @@ import axi.bundles.AxiMasterPort
 import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
+import common.enums.ReadWriteSel
 import memory.bundles.{DCacheAccessPort, StatusTagBundle}
-import memory.enums.{DCacheState => State, ReadWriteSel}
+import memory.enums.{DCacheState => State}
 import spec._
 
 class DCache(
@@ -204,15 +205,15 @@ class DCache(
   val nextState = WireDefault(stateReg)
   stateReg := nextState // Fallback: Keep state
 
-  val isReadValidReg = RegNext(false.B, false.B) // Fallback: Not valid
-  io.accessPort.read.isValid := isReadValidReg
+  io.accessPort.req.isReady := false.B // Fallback: Not ready
+
+  val isReadValidReg  = RegNext(false.B, false.B) // Fallback: Not valid
+  val isWriteComplete = WireDefault(false.B) // Fallback: Not complete
+  io.accessPort.res.isComplete := isReadValidReg || isWriteComplete
 
   val readDataReg = RegInit(0.U(Width.Mem.data))
-  readDataReg             := readDataReg // Fallback: Keep data
-  io.accessPort.read.data := readDataReg
-
-  io.accessPort.isReady          := false.B // Fallback: Not ready
-  io.accessPort.write.isComplete := false.B // Fallback: Not complete
+  readDataReg                 := readDataReg // Fallback: Keep data
+  io.accessPort.res.read.data := readDataReg
 
   // Keep request and cache query information
   val lastReg = Reg(new Bundle {
@@ -269,13 +270,13 @@ class DCache(
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
     is(State.ready, State.write) {
-      io.accessPort.isReady := true.B
+      io.accessPort.req.isReady := true.B
 
-      when(io.accessPort.isValid) {
+      when(io.accessPort.req.client.isValid) {
         // Stage 1 and Stage 2.a: Cache query
 
         // Decode
-        val memAddr    = WireDefault(io.accessPort.addr)
+        val memAddr    = WireDefault(io.accessPort.req.client.addr)
         val tag        = WireDefault(tagFromMemAddr(memAddr))
         val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
         val byteOffset = WireDefault(byteOffsetFromMemAddr(memAddr))
@@ -326,15 +327,15 @@ class DCache(
         lastReg.statusTagLines := statusTagLines
         lastReg.setIndex       := setIndex
         lastReg.dataLine       := selectedDataLine
-        lastReg.writeData      := io.accessPort.write.data
-        lastReg.writeMask      := io.accessPort.write.mask
+        lastReg.writeData      := io.accessPort.req.client.write.data
+        lastReg.writeMask      := io.accessPort.req.client.write.mask
 
         // Select data by data index from byte offset
         val selectedData = WireDefault(selectedDataLine(dataIndex))
 
         when(isCacheHit) {
           // Cache hit
-          switch(io.accessPort.rw) {
+          switch(io.accessPort.req.client.rw) {
             is(ReadWriteSel.read) {
               // Remember to use regs
               isReadValidReg := true.B
@@ -381,7 +382,7 @@ class DCache(
           isReadReqSentReg  := false.B
           isWriteReqSentReg := false.B
 
-          switch(io.accessPort.rw) {
+          switch(io.accessPort.req.client.rw) {
             is(ReadWriteSel.read) {
               // Next Stage 2.b.1
               nextState := State.refillForRead
@@ -423,7 +424,7 @@ class DCache(
           }
 
           // Mark write as complete
-          io.accessPort.write.isComplete := true.B
+          isWriteComplete := true.B
         }
       }
     }
@@ -533,7 +534,7 @@ class DCache(
           }
 
           // Mark write complete (in the same cycle)
-          io.accessPort.write.isComplete := true.B
+          isWriteComplete := true.B
 
           when(isNeedWbReg) {
             // Next Stage 3

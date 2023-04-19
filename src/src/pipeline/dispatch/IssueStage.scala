@@ -18,12 +18,13 @@ import control.bundles.PipelineControlNDPort
 import pipeline.dispatch.enums.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
 import CsrRegs.ExceptionIndex
+import common.bundles.PassThroughPort
 
 // throws exceptions: 指令不存在异常ine
 class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   val io = IO(new Bundle {
     // `InstQueue` -> `IssueStage`
-    val fetchInstInfoPort = Flipped(Decoupled(new InstInfoBundle))
+    val fetchInstDecodePort = Flipped(Decoupled(new DecodeOutNdPort))
 
     // `IssueStage` <-> `Scoreboard`
     val occupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
@@ -35,7 +36,8 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPort = Output(new IssuedInfoNdPort)
-    val instInfoPort   = Output(new InstInfoNdPort)
+    // val instInfoPort   = Output(new InstInfoNdPort)
+    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
     // pipeline control signal
     // `Cu` -> `IssueStage`
@@ -45,7 +47,7 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
   InstInfoNdPort.setDefault(instInfoReg)
-  io.instInfoPort := instInfoReg
+  io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
   val issuedInfoReg = RegInit(IssuedInfoNdPort.default)
@@ -79,53 +81,55 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   stateReg := nextState
 
   // State machine output (including fallback)
-  val instStoreReg = RegInit(InstInfoBundle.default)
-  instStoreReg := instStoreReg
-  val selectedInstInfo = WireDefault(InstInfoBundle.default)
-  val isAllowIssue     = WireDefault(false.B)
-  val isFetch          = WireDefault(false.B)
+  val instDecodeStoreReg = RegInit(DecodeOutNdPort.default)
+  instDecodeStoreReg := instDecodeStoreReg
+  val selectedInstDecode = WireDefault(DecodeOutNdPort.default)
+  val isAllowIssue       = WireDefault(false.B)
+  val isFetch            = WireDefault(false.B)
 
   // Connect state machine output to I/O
-  io.fetchInstInfoPort.ready := isFetch
+  io.fetchInstDecodePort.ready := isFetch
 
   // Implement output function
-  val isInstValid = Wire(Bool())
+//   val isInstValid = Wire(Bool())
   switch(stateReg) {
     is(State.nonBlocking) {
       isFetch := true.B
-      when(io.fetchInstInfoPort.valid) {
-        selectedInstInfo := io.fetchInstInfoPort.bits
-        instStoreReg     := io.fetchInstInfoPort.bits
+      when(io.fetchInstDecodePort.valid) {
+        selectedInstDecode := io.fetchInstDecodePort.bits
+        instDecodeStoreReg := io.fetchInstDecodePort.bits
+        instInfoReg        := io.instInfoPassThroughPort.in
         // 指令不存在异常
-        instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ine) := !isInstValid
+        // instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ine) := !isInstValid
       }
     }
     is(State.blocking) {
-      selectedInstInfo := instStoreReg
+      selectedInstDecode := instDecodeStoreReg
+      instInfoReg        := instInfoReg
     }
   }
 
   // Decode
 
   // Select a decoder
-  val decoders = Seq(
-    Module(new Decoder_2RI12),
-    Module(new Decoder_2RI14),
-    Module(new Decoder_2RI16),
-    // Module(new Decoder_2R),
-    Module(new Decoder_3R),
-    // Module(new Decoder_4R),
-    Module(new Decoder_special)
-  )
-  decoders.foreach(_.io.instInfoPort := selectedInstInfo)
+//   val decoders = Seq(
+//     Module(new Decoder_2RI12),
+//     Module(new Decoder_2RI14),
+//     Module(new Decoder_2RI16),
+//     // Module(new Decoder_2R),
+//     Module(new Decoder_3R),
+//     // Module(new Decoder_4R),
+//     Module(new Decoder_special)
+//   )
+//   decoders.foreach(_.io.instInfoPort := selectedInstInfo)
 
-  val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
-  decoderWires.zip(decoders).foreach {
-    case (port, decoder) =>
-      port := decoder.io.out
-  }
-  val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
-  val selectedDecoder = WireDefault(decoderWires(decoderIndex))
+//   val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
+//   decoderWires.zip(decoders).foreach {
+//     case (port, decoder) =>
+//       port := decoder.io.out
+//   }
+//   val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
+//   val selectedDecoder = WireDefault(decoderWires(decoderIndex))
 
   // State machine input
   /** Determine blocking:
@@ -137,25 +141,25 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
     *     - If inst invalid:
     *       - non-blocking
     */
-  isInstValid := decoderWires.map(_.isMatched).reduce(_ || _)
-  val isGprScoreboardBlocking = WireDefault(selectedDecoder.info.gprReadPorts.map { port =>
+//   isInstValid := decoderWires.map(_.isMatched).reduce(_ || _)
+  val isGprScoreboardBlocking = WireDefault(selectedInstDecode.info.gprReadPorts.map { port =>
     port.en && io.regScores(port.addr)
   }.reduce(_ || _))
   val isCsrScoreboardBlocking = WireDefault(
-    selectedDecoder.info.csrWriteEn &&
-      io.csrRegScores(selectedDecoder.info.csrAddr)
+    selectedInstDecode.info.csrWriteEn &&
+      io.csrRegScores(selectedInstDecode.info.csrAddr)
   )
   val isScoreboardBlocking = WireDefault(isGprScoreboardBlocking && isCsrScoreboardBlocking)
   val isBlocking = WireDefault(
     io.pipelineControlPort.stall || (
-      isInstValid && isScoreboardBlocking
+      isScoreboardBlocking
     )
   )
 
   // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
-      when(io.fetchInstInfoPort.valid && !isBlocking) {
+      when(io.fetchInstDecodePort.valid && !isBlocking) {
         isAllowIssue := true.B
       }
     }
@@ -172,7 +176,7 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   // End: state machine
 
   // Fallback for no operation
-  issuedInfoReg.isValid              := isAllowIssue && isInstValid
+  issuedInfoReg.isValid              := isAllowIssue
   issuedInfoReg.info                 := DontCare
   issuedInfoReg.info.gprWritePort.en := false.B
   io.occupyPorts.foreach { port =>
@@ -188,24 +192,22 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
 
   when(isAllowIssue) {
     // Indicate the occupation in scoreboard
-    instStoreReg := InstInfoBundle.default // Patch for preventing reissue an inst itself
-    io.occupyPorts.zip(Seq(selectedDecoder.info.gprWritePort)).foreach {
+    instDecodeStoreReg := DecodeOutNdPort.default // Patch for preventing reissue an inst itself
+    io.occupyPorts.zip(Seq(selectedInstDecode.info.gprWritePort)).foreach {
       case (occupyPort, accessInfo) =>
         occupyPort.en   := accessInfo.en
         occupyPort.addr := accessInfo.addr
     }
 
-    io.csrOccupyPorts.zip(Seq(selectedDecoder.info)).foreach {
+    io.csrOccupyPorts.zip(Seq(selectedInstDecode.info)).foreach {
       case (csrOccupyPort, accessInfo) =>
         csrOccupyPort.en   := accessInfo.csrWriteEn
         csrOccupyPort.addr := accessInfo.csrAddr
     }
 
-    issuedInfoReg.info            := selectedDecoder.info
-    instInfoReg.inst              := selectedInstInfo.inst
-    instInfoReg.pc                := selectedInstInfo.pcAddr
-    instInfoReg.csrWritePort.en   := selectedDecoder.info.csrWriteEn
-    instInfoReg.csrWritePort.addr := selectedDecoder.info.csrAddr
+    issuedInfoReg.info            := selectedInstDecode.info
+    instInfoReg.csrWritePort.en   := selectedInstDecode.info.csrWriteEn
+    instInfoReg.csrWritePort.addr := selectedInstDecode.info.csrAddr
   }
 
   // clear
@@ -216,8 +218,8 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   // flush all regs
   when(io.pipelineControlPort.flush) {
     InstInfoNdPort.setDefault(instInfoReg)
-    issuedInfoReg := IssuedInfoNdPort.default
-    stateReg      := State.nonBlocking
-    instStoreReg  := InstInfoBundle.default
+    issuedInfoReg      := IssuedInfoNdPort.default
+    stateReg           := State.nonBlocking
+    instDecodeStoreReg := DecodeOutNdPort.default
   }
 }

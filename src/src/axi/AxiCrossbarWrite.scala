@@ -325,7 +325,7 @@ class AxiCrossbarWrite(
     val slaveAwuserMux   = Wire(UInt(Width.Axi.awuser))
     val slaveAwvalidMux  = Wire(Bool())
     val slaveAwreadyMux  = Wire(Bool())
-    slaveAwidMux     := IntSlavesAw(aGrantEncoded).id | (aGrantEncoded << Param.Width.Axi.slaveId)
+    slaveAwidMux     := IntSlavesAw(aGrantEncoded).id | (aGrantEncoded << Param.Width.Axi.slaveId).asUInt
     slaveAwaddrMux   := IntSlavesAw(aGrantEncoded).addr
     slaveAwlenMux    := IntSlavesAw(aGrantEncoded).len
     slaveAwsizeMux   := IntSlavesAw(aGrantEncoded).size

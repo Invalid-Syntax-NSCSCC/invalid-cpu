@@ -28,5 +28,4 @@ object InstInfoNdPort {
     instInfoPort.csrWritePort := CsrWriteNdPort.default
     instInfoPort.exeOp        := 0.U
   }
-
 }
