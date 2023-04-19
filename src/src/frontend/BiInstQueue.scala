@@ -19,7 +19,7 @@ import pipeline.dispatch.decode.{
   Decoder_special
 }
 import pipeline.writeback.bundles.InstInfoNdPort
-
+import utils.BiCounter
 // 尝试写双发射的queue，未接入，不用管它
 // assert: enqueuePorts总是最低的几位有效
 class BiInstQueue(

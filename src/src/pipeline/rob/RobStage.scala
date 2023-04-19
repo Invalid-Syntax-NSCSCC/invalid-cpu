@@ -6,7 +6,7 @@ import common.bundles.RfWriteNdPort
 import pipeline.rob.bundles.RobIdDistributePort
 import pipeline.rob.bundles.RobInstStoreBundle
 import pipeline.rob.enums.{RobInstState => State}
-import frontend.BiCounter
+import utils._
 
 // 重排序缓冲区，未接入cpu
 class RobStage(
