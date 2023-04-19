@@ -282,7 +282,7 @@ class AxiCrossbarRead(
     val slaveAruserMux   = WireInit(IntSlavesAr(aGrantEncoded).user)
     val slaveArvalidMux  = WireInit(IntArValid(aGrantEncoded)(index) && aGrantValid)
     val slaveArreadyMux  = Wire(Bool())
-    slaveAridMux     := IntSlavesAr(aGrantEncoded).id | (aGrantEncoded << Param.Width.Axi.slaveId).asUInt
+    slaveAridMux := IntSlavesAr(aGrantEncoded).id | (aGrantEncoded << Param.Width.Axi.slaveId).asUInt
 
     IntArReady(index) := (aGrantValid && slaveArreadyMux) << aGrantEncoded
 

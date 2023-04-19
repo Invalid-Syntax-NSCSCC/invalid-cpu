@@ -6,7 +6,7 @@ import spec._
 
 class MemAccessNdPort extends Bundle {
   val isValid = Bool()
-  val rw      = ReadWriteSel
+  val rw      = ReadWriteSel()
   val addr    = UInt(Width.Reg.data)
 
   val write = new Bundle {

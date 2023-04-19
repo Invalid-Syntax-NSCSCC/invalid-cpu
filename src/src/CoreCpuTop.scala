@@ -131,9 +131,8 @@ class CoreCpuTop extends Module {
   // Pc
   pc.io.newPc := cu.io.newPc
 
-
   // TODO: debug crossbar
-  io.axi <> simpleFetchStage.io.axiMasterInterface
+  io.axi      <> simpleFetchStage.io.axiMasterInterface
   crossbar.io <> DontCare
 //  // AXI top <> AXI crossbar
 //  crossbar.io.slaves                       <> DontCare
@@ -255,7 +254,7 @@ class CoreCpuTop extends Module {
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
   // memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort // TODO: MemLoadStoreInfoPort is deprecated
-  memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
+  // memStage.io.pipelineControlPort        := //cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
   memStage.io.memAccessPort              <> DontCare
   memStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
 
@@ -271,7 +270,7 @@ class CoreCpuTop extends Module {
   // Ctrl unit
   cu.io.instInfoPorts(0)               := wbStage.io.instInfoPassThroughPort.out
   cu.io.exeStallRequest                := exeStage.io.stallRequest
-  cu.io.memStallRequest                := memStage.io.stallRequest
+  cu.io.memStallRequest                := false.B // memStage.io.stallRequest    *********** TODO
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
