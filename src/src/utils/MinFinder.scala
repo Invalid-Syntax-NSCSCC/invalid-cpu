@@ -33,17 +33,4 @@ class MinFinder(num: Int, wordLength: Int) extends Module {
       }
   }
 
-  // val flag = VecInit(Seq.range(wordLength-1, -1, -1).map{bitNum =>
-  //   if (bitNum == wordLength - 1) {
-  //     Mux(
-  //       (~io.masks.asUInt | compareVec(bitNum)).andR,
-  //       io.masks.asUInt,
-  //       ~(~io.masks.asUInt | compareVec(bitNum))
-  //     )
-  //   }else {
-  //     // Mux(
-  //       (~flag(i+1))
-  //     // )
-  //   }
-  // })
 }
