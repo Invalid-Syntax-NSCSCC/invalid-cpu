@@ -15,16 +15,19 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
+import memory.bundles.MemAccessNdPort
+import common.enums.ReadWriteSel
 
 // TODO: MemLoadStoreInfoNdPort is deprecated
 
 // TODO: Add (flush ?) when jump / branch
+// throw exception: 地址未对齐 ale
 class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)
 
     // `ExeStage` -> `AddrTransStage` (next clock pulse)
-    // val memLoadStoreInfoPort    = Output(new MemLoadStoreInfoNdPort)
+    val memLoadStoreInfoPort    = Output(new MemAccessNdPort)
     val gprWritePort            = Output(new RfWriteNdPort)
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
@@ -56,8 +59,8 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   io.gprWritePort := gprWriteReg
 
-  // val memLoadStoreInfoReg = RegInit(MemLoadStoreInfoNdPort.default)
-  // io.memLoadStoreInfoPort := memLoadStoreInfoReg
+  val memAccessReg = RegInit(MemAccessNdPort.default)
+  io.memLoadStoreInfoPort := memAccessReg
 
   // Start: state machine
 
@@ -170,12 +173,52 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     }
   }
 
-  /** MemLoadStoreInfo
+  /** MemAccess
     */
+  val loadStoreAddr = WireDefault(selectedExeInst.leftOperand + selectedExeInst.loadStoreImm)
+  val memReadEn = WireDefault(
+    VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
+      .contains(selectedExeInst.exeOp)
+  )
+  val memWriteEn = WireDefault(
+    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w, ExeInst.Op.sc)
+      .contains(selectedExeInst.exeOp)
+  )
+  // 指令未对齐
+  val isALE = WireDefault(false.B)
+  instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ale) := isALE
 
-  // io.memLoadStoreInfoPort := memLoadStoreInfoReg
   when(!isBlocking) {
-    // memLoadStoreInfoReg := selectedMemLoadStoreInfo
+    memAccessReg.addr       := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
+    memAccessReg.write.data := selectedExeInst.rightOperand
+    memAccessReg.isValid    := (memReadEn || memWriteEn) && !isALE
+    memAccessReg.rw         := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
+    // mask
+    val maskEncode = loadStoreAddr(1, 0)
+    switch(selectedExeInst.exeOp) {
+      is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
+        memAccessReg.write.mask := Mux(
+          maskEncode(1),
+          Mux(maskEncode(0), "b1000".U, "b0100".U),
+          Mux(maskEncode(0), "b0010".U, "b0001".U)
+        )
+      }
+      is(ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.st_h) {
+        when(maskEncode(0)) {
+          isALE := true.B // 未对齐
+        }
+        memAccessReg.write.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+      }
+      is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
+        isALE                   := maskEncode.orR
+        memAccessReg.write.mask := "b1111".U
+      }
+    }
+  }
+
+  /** CsrWrite
+    */
+  when(!isBlocking) {
     instInfoReg := instInfoStoreReg
     def csrWriteData = instInfoReg.csrWritePort.data
     switch(selectedExeInst.exeOp) {
@@ -208,13 +251,13 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   when(io.pipelineControlPort.clear) {
     gprWriteReg := RfWriteNdPort.default
     InstInfoNdPort.setDefault(instInfoReg)
-    // memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
+    memAccessReg := MemAccessNdPort.default
   }
   // flush all regs
   when(io.pipelineControlPort.flush) {
     gprWriteReg := RfWriteNdPort.default
     InstInfoNdPort.setDefault(instInfoReg)
-    // memLoadStoreInfoReg := MemLoadStoreInfoNdPort.default
+    memAccessReg    := MemAccessNdPort.default
     stateReg        := State.nonBlocking
     exeInstStoreReg := ExeInstNdPort.default
     pcStoreReg      := zeroWord
