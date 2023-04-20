@@ -49,9 +49,9 @@ class BiIssueStage(
     val pipelineControlPorts = Vec(issueNum, Input(new PipelineControlNDPort))
   })
 
-  // val instInfosReg = Reg(Vec(issueNum, new InstInfoNdPort))
-  // instInfosReg.foreach(InstInfoNdPort.setDefault(_))
-  val instInfosReg = RegInit(VecInit(Seq.fill(issueNum)(InstInfoNdPort.default)))
+  val instInfosReg = Reg(Vec(issueNum, new InstInfoNdPort))
+  instInfosReg.foreach(InstInfoNdPort.setDefault(_))
+  // val instInfosReg = RegInit(VecInit(Seq.fill(issueNum)(InstInfoNdPort.default)))
   io.instInfoPorts := instInfosReg
 
   val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(IssuedInfoNdPort.default)))
@@ -74,8 +74,6 @@ class BiIssueStage(
     io.instInfoPorts.foreach(_ := InstInfoNdPort.default)
   }
 
-  // val nextStates = WireDefault(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
-  // val statesReg  = RegInit(VecInit(Seq.fill(issueNum)(State.nonBlocking)))
 
   /** Combine stage 1 : get fetch infos
     */
