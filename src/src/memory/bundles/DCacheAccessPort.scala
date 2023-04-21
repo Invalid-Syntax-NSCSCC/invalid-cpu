@@ -12,6 +12,7 @@ class DCacheAccessPort extends Bundle {
 
   val res = new Bundle {
     val isComplete = Output(Bool())
+    val isFailed   = Output(Bool())
     val read = new Bundle {
       val data = Output(UInt(Width.Mem.data))
     }

@@ -22,9 +22,6 @@ class DCache(
     val axiMasterPort = new AxiMasterPort
   })
 
-  // TODO: Remove DontCare
-  io <> DontCare
-
   // Read cache hit diagram:
   // clock: ^_____________________________^___________________
   //        isReady = T                   isReady = T
@@ -207,13 +204,23 @@ class DCache(
 
   io.accessPort.req.isReady := false.B // Fallback: Not ready
 
+  io.accessPort.res.isFailed := false.B // Fallback: Not failed
+
   val isReadValidReg  = RegNext(false.B, false.B) // Fallback: Not valid
+  val isReadFailedReg = RegNext(false.B, false.B) // Fallback: Not failed
   val isWriteComplete = WireDefault(false.B) // Fallback: Not complete
   io.accessPort.res.isComplete := isReadValidReg || isWriteComplete
 
   val readDataReg = RegInit(0.U(Width.Mem.data))
   readDataReg                 := readDataReg // Fallback: Keep data
   io.accessPort.res.read.data := readDataReg
+
+  // Convert mask from bytes to bits
+  val writeMaskBits = Cat(
+    io.accessPort.req.client.write.mask.asBools
+      .map(Mux(_, "h_FF".U(byteLength.W), 0.U(byteLength.W)))
+      .reverse
+  )
 
   // Keep request and cache query information
   val lastReg = Reg(new Bundle {
@@ -328,7 +335,7 @@ class DCache(
         lastReg.setIndex       := setIndex
         lastReg.dataLine       := selectedDataLine
         lastReg.writeData      := io.accessPort.req.client.write.data
-        lastReg.writeMask      := io.accessPort.req.client.write.mask
+        lastReg.writeMask      := writeMaskBits
 
         // Select data by data index from byte offset
         val selectedData = WireDefault(selectedDataLine(dataIndex))
@@ -471,8 +478,9 @@ class DCache(
           // Return read data
           val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
           val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
-          isReadValidReg := true.B
-          readDataReg    := readData
+          isReadValidReg  := true.B
+          isReadFailedReg := axiMaster.io.read.res.isFailed
+          readDataReg     := readData
 
           when(isNeedWbReg) {
             // Next Stage 3
@@ -534,7 +542,8 @@ class DCache(
           }
 
           // Mark write complete (in the same cycle)
-          isWriteComplete := true.B
+          isWriteComplete            := true.B
+          io.accessPort.res.isFailed := axiMaster.io.read.res.isFailed
 
           when(isNeedWbReg) {
             // Next Stage 3

@@ -228,7 +228,7 @@ class CoreCpuTop extends Module {
   csrScoreBoard.io.occupyPorts             := issueStage.io.csrOccupyPorts
 
   scoreboard.io.freePorts(0)    := exeStage.io.freePorts
-  scoreboard.io.freePorts(1)    := memStage.io.freePorts
+  scoreboard.io.freePorts(1)    := DontCare // TODO: Might be mem stage or so
   scoreboard.io.freePorts(2)    := wbStage.io.freePorts(0)
   csrScoreBoard.io.freePorts(0) := wbStage.io.csrFreePorts(0)
 
@@ -249,8 +249,8 @@ class CoreCpuTop extends Module {
 
   // Mem stage
   memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
-  memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort // TODO: MemLoadStoreInfoPort is deprecated
-  memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
+//  memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort // TODO: MemLoadStoreInfoPort is deprecated
+//  memStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memStage) // TODO: Might be mem stage or so
   memStage.io.memAccessPort              <> DontCare
   memStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
 
@@ -264,9 +264,9 @@ class CoreCpuTop extends Module {
   dataforward.io.writePorts(1) := memStage.io.gprWritePassThroughPort.out
 
   // Ctrl unit
-  cu.io.instInfoPorts(0)               := wbStage.io.instInfoPassThroughPort.out
-  cu.io.exeStallRequest                := exeStage.io.stallRequest
-  cu.io.memStallRequest                := memStage.io.stallRequest
+  cu.io.instInfoPorts(0) := wbStage.io.instInfoPassThroughPort.out
+  cu.io.exeStallRequest  := exeStage.io.stallRequest
+//  cu.io.memStallRequest                := memStage.io.stallRequest // TODO: Might be mem stage or so
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
