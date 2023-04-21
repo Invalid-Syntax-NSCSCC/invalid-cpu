@@ -74,7 +74,6 @@ class BiIssueStage(
     io.instInfoPorts.foreach(_ := InstInfoNdPort.default)
   }
 
-
   /** Combine stage 1 : get fetch infos
     */
 

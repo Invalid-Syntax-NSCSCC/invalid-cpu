@@ -37,23 +37,30 @@ class RobStage(
 
   /** Commit
     */
-  val areReady               = WireDefault(VecInit(buffer.map(_.state === State.ready)))
+  val areValid = WireDefault(
+    VecInit(
+      buffer.map { robInstStore => robInstStore.state === State.busy || robInstStore.state === State.ready }
+    )
+  )
   val firstCommitIndexFinder = Module(new MinFinder(robLength, idLength))
   firstCommitIndexFinder.io.index := WireDefault(VecInit(buffer.map(_.id)))
-  firstCommitIndexFinder.io.masks := areReady
+  firstCommitIndexFinder.io.masks := areValid
 
   val secondCommitIndexFinder = Module(new MinFinder(robLength, idLength))
   secondCommitIndexFinder.io.index := WireDefault(VecInit(buffer.map(_.id)))
-  val secondAreReady = WireDefault(areReady)
-  secondAreReady(firstCommitIndexFinder.io.index) := false.B
-  secondCommitIndexFinder.io.masks                := secondAreReady
+  val secondAreValid = WireDefault(areValid)
+  secondAreValid(firstCommitIndexFinder.io.index) := false.B
+  secondCommitIndexFinder.io.masks                := secondAreValid
 
-  when(areReady.reduce(_ || _)) {
+  when(buffer(firstCommitIndexFinder.io.index).state === State.ready) {
     io.commitPorts(0)                       := buffer(firstCommitIndexFinder.io.index).writePort
     buffer(firstCommitIndexFinder.io.index) := State.empty
   }
 
-  when(secondAreReady.reduce(_ || _)) {
+  when(
+    buffer(secondCommitIndexFinder.io.index).state === State.ready &&
+      secondCommitIndexFinder.io.index =/= firstCommitIndexFinder.io.index
+  ) {
     io.commitPorts(1)                        := buffer(secondCommitIndexFinder.io.index).writePort
     buffer(secondCommitIndexFinder.io.index) := State.empty
   }
