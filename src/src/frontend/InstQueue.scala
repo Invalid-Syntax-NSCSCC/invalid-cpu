@@ -84,13 +84,17 @@ class InstQueue(val queueLength: Int = Param.instQueueLength) extends Module {
     case (port, decoder) =>
       port := decoder.io.out
   }
+
+  val isMatched       = WireDefault(decoderWires.map(_.isMatched).reduce(_ || _))
   val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
   val selectedDecoder = WireDefault(decoderWires(decoderIndex))
 
   io.dequeuePort.bits.decode := selectedDecoder
-  InstInfoNdPort.setDefault(io.dequeuePort.bits.instInfo)
-  io.dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
-  io.dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
+  // InstInfoNdPort.setDefault(io.dequeuePort.bits.instInfo)
+  io.dequeuePort.bits.instInfo                                              := InstInfoNdPort.default
+  io.dequeuePort.bits.instInfo.exceptionRecords(CsrRegs.ExceptionIndex.ine) := !isMatched
+  io.dequeuePort.bits.instInfo.pc                                           := decodeInstInfo.pcAddr
+  io.dequeuePort.bits.instInfo.inst                                         := decodeInstInfo.inst
 
   // io.dequeuePort <> queue
 

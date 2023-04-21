@@ -47,6 +47,7 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
   InstInfoNdPort.setDefault(instInfoReg)
+  // val instInfoReg = RegInit(InstInfoNdPort.default)
   io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
@@ -213,11 +214,13 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   // clear
   when(io.pipelineControlPort.clear) {
     InstInfoNdPort.setDefault(instInfoReg)
+    // instInfoReg := InstInfoNdPort.default
     issuedInfoReg := IssuedInfoNdPort.default
   }
   // flush all regs
   when(io.pipelineControlPort.flush) {
     InstInfoNdPort.setDefault(instInfoReg)
+    // instInfoReg := InstInfoNdPort.default
     issuedInfoReg      := IssuedInfoNdPort.default
     stateReg           := State.nonBlocking
     instDecodeStoreReg := DecodeOutNdPort.default

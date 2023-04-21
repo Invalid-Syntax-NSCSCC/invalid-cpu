@@ -13,7 +13,7 @@ object Param {
   val instQueueLength        = 5
   val regFileReadNum         = 2
   val regFileWriteNum        = 1
-  val scoreboardChangeNum    = 3
+  val scoreboardChangeNum    = 1 // 3
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
   val ctrlControlNum         = PipelineStageIndex.getCount
@@ -21,6 +21,7 @@ object Param {
   val dispatchInstNum        = 1 // 发射数量
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
+  val robIdLength            = 32 // rob给出的id
 
   val dataForwardInputNum = 2
 
