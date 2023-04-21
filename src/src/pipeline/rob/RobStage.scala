@@ -11,6 +11,7 @@ import spec.wordLength
 import pipeline.dataforward.bundles.ReadPortWithValid
 
 // 重排序缓冲区，未接入cpu
+// 只给需要写寄存器的分配id
 class RobStage(
   robLength: Int = 8,
   issueNum:  Int = 2,
@@ -18,8 +19,8 @@ class RobStage(
   readNum:   Int = 2,
   idLength:  Int = 32 // 分配id长度
 ) extends Module {
+  val robLengthLog = log2Ceil(robLength)
   val io = IO(new Bundle {
-    val robLengthLog      = log2Ceil(robLength)
     val emptyNum          = Output(UInt(robLengthLog.W))
     val idDistributePorts = Vec(issueNum, new RobIdDistributePort(idLength = idLength))
     val writeReadyPorts   = Input(Vec(issueNum, new RfWriteNdPort))
@@ -102,7 +103,7 @@ class RobStage(
   io.writeReadyPorts.zip(io.instIds).foreach {
     case (readyPort, readyId) => {
       buffer.foreach { robStore =>
-        when(robStore.state === State.busy && robStore.id === readyId) {
+        when(robStore.state === State.busy && robStore.id === readyId && readyId.orR) {
           robStore.state     := State.ready
           robStore.writePort := readyPort
         }

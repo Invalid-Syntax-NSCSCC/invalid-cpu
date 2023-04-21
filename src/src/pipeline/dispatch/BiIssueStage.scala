@@ -13,10 +13,13 @@ import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.bundles.IssuedInfoNdPort
 import pipeline.dataforward.bundles.ReadPortWithValid
 import pipeline.dispatch.bundles.IssueInfoWithValidBundle
+import pipeline.rob.bundles.RobIdDistributePort
 
 class BiIssueStage(
   issueNum:       Int = 2,
-  scoreChangeNum: Int = Param.regFileWriteNum)
+  scoreChangeNum: Int = Param.regFileWriteNum,
+  robIdLength:    Int = 32,
+  robLengthLog:   Int = 3)
     extends Module {
   val io = IO(new Bundle {
     // `InstQueue` -> `IssueStage`
@@ -29,7 +32,8 @@ class BiIssueStage(
     )
 
     // `IssueStage` <-> `RobStage`
-    val idGetPorts = Vec(issueNum, Flipped(new ReadPortWithValid))
+    val robEmptyNum = Input(UInt(robLengthLog.W))
+    val idGetPorts  = Vec(issueNum, Flipped(new RobIdDistributePort(idLength = robIdLength)))
 
     // `IssueStage` <-> `Scoreboard`
     val occupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
@@ -99,7 +103,14 @@ class BiIssueStage(
   )
   selectValidWires.foreach(_ := 0.U.asTypeOf(selectValidWires(0)))
 
-  val canIssueMaxNum = io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _)
+  // val canIssueMaxNum = io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _)
+  val canIssueMaxNumFromStall = WireDefault(io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _))
+  val canIssueMaxNumFromRob   = WireDefault(io.robEmptyNum)
+  val canIssueMaxNum = Mux(
+    canIssueMaxNumFromRob < canIssueMaxNumFromStall,
+    canIssueMaxNumFromRob,
+    canIssueMaxNumFromStall
+  )
 
   val fetchCanIssue = WireDefault(VecInit(fetchInfos.map { fetchInfos =>
     fetchInfos.valid &&
@@ -142,17 +153,27 @@ class BiIssueStage(
       issueInfosReg(0)      := selectValidWires(0).issueInfo
       io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.info.gprWritePort
 
+      io.idGetPorts(0).writeEn           := selectValidWires(0).issueInfo.info.gprWritePort.en
+      selectValidWires(0).instInfo.robId := io.idGetPorts(0).id
+      instInfosReg(0)                    := selectValidWires(0).instInfo
+
       when(selectValidWires(1).valid && !io.pipelineControlPorts(1).stall) {
         // select 1 -> issue 1
-        instInfosReg(1)       := selectValidWires(1).instInfo
         issueInfosReg(1)      := selectValidWires(1).issueInfo
         io.occupyPortss(1)(0) := selectValidWires(1).issueInfo.info.gprWritePort
+
+        io.idGetPorts(1).writeEn           := selectValidWires(1).issueInfo.info.gprWritePort.en
+        selectValidWires(1).instInfo.robId := io.idGetPorts(1).id
+        instInfosReg(1)                    := selectValidWires(1).instInfo
       }
     }.elsewhen(!io.pipelineControlPorts(1).stall) {
       // select 0 -> issue 1
-      instInfosReg(1)       := selectValidWires(0).instInfo
       issueInfosReg(1)      := selectValidWires(0).issueInfo
       io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.info.gprWritePort
+
+      io.idGetPorts(0).writeEn           := selectValidWires(0).issueInfo.info.gprWritePort.en
+      selectValidWires(0).instInfo.robId := io.idGetPorts(0).id
+      instInfosReg(1)                    := selectValidWires(0).instInfo
     }
   }
 
