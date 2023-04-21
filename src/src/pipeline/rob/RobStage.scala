@@ -24,7 +24,7 @@ class RobStage(
     val emptyNum          = Output(UInt(robLengthLog.W))
     val idDistributePorts = Vec(issueNum, new RobIdDistributePort(idLength = idLength))
     val writeReadyPorts   = Input(Vec(issueNum, new RfWriteNdPort))
-    val instIds           = Input(Vec(issueNum, 0.U(idLength.W)))
+    val instReadyIds      = Input(Vec(issueNum, UInt(idLength.W)))
     val readPorts         = Vec(readNum, new ReadPortWithValid)
     val commitPorts       = Output(Vec(commitNum, new RfWriteNdPort))
   })
@@ -34,7 +34,7 @@ class RobStage(
   io.commitPorts.foreach(_ := RfWriteNdPort.default)
 
   val counter = RegInit(1.U(idLength.W))
-  val buffer  = RegInit(VecInit(Seq.fill(robLength)(new RobInstStoreBundle)))
+  val buffer  = RegInit(VecInit(Seq.fill(robLength)(RobInstStoreBundle.default)))
 
   /** Commit
     */
@@ -44,26 +44,26 @@ class RobStage(
     )
   )
   val firstCommitIndexFinder = Module(new MinFinder(robLength, idLength))
-  firstCommitIndexFinder.io.index := WireDefault(VecInit(buffer.map(_.id)))
-  firstCommitIndexFinder.io.masks := areValid
+  firstCommitIndexFinder.io.values := WireDefault(VecInit(buffer.map(_.id)))
+  firstCommitIndexFinder.io.masks  := areValid
 
   val secondCommitIndexFinder = Module(new MinFinder(robLength, idLength))
-  secondCommitIndexFinder.io.index := WireDefault(VecInit(buffer.map(_.id)))
+  secondCommitIndexFinder.io.values := WireDefault(VecInit(buffer.map(_.id)))
   val secondAreValid = WireDefault(areValid)
   secondAreValid(firstCommitIndexFinder.io.index) := false.B
   secondCommitIndexFinder.io.masks                := secondAreValid
 
   when(buffer(firstCommitIndexFinder.io.index).state === State.ready) {
-    io.commitPorts(0)                       := buffer(firstCommitIndexFinder.io.index).writePort
-    buffer(firstCommitIndexFinder.io.index) := State.empty
+    io.commitPorts(0)                             := buffer(firstCommitIndexFinder.io.index).writePort
+    buffer(firstCommitIndexFinder.io.index).state := State.empty
   }
 
   when(
     buffer(secondCommitIndexFinder.io.index).state === State.ready &&
       secondCommitIndexFinder.io.index =/= firstCommitIndexFinder.io.index
   ) {
-    io.commitPorts(1)                        := buffer(secondCommitIndexFinder.io.index).writePort
-    buffer(secondCommitIndexFinder.io.index) := State.empty
+    io.commitPorts(1)                              := buffer(secondCommitIndexFinder.io.index).writePort
+    buffer(secondCommitIndexFinder.io.index).state := State.empty
   }
 
   /** id distribute TODO: 加入同时写入和commit的判断
@@ -88,7 +88,7 @@ class RobStage(
       buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
       counter                                            := counter + 1.U
     }
-  }.elsewhen(emptyNum =/= 0.U) {
+  }.elsewhen(emptyNum === 2.U) {
     // 2个都能分配
     io.idDistributePorts(0).id                         := counter
     io.idDistributePorts(1).id                         := counter + 1.U
@@ -100,7 +100,7 @@ class RobStage(
   }
 
   // ready
-  io.writeReadyPorts.zip(io.instIds).foreach {
+  io.writeReadyPorts.zip(io.instReadyIds).foreach {
     case (readyPort, readyId) => {
       buffer.foreach { robStore =>
         when(robStore.state === State.busy && robStore.id === readyId && readyId.orR) {

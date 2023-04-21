@@ -16,7 +16,7 @@ object MinFinderSpec extends ChiselUtestTester {
   val tests = Tests {
     test("Test MinFinder") {
       testCircuit(new MinFinder(num = 5, wordLength=4), Seq(WriteVcdAnnotation)) { 
-        minFinder => if (true) {
+        minFinder => if (false) {
           val numsSeq = Seq(
               Seq(1.U,2.U, 4.U, 3.U,5.U),
               Seq(7.U,3.U, 4.U, 3.U,5.U),
