@@ -6,13 +6,14 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec._
 
 class MemAccessNdPort extends Bundle {
-  val isValid = Bool()
-  val rw      = ReadWriteSel()
-  val addr    = UInt(Width.Reg.data)
+  val isValid    = Bool()
+  val rw         = ReadWriteSel()
+  val addr       = UInt(Width.Reg.data)
+  val isUnsigned = Bool()
 
   val write = new Bundle {
-    val data = UInt(Width.Reg.data)
-    val mask = UInt(Width.Reg.data)
+    val data = UInt(Width.Mem.data)
+    val mask = UInt((Width.Mem._data / byteLength).W)
   }
 }
 

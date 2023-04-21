@@ -184,14 +184,16 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w, ExeInst.Op.sc)
       .contains(selectedExeInst.exeOp)
   )
+  val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedExeInst.exeOp))
   // 指令未对齐
   val isALE = WireDefault(false.B)
   instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ale) := isALE
 
   when(!isBlocking) {
+    memAccessReg.isValid    := (memReadEn || memWriteEn) && !isALE
     memAccessReg.addr       := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
     memAccessReg.write.data := selectedExeInst.rightOperand
-    memAccessReg.isValid    := (memReadEn || memWriteEn) && !isALE
+    memAccessReg.isUnsigned := memLoadUnsigned
     memAccessReg.rw         := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
     // mask
     val maskEncode = loadStoreAddr(1, 0)
