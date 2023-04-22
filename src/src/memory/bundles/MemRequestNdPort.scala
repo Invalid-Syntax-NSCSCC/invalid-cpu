@@ -4,7 +4,7 @@ import chisel3._
 import common.enums.ReadWriteSel
 import spec._
 
-class MemAccessNdPort extends Bundle {
+class MemRequestNdPort extends Bundle {
   val isValid = Bool()
   val rw      = ReadWriteSel()
   val addr    = UInt(Width.Mem.addr)

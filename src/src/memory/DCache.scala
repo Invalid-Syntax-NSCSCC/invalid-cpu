@@ -6,7 +6,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import common.enums.ReadWriteSel
-import memory.bundles.{DCacheAccessPort, StatusTagBundle}
+import memory.bundles.{MemAccessPort, StatusTagBundle}
 import memory.enums.{DCacheState => State}
 import spec._
 
@@ -18,7 +18,7 @@ class DCache(
   debugSetNumSeq:    Seq[Int]  = Seq())
     extends Module {
   val io = IO(new Bundle {
-    val accessPort    = new DCacheAccessPort
+    val accessPort    = new MemAccessPort
     val axiMasterPort = new AxiMasterPort
   })
 

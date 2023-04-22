@@ -37,5 +37,6 @@ class SimpleRam(size: Int, dataWidth: Int, isDebug: Boolean = false, debugWriteN
           data(port.addr) := port.data
         }
       }
+    case None =>
   }
 }
