@@ -14,7 +14,7 @@ class Pc(
   val io = IO(new Bundle {
     val pc     = Output(UInt(Width.Reg.data))
     val isNext = Input(Bool())
-    // 异常处理
+    // 异常处理 + 分支跳转
     val newPc = Input(new PcSetPort)
   })
 

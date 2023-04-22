@@ -7,13 +7,14 @@ import common.bundles.RfWriteNdPort
 import common.bundles.RfReadPort
 import pipeline.dataforward.bundles._
 
+import pipeline.dataforward.bundles.ReadPortWithValid
 class DataForwardStage(
   dataForwardNum: Int = Param.dataForwardInputNum,
   readNum:        Int = Param.regFileReadNum)
     extends Module {
   val io = IO(new Bundle {
     val writePorts = Input(Vec(dataForwardNum, new RfWriteNdPort))
-    val readPorts  = Vec(readNum, new DataForwardReadPort)
+    val readPorts  = Vec(readNum, new ReadPortWithValid)
   })
 
   io.readPorts.foreach { readPort =>

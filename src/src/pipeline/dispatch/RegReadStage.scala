@@ -9,7 +9,7 @@ import spec._
 import control.bundles.PipelineControlNDPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import control.bundles.CsrReadPort
-import pipeline.dataforward.bundles.DataForwardReadPort
+// import pipeline.dataforward.bundles.DataForwardReadPort
 
 class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum) extends Module {
   val io = IO(new Bundle {
@@ -26,7 +26,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
 
     // 数据前推
     // `DataForwardStage` -> `RegReadStage`
-    val dataforwardPorts = Vec(readNum, Flipped(new DataForwardReadPort))
+    // val dataforwardPorts = Vec(readNum, Flipped(new DataForwardReadPort))
 
     // `pipeline control signal
     // `Cu` -> `RegReadStage`
@@ -59,11 +59,11 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   io.csrReadPorts(0).addr := io.instInfoPassThroughPort.in.csrWritePort.addr
 
   // read from dataforward
-  io.gprReadPorts.zip(io.dataforwardPorts).foreach {
-    case ((gprRead, dataforward)) =>
-      dataforward.en   := gprRead.en
-      dataforward.addr := gprRead.addr
-  }
+  // io.gprReadPorts.zip(io.dataforwardPorts).foreach {
+  //   case ((gprRead, dataforward)) =>
+  //     dataforward.en   := gprRead.en
+  //     dataforward.addr := gprRead.addr
+  // }
 
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
@@ -74,9 +74,10 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
     }
     Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
       .lazyZip(io.gprReadPorts)
-      .lazyZip(io.dataforwardPorts)
+      // .lazyZip(io.dataforwardPorts)
       .foreach {
-        case (oprand, gprReadPort, dataforward) =>
+        // case (oprand, gprReadPort, dataforward) =>
+        case (oprand, gprReadPort) =>
           // when(
           //   gprReadPort.en &&
           //     io.exeRfWriteFeedbackPort.en &&
@@ -87,7 +88,8 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
           //   oprand := gprReadPort.data
           // }
           when(gprReadPort.en) {
-            oprand := Mux(dataforward.valid, dataforward.data, gprReadPort.data)
+            // oprand := Mux(dataforward.valid, dataforward.data, gprReadPort.data)
+            oprand := gprReadPort.data
           }
       }
   }

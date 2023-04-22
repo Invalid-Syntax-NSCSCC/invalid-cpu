@@ -1,15 +1,15 @@
-package frontend
+package utils
 
 import chisel3._
 import chisel3.util._
 
-// 尝试写多发射的queue，未接入，不用管它
 class BiCounter(count: Int) extends Module {
   require(count > 1)
   val w = log2Ceil(count).W
   val io = IO(new Bundle {
     // inc =/= `11`
     val inc   = Input(UInt(2.W))
+    val flush = Input(Bool())
     val value = Output(UInt(w))
   })
 
@@ -30,5 +30,10 @@ class BiCounter(count: Int) extends Module {
     }.otherwise {
       counter := counter + 2.U
     }
+  }
+
+  when(io.flush) {
+    io.value := false.B
+    counter  := 0.U
   }
 }
