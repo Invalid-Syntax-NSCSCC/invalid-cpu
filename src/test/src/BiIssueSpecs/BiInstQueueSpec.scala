@@ -44,7 +44,7 @@ import spec.PipelineStageIndex
 //             // println(s"${instQueue.io.debugPort(0).inst.peek()}")
 //             println(s"(1) valid: ${instQueue.io.dequeuePorts(1).valid.peek()}; inst: ${instQueue.io.dequeuePorts(1).bits.instInfo.inst.peek().litValue.toString(16)}")
 //             // println(s"${instQueue.io.debugPort(1).inst.peek()}")
-        
+
 //           }
 //       }
 //     }

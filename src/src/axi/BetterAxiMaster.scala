@@ -20,9 +20,11 @@ class BetterAxiMaster(
         val isReady = Output(Bool())
         val addr    = Input(UInt(Width.Axi.addr))
         val data    = Input(UInt(writeSize.W))
+        val mask    = Input(UInt(Width.Axi.strb))
       }
       val res = new Bundle {
         val isComplete = Output(Bool())
+        val isFailed   = Output(Bool())
       }
     }
     val read = new Bundle {
@@ -32,11 +34,13 @@ class BetterAxiMaster(
         val addr    = Input(UInt(Width.Axi.addr))
       }
       val res = new Bundle {
-        val isValid = Output(Bool())
-        val data    = Output(UInt(readSize.W))
+        val isValid  = Output(Bool())
+        val data     = Output(UInt(readSize.W))
+        val isFailed = Output(Bool())
       }
     }
   })
+
   // Fallback
   io.axi <> DontCare
 
@@ -69,7 +73,7 @@ class BetterAxiMaster(
   io.axi.awcache := Value.Axi.Cache.nonBufferable
   io.axi.arprot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
   io.axi.awprot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
-  io.axi.wstrb   := "b_1111".U(Width.Axi.strb) // TODO: Support other write masks
+  io.axi.wstrb   := io.write.req.mask
   io.axi.wvalid  := false.B
   io.axi.rready  := false.B
   io.axi.bready  := false.B
@@ -86,6 +90,12 @@ class BetterAxiMaster(
   readDataReg := nextReadData // Fallback: Keep data
   val isReadReady = WireDefault(!isReadingReg && io.axi.arready)
 
+  // Failing flag
+  val isReadFailedReg  = RegInit(false.B)
+  val isReadFailedNext = WireDefault(isReadFailedReg)
+  isReadFailedReg      := isReadFailedNext // Fallback: Keep flag
+  io.read.res.isFailed := false.B // Fallback: Not failed
+
   io.axi.araddr       := io.read.req.addr
   io.axi.arvalid      := io.read.req.isValid
   io.read.req.isReady := isReadReady
@@ -96,8 +106,9 @@ class BetterAxiMaster(
 
   when(io.read.req.isValid && isReadReady) {
     // Accept request
-    isReadingReg := true.B
-    nextReadData := 0.U
+    isReadFailedNext := false.B
+    isReadingReg     := true.B
+    nextReadData     := 0.U
   }
 
   when(isReadingReg) {
@@ -113,6 +124,7 @@ class BetterAxiMaster(
         }
 
         is(Value.Axi.Response.SlaveErr, Value.Axi.Response.DecodeErr) {
+          isReadFailedNext := true.B
           nextReadData := Cat(
             0.U(transferSize.W),
             readDataReg(readDataReg.getWidth - 1, transferSize)
@@ -122,8 +134,9 @@ class BetterAxiMaster(
     }
     when(io.axi.rlast) {
       // Reading complete
-      io.read.res.isValid := true.B
-      io.read.res.data    := nextReadData
+      io.read.res.isValid  := true.B
+      io.read.res.data     := nextReadData
+      io.read.res.isFailed := isReadFailedReg || isReadFailedNext
 
       isReadingReg := false.B
     }
@@ -145,6 +158,7 @@ class BetterAxiMaster(
 
   // Fallback
   io.write.res.isComplete := false.B
+  io.write.res.isFailed   := false.B
 
   when(io.write.req.isValid && isWriteReady) {
     // Accept request
@@ -180,12 +194,20 @@ class BetterAxiMaster(
       switch(io.axi.bresp) {
         is(
           Value.Axi.Response.Okay,
-          Value.Axi.Response.ExclusiveOkay,
+          Value.Axi.Response.ExclusiveOkay
+        ) {
+          // Writing complete
+          io.write.res.isComplete := true.B
+
+          isWritingReg := false.B
+        }
+        is(
           Value.Axi.Response.SlaveErr,
           Value.Axi.Response.DecodeErr
         ) {
           // Writing complete
           io.write.res.isComplete := true.B
+          io.write.res.isFailed   := true.B
 
           isWritingReg := false.B
         }

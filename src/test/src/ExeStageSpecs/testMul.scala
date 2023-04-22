@@ -42,7 +42,7 @@ import spec.ExeInst
 //         }
 //         // var lop = 15.U
 //         // var divisor = 2.U
-        
+
 
 //       }
 //     }

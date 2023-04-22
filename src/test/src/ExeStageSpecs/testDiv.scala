@@ -11,7 +11,6 @@ import scala.util.Random
 import pipeline.execution.Div
 import spec.ExeInst
 
-
 // object DivSpec extends ChiselUtestTester {
 //   val tests = Tests {
 //     test("Test div module") {
@@ -41,7 +40,6 @@ import spec.ExeInst
 //         }
 //         // var dividend = 15.U
 //         // var divisor = 2.U
-        
 
 //       }
 //     }
