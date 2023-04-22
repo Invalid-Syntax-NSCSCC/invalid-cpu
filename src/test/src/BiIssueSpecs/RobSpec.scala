@@ -23,7 +23,6 @@ object RobSpec extends ChiselUtestTester {
           rob.idDistributePorts.foreach(_.writeEn poke false.B)
           rob.writeReadyPorts.foreach{writePort => writePort.en poke false.B; writePort.addr poke zeroWord; writePort.data poke zeroWord}
           rob.instReadyIds.foreach(_ poke zeroWord)
-          
         }
       }
     }

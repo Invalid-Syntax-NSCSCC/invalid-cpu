@@ -1,6 +1,7 @@
 import axi.AxiCrossbar
 import axi.bundles.AxiMasterPort
 import chisel3._
+import chisel3.internal.sourceinfo.MemTransform
 import common.{Pc, RegFile}
 import frontend.{InstQueue, SimpleFetchStage}
 import control.Cu
@@ -8,7 +9,7 @@ import pipeline.dataforward.DataForwardStage
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.writeback.WbStage
-import pipeline.mem.AddrTransStage
+import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
 import spec.Param.isDiffTest
 import spec.PipelineStageIndex
 import spec.zeroWord
@@ -16,6 +17,7 @@ import control.Csr
 import spec.Param
 import spec.Count
 import control.StableCounter
+import memory.{DCache, UncachedAgent}
 import spec.ExeInst
 
 class CoreCpuTop extends Module {
@@ -100,11 +102,15 @@ class CoreCpuTop extends Module {
   val issueStage       = Module(new IssueStage)
   val regReadStage     = Module(new RegReadStage)
   val exeStage         = Module(new ExeStage)
-  val memStage         = Module(new AddrTransStage)
   val wbStage          = Module(new WbStage)
   val cu               = Module(new Cu)
   val csr              = Module(new Csr)
   val stableCounter    = Module(new StableCounter)
+
+  // TODO: Finish mem stages connection
+  val addrTransStage = Module(new AddrTransStage)
+  val memReqStage    = Module(new MemReqStage)
+  val memResStage    = Module(new MemResStage)
 
   val crossbar = Module(new AxiCrossbar)
 
@@ -213,6 +219,55 @@ class CoreCpuTop extends Module {
 //  simpleFetchStage.io.axiMasterInterface.bvalid  <> crossbar.io.slaves(0).write.b.valid
 //  simpleFetchStage.io.axiMasterInterface.bready  <> crossbar.io.slaves(0).write.b.ready
 
+  // Memory related modules
+  val dCache        = Module(new DCache)
+  val uncachedAgent = Module(new UncachedAgent)
+
+  // Connection for memory related modules
+  // TODO: Finish AXI connection
+  dCache.io        <> DontCare
+  uncachedAgent.io <> DontCare
+  // Hint: dCache.io.axiMasterPort --> crossbar.io.slaves(1)
+  // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(1)
+
+  // `SimpleFetchStage` <> AXI crossbar
+  simpleFetchStage.io.axiMasterInterface.arid    <> crossbar.io.slaves(0).read.ar.bits.id
+  simpleFetchStage.io.axiMasterInterface.araddr  <> crossbar.io.slaves(0).read.ar.bits.addr
+  simpleFetchStage.io.axiMasterInterface.arlen   <> crossbar.io.slaves(0).read.ar.bits.len
+  simpleFetchStage.io.axiMasterInterface.arsize  <> crossbar.io.slaves(0).read.ar.bits.size
+  simpleFetchStage.io.axiMasterInterface.arburst <> crossbar.io.slaves(0).read.ar.bits.burst
+  simpleFetchStage.io.axiMasterInterface.arlock  <> crossbar.io.slaves(0).read.ar.bits.lock
+  simpleFetchStage.io.axiMasterInterface.arcache <> crossbar.io.slaves(0).read.ar.bits.cache
+  simpleFetchStage.io.axiMasterInterface.arprot  <> crossbar.io.slaves(0).read.ar.bits.prot
+  simpleFetchStage.io.axiMasterInterface.arvalid <> crossbar.io.slaves(0).read.ar.valid
+  simpleFetchStage.io.axiMasterInterface.arready <> crossbar.io.slaves(0).read.ar.ready
+  simpleFetchStage.io.axiMasterInterface.rid     <> crossbar.io.slaves(0).read.r.bits.id
+  simpleFetchStage.io.axiMasterInterface.rdata   <> crossbar.io.slaves(0).read.r.bits.data
+  simpleFetchStage.io.axiMasterInterface.rresp   <> crossbar.io.slaves(0).read.r.bits.resp
+  simpleFetchStage.io.axiMasterInterface.rlast   <> crossbar.io.slaves(0).read.r.bits.last
+  simpleFetchStage.io.axiMasterInterface.rvalid  <> crossbar.io.slaves(0).read.r.valid
+  simpleFetchStage.io.axiMasterInterface.rready  <> crossbar.io.slaves(0).read.r.ready
+  simpleFetchStage.io.axiMasterInterface.awid    <> crossbar.io.slaves(0).write.aw.bits.id
+  simpleFetchStage.io.axiMasterInterface.awaddr  <> crossbar.io.slaves(0).write.aw.bits.addr
+  simpleFetchStage.io.axiMasterInterface.awlen   <> crossbar.io.slaves(0).write.aw.bits.len
+  simpleFetchStage.io.axiMasterInterface.awsize  <> crossbar.io.slaves(0).write.aw.bits.size
+  simpleFetchStage.io.axiMasterInterface.awburst <> crossbar.io.slaves(0).write.aw.bits.burst
+  simpleFetchStage.io.axiMasterInterface.awlock  <> crossbar.io.slaves(0).write.aw.bits.lock
+  simpleFetchStage.io.axiMasterInterface.awcache <> crossbar.io.slaves(0).write.aw.bits.cache
+  simpleFetchStage.io.axiMasterInterface.awprot  <> crossbar.io.slaves(0).write.aw.bits.prot
+  simpleFetchStage.io.axiMasterInterface.awvalid <> crossbar.io.slaves(0).write.aw.valid
+  simpleFetchStage.io.axiMasterInterface.awready <> crossbar.io.slaves(0).write.aw.ready
+  simpleFetchStage.io.axiMasterInterface.wid     <> DontCare
+  simpleFetchStage.io.axiMasterInterface.wdata   <> crossbar.io.slaves(0).write.w.bits.data
+  simpleFetchStage.io.axiMasterInterface.wstrb   <> crossbar.io.slaves(0).write.w.bits.strb
+  simpleFetchStage.io.axiMasterInterface.wlast   <> crossbar.io.slaves(0).write.w.bits.last
+  simpleFetchStage.io.axiMasterInterface.wvalid  <> crossbar.io.slaves(0).write.w.valid
+  simpleFetchStage.io.axiMasterInterface.wready  <> crossbar.io.slaves(0).write.w.ready
+  simpleFetchStage.io.axiMasterInterface.bid     <> crossbar.io.slaves(0).write.b.bits.id
+  simpleFetchStage.io.axiMasterInterface.bresp   <> crossbar.io.slaves(0).write.b.bits.resp
+  simpleFetchStage.io.axiMasterInterface.bvalid  <> crossbar.io.slaves(0).write.b.valid
+  simpleFetchStage.io.axiMasterInterface.bready  <> crossbar.io.slaves(0).write.b.ready
+
   // Simple fetch stage
   instQueue.io.enqueuePort         <> simpleFetchStage.io.instEnqueuePort
   instQueue.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
@@ -251,16 +306,34 @@ class CoreCpuTop extends Module {
   exeStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
   exeStage.io.instInfoPassThroughPort.in := regReadStage.io.instInfoPassThroughPort.out
 
-  // Mem stage
-  memStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
-  // memStage.io.memLoadStoreInfoPort       := exeStage.io.memLoadStoreInfoPort // TODO: MemLoadStoreInfoPort is deprecated
-  // memStage.io.pipelineControlPort        := //cu.io.pipelineControlPorts(PipelineStageIndex.memStage)
-  memStage.io.memAccessPort              <> DontCare
-  memStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
+  // Mem stages
+  // TODO: Also finish the connection here
+  addrTransStage.io                            <> DontCare
+  memReqStage.io                               <> DontCare
+  memResStage.io                               <> DontCare
+  addrTransStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
+  addrTransStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
+  // TODO: CSR
+  // TODO: TLB
+  // TODO: Get memory access information from execution stage
+  memReqStage.io.translatedMemRequestPort   := addrTransStage.io.translatedMemRequestPort
+  memReqStage.io.isCachedAccess.in          := addrTransStage.io.isCachedAccess
+  memReqStage.io.gprWritePassThroughPort.in := addrTransStage.io.gprWritePassThroughPort.out
+  memReqStage.io.instInfoPassThroughPort.in := addrTransStage.io.instInfoPassThroughPort.out
+  dCache.io.accessPort.req.client           := memReqStage.io.dCacheRequestPort
+  uncachedAgent.io.accessPort.req.client    := memReqStage.io.uncachedRequestPort
+  dCache.io.accessPort.req.isReady          <> DontCare // Assume ready guaranteed by in-order access
+  uncachedAgent.io.accessPort.req.isReady   <> DontCare // Assume ready guaranteed by in-order access
+  memResStage.io.isHasRequest               := memReqStage.io.isHasRequest
+  memResStage.io.isCachedRequest            := memReqStage.io.isCachedAccess.out
+  memResStage.io.gprWritePassThroughPort.in := addrTransStage.io.gprWritePassThroughPort.out
+  memResStage.io.instInfoPassThroughPort.in := addrTransStage.io.instInfoPassThroughPort.out
+  memResStage.io.dCacheResponsePort         := dCache.io.accessPort.res
+  memResStage.io.uncachedResponsePort       := uncachedAgent.io.accessPort.res
 
   // Write-back stage
-  wbStage.io.gprWriteInfoPort           := memStage.io.gprWritePassThroughPort.out
-  wbStage.io.instInfoPassThroughPort.in := memStage.io.instInfoPassThroughPort.out
+  wbStage.io.gprWriteInfoPort           := memResStage.io.gprWritePassThroughPort.out
+  wbStage.io.instInfoPassThroughPort.in := memResStage.io.instInfoPassThroughPort.out
   regFile.io.writePort                  := cu.io.gprWritePassThroughPorts.out(0)
 
   // data forward

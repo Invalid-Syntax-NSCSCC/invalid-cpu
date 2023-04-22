@@ -3,7 +3,7 @@ package pipeline.mem
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfWriteNdPort}
-import memory.bundles.MemAccessNdPort
+import memory.bundles.MemRequestNdPort
 import pipeline.mem.bundles.MemCsrNdPort
 import pipeline.mem.enums.AddrTransMode
 import pipeline.writeback.bundles.InstInfoNdPort
@@ -12,14 +12,14 @@ import spec.Width
 
 class AddrTransStage extends Module {
   val io = IO(new Bundle {
-    val memAccessPort = Input(new MemAccessNdPort)
+    val memAccessPort = Input(new MemRequestNdPort)
     val csrPort       = Input(new MemCsrNdPort)
 
     // (Next clock pulse)
-    val gprWritePassThroughPort = new PassThroughPort(new RfWriteNdPort)
-    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
-    val translatedMemAccessPort = Output(new MemAccessNdPort)
-    val isCachedAccess          = Output(Bool())
+    val gprWritePassThroughPort  = new PassThroughPort(new RfWriteNdPort)
+    val instInfoPassThroughPort  = new PassThroughPort(new InstInfoNdPort)
+    val translatedMemRequestPort = Output(new MemRequestNdPort)
+    val isCachedAccess           = Output(Bool())
   })
 
   // Pass GPR write request to the next stage
@@ -62,7 +62,7 @@ class AddrTransStage extends Module {
   }
 
   // Translate address
-  val physicalAddr = Wire(UInt(Width.Mem.addr))
+  val physicalAddr = WireDefault(0.U(Width.Mem.addr)) // Fallback: Dummy address
   switch(transMode) {
     is(AddrTransMode.direct) {
       physicalAddr := io.memAccessPort.addr
@@ -93,7 +93,7 @@ class AddrTransStage extends Module {
   }
 
   // Pass translated memory request to the next stage
-  val translatedMemAccessReg = RegNext(io.memAccessPort)
-  translatedMemAccessReg.addr := physicalAddr
-  io.translatedMemAccessPort  := translatedMemAccessReg
+  val translatedMemRequestReg = RegNext(io.memAccessPort)
+  translatedMemRequestReg.addr := physicalAddr
+  io.translatedMemRequestPort  := translatedMemRequestReg
 }

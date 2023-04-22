@@ -20,7 +20,7 @@ git clone https://gitee.com/loongson-edu/chiplab.git
 需要下载三样东西：
 
 - [GCC交叉编译器](https://gitee.com/loongson-edu/la32r-toolchains/releases)
-  
+
   根据自己电脑的架构，下载`loongarch32r-linux-gnusf-{日期}-{架构}.tar.gz`并解压，将`loongarch32r-linux-gnusf-{日期}`文件夹解压到Chiplab文件夹下的`toolchains`目录。
 
 - [NEMU](https://gitee.com/wwt_panache/la32r-nemu/releases)
@@ -67,7 +67,7 @@ toolchains
 
 ```shell
 export CHIPLAB_HOME=$(cd "$(dirname "$0")"; pwd)
-export PATH=$(echo $CHIPLAB_HOME/toolchains/loongarch32r-linux-gnusf-*/bin/):$PATH 
+export PATH=$(echo $CHIPLAB_HOME/toolchains/loongarch32r-linux-gnusf-*/bin/):$PATH
 ```
 
 写完这个脚本文件，丢到Chiplab根目录即可。
