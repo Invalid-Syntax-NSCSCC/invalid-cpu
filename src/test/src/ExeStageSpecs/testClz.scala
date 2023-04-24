@@ -26,7 +26,6 @@ import scala.util.Random
 //                 expect -= 1
 //                 tmp /= 2
 //               }
-
 //               clz.io.input.poke(in.U)
 //               println(s"${i}: ")
 //               println(BigInt(in).toString(16))
@@ -39,7 +38,6 @@ import scala.util.Random
 //               clz.clock.step(1)
 //             }
 //           }
-
 //         }
 //       }
 //     }

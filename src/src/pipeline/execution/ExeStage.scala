@@ -15,7 +15,7 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import memory.bundles.MemAccessNdPort
+import memory.bundles.MemRequestNdPort
 import common.enums.ReadWriteSel
 
 // TODO: MemLoadStoreInfoNdPort is deprecated
@@ -27,7 +27,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val exeInstPort = Input(new ExeInstNdPort)
 
     // `ExeStage` -> `AddrTransStage` (next clock pulse)
-    val memLoadStoreInfoPort    = Output(new MemAccessNdPort)
+    val memLoadStoreInfoPort    = Output(new MemRequestNdPort)
     val gprWritePort            = Output(new RfWriteNdPort)
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
@@ -59,8 +59,8 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val gprWriteReg = RegInit(RfWriteNdPort.default)
   io.gprWritePort := gprWriteReg
 
-  val memAccessReg = RegInit(MemAccessNdPort.default)
-  io.memLoadStoreInfoPort := memAccessReg
+  val memRequestReg = RegInit(MemRequestNdPort.default)
+  io.memLoadStoreInfoPort := memRequestReg
 
   // Start: state machine
 
@@ -190,16 +190,16 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ale) := isALE
 
   when(!isBlocking) {
-    memAccessReg.isValid    := (memReadEn || memWriteEn) && !isALE
-    memAccessReg.addr       := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
-    memAccessReg.write.data := selectedExeInst.rightOperand
-    memAccessReg.isUnsigned := memLoadUnsigned
-    memAccessReg.rw         := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
+    memRequestReg.isValid    := (memReadEn || memWriteEn) && !isALE
+    memRequestReg.addr       := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
+    memRequestReg.write.data := selectedExeInst.rightOperand
+    memRequestReg.isUnsigned := memLoadUnsigned
+    memRequestReg.rw         := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
     // mask
     val maskEncode = loadStoreAddr(1, 0)
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-        memAccessReg.write.mask := Mux(
+        memRequestReg.write.mask := Mux(
           maskEncode(1),
           Mux(maskEncode(0), "b1000".U, "b0100".U),
           Mux(maskEncode(0), "b0010".U, "b0001".U)
@@ -209,11 +209,11 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
         when(maskEncode(0)) {
           isALE := true.B // 未对齐
         }
-        memAccessReg.write.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+        memRequestReg.write.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
       }
       is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-        isALE                   := maskEncode.orR
-        memAccessReg.write.mask := "b1111".U
+        isALE                    := maskEncode.orR
+        memRequestReg.write.mask := "b1111".U
       }
     }
   }
@@ -253,13 +253,13 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   when(io.pipelineControlPort.clear) {
     gprWriteReg := RfWriteNdPort.default
     InstInfoNdPort.setDefault(instInfoReg)
-    memAccessReg := MemAccessNdPort.default
+    memRequestReg := MemRequestNdPort.default
   }
   // flush all regs
   when(io.pipelineControlPort.flush) {
     gprWriteReg := RfWriteNdPort.default
     InstInfoNdPort.setDefault(instInfoReg)
-    memAccessReg    := MemAccessNdPort.default
+    memRequestReg   := MemRequestNdPort.default
     stateReg        := State.nonBlocking
     exeInstStoreReg := ExeInstNdPort.default
     pcStoreReg      := zeroWord

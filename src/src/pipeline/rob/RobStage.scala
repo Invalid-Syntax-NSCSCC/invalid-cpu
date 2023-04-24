@@ -13,7 +13,7 @@ import pipeline.dataforward.bundles.ReadPortWithValid
 // 重排序缓冲区，未接入cpu
 // 只给需要写寄存器的分配id
 class RobStage(
-  robLength: Int = 8,
+  robLength: Int = 16,
   issueNum:  Int = 2,
   commitNum: Int = 2,
   readNum:   Int = 2,
@@ -75,35 +75,57 @@ class RobStage(
   val biWriteMux = Module(new BiPriorityMux(robLength))
   biWriteMux.io.inVector := areEmpty
 
+  io.idDistributePorts(0).id := counter
+  io.idDistributePorts(1).id := counter + 1.U
+  counter                    := counter + 2.U
   when(emptyNum === 1.U) {
-    // 只能分配一个
     when(io.idDistributePorts(0).writeEn) {
-      io.idDistributePorts(0).id                         := counter
-      buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(0).id
       buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-      counter                                            := counter + 1.U
     }.elsewhen(io.idDistributePorts(1).writeEn) {
-      io.idDistributePorts(1).id                         := counter
-      buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(1).id
       buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-      counter                                            := counter + 1.U
     }
   }.elsewhen(emptyNum === 2.U) {
-    // 2个都能分配
-    io.idDistributePorts(0).id                         := counter
-    io.idDistributePorts(1).id                         := counter + 1.U
-    buffer(biWriteMux.io.selectIndices(0).index).id    := counter
-    buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-    buffer(biWriteMux.io.selectIndices(1).index).id    := counter + 1.U
-    buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
-    counter                                            := counter + 2.U
+    when(io.idDistributePorts(0).writeEn) {
+      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(0).id
+      buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+    }
+    when(io.idDistributePorts(1).writeEn) {
+      buffer(biWriteMux.io.selectIndices(1).index).id    := io.idDistributePorts(1).id
+      buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
+    }
   }
+
+  // when(emptyNum === 1.U) {
+  //   // 只能分配一个
+  //   when(io.idDistributePorts(0).writeEn) {
+  //     io.idDistributePorts(0).id                         := counter
+  //     buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+  //     buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+  //     counter                                            := counter + 1.U
+  //   }.elsewhen(io.idDistributePorts(1).writeEn) {
+  //     io.idDistributePorts(1).id                         := counter
+  //     buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+  //     buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+  //     counter                                            := counter + 1.U
+  //   }
+  // }.elsewhen(emptyNum === 2.U) {
+  //   // 2个都能分配
+  //   io.idDistributePorts(0).id                         := counter
+  //   io.idDistributePorts(1).id                         := counter + 1.U
+  //   buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+  //   buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+  //   buffer(biWriteMux.io.selectIndices(1).index).id    := counter + 1.U
+  //   buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
+  //   counter                                            := counter + 2.U
+  // }
 
   // ready
   io.writeReadyPorts.zip(io.instReadyIds).foreach {
     case (readyPort, readyId) => {
       buffer.foreach { robStore =>
-        when(robStore.state === State.busy && robStore.id === readyId && readyId.orR) {
+        when(robStore.state === State.busy && robStore.id === readyId && readyPort.en) {
           robStore.state     := State.ready
           robStore.writePort := readyPort
         }
@@ -117,11 +139,23 @@ class RobStage(
     readPort.data  := DontCare
   }
   io.readPorts.foreach { readPort =>
-    buffer.foreach { robStore =>
-      when(robStore.state === State.ready && robStore.writePort.en && robStore.writePort.addr === readPort.addr) {
-        readPort.valid := true.B
-        readPort.data  := robStore.writePort.data
-      }
-    }
+    // buffer.foreach { robStore =>
+    //   when(robStore.state === State.ready && robStore.writePort.en && robStore.writePort.addr === readPort.addr) {
+    //     readPort.valid := true.B
+    //     readPort.data  := robStore.writePort.data
+    //   }
+    // }
+    val minFinderForRead = Module(new MinFinder(robLength, idLength))
+    minFinderForRead.io.values := WireDefault(VecInit(buffer.map(_.id)))
+    minFinderForRead.io.masks := WireDefault(
+      VecInit(
+        buffer.map { robInstStore =>
+          robInstStore.writePort.addr === readPort.addr && robInstStore.writePort.en
+        }
+      )
+    )
+    val minResult = WireDefault(buffer(minFinderForRead.io.index))
+    readPort.valid := minFinderForRead.io.masks.reduce(_ || _) && minResult.state === State.ready
+    readPort.data  := minResult.writePort.data
   }
 }
