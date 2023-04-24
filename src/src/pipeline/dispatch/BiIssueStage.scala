@@ -106,6 +106,12 @@ class BiIssueStage(
   // val canIssueMaxNum = io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _)
   val canIssueMaxNumFromStall = WireDefault(io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _))
   val canIssueMaxNumFromRob   = WireDefault(io.robEmptyNum)
+  when(io.robEmptyNum === 1.U && !io.fetchInstDecodePorts.map(_.bits.decode.info.gprWritePort.en).reduce(_ && _)) {
+    canIssueMaxNumFromRob := 2.U
+  }
+  when(io.robEmptyNum === 0.U && !io.fetchInstDecodePorts.map(_.bits.decode.info.gprWritePort.en).reduce(_ || _)) {
+    canIssueMaxNumFromRob := 2.U
+  }
   val canIssueMaxNum = Mux(
     canIssueMaxNumFromRob < canIssueMaxNumFromStall,
     canIssueMaxNumFromRob,
