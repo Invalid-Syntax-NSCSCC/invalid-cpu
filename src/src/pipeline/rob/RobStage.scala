@@ -75,35 +75,57 @@ class RobStage(
   val biWriteMux = Module(new BiPriorityMux(robLength))
   biWriteMux.io.inVector := areEmpty
 
+  io.idDistributePorts(0).id := counter
+  io.idDistributePorts(1).id := counter + 1.U
+  counter                    := counter + 2.U
   when(emptyNum === 1.U) {
-    // 只能分配一个
     when(io.idDistributePorts(0).writeEn) {
-      io.idDistributePorts(0).id                         := counter
-      buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(0).id
       buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-      counter                                            := counter + 1.U
     }.elsewhen(io.idDistributePorts(1).writeEn) {
-      io.idDistributePorts(1).id                         := counter
-      buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(1).id
       buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-      counter                                            := counter + 1.U
     }
   }.elsewhen(emptyNum === 2.U) {
-    // 2个都能分配
-    io.idDistributePorts(0).id                         := counter
-    io.idDistributePorts(1).id                         := counter + 1.U
-    buffer(biWriteMux.io.selectIndices(0).index).id    := counter
-    buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-    buffer(biWriteMux.io.selectIndices(1).index).id    := counter + 1.U
-    buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
-    counter                                            := counter + 2.U
+    when(io.idDistributePorts(0).writeEn) {
+      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(0).id
+      buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+    }
+    when(io.idDistributePorts(1).writeEn) {
+      buffer(biWriteMux.io.selectIndices(1).index).id    := io.idDistributePorts(1).id
+      buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
+    }
   }
+
+  // when(emptyNum === 1.U) {
+  //   // 只能分配一个
+  //   when(io.idDistributePorts(0).writeEn) {
+  //     io.idDistributePorts(0).id                         := counter
+  //     buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+  //     buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+  //     counter                                            := counter + 1.U
+  //   }.elsewhen(io.idDistributePorts(1).writeEn) {
+  //     io.idDistributePorts(1).id                         := counter
+  //     buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+  //     buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+  //     counter                                            := counter + 1.U
+  //   }
+  // }.elsewhen(emptyNum === 2.U) {
+  //   // 2个都能分配
+  //   io.idDistributePorts(0).id                         := counter
+  //   io.idDistributePorts(1).id                         := counter + 1.U
+  //   buffer(biWriteMux.io.selectIndices(0).index).id    := counter
+  //   buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+  //   buffer(biWriteMux.io.selectIndices(1).index).id    := counter + 1.U
+  //   buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
+  //   counter                                            := counter + 2.U
+  // }
 
   // ready
   io.writeReadyPorts.zip(io.instReadyIds).foreach {
     case (readyPort, readyId) => {
       buffer.foreach { robStore =>
-        when(robStore.state === State.busy && robStore.id === readyId && readyId.orR) {
+        when(robStore.state === State.busy && robStore.id === readyId && readyPort.en) {
           robStore.state     := State.ready
           robStore.writePort := readyPort
         }
