@@ -10,30 +10,43 @@ class BiCounter(count: Int) extends Module {
     // inc =/= `11`
     val inc   = Input(UInt(2.W))
     val flush = Input(Bool())
+    // one clock delay
     val value = Output(UInt(w))
+    // no delay
+    val incOneResult = Output(UInt(w))
+    val incTwoResult = Output(UInt(w))
   })
 
-  val counter = RegInit(0.U(w))
-  io.value := counter
+  val counter      = RegInit(0.U(w))
+  val incOneResult = WireDefault(0.U(w))
+  val incTwoResult = WireDefault(0.U(w))
+  io.incOneResult := incOneResult
+  io.incTwoResult := incTwoResult
+  io.value        := counter
 
+  // when(io.inc === 1.U) {
+  when(counter === (count - 1).U) {
+    incOneResult := 0.U
+  }.otherwise {
+    incTwoResult := counter + 1.U
+  }
+  // }.elsewhen(io.inc === 2.U) {
+  when(counter === (count - 2).U) {
+    incTwoResult := 0.U
+  }.elsewhen(counter === (count - 1).U) {
+    incTwoResult := 1.U
+  }.otherwise {
+    incTwoResult := counter + 2.U
+  }
+  // }
   when(io.inc === 1.U) {
-    when(counter === (count - 1).U) {
-      counter := 0.U
-    }.otherwise {
-      counter := counter + 1.U
-    }
+    counter := incOneResult
   }.elsewhen(io.inc === 2.U) {
-    when(counter === (count - 2).U) {
-      counter := 0.U
-    }.elsewhen(counter === (count - 1).U) {
-      counter := 1.U
-    }.otherwise {
-      counter := counter + 2.U
-    }
+    counter := incTwoResult
   }
 
   when(io.flush) {
-    io.value := false.B
+    io.value := 0.U
     counter  := 0.U
   }
 }
