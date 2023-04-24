@@ -132,8 +132,8 @@ class RobStage(
         }
       )
     )
-    val minResultIndex = WireDefault(minFinderForRead.io.index)
-    readPort.valid := minFinderForRead.io.masks.reduce(_ || _) && buffer(minResultIndex).state === State.ready
-    readPort.data  := buffer(minResultIndex).writePort.data
+    val minResult = WireDefault(buffer(minFinderForRead.io.index))
+    readPort.valid := minFinderForRead.io.masks.reduce(_ || _) && minResult.state === State.ready
+    readPort.data  := minResult.writePort.data
   }
 }
