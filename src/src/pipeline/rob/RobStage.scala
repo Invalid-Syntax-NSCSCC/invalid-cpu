@@ -10,8 +10,7 @@ import utils._
 import spec.wordLength
 import pipeline.dataforward.bundles.ReadPortWithValid
 
-// 重排序缓冲区，未接入cpu
-// 只给需要写寄存器的分配id
+// TODO: flush
 class RobStage(
   robLength: Int = 16,
   issueNum:  Int = 2,
@@ -33,95 +32,82 @@ class RobStage(
   io.idDistributePorts.foreach(_.id := 0.U)
   io.commitPorts.foreach(_ := RfWriteNdPort.default)
 
-  val counter = RegInit(1.U(idLength.W))
-  val buffer  = RegInit(VecInit(Seq.fill(robLength)(RobInstStoreBundle.default)))
-
-  /** Commit
+  /** Store buffer
     */
-  val areValid = WireDefault(
-    VecInit(
-      buffer.map { robInstStore => robInstStore.state === State.busy || robInstStore.state === State.ready }
+
+  val idCounter = RegInit(1.U(idLength.W))
+  val buffer    = RegInit(VecInit(Seq.fill(robLength)(RobInstStoreBundle.default)))
+
+  val enq_ptr = Module(new BiCounter(robLength))
+  val deq_ptr = Module(new BiCounter(robLength))
+  Seq(enq_ptr, deq_ptr).foreach { ptr =>
+    ptr.io.inc   := 0.U
+    ptr.io.flush := false.B
+  }
+
+  val maybeFull = RegInit(false.B)
+  val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
+  val isEmpty   = ptrMatch && !maybeFull
+  val isFull    = ptrMatch && maybeFull
+
+  val storeNum = WireDefault(
+    Mux(
+      enq_ptr.io.value > deq_ptr.io.value,
+      enq_ptr.io.value - deq_ptr.io.value,
+      (robLength.U - deq_ptr.io.value) + enq_ptr.io.value
     )
   )
-  val firstCommitIndexFinder = Module(new MinFinder(robLength, idLength))
-  firstCommitIndexFinder.io.values := WireDefault(VecInit(buffer.map(_.id)))
-  firstCommitIndexFinder.io.masks  := areValid
+  val emptyNum = WireDefault(robLength.U - storeNum)
 
-  val secondCommitIndexFinder = Module(new MinFinder(robLength, idLength))
-  secondCommitIndexFinder.io.values := WireDefault(VecInit(buffer.map(_.id)))
-  val secondAreValid = WireDefault(areValid)
-  secondAreValid(firstCommitIndexFinder.io.index) := false.B
-  secondCommitIndexFinder.io.masks                := secondAreValid
+  val isEmptyByOne = WireDefault(storeNum === 1.U)
+  val isFullByOne  = WireDefault(emptyNum === 1.U)
 
-  when(buffer(firstCommitIndexFinder.io.index).state === State.ready) {
-    io.commitPorts(0)                             := buffer(firstCommitIndexFinder.io.index).writePort
-    buffer(firstCommitIndexFinder.io.index).state := State.empty
-  }
-
-  when(
-    buffer(secondCommitIndexFinder.io.index).state === State.ready &&
-      secondCommitIndexFinder.io.index =/= firstCommitIndexFinder.io.index
-  ) {
-    io.commitPorts(1)                              := buffer(secondCommitIndexFinder.io.index).writePort
-    buffer(secondCommitIndexFinder.io.index).state := State.empty
-  }
-
-  /** id distribute TODO: 加入同时写入和commit的判断
-    */
-  val areEmpty = WireDefault(VecInit(buffer.map(_.state === State.empty)))
-  val emptyNum = WireDefault(areEmpty.count(_.asBool))
   io.emptyNum := emptyNum
 
-  val biWriteMux = Module(new BiPriorityMux(robLength))
-  biWriteMux.io.inVector := areEmpty
+  /** id distribute
+    */
 
-  io.idDistributePorts(0).id := counter
-  io.idDistributePorts(1).id := counter + 1.U
-  counter                    := counter + 2.U
-  when(emptyNum === 1.U) {
+  io.idDistributePorts(0).id := idCounter
+  io.idDistributePorts(1).id := idCounter + 1.U
+  idCounter                  := idCounter + 2.U
+
+  val instWriteNum = WireDefault(
+    io.idDistributePorts.map(_.writeEn.asUInt).reduce(_ +& _)
+  )
+
+  val enqPtrIncOneResult = WireDefault(enq_ptr.io.incOneResult)
+  val enqPtrIncTwoResult = WireDefault(enq_ptr.io.incTwoResult)
+  when(isFullByOne) {
+    // 只能分配一个
     when(io.idDistributePorts(0).writeEn) {
-      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(0).id
-      buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+      enq_ptr.io.inc                   := 1.U
+      buffer(enqPtrIncOneResult).state := State.busy
+      buffer(enqPtrIncOneResult).id    := io.idDistributePorts(0).id
     }.elsewhen(io.idDistributePorts(1).writeEn) {
-      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(1).id
-      buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
+      enq_ptr.io.inc                   := 1.U
+      buffer(enqPtrIncOneResult).state := State.busy
+      buffer(enqPtrIncOneResult).id    := io.idDistributePorts(1).id
     }
-  }.elsewhen(emptyNum === 2.U) {
+  }.elsewhen(!isFull) {
+    // 能分配2个
     when(io.idDistributePorts(0).writeEn) {
-      buffer(biWriteMux.io.selectIndices(0).index).id    := io.idDistributePorts(0).id
-      buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-    }
-    when(io.idDistributePorts(1).writeEn) {
-      buffer(biWriteMux.io.selectIndices(1).index).id    := io.idDistributePorts(1).id
-      buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
+      enq_ptr.io.inc                   := 1.U
+      buffer(enqPtrIncOneResult).state := State.busy
+      buffer(enqPtrIncOneResult).id    := io.idDistributePorts(0).id
+      when(io.idDistributePorts(1).writeEn) {
+        enq_ptr.io.inc                   := 2.U
+        buffer(enqPtrIncTwoResult).state := State.busy
+        buffer(enqPtrIncTwoResult).id    := io.idDistributePorts(1).id
+      }
+    }.elsewhen(io.idDistributePorts(1).writeEn) {
+      enq_ptr.io.inc                   := 1.U
+      buffer(enqPtrIncOneResult).state := State.busy
+      buffer(enqPtrIncOneResult).id    := io.idDistributePorts(1).id
     }
   }
 
-  // when(emptyNum === 1.U) {
-  //   // 只能分配一个
-  //   when(io.idDistributePorts(0).writeEn) {
-  //     io.idDistributePorts(0).id                         := counter
-  //     buffer(biWriteMux.io.selectIndices(0).index).id    := counter
-  //     buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-  //     counter                                            := counter + 1.U
-  //   }.elsewhen(io.idDistributePorts(1).writeEn) {
-  //     io.idDistributePorts(1).id                         := counter
-  //     buffer(biWriteMux.io.selectIndices(0).index).id    := counter
-  //     buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-  //     counter                                            := counter + 1.U
-  //   }
-  // }.elsewhen(emptyNum === 2.U) {
-  //   // 2个都能分配
-  //   io.idDistributePorts(0).id                         := counter
-  //   io.idDistributePorts(1).id                         := counter + 1.U
-  //   buffer(biWriteMux.io.selectIndices(0).index).id    := counter
-  //   buffer(biWriteMux.io.selectIndices(0).index).state := State.busy
-  //   buffer(biWriteMux.io.selectIndices(1).index).id    := counter + 1.U
-  //   buffer(biWriteMux.io.selectIndices(1).index).state := State.busy
-  //   counter                                            := counter + 2.U
-  // }
-
-  // ready
+  /** write ready
+    */
   io.writeReadyPorts.zip(io.instReadyIds).foreach {
     case (readyPort, readyId) => {
       buffer.foreach { robStore =>
@@ -133,18 +119,9 @@ class RobStage(
     }
   }
 
-  // read
+  /** read
+    */
   io.readPorts.foreach { readPort =>
-    readPort.valid := false.B
-    readPort.data  := DontCare
-  }
-  io.readPorts.foreach { readPort =>
-    // buffer.foreach { robStore =>
-    //   when(robStore.state === State.ready && robStore.writePort.en && robStore.writePort.addr === readPort.addr) {
-    //     readPort.valid := true.B
-    //     readPort.data  := robStore.writePort.data
-    //   }
-    // }
     val minFinderForRead = Module(new MinFinder(robLength, idLength))
     minFinderForRead.io.values := WireDefault(VecInit(buffer.map(_.id)))
     minFinderForRead.io.masks := WireDefault(
@@ -158,4 +135,5 @@ class RobStage(
     readPort.valid := minFinderForRead.io.masks.reduce(_ || _) && minResult.state === State.ready
     readPort.data  := minResult.writePort.data
   }
+
 }
