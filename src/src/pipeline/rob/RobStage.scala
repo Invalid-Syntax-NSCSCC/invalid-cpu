@@ -13,7 +13,7 @@ import pipeline.dataforward.bundles.ReadPortWithValid
 // 重排序缓冲区，未接入cpu
 // 只给需要写寄存器的分配id
 class RobStage(
-  robLength: Int = 8,
+  robLength: Int = 16,
   issueNum:  Int = 2,
   commitNum: Int = 2,
   readNum:   Int = 2,
@@ -117,11 +117,23 @@ class RobStage(
     readPort.data  := DontCare
   }
   io.readPorts.foreach { readPort =>
-    buffer.foreach { robStore =>
-      when(robStore.state === State.ready && robStore.writePort.en && robStore.writePort.addr === readPort.addr) {
-        readPort.valid := true.B
-        readPort.data  := robStore.writePort.data
-      }
-    }
+    // buffer.foreach { robStore =>
+    //   when(robStore.state === State.ready && robStore.writePort.en && robStore.writePort.addr === readPort.addr) {
+    //     readPort.valid := true.B
+    //     readPort.data  := robStore.writePort.data
+    //   }
+    // }
+    val minFinderForRead = Module(new MinFinder(robLength, idLength))
+    minFinderForRead.io.values := WireDefault(VecInit(buffer.map(_.id)))
+    minFinderForRead.io.masks := WireDefault(
+      VecInit(
+        buffer.map { robInstStore =>
+          robInstStore.writePort.addr === readPort.addr && robInstStore.writePort.en
+        }
+      )
+    )
+    val minResultIndex = WireDefault(minFinderForRead.io.index)
+    readPort.valid := minFinderForRead.io.masks.reduce(_ || _) && buffer(minResultIndex).state === State.ready
+    readPort.data  := buffer(minResultIndex).writePort.data
   }
 }

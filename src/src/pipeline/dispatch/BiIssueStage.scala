@@ -19,7 +19,7 @@ class BiIssueStage(
   issueNum:       Int = 2,
   scoreChangeNum: Int = Param.regFileWriteNum,
   robIdLength:    Int = 32,
-  robLengthLog:   Int = 3)
+  robLengthLog:   Int = 4)
     extends Module {
   val io = IO(new Bundle {
     // `InstQueue` -> `IssueStage`
