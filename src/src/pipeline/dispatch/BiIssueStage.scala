@@ -15,6 +15,7 @@ import pipeline.dataforward.bundles.ReadPortWithValid
 import pipeline.dispatch.bundles.IssueInfoWithValidBundle
 import pipeline.rob.bundles.RobIdDistributePort
 
+// TODO: deal WAR data hazard
 class BiIssueStage(
   issueNum:       Int = 2,
   scoreChangeNum: Int = Param.regFileWriteNum,
