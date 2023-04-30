@@ -10,7 +10,6 @@ import pipeline.dispatch.bundles.RenameResultNdPort
 import utils.BiPriorityMux
 import utils.BiCounter
 import control.bundles.PipelineControlNDPort
-import firrtl.castRhs
 
 // 重命名+计分板，仅供乱序发射使用,顺序发射时不需要
 class Rename(
@@ -24,7 +23,7 @@ class Rename(
   val arfNumLog: Int = log2Ceil(arfRegNum)
   val prfNumLog: Int = log2Ceil(prfRegNum)
   val io = IO(new Bundle {
-    val occupyPorts = Input(Vec(occupyNum, new ScoreboardChangeNdPort(prfNumLog.W)))
+    val commitPorts = Input(Vec(changeNum, new ScoreboardChangeNdPort(prfNumLog.W)))
     val freePorts   = Input(Vec(changeNum, new ScoreboardChangeNdPort(prfNumLog.W)))
     val regScores   = Output(Vec(prfRegNum, State()))
 
@@ -192,9 +191,25 @@ class Rename(
     }
   }
 
-  /** Rename Retire From WbStage
+  /** Rename - Retire From WbStage
     *
     * busy --> retire
     */
 
+  io.freePorts.foreach { port =>
+    when(port.en) {
+      prfStateReg(port.addr) := State.retire
+    }
+  }
+
+  /** Rename - Next Commit From Rob
+    *
+    * retire -> empty
+    */
+
+  io.commitPorts.foreach { port =>
+    when(port.en) {
+      prfStateReg(prfPrevMap(port.addr)) := State.free
+    }
+  }
 }
