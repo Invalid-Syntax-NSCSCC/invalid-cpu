@@ -3,7 +3,7 @@ package utils
 import chisel3._
 import chisel3.util._
 
-class BiCounter(count: Int) extends Module {
+class BiCounter(count: Int, init: Int = 0) extends Module {
   require(count > 1)
   val w = log2Ceil(count).W
   val io = IO(new Bundle {
@@ -17,7 +17,7 @@ class BiCounter(count: Int) extends Module {
     val incTwoResult = Output(UInt(w))
   })
 
-  val counter      = RegInit(0.U(w))
+  val counter      = RegInit(init.U(w))
   val incOneResult = WireDefault(0.U(w))
   val incTwoResult = WireDefault(0.U(w))
   io.incOneResult := incOneResult
