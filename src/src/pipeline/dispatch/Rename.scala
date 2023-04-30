@@ -10,6 +10,7 @@ import pipeline.dispatch.bundles.RenameResultNdPort
 import utils.BiPriorityMux
 import utils.BiCounter
 import control.bundles.PipelineControlNDPort
+import firrtl.castRhs
 
 // 重命名+计分板，仅供乱序发射使用,顺序发射时不需要
 class Rename(
@@ -39,8 +40,11 @@ class Rename(
 
   /** State Transform
     *
-    * empty ---rename request write------------> busy busy ---------write back----------------> retire retire --next prf
-    * ( -> same arf) commit--> empyt
+    * free ---rename request write------------> busy
+    *
+    * busy ---------write back----------------> retire
+    *
+    * retire --next prf ( -> same arf) commit--> empty
     */
 
   val arfToPrfMap = RegInit(VecInit(Seq.range(0, arfRegNum).map(_.U(prfNumLog.W))))
@@ -96,9 +100,9 @@ class Rename(
   val isEmptyByOne = WireDefault(storeNum === 1.U)
   val isFullByOne  = WireDefault(emptyNum === 1.U)
 
-  /** Rename Request
+  /** Rename Request From RenameStage
     *
-    * empty --> free
+    * free --> busy
     */
 
   val deqRequest = WireDefault(VecInit(io.renameRequestPorts.map { port =>
@@ -106,12 +110,91 @@ class Rename(
   }))
   val deqNum = WireDefault(deqRequest.map(_.asUInt).reduce(_ +& _))
 
-  io.renameResultPorts.foreach(RenameResultNdPort setDefault _)
+  io.renameResultPorts.zip(io.renameRequestPorts).foreach {
+    case (dst, src) =>
+      dst.grfReadPorts.zip(src.arfReadPorts).foreach {
+        case (dstRead, srcRead) =>
+          dstRead.en   := srcRead.en
+          dstRead.addr := arfToPrfMap(srcRead.addr)
+      }
+  }
+
   when(!isEmpty) {
-    when(isEmptyByOne) {
-      // 只能重命名一个
-      when(deqRequest(0)) {}
+    // 至少可重命名1个
+    when(deqRequest(0)) {
+      deq_ptr.io.inc                          := 1.U
+      io.renameResultPorts(0).grfWritePort.en := true.B
+
+      val renameAddr = WireDefault(freeQueue(deq_ptr.io.value))
+      io.renameResultPorts(0).grfWritePort.addr := renameAddr
+
+      prfPrevMap(renameAddr) := arfToPrfMap(
+        io.renameRequestPorts(0).arfWritePort.addr
+      )
+      arfToPrfMap(io.renameRequestPorts(0).arfWritePort.addr) := renameAddr
+
+      prfStateReg(renameAddr) := State.busy
+
+      // 覆盖1的写重命名
+      io.renameResultPorts.zip(io.renameRequestPorts).foreach {
+        case (dst, src) =>
+          dst.grfReadPorts.zip(src.arfReadPorts).foreach {
+            case (dstRead, srcRead) =>
+              dstRead.en := srcRead.en
+          }
+      }
+
+      io.renameRequestPorts(1)
+        .arfReadPorts
+        .zip(io.renameResultPorts(1).grfReadPorts)
+        .foreach {
+          case (dstRead, srcRead) =>
+            when(srcRead.addr === io.renameRequestPorts(0).arfWritePort.addr) {
+              dstRead.addr := renameAddr
+            }
+        }
+
+      when(deqRequest(1) && !isEmptyByOne) {
+        // 重命名2个
+        deq_ptr.io.inc                          := 2.U
+        io.renameResultPorts(1).grfWritePort.en := true.B
+
+        val renameAddr2 = WireDefault(freeQueue(deq_ptr.io.value + 1.U))
+        io.renameResultPorts(1).grfWritePort.addr               := renameAddr2
+        prfStateReg(renameAddr2)                                := State.busy
+        arfToPrfMap(io.renameRequestPorts(1).arfWritePort.addr) := renameAddr2
+        when(
+          io.renameRequestPorts(1).arfWritePort.addr =/= io.renameRequestPorts(0).arfWritePort.addr
+        ) {
+          prfPrevMap(renameAddr2) := arfToPrfMap(
+            io.renameRequestPorts(1).arfWritePort.addr
+          )
+        }.otherwise {
+          // write the same reg
+          prfPrevMap(renameAddr2) := renameAddr
+        }
+
+      }
+
+    }.elsewhen(deqRequest(1)) {
+      deq_ptr.io.inc                          := 1.U
+      io.renameResultPorts(1).grfWritePort.en := true.B
+
+      val renameAddr = WireDefault(freeQueue(deq_ptr.io.value))
+      io.renameResultPorts(1).grfWritePort.addr := renameAddr
+
+      prfPrevMap(renameAddr) := arfToPrfMap(
+        io.renameRequestPorts(1).arfWritePort.addr
+      )
+      arfToPrfMap(io.renameRequestPorts(1).arfWritePort.addr) := renameAddr
+
+      prfStateReg(renameAddr) := State.busy
     }
   }
+
+  /** Rename Retire From WbStage
+    *
+    * busy --> retire
+    */
 
 }
