@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import spec.PipelineStageIndex
 import chisel3.ChiselEnum
+import memory.bundles.TlbEntryBundle
 
 object Param {
   // Configurable self-defined parameters go here
@@ -58,6 +59,10 @@ object Param {
       val setLen      = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
       val dataPerLine = 4 // TODO: One data line is 64 bytes
       val sizePerRam  = math.pow(2, Width.DCache._addr).toInt
+    }
+
+    object Tlb {
+      val num = 32
     }
   }
 

@@ -86,5 +86,15 @@ object ExeInst {
     val rdcntvl_w = next
     val rdcntvh_w = next
     val rdcntid   = next
+
+    object Tlb {
+      val clrAll          = 0.U(Width.Tlb.op)
+      val clrAllAlt       = 1.U(Width.Tlb.op)
+      val clrGlobl        = 2.U(Width.Tlb.op)
+      val clrNGlobl       = 3.U(Width.Tlb.op)
+      val clrNGloblAsId   = 4.U(Width.Tlb.op)
+      val clrNGloblAsIdVa = 5.U(Width.Tlb.op)
+      val clrGloblAsIdVa  = 6.U(Width.Tlb.op)
+    }
   }
 }
