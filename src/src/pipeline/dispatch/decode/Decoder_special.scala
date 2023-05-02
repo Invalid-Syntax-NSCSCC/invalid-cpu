@@ -11,7 +11,8 @@ class Decoder_special extends Decoder {
 
   io.out := DecodeOutNdPort.default
 
-  val rd = WireDefault(io.instInfoPort.inst(4, 0))
+  val rd          = WireDefault(io.instInfoPort.inst(4, 0))
+  val rdIsNotZero = WireDefault(rd.orR)
 
   val opcode32 = WireDefault(io.instInfoPort.inst)
 
@@ -56,7 +57,7 @@ class Decoder_special extends Decoder {
       outInfo.exeSel               := ExeInst.Sel.arithmetic
       outInfo.gprReadPorts(0).en   := true.B
       outInfo.gprReadPorts(0).addr := RegIndex.r0
-      outInfo.gprWritePort.en      := true.B
+      outInfo.gprWritePort.en      := rdIsNotZero // true.B
       outInfo.isHasImm             := true.B
       immSext                      := (imm20 << 12).asSInt
       outInfo.imm                  := immSext.asUInt + io.instInfoPort.pcAddr
@@ -68,7 +69,7 @@ class Decoder_special extends Decoder {
       outInfo.exeSel               := ExeInst.Sel.arithmetic
       outInfo.gprReadPorts(0).en   := true.B
       outInfo.gprReadPorts(0).addr := RegIndex.r0
-      outInfo.gprWritePort.en      := true.B
+      outInfo.gprWritePort.en      := rdIsNotZero // true.B
       outInfo.isHasImm             := true.B
       immSext                      := (imm20 << 12).asSInt
       outInfo.imm                  := immSext.asUInt

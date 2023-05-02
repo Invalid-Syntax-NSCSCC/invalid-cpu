@@ -10,10 +10,11 @@ import pipeline.dispatch.bundles.DecodeOutNdPort
 class Decoder_2RI12 extends Decoder {
   io.out := DecodeOutNdPort.default
 
-  val opcode = WireDefault(io.instInfoPort.inst(31, 22))
-  val imm12  = WireDefault(io.instInfoPort.inst(21, 10))
-  val rj     = WireDefault(io.instInfoPort.inst(9, 5))
-  val rd     = WireDefault(io.instInfoPort.inst(4, 0))
+  val opcode      = WireDefault(io.instInfoPort.inst(31, 22))
+  val imm12       = WireDefault(io.instInfoPort.inst(21, 10))
+  val rj          = WireDefault(io.instInfoPort.inst(9, 5))
+  val rd          = WireDefault(io.instInfoPort.inst(4, 0))
+  val rdIsNotZero = WireDefault(rd.orR)
 
   def outInfo = io.out.info
 
@@ -32,7 +33,7 @@ class Decoder_2RI12 extends Decoder {
   io.out.info.gprReadPorts(0).addr := rj
   io.out.info.gprReadPorts(1).en   := false.B
   io.out.info.gprReadPorts(1).addr := DontCare
-  io.out.info.gprWritePort.en      := true.B
+  io.out.info.gprWritePort.en      := rdIsNotZero // true.B
   io.out.info.gprWritePort.addr    := rd
 
   // Fallback

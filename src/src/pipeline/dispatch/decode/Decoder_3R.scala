@@ -12,11 +12,12 @@ class Decoder_3R extends Decoder {
 
   io.out.isMatched := false.B
 
-  val opcode = WireDefault(io.instInfoPort.inst(31, 15))
-  val rk     = WireDefault(io.instInfoPort.inst(14, 10))
-  val rj     = WireDefault(io.instInfoPort.inst(9, 5))
-  val rd     = WireDefault(io.instInfoPort.inst(4, 0))
-  val ui5    = WireDefault(rk)
+  val opcode      = WireDefault(io.instInfoPort.inst(31, 15))
+  val rk          = WireDefault(io.instInfoPort.inst(14, 10))
+  val rj          = WireDefault(io.instInfoPort.inst(9, 5))
+  val rd          = WireDefault(io.instInfoPort.inst(4, 0))
+  val ui5         = WireDefault(rk)
+  val rdIsNotZero = WireDefault(rd.orR)
 
   def outInfo = io.out.info
 
@@ -26,7 +27,7 @@ class Decoder_3R extends Decoder {
   outInfo.gprReadPorts(0).addr := rj
   outInfo.gprReadPorts(1).en   := true.B
   outInfo.gprReadPorts(1).addr := rk
-  outInfo.gprWritePort.en      := true.B
+  outInfo.gprWritePort.en      := rdIsNotZero // true.B
   outInfo.gprWritePort.addr    := rd
 
   // Fallback

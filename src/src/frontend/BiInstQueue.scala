@@ -81,7 +81,7 @@ class BiInstQueue(
   io.dequeuePorts(1).valid := !isEmptyByOne
 
   // enqueue
-  val numWidth: Int = log2Ceil(issueNum)
+  // val numWidth: Int = log2Ceil(issueNum)
 
   val enqEn = (io.enqueuePorts.map(port => (port.ready && port.valid)))
   // val enqueueNum = io.enqueuePorts.map(_.valid).map(_.asUInt).reduce(_ + _)

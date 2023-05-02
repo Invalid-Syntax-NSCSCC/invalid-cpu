@@ -5,9 +5,9 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util._
 import spec._
 
-class RfAccessInfoNdPort extends Bundle {
+class RfAccessInfoNdPort(addrWidth: internal.firrtl.Width = Width.Reg.addr) extends Bundle {
   val en   = Bool()
-  val addr = UInt(Width.Reg.addr)
+  val addr = UInt(addrWidth)
 }
 
 object RfAccessInfoNdPort {

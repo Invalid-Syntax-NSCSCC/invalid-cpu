@@ -11,10 +11,11 @@ class Decoder_2RI14 extends Decoder {
 
   io.out := DecodeOutNdPort.default
 
-  val opcode = WireDefault(io.instInfoPort.inst(31, 24))
-  val imm14  = WireDefault(io.instInfoPort.inst(23, 10))
-  val rj     = WireDefault(io.instInfoPort.inst(9, 5))
-  val rd     = WireDefault(io.instInfoPort.inst(4, 0))
+  val opcode      = WireDefault(io.instInfoPort.inst(31, 24))
+  val imm14       = WireDefault(io.instInfoPort.inst(23, 10))
+  val rj          = WireDefault(io.instInfoPort.inst(9, 5))
+  val rd          = WireDefault(io.instInfoPort.inst(4, 0))
+  val rdIsNotZero = WireDefault(rd.orR)
 
   def outInfo = io.out.info
 
@@ -47,7 +48,7 @@ class Decoder_2RI14 extends Decoder {
       io.out.isMatched          := true.B
       outInfo.exeOp             := ExeInst.Op.ll
       outInfo.exeSel            := ExeInst.Sel.loadStore
-      outInfo.gprWritePort.en   := true.B
+      outInfo.gprWritePort.en   := rdIsNotZero // true.B
       outInfo.gprWritePort.addr := rd
       outInfo.loadStoreImm      := immSext.asUInt
     }
@@ -66,7 +67,7 @@ class Decoder_2RI14 extends Decoder {
       outInfo.csrAddr  := immZext
       when(rj === "b00000".U) { // csrrd csr -> rd
         outInfo.exeOp             := ExeInst.Op.csrrd
-        outInfo.gprWritePort.en   := true.B
+        outInfo.gprWritePort.en   := rdIsNotZero // true.B
         outInfo.gprWritePort.addr := rd
         outInfo.csrReadEn         := true.B
       }.elsewhen(rj === "b00001".U) {

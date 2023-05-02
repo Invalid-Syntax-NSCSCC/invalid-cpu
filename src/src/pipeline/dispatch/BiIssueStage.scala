@@ -15,6 +15,7 @@ import pipeline.dataforward.bundles.ReadPortWithValid
 import pipeline.dispatch.bundles.IssueInfoWithValidBundle
 import pipeline.rob.bundles.RobIdDistributePort
 
+// TODO: deal WAR data hazard
 class BiIssueStage(
   issueNum:       Int = 2,
   scoreChangeNum: Int = Param.regFileWriteNum,
@@ -62,21 +63,19 @@ class BiIssueStage(
   io.issuedInfoPorts := issueInfosReg
 
   // fall back
-  if (true) {
-    io.fetchInstDecodePorts.foreach { port =>
-      port.ready := false.B
-    }
-    io.occupyPortss.foreach(_.foreach { port =>
-      port.en   := false.B
-      port.addr := zeroWord
-    })
-    io.csrOccupyPortss.foreach(_.foreach { port =>
-      port.en   := false.B
-      port.addr := zeroWord
-    })
-    io.issuedInfoPorts.foreach(_ := IssuedInfoNdPort.default)
-    io.instInfoPorts.foreach(_ := InstInfoNdPort.default)
+  io.fetchInstDecodePorts.foreach { port =>
+    port.ready := false.B
   }
+  io.occupyPortss.foreach(_.foreach { port =>
+    port.en   := false.B
+    port.addr := zeroWord
+  })
+  io.csrOccupyPortss.foreach(_.foreach { port =>
+    port.en   := false.B
+    port.addr := zeroWord
+  })
+  io.issuedInfoPorts.foreach(_ := IssuedInfoNdPort.default)
+  io.instInfoPorts.foreach(_ := InstInfoNdPort.default)
 
   /** Combine stage 1 : get fetch infos
     */
