@@ -93,7 +93,7 @@ object CsrRegs {
   }
 
   object ExceptionIndex {
-    private var count = 0
+    private var count = -1
 
     private def next = {
       count += 1

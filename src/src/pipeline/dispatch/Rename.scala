@@ -35,7 +35,7 @@ class Rename(
 
   require(renameNum == 2)
 
-  io <> DontCare
+  // io <> DontCare
 
   /** State Transform
     *
