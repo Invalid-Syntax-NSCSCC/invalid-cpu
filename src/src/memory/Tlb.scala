@@ -28,14 +28,15 @@ class Tlb extends Module {
         val tlbloVec = Vec(2, new TlbeloBundle)
       })
       val out = new Bundle {
-        val tlbidx    = ValidIO(new TlbidxBundle)
-        val tlbehi    = ValidIO(new TlbehiBundle)
-        val tlbeloVec = Vec(2, ValidIO(new TlbeloBundle))
+        val tlbidx    = Valid(new TlbidxBundle)
+        val tlbehi    = Valid(new TlbehiBundle)
+        val tlbeloVec = Vec(2, Valid(new TlbeloBundle))
       }
     }
-    val virtAddr = Input(UInt(Width.Mem.addr))
-    val memType  = Input(TlbMemType())
-    val physAddr = Output(UInt(Width.Mem.addr))
+    val virtAddr  = Input(UInt(Width.Mem.addr))
+    val memType   = Input(TlbMemType())
+    val physAddr  = Output(UInt(Width.Mem.addr))
+    val exception = Valid(UInt(Width.Csr.exceptionIndex)) // TODO: Import `ExceptionType`
   })
 
   val tlbEntryVec = RegInit(VecInit(Seq(new TlbEntryBundle)(Param.Count.Tlb.num)))
@@ -48,6 +49,7 @@ class Tlb extends Module {
   io.csr.out.tlbidx.valid := false.B
   io.csr.out.tlbehi.valid := false.B
   io.csr.out.tlbeloVec.foreach(_.valid := false.B)
+  io.exception.valid := false.B
 
   // Lookup & Maintenance: Search
   val isFoundVec = VecInit(Seq.fill(Param.Count.Tlb.num)(false.B))
@@ -99,17 +101,27 @@ class Tlb extends Module {
 
   // Handle exception
   when(!isFound) {
-    // TODO: TLB reentry exception
+    io.exception.valid := true.B
+    io.exception.bits  := Csr.ExceptionIndex.tlbr
   }
   when(!selectedPage.isValid) {
     switch(io.memType) {
-      // TODO: Page invalid exception
-      is(TlbMemType.load) {}
-      is(TlbMemType.store) {}
-      is(TlbMemType.fetch) {}
+      is(TlbMemType.load) {
+        io.exception.valid := true.B
+        io.exception.bits  := Csr.ExceptionIndex.pil
+      }
+      is(TlbMemType.store) {
+        io.exception.valid := true.B
+        io.exception.bits  := Csr.ExceptionIndex.pis
+      }
+      is(TlbMemType.fetch) {
+        io.exception.valid := true.B
+        io.exception.bits  := Csr.ExceptionIndex.pif
+      }
     }
   }.elsewhen(selectedPage.plv < io.csr.in.plv) {
-    // TODO: Not enough privilege exception
+    io.exception.valid := true.B
+    io.exception.bits  := Csr.ExceptionIndex.ppi
   }.elsewhen(!selectedPage.isDirty && io.memType === TlbMemType.store) {
     // TODO: Page modification exception
   }
