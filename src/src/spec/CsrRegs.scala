@@ -93,7 +93,7 @@ object CsrRegs {
   }
 
   object ExceptionIndex {
-    private var count = 0
+    private var count = -1
 
     private def next = {
       count += 1
@@ -117,6 +117,6 @@ object CsrRegs {
     val fpe  = next
     val tlbr = next
 
-    def width = count
+    def width = count + 1
   }
 }
