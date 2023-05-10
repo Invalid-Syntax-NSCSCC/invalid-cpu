@@ -11,7 +11,8 @@ verilog:
 	# sh scripts/modify_verilog.sh $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/final
 	# head -n -2 $(BUILD_DIR)/CoreCpuTop.v > $(BUILD_DIR)/final/CoreCpuTop.v
-	cp -f $(BUILD_DIR)/CoreCpuTop.v $(BUILD_DIR)/final
+	awk -v n=3 'NR==FNR{total=NR;next} FNR==total-n+1{exit} 1' $(BUILD_DIR)/CoreCpuTop.v $(BUILD_DIR)/CoreCpuTop.v > $(BUILD_DIR)/final/CoreCpuTop.v
+	# cp -f $(BUILD_DIR)/CoreCpuTop.v $(BUILD_DIR)/final
 	cp -f ./verilog/cpu_top.v $(BUILD_DIR)/final
 
 help:
