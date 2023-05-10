@@ -6,8 +6,8 @@ import spec._
 
 class EstatBundle extends Bundle {
   val zero1    = Bool()
-  val esubcode = UInt(CsrRegs.Estat.Width.esubcode)
-  val ecode    = UInt(CsrRegs.Estat.Width.ecode)
+  val esubcode = UInt(Csr.Estat.Width.esubcode)
+  val ecode    = UInt(Csr.Estat.Width.ecode)
   val zero2    = UInt(3.W)
   val is       = UInt(13.W)
 }

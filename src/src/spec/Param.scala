@@ -17,7 +17,7 @@ object Param {
   val scoreboardChangeNum    = 1 // 3
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
-  val ctrlControlNum         = PipelineStageIndex.getCount
+  val ctrlControlNum         = PipelineStageIndex.count + 1
   val issueInstInfoMaxNum    = 1
   val dispatchInstNum        = 1 // 发射数量
   val csrRegsReadNum         = 1
@@ -27,9 +27,8 @@ object Param {
   val dataForwardInputNum = 2
 
   object Width {
-    val exeSel                = 3.W
-    val exeOp                 = 8.W
-    val simpleFetchStageState = 2.W
+    val exeSel = log2Ceil(ExeInst.Sel.count + 1).W
+    val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
     object Axi { // crossbar
       val slaveId  = 8

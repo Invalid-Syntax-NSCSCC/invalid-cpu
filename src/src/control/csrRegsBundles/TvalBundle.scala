@@ -6,9 +6,9 @@ import spec._
 
 class TvalBundle extends Bundle {
   val zero = {
-    UInt((32 - CsrRegs.TimeVal.Width.timeVal).W)
+    UInt((32 - Csr.TimeVal.Width.timeVal).W)
   }
-  val timeVal = UInt(CsrRegs.TimeVal.Width.timeVal.W)
+  val timeVal = UInt(Csr.TimeVal.Width.timeVal.W)
 }
 
 object TvalBundle {

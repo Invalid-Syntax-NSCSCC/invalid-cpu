@@ -17,7 +17,7 @@ import spec._
 import control.bundles.PipelineControlNDPort
 import pipeline.dispatch.enums.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
-import CsrRegs.ExceptionIndex
+import Csr.ExceptionIndex
 import common.bundles.PassThroughPort
 
 // throws exceptions: 指令不存在异常ine
@@ -101,7 +101,7 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
         instDecodeStoreReg := io.fetchInstDecodePort.bits
         instInfoReg        := io.instInfoPassThroughPort.in
         // 指令不存在异常
-        // instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ine) := !isInstValid
+        // instInfoReg.exceptionRecords(Csr.ExceptionIndex.ine) := !isInstValid
       }
     }
     is(State.blocking) {

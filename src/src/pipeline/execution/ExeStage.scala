@@ -187,7 +187,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedExeInst.exeOp))
   // 指令未对齐
   val isALE = WireDefault(false.B)
-  instInfoReg.exceptionRecords(CsrRegs.ExceptionIndex.ale) := isALE
+  instInfoReg.exceptionRecords(Csr.ExceptionIndex.ale) := isALE
 
   when(!isBlocking) {
     memRequestReg.isValid    := (memReadEn || memWriteEn) && !isALE

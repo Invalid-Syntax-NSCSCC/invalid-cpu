@@ -4,14 +4,14 @@ import chisel3._
 
 object ExeInst {
   object Sel {
-    private var count = 0
+    var count = 0
 
     private def next = {
       count += 1
-      count.U(Param.Width.exeSel)
+      count.U
     }
 
-    val none       = 0.U(Param.Width.exeSel)
+    val none       = 0.U
     val logic      = next
     val shift      = next
     val arithmetic = next // Only for regular arithmetic operation computed in ALU
@@ -20,14 +20,14 @@ object ExeInst {
   }
 
   object Op {
-    private var count = 0
+    var count = 0
 
     private def next = {
       count += 1
-      count.U(Param.Width.exeOp)
+      count.U
     }
 
-    val nop   = 0.U(Param.Width.exeOp)
+    val nop   = 0.U
     val add   = next
     val sub   = next
     val slt   = next

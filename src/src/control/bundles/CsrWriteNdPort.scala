@@ -6,8 +6,8 @@ import spec._
 
 class CsrWriteNdPort extends Bundle {
   val en   = Bool()
-  val addr = UInt(Width.CsrReg.addr)
-  val data = UInt(Width.CsrReg.data)
+  val addr = UInt(Width.Csr.addr)
+  val data = UInt(Width.Csr.data)
 }
 
 object CsrWriteNdPort {

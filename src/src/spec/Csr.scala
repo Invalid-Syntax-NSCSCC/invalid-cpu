@@ -4,14 +4,13 @@ import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import control.bundles.EcodeBundle
 
-object CsrRegs {
-
+object Csr {
   object Index {
-    private var count = 0
+    var count = -1
 
     private def next = {
       count += 1
-      count.U(Width.CsrReg.addr)
+      count.U(Width.Csr.addr)
     }
 
     val crmd      = next
@@ -44,8 +43,6 @@ object CsrRegs {
     val ctag      = next
     val dmw0      = next
     val dmw1      = next
-
-    def getCount: Int = count + 1
   }
 
   object Estat {
@@ -75,7 +72,6 @@ object CsrRegs {
     val fpd  = e("f")
     val fpe  = e("12", 0)
     val tlbr = e("3f")
-
   }
 
   object TimeVal {
@@ -93,11 +89,11 @@ object CsrRegs {
   }
 
   object ExceptionIndex {
-    private var count = -1
+    var count = -1
 
     private def next = {
       count += 1
-      count.U(Width.CsrReg.addr)
+      count.U
     }
 
     val int  = next
@@ -116,7 +112,5 @@ object CsrRegs {
     val fpd  = next
     val fpe  = next
     val tlbr = next
-
-    def width = count + 1
   }
 }

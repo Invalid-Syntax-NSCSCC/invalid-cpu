@@ -10,7 +10,7 @@ import control.bundles.CsrWriteNdPort
 class InstInfoNdPort extends Bundle {
   val pc               = UInt(Width.Reg.data)
   val inst             = UInt(Width.Reg.data)
-  val exceptionRecords = Vec(CsrRegs.ExceptionIndex.width, Bool())
+  val exceptionRecords = Vec(Csr.ExceptionIndex.count + 1, Bool())
   val csrWritePort     = new CsrWriteNdPort
 
   val exeOp = UInt(Param.Width.exeOp)
