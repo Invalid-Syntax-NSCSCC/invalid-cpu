@@ -117,6 +117,6 @@ object CsrRegs {
     val fpe  = next
     val tlbr = next
 
-    def width = count
+    def width = count + 1
   }
 }
