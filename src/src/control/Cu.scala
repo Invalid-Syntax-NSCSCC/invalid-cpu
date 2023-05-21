@@ -66,18 +66,27 @@ class Cu(
 
   io.pipelineControlPorts.foreach(_ := PipelineControlNDPort.default)
   // `ExeStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage` (STALL ITSELF)
-  Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
-    .map(io.pipelineControlPorts(_))
-    .foreach(_.stall := io.exeStallRequest)
-  // `AddrTransStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`  (STALL ITSELF)
-  Seq(
-    PipelineStageIndex.issueStage,
-    PipelineStageIndex.regReadStage,
-    PipelineStageIndex.exeStage,
-    PipelineStageIndex.memStage
-  )
-    .map(io.pipelineControlPorts(_))
-    .foreach(_.stall := io.memStallRequest)
+  io.pipelineControlPorts(PipelineStageIndex.instQueue).stall    := io.memStallRequest && io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.regReadStage).stall := io.memStallRequest && io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.exeStage).stall     := io.memStallRequest && io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.memStage).stall     := io.memStallRequest
+  // when(io.exeStallRequest) {
+  //   Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
+  //     .map(io.pipelineControlPorts(_))
+  //     .foreach(_.stall := true.B)
+  // }
+
+  // // `AddrTransStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`  (STALL ITSELF)
+  // when(io.memStallRequest) {
+  //   Seq(
+  //     PipelineStageIndex.issueStage,
+  //     PipelineStageIndex.regReadStage,
+  //     PipelineStageIndex.exeStage,
+  //     PipelineStageIndex.memStage
+  //   )
+  //     .map(io.pipelineControlPorts(_))
+  //     .foreach(_.stall := true.B)
+  // }
 
   /** clear
     *
@@ -242,7 +251,7 @@ class Cu(
     CsrRegs.ExceptionIndex.pif,
     CsrRegs.ExceptionIndex.pme,
     CsrRegs.ExceptionIndex.ppi
-  ).contains(selectException)
+  ).contains(selectException) && hasException
   io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
 
   // llbit control
