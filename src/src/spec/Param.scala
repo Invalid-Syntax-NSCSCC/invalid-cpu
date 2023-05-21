@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.util._
 import spec.PipelineStageIndex
 import chisel3.ChiselEnum
-import memory.bundles.TlbEntryBundle
 
 object Param {
   // Configurable self-defined parameters go here

@@ -78,8 +78,8 @@ class SimpleFetchStage extends Module {
         when(io.pipelineControlPort.flush || flushReg) {
           flushReg := false.B
         }.otherwise {
-          io.instEnqueuePort.valid := true.B
-          io.instEnqueuePort.bits.inst := axiData
+          io.instEnqueuePort.valid       := true.B
+          io.instEnqueuePort.bits.inst   := axiData
           io.instEnqueuePort.bits.pcAddr := lastPcReg
         }
       }.otherwise {

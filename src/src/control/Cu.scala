@@ -135,10 +135,9 @@ class Cu(
   }
 
   val exceptionFlush = WireDefault(hasException)
-  when (exceptionFlush) {
+  when(exceptionFlush) {
     io.pipelineControlPorts.foreach(_.flush := true.B)
   }
-  
 
   /** 硬件写csr
     */

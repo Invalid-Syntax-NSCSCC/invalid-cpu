@@ -231,11 +231,11 @@ class CoreCpuTop extends Module {
   // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(1)
 
   // Simple fetch stage
-  instQueue.io.enqueuePort         <> simpleFetchStage.io.instEnqueuePort
-  instQueue.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
-  simpleFetchStage.io.pc           := pc.io.pc
+  instQueue.io.enqueuePort                <> simpleFetchStage.io.instEnqueuePort
+  instQueue.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
+  simpleFetchStage.io.pc                  := pc.io.pc
   simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
-  pc.io.isNext                     := simpleFetchStage.io.isPcNext
+  pc.io.isNext                            := simpleFetchStage.io.isPcNext
 
   // Issue stage
   issueStage.io.fetchInstDecodePort.bits   := instQueue.io.dequeuePort.bits.decode
