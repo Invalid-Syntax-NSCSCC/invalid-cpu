@@ -97,7 +97,7 @@ object CsrRegs {
 
     private def next = {
       count += 1
-      count.U(Width.CsrReg.addr)
+      count.U(Width.CsrReg.addr) // TODO: Potential bug where width might not be correct
     }
 
     val int  = next
