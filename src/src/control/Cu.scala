@@ -68,7 +68,11 @@ class Cu(
   // `ExeStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage` (STALL ITSELF)
   Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
     .map(io.pipelineControlPorts(_))
-    .foreach(_.stall := io.exeStallRequest)
+    .foreach { port =>
+      when(io.exeStallRequest) {
+        port.stall := true.B
+      }
+    }
   // `AddrTransStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`  (STALL ITSELF)
   Seq(
     PipelineStageIndex.issueStage,
@@ -77,7 +81,11 @@ class Cu(
     PipelineStageIndex.memStage
   )
     .map(io.pipelineControlPorts(_))
-    .foreach(_.stall := io.memStallRequest)
+    .foreach { port =>
+      when(io.memStallRequest) {
+        port.stall := true.B
+      }
+    }
 
   /** clear
     *
@@ -242,7 +250,7 @@ class Cu(
     CsrRegs.ExceptionIndex.pif,
     CsrRegs.ExceptionIndex.pme,
     CsrRegs.ExceptionIndex.ppi
-  ).contains(selectException)
+  ).contains(selectException) && hasException
   io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
 
   // llbit control
