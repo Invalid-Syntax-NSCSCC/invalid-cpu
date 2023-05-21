@@ -231,10 +231,11 @@ class CoreCpuTop extends Module {
   // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(1)
 
   // Simple fetch stage
-  instQueue.io.enqueuePort         <> simpleFetchStage.io.instEnqueuePort
-  instQueue.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
-  simpleFetchStage.io.pc           := pc.io.pc
-  pc.io.isNext                     := simpleFetchStage.io.isPcNext
+  instQueue.io.enqueuePort                <> simpleFetchStage.io.instEnqueuePort
+  instQueue.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
+  simpleFetchStage.io.pc                  := pc.io.pc
+  simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
+  pc.io.isNext                            := simpleFetchStage.io.isPcNext
 
   // Issue stage
   issueStage.io.fetchInstDecodePort.bits   := instQueue.io.dequeuePort.bits.decode
@@ -347,6 +348,38 @@ class CoreCpuTop extends Module {
   (io.diffTest, regFile.io.difftest) match {
     case (Some(t), Some(r)) =>
       t.regs := r.gpr
+    case _ =>
+  }
+  (io.diffTest, csr.io.difftest) match {
+    case (Some(t), Some(c)) =>
+      t.csr_crmd_diff_0      := c.crmd
+      t.csr_prmd_diff_0      := c.prmd
+      t.csr_ectl_diff_0      := c.ectl
+      t.csr_estat_diff_0     := c.estat.asUInt
+      t.csr_era_diff_0       := c.era
+      t.csr_badv_diff_0      := c.badv
+      t.csr_eentry_diff_0    := c.eentry
+      t.csr_tlbidx_diff_0    := c.tlbidx
+      t.csr_tlbehi_diff_0    := c.tlbehi
+      t.csr_tlbelo0_diff_0   := c.tlbelo0
+      t.csr_tlbelo1_diff_0   := c.tlbelo1
+      t.csr_asid_diff_0      := c.asid
+      t.csr_save0_diff_0     := c.save0
+      t.csr_save1_diff_0     := c.save1
+      t.csr_save2_diff_0     := c.save2
+      t.csr_save3_diff_0     := c.save3
+      t.csr_tid_diff_0       := c.tid
+      t.csr_tcfg_diff_0      := c.tcfg
+      t.csr_tval_diff_0      := c.tval
+      t.csr_ticlr_diff_0     := c.ticlr
+      t.csr_llbctl_diff_0    := c.llbctl
+      t.csr_tlbrentry_diff_0 := c.tlbrentry
+      t.csr_dmw0_diff_0      := c.dmw0
+      t.csr_dmw1_diff_0      := c.dmw1
+      t.csr_pgdl_diff_0      := c.pgdl
+      t.csr_pgdh_diff_0      := c.pgdh
+
+      t.cmt_csr_ecode := c.estat.ecode
     case _ =>
   }
 }

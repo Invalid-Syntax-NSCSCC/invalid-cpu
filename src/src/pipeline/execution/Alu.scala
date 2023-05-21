@@ -94,7 +94,7 @@ class Alu extends Module {
       shift := lop >> rop(4, 0)
     }
     is(Op.sra) {
-      shift := (lop.asSInt << rop(4, 0)).asUInt
+      shift := (lop.asSInt >> rop(4, 0)).asUInt
     }
   }
 
