@@ -234,6 +234,7 @@ class CoreCpuTop extends Module {
   instQueue.io.enqueuePort         <> simpleFetchStage.io.instEnqueuePort
   instQueue.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
   simpleFetchStage.io.pc           := pc.io.pc
+  simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
   pc.io.isNext                     := simpleFetchStage.io.isPcNext
 
   // Issue stage
