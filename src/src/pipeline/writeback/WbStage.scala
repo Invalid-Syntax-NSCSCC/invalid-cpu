@@ -63,7 +63,7 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
   io.difftest match {
     case Some(dt) =>
       dt       := DontCare
-      dt.valid := RegNext(io.gprWriteInfoPort.en)
+      dt.valid := io.instInfoPassThroughPort.in.pc.orR
       dt.pc    := io.instInfoPassThroughPort.in.pc
       dt.instr := io.instInfoPassThroughPort.in.inst
       dt.wen   := RegNext(io.gprWriteInfoPort.en)
