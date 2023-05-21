@@ -60,9 +60,6 @@ object Param {
       val sizePerRam  = math.pow(2, Width.DCache._addr).toInt
     }
 
-    object Tlb {
-      val num = 32
-    }
   }
 
   object Axi {

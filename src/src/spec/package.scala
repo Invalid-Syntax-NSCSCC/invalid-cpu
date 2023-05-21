@@ -71,14 +71,6 @@ package object spec {
       val data = _data.W
     }
 
-    object Tlb {
-      val asid = 10.W
-      val ps   = 6.W
-      val vppn = (Mem._addr - 13).W
-      val ppn  = (Mem._addr - 12).W
-      val op   = 5.W
-    }
-
     object Axi {
       val _data = 128
 
@@ -99,12 +91,6 @@ package object spec {
   }
 
   object Value {
-    object Tlb {
-      object Ps {
-        val _4Kb = 12.U(Width.Tlb.ps)
-        val _4Mb = 22.U(Width.Tlb.ps)
-      }
-    }
 
     object Axi {
       object Burst {
