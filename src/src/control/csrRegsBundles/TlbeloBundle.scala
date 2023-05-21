@@ -9,7 +9,7 @@ class TlbeloBundle extends Bundle {
   val zero = Bool()
   val g    = Bool()
   val mat  = UInt(2.W)
-  val plv  = UInt(2.W)
+  val plt  = UInt(2.W)
   val d    = Bool()
   val v    = Bool()
 }
