@@ -49,6 +49,14 @@ module core_top (
     input        [                   1:0] bresp,
     input                                 bvalid,
     output                                bready,
+
+    //debug
+    input           break_point,
+    input           infor_flag,
+    input  [ 4:0]   reg_num,
+    output          ws_valid,
+    output [31:0]   rf_rdata,
+
     // debug info
     output       [                  31:0] debug0_wb_pc,
     output       [                   3:0] debug0_wb_rf_wen,
