@@ -64,7 +64,7 @@ class Decoder_2RI16 extends Decoder {
       outInfo.gprReadPorts(1).en   := false.B
       outInfo.gprReadPorts(0).addr := DontCare
       outInfo.gprReadPorts(1).addr := DontCare
-      outInfo.gprWritePort.en      := rdIsNotZero // true.B
+      outInfo.gprWritePort.en      := true.B
       outInfo.gprWritePort.addr    := RegIndex.r1
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.bl
