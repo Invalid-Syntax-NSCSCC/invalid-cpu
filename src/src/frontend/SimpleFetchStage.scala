@@ -4,19 +4,18 @@ import axi.AxiMaster
 import axi.bundles.AxiMasterPort
 import chisel3._
 import chisel3.util._
+import control.bundles.PipelineControlNDPort
 import pipeline.dispatch.bundles.InstInfoBundle
+import spec.Param.{SimpleFetchStageState => State}
 import spec._
-import Param.{SimpleFetchStageState => State}
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-
-import java.lang.Package
 
 class SimpleFetchStage extends Module {
   val io = IO(new Bundle {
-    val pc                 = Input(UInt(Width.Reg.data))
-    val isPcNext           = Output(Bool())
-    val axiMasterInterface = new AxiMasterPort
-    val instEnqueuePort    = Decoupled(new InstInfoBundle)
+    val pc                  = Input(UInt(Width.Reg.data))
+    val isPcNext            = Output(Bool())
+    val axiMasterInterface  = new AxiMasterPort
+    val instEnqueuePort     = Decoupled(new InstInfoBundle)
+    val pipelineControlPort = Input(new PipelineControlNDPort)
   })
 
   val axiMaster = Module(new AxiMaster)
@@ -43,6 +42,8 @@ class SimpleFetchStage extends Module {
 
   val lastPcReg = RegInit(zeroWord)
 
+  val flushReg = Reg(Bool())
+
   // Fallback
   isPcNextReg              := false.B
   axiReadRequestReg        := false.B
@@ -50,6 +51,10 @@ class SimpleFetchStage extends Module {
   io.instEnqueuePort.valid := false.B
   io.instEnqueuePort.bits  := DontCare
   lastPcReg                := lastPcReg
+
+  when(io.pipelineControlPort.flush) {
+    flushReg := true.B
+  }
 
   switch(stateReg) {
     is(State.idle) {
@@ -70,10 +75,13 @@ class SimpleFetchStage extends Module {
     is(State.waitInst) { // State Value: 2
       when(axiReadValid) {
         nextState := State.requestInst
-
-        io.instEnqueuePort.valid       := true.B
-        io.instEnqueuePort.bits.inst   := axiData
-        io.instEnqueuePort.bits.pcAddr := lastPcReg
+        when(io.pipelineControlPort.flush || flushReg) {
+          flushReg := false.B
+        }.otherwise {
+          io.instEnqueuePort.valid       := true.B
+          io.instEnqueuePort.bits.inst   := axiData
+          io.instEnqueuePort.bits.pcAddr := lastPcReg
+        }
       }.otherwise {
         nextState := State.waitInst
       }
