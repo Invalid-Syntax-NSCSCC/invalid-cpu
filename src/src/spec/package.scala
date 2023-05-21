@@ -91,7 +91,6 @@ package object spec {
   }
 
   object Value {
-
     object Axi {
       object Burst {
         val fixed    = 0.U(2.W)

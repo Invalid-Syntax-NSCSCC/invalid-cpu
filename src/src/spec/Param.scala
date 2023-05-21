@@ -59,7 +59,6 @@ object Param {
       val dataPerLine = 4 // TODO: One data line is 64 bytes
       val sizePerRam  = math.pow(2, Width.DCache._addr).toInt
     }
-
   }
 
   object Axi {

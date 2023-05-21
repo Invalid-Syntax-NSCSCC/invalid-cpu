@@ -86,6 +86,5 @@ object ExeInst {
     val rdcntvl_w = next
     val rdcntvh_w = next
     val rdcntid   = next
-
   }
 }
