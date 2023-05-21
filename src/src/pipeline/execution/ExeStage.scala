@@ -53,6 +53,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
+  InstInfoNdPort.setDefault(instInfoReg)
   io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
