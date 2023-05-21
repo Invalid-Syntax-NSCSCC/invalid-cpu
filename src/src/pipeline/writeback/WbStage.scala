@@ -25,7 +25,7 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
     val difftest =
       if (isDiffTest)
         Some(Output(new Bundle {
-          val valid          = Bool() // TODO
+          val valid          = Bool()
           val pc             = UInt(Width.Reg.data)
           val instr          = UInt(Width.Reg.data)
           val is_TLBFILL     = Bool() // TODO
@@ -35,8 +35,8 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
           val wen            = Bool()
           val wdest          = UInt(Width.Reg.addr)
           val wdata          = UInt(Width.Reg.data)
-          val csr_rstat      = Bool() // TODO
-          val csr_data       = UInt(Width.Reg.data) // TODO
+          val csr_rstat      = Bool()
+          val csr_data       = UInt(Width.Reg.data)
         }))
       else None
   })
@@ -62,13 +62,15 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
   // Diff test connection
   io.difftest match {
     case Some(dt) =>
-      dt       := DontCare
-      dt.valid := RegNext(io.gprWriteInfoPort.en)
-      dt.pc    := io.instInfoPassThroughPort.in.pc
-      dt.instr := io.instInfoPassThroughPort.in.inst
-      dt.wen   := RegNext(io.gprWriteInfoPort.en)
-      dt.wdest := RegNext(io.gprWriteInfoPort.addr)
-      dt.wdata := RegNext(io.gprWriteInfoPort.data)
+      dt           := DontCare
+      dt.valid     := RegNext(io.instInfoPassThroughPort.in.pc.orR)
+      dt.pc        := RegNext(io.instInfoPassThroughPort.in.pc)
+      dt.instr     := RegNext(io.instInfoPassThroughPort.in.inst)
+      dt.wen       := RegNext(io.gprWriteInfoPort.en)
+      dt.wdest     := RegNext(io.gprWriteInfoPort.addr)
+      dt.wdata     := RegNext(io.gprWriteInfoPort.data)
+      dt.csr_rstat := RegNext(io.instInfoPassThroughPort.in.csrWritePort.en)
+      dt.csr_data  := RegNext(io.instInfoPassThroughPort.in.csrWritePort.data)
     case _ =>
   }
 }
