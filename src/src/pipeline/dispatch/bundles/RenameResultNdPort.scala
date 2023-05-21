@@ -13,7 +13,7 @@ class RenameResultNdPort(
 }
 
 object RenameResultNdPort {
-  def setDefault(port: RenameResultNdPort) {
+  def setDefault(port: RenameResultNdPort) = {
     port.grfWritePort := RfAccessInfoNdPort.default
     port.grfReadPorts.foreach(_ := RfAccessInfoNdPort.default)
   }
