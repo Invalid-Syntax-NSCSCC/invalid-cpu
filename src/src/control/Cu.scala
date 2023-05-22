@@ -87,27 +87,6 @@ class Cu(
   //     .map(io.pipelineControlPorts(_))
   //     .foreach(_.stall := true.B)
   // }
-  io.pipelineControlPorts(PipelineStageIndex.instQueue).stall    := io.memStallRequest && io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.regReadStage).stall := io.memStallRequest && io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.exeStage).stall     := io.memStallRequest && io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.memStage).stall     := io.memStallRequest
-  // when(io.exeStallRequest) {
-  //   Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
-  //     .map(io.pipelineControlPorts(_))
-  //     .foreach(_.stall := true.B)
-  // }
-
-  // // `AddrTransStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`  (STALL ITSELF)
-  // when(io.memStallRequest) {
-  //   Seq(
-  //     PipelineStageIndex.issueStage,
-  //     PipelineStageIndex.regReadStage,
-  //     PipelineStageIndex.exeStage,
-  //     PipelineStageIndex.memStage
-  //   )
-  //     .map(io.pipelineControlPorts(_))
-  //     .foreach(_.stall := true.B)
-  // }
 
   /** clear
     *
@@ -263,15 +242,15 @@ class Cu(
   // badv
   // TODO: 记录出错的虚地址，多数情况不是pc，待补
   io.csrMessage.badVAddrSet.en := VecInit(
-    CsrRegs.ExceptionIndex.tlbr,
-    CsrRegs.ExceptionIndex.adef,
-    CsrRegs.ExceptionIndex.adem,
-    CsrRegs.ExceptionIndex.ale,
-    CsrRegs.ExceptionIndex.pil,
-    CsrRegs.ExceptionIndex.pis,
-    CsrRegs.ExceptionIndex.pif,
-    CsrRegs.ExceptionIndex.pme,
-    CsrRegs.ExceptionIndex.ppi
+    Csr.ExceptionIndex.tlbr,
+    Csr.ExceptionIndex.adef,
+    Csr.ExceptionIndex.adem,
+    Csr.ExceptionIndex.ale,
+    Csr.ExceptionIndex.pil,
+    Csr.ExceptionIndex.pis,
+    Csr.ExceptionIndex.pif,
+    Csr.ExceptionIndex.pme,
+    Csr.ExceptionIndex.ppi
   ).contains(selectException) && hasException
   io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
 
