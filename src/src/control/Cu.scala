@@ -12,7 +12,7 @@ import common.bundles.PassThroughPort
 import control.bundles.CsrWriteNdPort
 import control.bundles.CuToCsrNdPort
 import spec.Csr
-import control.bundles.CsrToCuNdPort
+import control.bundles.CsrValuePort
 import spec.Width
 import spec.zeroWord
 import spec.ExeInst
@@ -42,7 +42,7 @@ class Cu(
     // `Cu` -> `Csr`, 硬件写
     val csrMessage = Output(new CuToCsrNdPort)
     // `Csr` -> `Cu`
-    val csrValues = Input(new CsrToCuNdPort)
+    val csrValues = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
     val jumpPc = Input(new PcSetPort)
     // `Csr` -> `Pc`

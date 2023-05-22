@@ -71,10 +71,13 @@ package object spec {
     }
 
     object Tlb {
+      val _vppn = Mem._addr - 13
+      val _ppn  = Mem._addr - 12
+
       val asid = 10.W
       val ps   = 6.W
-      val vppn = (Mem._addr - 13).W
-      val ppn  = (Mem._addr - 12).W
+      val vppn = _vppn.W
+      val ppn  = _ppn.W
       val op   = 5.W
     }
 

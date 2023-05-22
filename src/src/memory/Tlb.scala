@@ -3,7 +3,7 @@ package memory
 import chisel3._
 import chisel3.util._
 import control.csrRegsBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
-import memory.bundles.{TlbEntryBundle, TlbTransPort}
+import memory.bundles.{TlbCompareEntryBundle, TlbEntryBundle, TlbTransPort}
 import memory.enums.TlbMemType
 import spec.ExeInst.Op.Tlb._
 import spec._
@@ -36,7 +36,7 @@ class Tlb extends Module {
     val tlbTransPorts = Vec(Param.Count.Tlb.transNum, new TlbTransPort)
   })
 
-  val tlbEntryVec = RegInit(VecInit(Seq(new TlbEntryBundle)(Param.Count.Tlb.num)))
+  val tlbEntryVec = RegInit(VecInit(Seq.fill(Param.Count.Tlb.num)(TlbEntryBundle.default)))
   tlbEntryVec := tlbEntryVec
   val virtAddrLen = Width.Mem._addr
   val physAddrLen = Width.Mem._addr
@@ -46,7 +46,18 @@ class Tlb extends Module {
   io.csr.out.tlbidx.valid := false.B
   io.csr.out.tlbehi.valid := false.B
   io.csr.out.tlbeloVec.foreach(_.valid := false.B)
-  io.tlbTransPorts.foreach(_.exception.valid := false.B)
+  io.tlbTransPorts.foreach { port =>
+    port.exception.valid := false.B
+    port.exception.bits  := DontCare
+  }
+
+  def isVirtPageNumMatched(compare: TlbCompareEntryBundle, vaddr: UInt) = Mux(
+    compare.pageSize === Value.Tlb.Ps._4Kb,
+    compare.virtPageNum(Width.Tlb._vppn - 1, 0) ===
+      vaddr(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1),
+    compare.virtPageNum(Width.Tlb._vppn - 10 - 1, 0) ===
+      vaddr(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1)
+  )
 
   io.tlbTransPorts.foreach { transPort =>
     // Lookup & Maintenance: Search
@@ -59,19 +70,13 @@ class Tlb extends Module {
         ) && Mux(
           io.isSearch,
           entry.compare.virtPageNum === io.csr.in.tlbehi.vppn,
-          Mux(
-            is4KbPageSize,
-            entry.compare.virtPageNum(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1) ===
-              transPort.virtAddr(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1),
-            entry.compare.virtPageNum(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1) ===
-              transPort.virtAddr(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1)
-          )
+          isVirtPageNumMatched(entry.compare, transPort.virtAddr)
         )
     }
     val selectedIndex = OHToUInt(isFoundVec)
     val selectedEntry = tlbEntryVec(selectedIndex)
     val selectedPage = Mux(
-      transPort.virtAddr(selectedEntry.compare.pageSize) === 0.U,
+      transPort.virtAddr(selectedEntry.compare.pageSize(log2Ceil(virtAddrLen) - 1, 0)) === 0.U,
       selectedEntry.trans(0),
       selectedEntry.trans(1)
     )
@@ -88,12 +93,12 @@ class Tlb extends Module {
     transPort.physAddr := Mux(
       selectedEntry.compare.pageSize === Value.Tlb.Ps._4Kb,
       Cat(
-        selectedPage.physPageNum(physAddrLen - 1, Value.Tlb.Ps._4Kb.litValue),
-        transPort.virtAddr(Value.Tlb.Ps._4Kb.litValue, 0)
+        selectedPage.physPageNum(Width.Tlb._ppn - 1, 0),
+        transPort.virtAddr(Value.Tlb.Ps._4Kb.litValue - 1, 0)
       ),
       Cat(
-        selectedPage.physPageNum(physAddrLen - 1, Value.Tlb.Ps._4Mb.litValue),
-        transPort.virtAddr(Value.Tlb.Ps._4Mb.litValue, 0)
+        selectedPage.physPageNum(Width.Tlb._ppn - 10 - 1, 0),
+        transPort.virtAddr(Value.Tlb.Ps._4Mb.litValue - 1, 0)
       )
     )
 
@@ -184,14 +189,7 @@ class Tlb extends Module {
     entry.trans.foreach(_.isValid := false.B)
   }
   def isAsIdMatched(entry: TlbEntryBundle) = entry.compare.asId === io.csr.in.asId.asid
-  def isVirtAddrMatched(entry: TlbEntryBundle) =
-    Mux(
-      entry.compare.pageSize === Value.Tlb.Ps._4Kb,
-      entry.compare.virtPageNum(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1) ===
-        io.maintenanceInfo.virtAddr(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1),
-      entry.compare.virtPageNum(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1) ===
-        io.maintenanceInfo.virtAddr(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1)
-    )
+
   when(io.isInvalidate) {
     switch(io.maintenanceInfo.invalidateInst) {
       is(clrAll, clrAllAlt) {
@@ -223,7 +221,7 @@ class Tlb extends Module {
           when(
             !entry.compare.isGlobal &&
               isAsIdMatched(entry) &&
-              isVirtAddrMatched(entry)
+              isVirtPageNumMatched(entry.compare, io.maintenanceInfo.virtAddr)
           ) {
             invalidateEntry(entry)
           }
@@ -234,7 +232,7 @@ class Tlb extends Module {
           when(
             entry.compare.isGlobal &&
               isAsIdMatched(entry) &&
-              isVirtAddrMatched(entry)
+              isVirtPageNumMatched(entry.compare, io.maintenanceInfo.virtAddr)
           ) {
             invalidateEntry(entry)
           }

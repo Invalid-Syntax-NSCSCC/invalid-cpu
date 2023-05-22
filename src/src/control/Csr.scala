@@ -22,8 +22,7 @@ class Csr(
     // `Cu` -> `Csr`
     val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
     val csrMessage = Input(new CuToCsrNdPort)
-    // `Csr` -> `Cu` // TODO: Change this comment
-    val csrValues = Output(new CsrToCuNdPort)
+    val csrValues  = Output(new CsrValuePort)
     // `Csr` <-> `IssueStage` / `RegReadStage` ???
     val readPorts = Vec(Param.csrRegsReadNum, new CsrReadPort)
 
