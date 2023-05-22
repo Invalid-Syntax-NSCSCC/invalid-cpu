@@ -11,8 +11,8 @@ import common.bundles.RfWriteNdPort
 import common.bundles.PassThroughPort
 import control.bundles.CsrWriteNdPort
 import control.bundles.CuToCsrNdPort
-import spec.CsrRegs
-import control.bundles.CsrToCuNdPort
+import spec.Csr
+import control.bundles.CsrValuePort
 import spec.Width
 import spec.zeroWord
 import spec.ExeInst
@@ -42,7 +42,7 @@ class Cu(
     // `Cu` -> `Csr`, 硬件写
     val csrMessage = Output(new CuToCsrNdPort)
     // `Csr` -> `Cu`
-    val csrValues = Input(new CsrToCuNdPort)
+    val csrValues = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
     val jumpPc = Input(new PcSetPort)
     // `Csr` -> `Pc`
@@ -66,6 +66,27 @@ class Cu(
 
   io.pipelineControlPorts.foreach(_ := PipelineControlNDPort.default)
   // `ExeStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage` (STALL ITSELF)
+  io.pipelineControlPorts(PipelineStageIndex.instQueue).stall    := io.memStallRequest && io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.regReadStage).stall := io.memStallRequest && io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.exeStage).stall     := io.memStallRequest && io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.memStage).stall     := io.memStallRequest
+  // when(io.exeStallRequest) {
+  //   Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
+  //     .map(io.pipelineControlPorts(_))
+  //     .foreach(_.stall := true.B)
+  // }
+
+  // // `AddrTransStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`  (STALL ITSELF)
+  // when(io.memStallRequest) {
+  //   Seq(
+  //     PipelineStageIndex.issueStage,
+  //     PipelineStageIndex.regReadStage,
+  //     PipelineStageIndex.exeStage,
+  //     PipelineStageIndex.memStage
+  //   )
+  //     .map(io.pipelineControlPorts(_))
+  //     .foreach(_.stall := true.B)
+  // }
   io.pipelineControlPorts(PipelineStageIndex.instQueue).stall    := io.memStallRequest && io.exeStallRequest
   io.pipelineControlPorts(PipelineStageIndex.regReadStage).stall := io.memStallRequest && io.exeStallRequest
   io.pipelineControlPorts(PipelineStageIndex.exeStage).stall     := io.memStallRequest && io.exeStallRequest
@@ -165,53 +186,53 @@ class Cu(
   when(hasException) {
     io.csrMessage.era := selectInstInfo.pc
     switch(selectException) {
-      is(CsrRegs.ExceptionIndex.int) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.int
+      is(Csr.ExceptionIndex.int) {
+        io.csrMessage.ecodeBunle := Csr.Estat.int
       }
-      is(CsrRegs.ExceptionIndex.pil) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.pil
+      is(Csr.ExceptionIndex.pil) {
+        io.csrMessage.ecodeBunle := Csr.Estat.pil
       }
-      is(CsrRegs.ExceptionIndex.pis) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.pis
+      is(Csr.ExceptionIndex.pis) {
+        io.csrMessage.ecodeBunle := Csr.Estat.pis
       }
-      is(CsrRegs.ExceptionIndex.pif) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.pif
+      is(Csr.ExceptionIndex.pif) {
+        io.csrMessage.ecodeBunle := Csr.Estat.pif
       }
-      is(CsrRegs.ExceptionIndex.pme) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.pme
+      is(Csr.ExceptionIndex.pme) {
+        io.csrMessage.ecodeBunle := Csr.Estat.pme
       }
-      is(CsrRegs.ExceptionIndex.ppi) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.ppi
+      is(Csr.ExceptionIndex.ppi) {
+        io.csrMessage.ecodeBunle := Csr.Estat.ppi
       }
-      is(CsrRegs.ExceptionIndex.adef) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.adef
+      is(Csr.ExceptionIndex.adef) {
+        io.csrMessage.ecodeBunle := Csr.Estat.adef
       }
-      is(CsrRegs.ExceptionIndex.adem) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.adem
+      is(Csr.ExceptionIndex.adem) {
+        io.csrMessage.ecodeBunle := Csr.Estat.adem
       }
-      is(CsrRegs.ExceptionIndex.ale) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.ale
+      is(Csr.ExceptionIndex.ale) {
+        io.csrMessage.ecodeBunle := Csr.Estat.ale
       }
-      is(CsrRegs.ExceptionIndex.sys) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.sys
+      is(Csr.ExceptionIndex.sys) {
+        io.csrMessage.ecodeBunle := Csr.Estat.sys
       }
-      is(CsrRegs.ExceptionIndex.brk) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.brk
+      is(Csr.ExceptionIndex.brk) {
+        io.csrMessage.ecodeBunle := Csr.Estat.brk
       }
-      is(CsrRegs.ExceptionIndex.ine) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.ine
+      is(Csr.ExceptionIndex.ine) {
+        io.csrMessage.ecodeBunle := Csr.Estat.ine
       }
-      is(CsrRegs.ExceptionIndex.ipe) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.ipe
+      is(Csr.ExceptionIndex.ipe) {
+        io.csrMessage.ecodeBunle := Csr.Estat.ipe
       }
-      is(CsrRegs.ExceptionIndex.fpd) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.fpd
+      is(Csr.ExceptionIndex.fpd) {
+        io.csrMessage.ecodeBunle := Csr.Estat.fpd
       }
-      is(CsrRegs.ExceptionIndex.fpe) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.fpe
+      is(Csr.ExceptionIndex.fpe) {
+        io.csrMessage.ecodeBunle := Csr.Estat.fpe
       }
-      is(CsrRegs.ExceptionIndex.tlbr) {
-        io.csrMessage.ecodeBunle := CsrRegs.Estat.tlbr
+      is(Csr.ExceptionIndex.tlbr) {
+        io.csrMessage.ecodeBunle := Csr.Estat.tlbr
       }
     }
   }

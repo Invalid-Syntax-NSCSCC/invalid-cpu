@@ -61,7 +61,7 @@ class MemResStage extends Module {
         // Check whether hit when has request
         when(isComplete) {
           // When hit
-          // TODO: Handle failing
+          // TODO: Handle failing (which might not be necessary)
           io.gprWritePassThroughPort.out.data := readData
         }.otherwise {
           // When not hit

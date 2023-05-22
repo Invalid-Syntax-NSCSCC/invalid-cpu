@@ -6,7 +6,7 @@ import spec._
 import control.bundles.PipelineControlNDPort
 import pipeline.dispatch.enums.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
-import CsrRegs.ExceptionIndex
+import Csr.ExceptionIndex
 import common.bundles.PassThroughPort
 import pipeline.dispatch.bundles.DecodeOutNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
