@@ -3,17 +3,22 @@ package pipeline.mem
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfWriteNdPort}
-import memory.bundles.MemRequestNdPort
+import common.enums.ReadWriteSel
+import memory.bundles.{MemRequestNdPort, TlbTransPort}
+import memory.enums.TlbMemType
 import pipeline.mem.bundles.MemCsrNdPort
 import pipeline.mem.enums.AddrTransMode
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Value.Csr
 import spec.Width
 
+import scala.collection.immutable
+
 class AddrTransStage extends Module {
   val io = IO(new Bundle {
     val memAccessPort = Input(new MemRequestNdPort)
     val csrPort       = Input(new MemCsrNdPort)
+    val tlbTransPort  = Flipped(new TlbTransPort)
 
     // (Next clock pulse)
     val gprWritePassThroughPort  = new PassThroughPort(new RfWriteNdPort)
@@ -30,7 +35,11 @@ class AddrTransStage extends Module {
   val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
   io.instInfoPassThroughPort.out := instInfoReg
 
-  // 强烈谴责龙芯依托答辩般的文档
+  // Pass translated memory request to the next stage
+  val physicalAddr            = WireDefault(0.U(Width.Mem.addr)) // Fallback: Dummy address
+  val translatedMemRequestReg = RegNext(io.memAccessPort)
+  translatedMemRequestReg.addr := physicalAddr
+  io.translatedMemRequestPort  := translatedMemRequestReg
 
   // TODO: Might need to move to previous stage to prevent data hazard
   // Select a translation mode
@@ -62,7 +71,16 @@ class AddrTransStage extends Module {
   }
 
   // Translate address
-  val physicalAddr = WireDefault(0.U(Width.Mem.addr)) // Fallback: Dummy address
+  io.tlbTransPort.memType := MuxLookup(
+    io.memAccessPort.rw,
+    TlbMemType.load
+  )(
+    immutable.Seq(
+      ReadWriteSel.read -> TlbMemType.load,
+      ReadWriteSel.write -> TlbMemType.store
+    )
+  )
+  io.tlbTransPort.virtAddr := io.memAccessPort.addr
   switch(transMode) {
     is(AddrTransMode.direct) {
       physicalAddr := io.memAccessPort.addr
@@ -74,8 +92,12 @@ class AddrTransStage extends Module {
       )
     }
     is(AddrTransMode.pageTableMapping) {
-      // TODO: Finish page table mapping (alongside with TLB)
-      physicalAddr := 0.U
+      physicalAddr                    := io.tlbTransPort.physAddr
+      translatedMemRequestReg.isValid := io.memAccessPort.isValid && !io.tlbTransPort.exception.valid
+
+      val exceptionIndex = io.tlbTransPort.exception.bits
+      instInfoReg.exceptionRecords(exceptionIndex) :=
+        instInfoReg.exceptionRecords(exceptionIndex) || io.tlbTransPort.exception.valid
     }
   }
 
@@ -91,9 +113,4 @@ class AddrTransStage extends Module {
       isCachedAccessReg := true.B
     }
   }
-
-  // Pass translated memory request to the next stage
-  val translatedMemRequestReg = RegNext(io.memAccessPort)
-  translatedMemRequestReg.addr := physicalAddr
-  io.translatedMemRequestPort  := translatedMemRequestReg
 }

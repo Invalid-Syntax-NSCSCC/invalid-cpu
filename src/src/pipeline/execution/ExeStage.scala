@@ -27,7 +27,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
     val exeInstPort = Input(new ExeInstNdPort)
 
     // `ExeStage` -> `AddrTransStage` (next clock pulse)
-    val memLoadStoreInfoPort    = Output(new MemRequestNdPort)
+    val memAccessPort           = Output(new MemRequestNdPort)
     val gprWritePort            = Output(new RfWriteNdPort)
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
@@ -60,7 +60,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   io.gprWritePort := gprWriteReg
 
   val memRequestReg = RegInit(MemRequestNdPort.default)
-  io.memLoadStoreInfoPort := memRequestReg
+  io.memAccessPort := memRequestReg
 
   // Start: state machine
 

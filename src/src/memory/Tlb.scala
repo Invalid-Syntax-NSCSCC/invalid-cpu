@@ -3,7 +3,7 @@ package memory
 import chisel3._
 import chisel3.util._
 import control.csrRegsBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
-import memory.bundles.TlbEntryBundle
+import memory.bundles.{TlbEntryBundle, TlbTransPort}
 import memory.enums.TlbMemType
 import spec.ExeInst.Op.Tlb._
 import spec._
@@ -33,10 +33,7 @@ class Tlb extends Module {
         val tlbeloVec = Vec(2, Valid(new TlbeloBundle))
       }
     }
-    val virtAddr  = Input(UInt(Width.Mem.addr))
-    val memType   = Input(TlbMemType())
-    val physAddr  = Output(UInt(Width.Mem.addr))
-    val exception = Valid(UInt(Width.Csr.exceptionIndex)) // TODO: Import `ExceptionType`
+    val tlbTransPorts = Vec(Param.Count.Tlb.transNum, new TlbTransPort)
   })
 
   val tlbEntryVec = RegInit(VecInit(Seq(new TlbEntryBundle)(Param.Count.Tlb.num)))
@@ -49,81 +46,84 @@ class Tlb extends Module {
   io.csr.out.tlbidx.valid := false.B
   io.csr.out.tlbehi.valid := false.B
   io.csr.out.tlbeloVec.foreach(_.valid := false.B)
-  io.exception.valid := false.B
+  io.tlbTransPorts.foreach(_.exception.valid := false.B)
 
-  // Lookup & Maintenance: Search
-  val isFoundVec = VecInit(Seq.fill(Param.Count.Tlb.num)(false.B))
-  tlbEntryVec.zip(isFoundVec).foreach {
-    case (entry, isFound) =>
-      val is4KbPageSize = entry.compare.pageSize === Value.Tlb.Ps._4Kb
-      isFound := entry.compare.isExisted && (
-        entry.compare.isGlobal || (entry.compare.asId === io.csr.in.asId.asid)
-      ) && Mux(
-        io.isSearch,
-        entry.compare.virtPageNum === io.csr.in.tlbehi.vppn,
-        Mux(
-          is4KbPageSize,
-          entry.compare.virtPageNum(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1) ===
-            io.virtAddr(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1),
-          entry.compare.virtPageNum(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1) ===
-            io.virtAddr(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1)
+  io.tlbTransPorts.foreach { transPort =>
+    // Lookup & Maintenance: Search
+    val isFoundVec = VecInit(Seq.fill(Param.Count.Tlb.num)(false.B))
+    tlbEntryVec.zip(isFoundVec).foreach {
+      case (entry, isFound) =>
+        val is4KbPageSize = entry.compare.pageSize === Value.Tlb.Ps._4Kb
+        isFound := entry.compare.isExisted && (
+          entry.compare.isGlobal || (entry.compare.asId === io.csr.in.asId.asid)
+        ) && Mux(
+          io.isSearch,
+          entry.compare.virtPageNum === io.csr.in.tlbehi.vppn,
+          Mux(
+            is4KbPageSize,
+            entry.compare.virtPageNum(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1) ===
+              transPort.virtAddr(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1),
+            entry.compare.virtPageNum(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1) ===
+              transPort.virtAddr(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1)
+          )
         )
-      )
-  }
-  val selectedIndex = OHToUInt(isFoundVec)
-  val selectedEntry = tlbEntryVec(selectedIndex)
-  val selectedPage = Mux(
-    io.virtAddr(selectedEntry.compare.pageSize) === 0.U,
-    selectedEntry.trans(0),
-    selectedEntry.trans(1)
-  )
-  val isFound = isFoundVec.asUInt.orR
-  io.csr.out.tlbidx.valid := io.isSearch
-  when(isFound) {
-    io.csr.out.tlbidx.bits.index := selectedIndex
-    io.csr.out.tlbidx.bits.ne    := false.B
-  }.otherwise {
-    io.csr.out.tlbidx.bits.ne := true.B
-  }
-
-  // Translate
-  io.physAddr := Mux(
-    selectedEntry.compare.pageSize === Value.Tlb.Ps._4Kb,
-    Cat(
-      selectedPage.physPageNum(physAddrLen - 1, Value.Tlb.Ps._4Kb.litValue),
-      io.virtAddr(Value.Tlb.Ps._4Kb.litValue, 0)
-    ),
-    Cat(
-      selectedPage.physPageNum(physAddrLen - 1, Value.Tlb.Ps._4Mb.litValue),
-      io.virtAddr(Value.Tlb.Ps._4Mb.litValue, 0)
-    )
-  )
-
-  // Handle exception
-  when(!isFound) {
-    io.exception.valid := true.B
-    io.exception.bits  := Csr.ExceptionIndex.tlbr
-  }
-  when(!selectedPage.isValid) {
-    switch(io.memType) {
-      is(TlbMemType.load) {
-        io.exception.valid := true.B
-        io.exception.bits  := Csr.ExceptionIndex.pil
-      }
-      is(TlbMemType.store) {
-        io.exception.valid := true.B
-        io.exception.bits  := Csr.ExceptionIndex.pis
-      }
-      is(TlbMemType.fetch) {
-        io.exception.valid := true.B
-        io.exception.bits  := Csr.ExceptionIndex.pif
-      }
     }
-  }.elsewhen(selectedPage.plv < io.csr.in.plv) {
-    io.exception.valid := true.B
-    io.exception.bits  := Csr.ExceptionIndex.ppi
-  }.elsewhen(!selectedPage.isDirty && io.memType === TlbMemType.store) {
-    // TODO: Page modification exception
+    val selectedIndex = OHToUInt(isFoundVec)
+    val selectedEntry = tlbEntryVec(selectedIndex)
+    val selectedPage = Mux(
+      transPort.virtAddr(selectedEntry.compare.pageSize) === 0.U,
+      selectedEntry.trans(0),
+      selectedEntry.trans(1)
+    )
+    val isFound = isFoundVec.asUInt.orR
+    io.csr.out.tlbidx.valid := io.isSearch
+    when(isFound) {
+      io.csr.out.tlbidx.bits.index := selectedIndex
+      io.csr.out.tlbidx.bits.ne    := false.B
+    }.otherwise {
+      io.csr.out.tlbidx.bits.ne := true.B
+    }
+
+    // Translate
+    transPort.physAddr := Mux(
+      selectedEntry.compare.pageSize === Value.Tlb.Ps._4Kb,
+      Cat(
+        selectedPage.physPageNum(physAddrLen - 1, Value.Tlb.Ps._4Kb.litValue),
+        transPort.virtAddr(Value.Tlb.Ps._4Kb.litValue, 0)
+      ),
+      Cat(
+        selectedPage.physPageNum(physAddrLen - 1, Value.Tlb.Ps._4Mb.litValue),
+        transPort.virtAddr(Value.Tlb.Ps._4Mb.litValue, 0)
+      )
+    )
+
+    // Handle exception
+    when(!isFound) {
+      transPort.exception.valid := true.B
+      transPort.exception.bits  := Csr.ExceptionIndex.tlbr
+    }
+    when(!selectedPage.isValid) {
+      switch(transPort.memType) {
+        is(TlbMemType.load) {
+          transPort.exception.valid := true.B
+          transPort.exception.bits  := Csr.ExceptionIndex.pil
+        }
+        is(TlbMemType.store) {
+          transPort.exception.valid := true.B
+          transPort.exception.bits  := Csr.ExceptionIndex.pis
+        }
+        is(TlbMemType.fetch) {
+          transPort.exception.valid := true.B
+          transPort.exception.bits  := Csr.ExceptionIndex.pif
+        }
+      }
+    }.elsewhen(selectedPage.plv < io.csr.in.plv) {
+      transPort.exception.valid := true.B
+      transPort.exception.bits  := Csr.ExceptionIndex.ppi
+    }.elsewhen(!selectedPage.isDirty && transPort.memType === TlbMemType.store) {
+      transPort.exception.valid := true.B
+      transPort.exception.bits  := Csr.ExceptionIndex.pme
+    }
   }
 
   // Maintenance: Read

@@ -61,7 +61,8 @@ object Param {
     }
 
     object Tlb {
-      val num = 32
+      val num      = 32
+      val transNum = 2
     }
   }
 
