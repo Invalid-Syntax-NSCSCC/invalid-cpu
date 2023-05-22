@@ -4,7 +4,7 @@ set -e
 
 echo
 while true; do
-  echo "Are you wish to refresh branch \`$1'? This operation will DISCARD all your unmerged work on branch \`$1' and CANNOT be reverted!"
+  echo "Do you wish to refresh branch \`$1'? This operation will DISCARD all your unmerged work on branch \`$1' and CANNOT be reverted!"
     read -r yn
     case $yn in
         [Yy]* )
