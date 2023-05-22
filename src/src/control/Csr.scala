@@ -8,6 +8,7 @@ import spec.PipelineStageIndex
 import control.bundles._
 import common.bundles.RfReadPort
 import control.csrRegsBundles._
+import spec.Param.isDiffTest
 
 // TODO: 中断：ecfg, estat.is
 // TODO: 同时读写csrRegs时候读端口的赋值
@@ -25,6 +26,36 @@ class Csr(
     val csrValues = Output(new CsrToCuNdPort)
     // `Csr` <-> `IssueStage` / `RegReadStage` ???
     val readPorts = Vec(Param.csrRegsReadNum, new CsrReadPort)
+
+    val difftest = if (isDiffTest) Some(Output(new Bundle {
+      val crmd      = UInt(32.W)
+      val prmd      = UInt(32.W)
+      val ectl      = UInt(32.W)
+      val estat     = new EstatBundle
+      val era       = UInt(32.W)
+      val badv      = UInt(32.W)
+      val eentry    = UInt(32.W)
+      val tlbidx    = UInt(32.W)
+      val tlbehi    = UInt(32.W)
+      val tlbelo0   = UInt(32.W)
+      val tlbelo1   = UInt(32.W)
+      val asid      = UInt(32.W)
+      val save0     = UInt(32.W)
+      val save1     = UInt(32.W)
+      val save2     = UInt(32.W)
+      val save3     = UInt(32.W)
+      val tid       = UInt(32.W)
+      val tcfg      = UInt(32.W)
+      val tval      = UInt(32.W)
+      val ticlr     = UInt(32.W)
+      val llbctl    = UInt(32.W)
+      val tlbrentry = UInt(32.W)
+      val dmw0      = UInt(32.W)
+      val dmw1      = UInt(32.W)
+      val pgdl      = UInt(32.W)
+      val pgdh      = UInt(32.W)
+    }))
+    else None
   })
 
   // Util: view UInt as Bundle
@@ -321,5 +352,38 @@ class Csr(
       timeInterrupt   := true.B
       tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
     } // 为0时停止计数
+  }
+
+  // Difftest
+  io.difftest match {
+    case Some(dt) =>
+      dt.crmd := crmd.out.asUInt
+      dt.prmd := prmd.out.asUInt
+      // TODO: `ectl` is not implemented
+      dt.ectl      := DontCare
+      dt.estat     := estat.out
+      dt.era       := era.out.asUInt
+      dt.badv      := badv.out.asUInt
+      dt.eentry    := eentry.out.asUInt
+      dt.tlbidx    := tlbidx.out.asUInt
+      dt.tlbehi    := tlbehi.out.asUInt
+      dt.tlbelo0   := tlbelo0.out.asUInt
+      dt.tlbelo1   := tlbelo1.out.asUInt
+      dt.asid      := asid.out.asUInt
+      dt.save0     := saves(0).out.asUInt
+      dt.save1     := saves(1).out.asUInt
+      dt.save2     := saves(2).out.asUInt
+      dt.save3     := saves(3).out.asUInt
+      dt.tid       := tid.out.asUInt
+      dt.tcfg      := tcfg.out.asUInt
+      dt.tval      := tval.out.asUInt
+      dt.ticlr     := ticlr.out.asUInt
+      dt.llbctl    := llbctl.out.asUInt
+      dt.tlbrentry := tlbrentry.out.asUInt
+      dt.dmw0      := dmw0.out.asUInt
+      dt.dmw1      := dmw1.out.asUInt
+      dt.pgdl      := pgdl.out.asUInt
+      dt.pgdh      := pgdh.out.asUInt
+    case _ =>
   }
 }

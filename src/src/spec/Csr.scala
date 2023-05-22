@@ -112,5 +112,7 @@ object Csr {
     val fpd  = next
     val fpe  = next
     val tlbr = next
+
+    def width = count + 1
   }
 }

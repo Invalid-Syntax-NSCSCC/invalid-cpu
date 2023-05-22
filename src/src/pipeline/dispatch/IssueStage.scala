@@ -216,6 +216,7 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
     InstInfoNdPort.setDefault(instInfoReg)
     // instInfoReg := InstInfoNdPort.default
     issuedInfoReg := IssuedInfoNdPort.default
+    InstInfoNdPort.setDefault(instInfoReg)
   }
   // flush all regs
   when(io.pipelineControlPort.flush) {
@@ -224,5 +225,6 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
     issuedInfoReg      := IssuedInfoNdPort.default
     stateReg           := State.nonBlocking
     instDecodeStoreReg := DecodeOutNdPort.default
+    InstInfoNdPort.setDefault(instInfoReg)
   }
 }
