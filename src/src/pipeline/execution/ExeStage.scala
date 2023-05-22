@@ -53,6 +53,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
+  InstInfoNdPort.setDefault(instInfoReg)
   io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
@@ -220,9 +221,10 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   /** CsrWrite
     */
+  def csrWriteData = instInfoReg.csrWritePort.data
   when(!isBlocking) {
     instInfoReg := instInfoStoreReg
-    def csrWriteData = instInfoReg.csrWritePort.data
+
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.csrwr) {
         csrWriteData := selectedExeInst.csrData
