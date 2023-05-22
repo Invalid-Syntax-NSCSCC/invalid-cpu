@@ -17,7 +17,7 @@ import control.Csr
 import spec.Param
 import spec.Count
 import control.StableCounter
-import memory.{DCache, UncachedAgent}
+import memory.{DCache, Tlb, UncachedAgent}
 import spec.ExeInst
 
 class CoreCpuTop extends Module {
@@ -131,9 +131,6 @@ class CoreCpuTop extends Module {
   cu.io           <> DontCare
   csr.io          <> DontCare
 
-  // TODO: Other connections
-  exeStage.io := DontCare
-
   // Pc
   pc.io.newPc := cu.io.newPc
 
@@ -222,13 +219,16 @@ class CoreCpuTop extends Module {
   // Memory related modules
   val dCache        = Module(new DCache)
   val uncachedAgent = Module(new UncachedAgent)
+  val tlb           = Module(new Tlb)
 
   // Connection for memory related modules
   // TODO: Finish AXI connection
+  // TODO: Finish TLB maintanence connection
   dCache.io        <> DontCare
   uncachedAgent.io <> DontCare
+  tlb.io           <> DontCare
   // Hint: dCache.io.axiMasterPort --> crossbar.io.slaves(1)
-  // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(1)
+  // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(2)
 
   // Simple fetch stage
   instQueue.io.enqueuePort                <> simpleFetchStage.io.instEnqueuePort
@@ -276,9 +276,9 @@ class CoreCpuTop extends Module {
   memResStage.io                               <> DontCare
   addrTransStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
   addrTransStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
+  addrTransStage.io.memAccessPort              := exeStage.io.memAccessPort
+  addrTransStage.io.tlbTransPort               <> tlb.io.tlbTransPorts(0)
   // TODO: CSR
-  // TODO: TLB
-  // TODO: Get memory access information from execution stage
   memReqStage.io.translatedMemRequestPort   := addrTransStage.io.translatedMemRequestPort
   memReqStage.io.isCachedAccess.in          := addrTransStage.io.isCachedAccess
   memReqStage.io.gprWritePassThroughPort.in := addrTransStage.io.gprWritePassThroughPort.out

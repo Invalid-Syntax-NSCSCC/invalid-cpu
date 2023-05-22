@@ -202,7 +202,7 @@ class BiInstQueue(
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
       dequeuePort.bits.instInfo
-        .exceptionRecords(CsrRegs.ExceptionIndex.ine) := !decoderWires(index).map(_.isMatched).reduce(_ || _)
+        .exceptionRecords(Csr.ExceptionIndex.ine) := !decoderWires(index).map(_.isMatched).reduce(_ || _)
   }
 
   when(io.pipelineControlPort.flush) {

@@ -21,20 +21,18 @@ package object spec {
   }
 
   object PipelineStageIndex {
-    private var count = 0
+    var count = -1
 
     private def next = {
-      val idx = count
       count += 1
-      idx
+      count
     }
+
     val instQueue    = next
     val issueStage   = next
     val regReadStage = next
     val exeStage     = next
     val memStage     = next
-
-    def getCount: Int = count
   }
 
   object ReadWriteMode {
@@ -49,9 +47,10 @@ package object spec {
       val data = wordLength.W
     }
 
-    object CsrReg {
-      val addr = 14.W
-      val data = wordLength.W
+    object Csr {
+      val addr           = 14.W
+      val data           = wordLength.W
+      val exceptionIndex = log2Ceil(spec.Csr.ExceptionIndex.count + 1).W
     }
 
     object Op {
@@ -71,6 +70,17 @@ package object spec {
       val data = _data.W
     }
 
+    object Tlb {
+      val _vppn = Mem._addr - 13
+      val _ppn  = Mem._addr - 12
+
+      val asid = 10.W
+      val ps   = 6.W
+      val vppn = _vppn.W
+      val ppn  = _ppn.W
+      val op   = 5.W
+    }
+
     object Axi {
       val _data = 128
 
@@ -87,10 +97,17 @@ package object spec {
 
   object Count {
     val reg    = wordLength
-    val csrReg = CsrRegs.Index.getCount
+    val csrReg = Csr.Index.count + 1
   }
 
   object Value {
+    object Tlb {
+      object Ps {
+        val _4Kb = 12.U(Width.Tlb.ps)
+        val _4Mb = 22.U(Width.Tlb.ps)
+      }
+    }
+
     object Axi {
       object Burst {
         val fixed    = 0.U(2.W)
