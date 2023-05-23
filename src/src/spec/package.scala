@@ -96,8 +96,8 @@ package object spec {
   }
 
   object Count {
-    val reg    = wordLength
-    val csrReg = Csr.Index.count + 1
+    val reg = wordLength
+    val csr = Csr.Index.num
   }
 
   object Value {

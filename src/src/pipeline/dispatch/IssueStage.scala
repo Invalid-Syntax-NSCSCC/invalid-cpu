@@ -32,7 +32,7 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
 
     // `IssueStage` <-> `Scoreboard(csr)`
     val csrOccupyPorts = Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort))
-    val csrRegScores   = Input(Vec(Count.csrReg, Bool()))
+    val csrRegScores   = Input(Vec(Count.csr, Bool()))
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPort = Output(new IssuedInfoNdPort)
@@ -146,9 +146,23 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   val isGprScoreboardBlocking = WireDefault(selectedInstDecode.info.gprReadPorts.map { port =>
     port.en && io.regScores(port.addr)
   }.reduce(_ || _))
+
+  // val csrScore = WireDefault(false.B)
+  // VecInit(Csr.Index.addrs).zip(io.csrRegScores).foreach{
+  //   case (addr, score) =>
+  //     when(selectedInstDecode.info.csrAddr === addr) {
+  //       csrScore := true.B
+  //     }
+  // }
   val isCsrScoreboardBlocking = WireDefault(
     selectedInstDecode.info.csrWriteEn &&
-      io.csrRegScores(selectedInstDecode.info.csrAddr)
+      // io.csrRegScores(selectedInstDecode.info.csrAddr) // TODO: modify
+      VecInit(Csr.Index.addrs)
+        .zip(io.csrRegScores)
+        .map {
+          case (addr, score) => (addr === selectedInstDecode.info.csrAddr) && score
+        }
+        .reduce(_ || _)
   )
   val isScoreboardBlocking = WireDefault(isGprScoreboardBlocking && isCsrScoreboardBlocking)
   val isBlocking = WireDefault(

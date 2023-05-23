@@ -26,35 +26,35 @@ class Csr(
     // `Csr` <-> `IssueStage` / `RegReadStage` ???
     val readPorts = Vec(Param.csrRegsReadNum, new CsrReadPort)
 
-    val difftest = if (isDiffTest) Some(Output(new Bundle {
-      val crmd      = UInt(32.W)
-      val prmd      = UInt(32.W)
-      val ectl      = UInt(32.W)
-      val estat     = new EstatBundle
-      val era       = UInt(32.W)
-      val badv      = UInt(32.W)
-      val eentry    = UInt(32.W)
-      val tlbidx    = UInt(32.W)
-      val tlbehi    = UInt(32.W)
-      val tlbelo0   = UInt(32.W)
-      val tlbelo1   = UInt(32.W)
-      val asid      = UInt(32.W)
-      val save0     = UInt(32.W)
-      val save1     = UInt(32.W)
-      val save2     = UInt(32.W)
-      val save3     = UInt(32.W)
-      val tid       = UInt(32.W)
-      val tcfg      = UInt(32.W)
-      val tval      = UInt(32.W)
-      val ticlr     = UInt(32.W)
-      val llbctl    = UInt(32.W)
-      val tlbrentry = UInt(32.W)
-      val dmw0      = UInt(32.W)
-      val dmw1      = UInt(32.W)
-      val pgdl      = UInt(32.W)
-      val pgdh      = UInt(32.W)
-    }))
-    else None
+    //   val difftest = if (isDiffTest) Some(Output(new Bundle {
+    //     val crmd      = UInt(32.W)
+    //     val prmd      = UInt(32.W)
+    //     val ectl      = UInt(32.W)
+    //     val estat     = new EstatBundle
+    //     val era       = UInt(32.W)
+    //     val badv      = UInt(32.W)
+    //     val eentry    = UInt(32.W)
+    //     val tlbidx    = UInt(32.W)
+    //     val tlbehi    = UInt(32.W)
+    //     val tlbelo0   = UInt(32.W)
+    //     val tlbelo1   = UInt(32.W)
+    //     val asid      = UInt(32.W)
+    //     val save0     = UInt(32.W)
+    //     val save1     = UInt(32.W)
+    //     val save2     = UInt(32.W)
+    //     val save3     = UInt(32.W)
+    //     val tid       = UInt(32.W)
+    //     val tcfg      = UInt(32.W)
+    //     val tval      = UInt(32.W)
+    //     val ticlr     = UInt(32.W)
+    //     val llbctl    = UInt(32.W)
+    //     val tlbrentry = UInt(32.W)
+    //     val dmw0      = UInt(32.W)
+    //     val dmw1      = UInt(32.W)
+    //     val pgdl      = UInt(32.W)
+    //     val pgdh      = UInt(32.W)
+    //   }))
+    //   else None
   })
 
   // Util: view UInt as Bundle
@@ -74,108 +74,225 @@ class Csr(
   // 定时器中断
   val timeInterrupt = RegInit(false.B)
 
-  val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
+  // val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
+  val csrValuesReg = RegInit(CsrValuePort.default)
 
   // read
+  // io.readPorts.foreach { readPort =>
+  //   readPort.data := Mux(
+  //     readPort.en,
+  //     csrRegs(readPort.addr),
+  //     zeroWord
+  //   )
+  // }
   io.readPorts.foreach { readPort =>
-    readPort.data := Mux(
-      readPort.en,
-      csrRegs(readPort.addr),
-      zeroWord
-    )
+    readPort.data := zeroWord
+    when(readPort.en) {
+      switch(readPort.addr) {
+        is(spec.Csr.Index.crmd) {
+          readPort.data := csrValuesReg.crmd.asUInt
+        }
+        is(spec.Csr.Index.prmd) {
+          readPort.data := csrValuesReg.prmd.asUInt
+        }
+        is(spec.Csr.Index.euen) {
+          readPort.data := csrValuesReg.euen.asUInt
+        }
+        is(spec.Csr.Index.ecfg) {
+          readPort.data := csrValuesReg.ecfg.asUInt
+        }
+        is(spec.Csr.Index.estat) {
+          readPort.data := csrValuesReg.estat.asUInt
+        }
+        is(spec.Csr.Index.era) {
+          readPort.data := csrValuesReg.era.asUInt
+        }
+        is(spec.Csr.Index.badv) {
+          readPort.data := csrValuesReg.badv.asUInt
+        }
+        is(spec.Csr.Index.eentry) {
+          readPort.data := csrValuesReg.eentry.asUInt
+        }
+        is(spec.Csr.Index.tlbidx) {
+          readPort.data := csrValuesReg.tlbidx.asUInt
+        }
+        is(spec.Csr.Index.tlbehi) {
+          readPort.data := csrValuesReg.tlbehi.asUInt
+        }
+        is(spec.Csr.Index.tlbelo0) {
+          readPort.data := csrValuesReg.tlbelo0.asUInt
+        }
+        is(spec.Csr.Index.tlbelo1) {
+          readPort.data := csrValuesReg.tlbelo1.asUInt
+        }
+        is(spec.Csr.Index.asid) {
+          readPort.data := csrValuesReg.asid.asUInt
+        }
+        is(spec.Csr.Index.pgdh) {
+          readPort.data := csrValuesReg.pgdh.asUInt
+        }
+        is(spec.Csr.Index.pgdl) {
+          readPort.data := csrValuesReg.pgdl.asUInt
+        }
+        is(spec.Csr.Index.pgd) {
+          readPort.data := csrValuesReg.pgd.asUInt
+        }
+        is(spec.Csr.Index.cpuid) {
+          readPort.data := csrValuesReg.cpuid.asUInt
+        }
+        is(spec.Csr.Index.save0) {
+          readPort.data := csrValuesReg.save0.asUInt
+        }
+        is(spec.Csr.Index.save1) {
+          readPort.data := csrValuesReg.save1.asUInt
+        }
+        is(spec.Csr.Index.save2) {
+          readPort.data := csrValuesReg.save2.asUInt
+        }
+        is(spec.Csr.Index.save3) {
+          readPort.data := csrValuesReg.save3.asUInt
+        }
+        is(spec.Csr.Index.tid) {
+          readPort.data := csrValuesReg.tid.asUInt
+        }
+        is(spec.Csr.Index.tcfg) {
+          readPort.data := csrValuesReg.tcfg.asUInt
+        }
+        is(spec.Csr.Index.tval) {
+          readPort.data := csrValuesReg.tval.asUInt
+        }
+        is(spec.Csr.Index.ticlr) {
+          readPort.data := csrValuesReg.ticlr.asUInt
+        }
+        is(spec.Csr.Index.llbctl) {
+          readPort.data := csrValuesReg.llbctl.asUInt
+        }
+        is(spec.Csr.Index.tlbrentry) {
+          readPort.data := csrValuesReg.tlbrentry.asUInt
+        }
+        is(spec.Csr.Index.dmw0) {
+          readPort.data := csrValuesReg.dmw0.asUInt
+        }
+        is(spec.Csr.Index.dmw1) {
+          readPort.data := csrValuesReg.dmw1.asUInt
+        }
+      }
+    }
   }
 
   // 输出
-  io.csrValues.era       := csrRegs(spec.Csr.Index.era)
-  io.csrValues.eentry    := csrRegs(spec.Csr.Index.eentry)
-  io.csrValues.tlbrentry := csrRegs(spec.Csr.Index.tlbrentry)
+  io.csrValues := csrValuesReg
 
   // 软件写csrRegs
   // 保留域断断续续的样子真是可爱捏
   io.writePorts.foreach { writePort =>
     when(writePort.en) {
-      csrRegs(writePort.addr) := writePort.data
       // 保留域
       switch(writePort.addr) {
         is(spec.Csr.Index.crmd) {
-          csrRegs(writePort.addr) := Cat(0.U(23.W), writePort.data(8, 0))
+          csrValuesReg.crmd := Cat(0.U(23.W), writePort.data(8, 0)).asTypeOf(csrValuesReg.crmd)
         }
         is(spec.Csr.Index.prmd) {
-          csrRegs(writePort.addr) := Cat(0.U(29.W), writePort.data(2, 0))
+          csrValuesReg.prmd := Cat(0.U(29.W), writePort.data(2, 0)).asTypeOf(csrValuesReg.prmd)
         }
         is(spec.Csr.Index.euen) {
-          csrRegs(writePort.addr) := Cat(0.U(31.W), writePort.data(0))
+          csrValuesReg.euen := Cat(0.U(31.W), writePort.data(0)).asTypeOf(csrValuesReg.euen)
         }
         is(spec.Csr.Index.ecfg) {
-          csrRegs(writePort.addr) := Cat(0.U(19.W), writePort.data(12, 0))
+          csrValuesReg.ecfg := Cat(0.U(19.W), writePort.data(12, 0)).asTypeOf(csrValuesReg.ecfg)
         }
         is(spec.Csr.Index.estat) {
-          csrRegs(writePort.addr) := Cat(false.B, writePort.data(30, 16), 0.U(3.W), writePort.data(12, 0))
+          csrValuesReg.estat := Cat(false.B, writePort.data(30, 16), 0.U(3.W), writePort.data(12, 0))
+            .asTypeOf(csrValuesReg.estat)
         }
-        is(
-          spec.Csr.Index.era,
-          spec.Csr.Index.badv,
-          spec.Csr.Index.save0,
-          spec.Csr.Index.save1,
-          spec.Csr.Index.save2,
-          spec.Csr.Index.save3,
-          spec.Csr.Index.tid
-        ) {
-          csrRegs(writePort.addr) := writePort.data
+        is(spec.Csr.Index.era) {
+          csrValuesReg.era := writePort.data.asTypeOf(csrValuesReg.era)
+        }
+        is(spec.Csr.Index.badv) {
+          csrValuesReg.badv := writePort.data.asTypeOf(csrValuesReg.badv)
+        }
+        is(spec.Csr.Index.save0) {
+          csrValuesReg.save0 := writePort.data.asTypeOf(new CsrSaveBundle)
+        }
+        is(spec.Csr.Index.save1) {
+          csrValuesReg.save1 := writePort.data.asTypeOf(new CsrSaveBundle)
+        }
+        is(spec.Csr.Index.save2) {
+          csrValuesReg.save2 := writePort.data.asTypeOf(new CsrSaveBundle)
+        }
+        is(spec.Csr.Index.save3) {
+          csrValuesReg.save3 := writePort.data.asTypeOf(new CsrSaveBundle)
+        }
+        is(spec.Csr.Index.tid) {
+          csrValuesReg.tid := writePort.data.asTypeOf(csrValuesReg.tid)
         }
         is(spec.Csr.Index.eentry) {
-          csrRegs(writePort.addr) := Cat(writePort.data(31, 6), 0.U(6.W))
+          csrValuesReg.eentry := Cat(writePort.data(31, 6), 0.U(6.W)).asTypeOf(csrValuesReg.eentry)
         }
         is(spec.Csr.Index.cpuid) {
-          csrRegs(writePort.addr) := Cat(0.U(23.W), writePort.data(8, 0))
+          csrValuesReg.cpuid := Cat(0.U(23.W), writePort.data(8, 0)).asTypeOf(csrValuesReg.cpuid)
         }
         is(spec.Csr.Index.llbctl) {
-          csrRegs(writePort.addr) := Cat(
+          csrValuesReg.llbctl := Cat(
             0.U(29.W),
             writePort.data(2),
             false.B,
             Mux( // 软件向wcllb写1时清零llbit，写0时忽略
               writePort.data(1),
               false.B,
-              csrRegs(spec.Csr.Index.llbctl(1))
+              // csrRegs(spec.Csr.Index.llbctl(1))
+              csrValuesReg.llbctl.rollb
             )
-          )
+          ).asTypeOf(csrValuesReg.llbctl)
         }
         is(spec.Csr.Index.tlbidx) {
-          csrRegs(writePort.addr) := Cat(
+          csrValuesReg.tlbidx := Cat(
             writePort.data(31),
             false.B,
             writePort.data(29, 24),
             0.U((24 - spec.Csr.Tlbidx.Width.index).W),
             writePort.data(spec.Csr.Tlbidx.Width.index - 1, 0)
-          )
+          ).asTypeOf(csrValuesReg.tlbidx)
         }
         is(spec.Csr.Index.tlbehi) {
-          csrRegs(writePort.addr) := Cat(writePort.data(31, 13), 0.U(13.W))
+          csrValuesReg.tlbehi := Cat(writePort.data(31, 13), 0.U(13.W)).asTypeOf(csrValuesReg.tlbehi)
         }
-        is(spec.Csr.Index.tlbelo0, spec.Csr.Index.tlbelo1) {
-          csrRegs(writePort.addr) := Cat(
+        is(spec.Csr.Index.tlbelo0) {
+          csrValuesReg.tlbelo0 := Cat(
             writePort.data(31, 8),
             false.B,
             writePort.data(6, 0)
-          )
+          ).asTypeOf(new TlbeloBundle)
+        }
+        is(spec.Csr.Index.tlbelo1) {
+          csrValuesReg.tlbelo1 := Cat(
+            writePort.data(31, 8),
+            false.B,
+            writePort.data(6, 0)
+          ).asTypeOf(new TlbeloBundle)
         }
         is(spec.Csr.Index.asid) {
-          csrRegs(writePort.addr) := Cat(
+          csrValuesReg.asid := Cat(
             0.U(8.W),
             writePort.data(23, 16),
             0.U(6.W),
             writePort.data(9, 0)
-          )
+          ).asTypeOf(csrValuesReg.asid)
         }
-        is(spec.Csr.Index.pgdl, spec.Csr.Index.pgdh, spec.Csr.Index.pgd) {
-          csrRegs(writePort.addr) := Cat(writePort.data(31, 12), 0.U(12.W))
+        is(spec.Csr.Index.pgd) {
+          csrValuesReg.pgd := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(csrValuesReg.pgd)
+        }
+        is(spec.Csr.Index.pgdl) {
+          csrValuesReg.pgdl := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(csrValuesReg.pgdl)
+        }
+        is(spec.Csr.Index.pgdh) {
+          csrValuesReg.pgdh := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(csrValuesReg.pgdh)
         }
         is(spec.Csr.Index.tlbrentry) {
-          csrRegs(writePort.addr) := Cat(writePort.data(31, 6), 0.U(6.W))
+          csrValuesReg.tlbrentry := Cat(writePort.data(31, 6), 0.U(6.W)).asTypeOf(csrValuesReg.tlbrentry)
         }
-        is(spec.Csr.Index.dmw0, spec.Csr.Index.dmw1) {
-          csrRegs(writePort.addr) := Cat(
+        is(spec.Csr.Index.dmw0) {
+          csrValuesReg.dmw0 := Cat(
             writePort.data(31, 29),
             false.B,
             writePort.data(27, 25),
@@ -183,19 +300,36 @@ class Csr(
             writePort.data(5, 3),
             0.U(2.W),
             writePort.data(0)
-          )
+          ).asTypeOf(new DmwBundle)
         }
-        is(spec.Csr.Index.tcfg, spec.Csr.Index.tval) {
-          csrRegs(writePort.addr) := Cat(
+        is(spec.Csr.Index.dmw1) {
+          csrValuesReg.dmw1 := Cat(
+            writePort.data(31, 29),
+            false.B,
+            writePort.data(27, 25),
+            0.U(19.W),
+            writePort.data(5, 3),
+            0.U(2.W),
+            writePort.data(0)
+          ).asTypeOf(new DmwBundle)
+        }
+        is(spec.Csr.Index.tcfg) {
+          csrValuesReg.tcfg := Cat(
             0.U((32 - spec.Csr.TimeVal.Width.timeVal).W),
             writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 0)
-          )
+          ).asTypeOf(csrValuesReg.tcfg)
+        }
+        is(spec.Csr.Index.tval) {
+          csrValuesReg.tval := Cat(
+            0.U((32 - spec.Csr.TimeVal.Width.timeVal).W),
+            writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 0)
+          ).asTypeOf(csrValuesReg.tval)
         }
         is(spec.Csr.Index.ticlr) {
-          csrRegs(writePort.addr) := Cat(
+          csrValuesReg.ticlr := Cat(
             0.U(31.W),
             false.B
-          )
+          ).asTypeOf(csrValuesReg.ticlr)
           when(writePort.data(0) === true.B) {
             timeInterrupt := false.B
           }
@@ -204,185 +338,104 @@ class Csr(
     }
   }
 
-  // CRMD 当前模式信息
+  // /** CRMD 当前模式信息
+  //   */
+  // // 普通例外
+  // when(io.csrMessage.exceptionFlush) {
+  //   crmd.in.plv := 0.U
+  //   crmd.in.ie  := 0.U
+  // }
 
-  val crmd = viewUInt(csrRegs(spec.Csr.Index.crmd), new CrmdBundle)
+  // // tlb重填例外
+  // when(io.csrMessage.tlbRefillException) {
+  //   crmd.in.da := true.B
+  //   crmd.in.pg := false.B
+  // }
 
-  // PRMD 例外前模式信息
-  val prmd = viewUInt(csrRegs(spec.Csr.Index.prmd), new PrmdBundle)
+  // // 从例外处理程序返回
+  // when(io.csrMessage.ertnFlush) {
+  //   crmd.in.plv := prmd.out.pplv
+  //   crmd.in.ie  := prmd.out.pie
+  //   when(estat.out.ecode === spec.Csr.Estat.tlbr.ecode) {
+  //     crmd.in.da := false.B
+  //     crmd.in.pg := true.B
+  //   }
+  // }
 
-  // EUEN扩展部件使能
-  val euen = viewUInt(csrRegs(spec.Csr.Index.euen), new EuenBundle)
+  // /** PRMD 例外前模式信息
+  //   */
+  // when(io.csrMessage.exceptionFlush) {
+  //   prmd.in.pplv := crmd.out.plv
+  //   prmd.in.pie  := crmd.out.ie
+  // }
 
-  // ECFG 例外控制
-  val ecfg = viewUInt(csrRegs(spec.Csr.Index.ecfg), new EcfgBundle)
+  // // estat
+  // when(io.csrMessage.exceptionFlush) {
+  //   estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
+  //   estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
+  // }
 
-  // ESTAT
-  val estat = viewUInt(csrRegs(spec.Csr.Index.estat), new EstatBundle)
+  // // era
+  // when(io.csrMessage.exceptionFlush) {
+  //   era.in.pc := io.csrMessage.era
+  // }
 
-  // ERA 例外返回地址: 触发例外指令的pc记录在此
-  val era = viewUInt(csrRegs(spec.Csr.Index.era), new EraBundle)
-  era.in := EraBundle.default
+  // // BADV 出错虚地址
+  // when(io.csrMessage.badVAddrSet.en) {
+  //   badv.in.vaddr := io.csrMessage.badVAddrSet.addr
+  // }
 
-  // BADV 出错虚地址
-  val badv = viewUInt(csrRegs(spec.Csr.Index.badv), new BadvBundle)
+  // // LLBit Control
+  // when(io.csrMessage.llbitSet.en) {
+  //   llbctl.in.rollb := io.csrMessage.llbitSet.setValue
+  // }
+  // when(io.csrMessage.ertnFlush) {
+  //   llbctl.in.klo := false.B
+  // }
 
-  // EENTRY 例外入口地址
-  val eentry = viewUInt(csrRegs(spec.Csr.Index.eentry), new EentryBundle)
+  // // TimeVal
 
-  // CPUID 处理器编号
-  val cpuid = viewUInt(csrRegs(spec.Csr.Index.cpuid), new CpuidBundle)
-
-  // SAVE0-3 数据保存
-  val saves = VecInit(spec.Csr.Index.save0, spec.Csr.Index.save1, spec.Csr.Index.save2, spec.Csr.Index.save3).map {
-    idx =>
-      viewUInt(csrRegs(idx), new CsrSaveBundle)
-  }
-
-  // LLBCTL  LLBit控制
-  val llbctl = viewUInt(csrRegs(spec.Csr.Index.llbctl), new LlbctlBundle)
-
-  // TLBIDX  TLB索引
-  val tlbidx = viewUInt(csrRegs(spec.Csr.Index.tlbidx), new TlbidxBundle)
-
-  // TLBEHI  TLB表项高位
-  val tlbehi = viewUInt(csrRegs(spec.Csr.Index.tlbehi), new TlbehiBundle)
-
-  // TLBELO 0-1  TLB表项低位
-  val tlbelo0 = viewUInt(csrRegs(spec.Csr.Index.tlbelo0), new TlbeloBundle)
-
-  val tlbelo1 = viewUInt(csrRegs(spec.Csr.Index.tlbelo1), new TlbeloBundle)
-
-  // ASID 地址空间标识符
-  val asid = viewUInt(csrRegs(spec.Csr.Index.asid), new AsidBundle)
-
-  // PGDL 低半地址空间全局目录基址
-  val pgdl = viewUInt(csrRegs(spec.Csr.Index.pgdl), new PgdlBundle)
-
-  // PGDH 高半地址空间全局目录基址
-  val pgdh = viewUInt(csrRegs(spec.Csr.Index.pgdh), new PgdhBundle)
-
-  // PGD 全局地址空间全局目录基址
-  val pgd = viewUInt(csrRegs(spec.Csr.Index.pgd), new PgdBundle)
-
-  // TLBRENTRY  TLB重填例外入口地址
-  val tlbrentry = viewUInt(csrRegs(spec.Csr.Index.tlbrentry), new TlbrentryBundle)
-
-  // DMW 0-1 直接映射配置窗口
-  val dmw0 = viewUInt(csrRegs(spec.Csr.Index.dmw0), new DmwBundle)
-
-  val dmw1 = viewUInt(csrRegs(spec.Csr.Index.dmw1), new DmwBundle)
-
-  // TID 定时器编号
-  val tid = viewUInt(csrRegs(spec.Csr.Index.tid), new TidBundle)
-
-  // TCFG 定时器配置
-  val tcfg = viewUInt(csrRegs(spec.Csr.Index.tcfg), new TcfgBundle)
-
-  // TVAL 定时器数值
-  val tval = viewUInt(csrRegs(spec.Csr.Index.tval), new TvalBundle)
-
-  // TICLR 定时器中断清除
-  val ticlr = viewUInt(csrRegs(spec.Csr.Index.ticlr), new TiclrBundle)
-
-  /** CRMD 当前模式信息
-    */
-  // 普通例外
-  when(io.csrMessage.exceptionFlush) {
-    crmd.in.plv := 0.U
-    crmd.in.ie  := 0.U
-  }
-
-  // tlb重填例外
-  when(io.csrMessage.tlbRefillException) {
-    crmd.in.da := true.B
-    crmd.in.pg := false.B
-  }
-
-  // 从例外处理程序返回
-  when(io.csrMessage.ertnFlush) {
-    crmd.in.plv := prmd.out.pplv
-    crmd.in.ie  := prmd.out.pie
-    when(estat.out.ecode === spec.Csr.Estat.tlbr.ecode) {
-      crmd.in.da := false.B
-      crmd.in.pg := true.B
-    }
-  }
-
-  /** PRMD 例外前模式信息
-    */
-  when(io.csrMessage.exceptionFlush) {
-    prmd.in.pplv := crmd.out.plv
-    prmd.in.pie  := crmd.out.ie
-  }
-
-  // estat
-  when(io.csrMessage.exceptionFlush) {
-    estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
-    estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
-  }
-
-  // era
-  when(io.csrMessage.exceptionFlush) {
-    era.in.pc := io.csrMessage.era
-  }
-
-  // BADV 出错虚地址
-  when(io.csrMessage.badVAddrSet.en) {
-    badv.in.vaddr := io.csrMessage.badVAddrSet.addr
-  }
-
-  // LLBit Control
-  when(io.csrMessage.llbitSet.en) {
-    llbctl.in.rollb := io.csrMessage.llbitSet.setValue
-  }
-  when(io.csrMessage.ertnFlush) {
-    llbctl.in.klo := false.B
-  }
-
-  // TimeVal
-
-  when(tval.out.timeVal.orR) { // 定时器不为0
-    when(tcfg.out.en) {
-      tval.in.timeVal := tval.out.timeVal - 1.U
-    }
-  }.otherwise { // 减到0
-    when(tcfg.out.periodic) {
-      timeInterrupt   := true.B
-      tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
-    } // 为0时停止计数
-  }
+  // when(tval.out.timeVal.orR) { // 定时器不为0
+  //   when(tcfg.out.en) {
+  //     tval.in.timeVal := tval.out.timeVal - 1.U
+  //   }
+  // }.otherwise { // 减到0
+  //   when(tcfg.out.periodic) {
+  //     timeInterrupt   := true.B
+  //     tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
+  //   } // 为0时停止计数
+  // }
 
   // Difftest
-  io.difftest match {
-    case Some(dt) =>
-      dt.crmd := crmd.out.asUInt
-      dt.prmd := prmd.out.asUInt
-      // TODO: `ectl` is not implemented
-      dt.ectl      := DontCare
-      dt.estat     := estat.out
-      dt.era       := era.out.asUInt
-      dt.badv      := badv.out.asUInt
-      dt.eentry    := eentry.out.asUInt
-      dt.tlbidx    := tlbidx.out.asUInt
-      dt.tlbehi    := tlbehi.out.asUInt
-      dt.tlbelo0   := tlbelo0.out.asUInt
-      dt.tlbelo1   := tlbelo1.out.asUInt
-      dt.asid      := asid.out.asUInt
-      dt.save0     := saves(0).out.asUInt
-      dt.save1     := saves(1).out.asUInt
-      dt.save2     := saves(2).out.asUInt
-      dt.save3     := saves(3).out.asUInt
-      dt.tid       := tid.out.asUInt
-      dt.tcfg      := tcfg.out.asUInt
-      dt.tval      := tval.out.asUInt
-      dt.ticlr     := ticlr.out.asUInt
-      dt.llbctl    := llbctl.out.asUInt
-      dt.tlbrentry := tlbrentry.out.asUInt
-      dt.dmw0      := dmw0.out.asUInt
-      dt.dmw1      := dmw1.out.asUInt
-      dt.pgdl      := pgdl.out.asUInt
-      dt.pgdh      := pgdh.out.asUInt
-    case _ =>
-  }
+  // io.difftest match {
+  //   case Some(dt) =>
+  //     dt.crmd := crmd.out.asUInt
+  //     dt.prmd := prmd.out.asUInt
+  //     // TODO: `ectl` is not implemented
+  //     dt.ectl      := DontCare
+  //     dt.estat     := estat.out
+  //     dt.era       := era.out.asUInt
+  //     dt.badv      := badv.out.asUInt
+  //     dt.eentry    := eentry.out.asUInt
+  //     dt.tlbidx    := tlbidx.out.asUInt
+  //     dt.tlbehi    := tlbehi.out.asUInt
+  //     dt.tlbelo0   := tlbelo0.out.asUInt
+  //     dt.tlbelo1   := tlbelo1.out.asUInt
+  //     dt.asid      := asid.out.asUInt
+  //     dt.save0     := saves(0).out.asUInt
+  //     dt.save1     := saves(1).out.asUInt
+  //     dt.save2     := saves(2).out.asUInt
+  //     dt.save3     := saves(3).out.asUInt
+  //     dt.tid       := tid.out.asUInt
+  //     dt.tcfg      := tcfg.out.asUInt
+  //     dt.tval      := tval.out.asUInt
+  //     dt.ticlr     := ticlr.out.asUInt
+  //     dt.llbctl    := llbctl.out.asUInt
+  //     dt.tlbrentry := tlbrentry.out.asUInt
+  //     dt.dmw0      := dmw0.out.asUInt
+  //     dt.dmw1      := dmw1.out.asUInt
+  //     dt.pgdl      := pgdl.out.asUInt
+  //     dt.pgdh      := pgdh.out.asUInt
+  //   case _ =>
+  // }
 }

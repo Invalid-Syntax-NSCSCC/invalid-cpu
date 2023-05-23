@@ -42,7 +42,7 @@ class BiIssueStage(
 
     // `IssueStage` <-> `Scoreboard(csr)`
     val csrOccupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-    val csrRegScores    = Input(Vec(Count.csrReg, Bool()))
+    val csrRegScores    = Input(Vec(Count.csr, Bool()))
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPorts = Vec(issueNum, Output(new IssuedInfoNdPort))
@@ -124,7 +124,13 @@ class BiIssueStage(
         readPort.en && io.regScores(readPort.addr)
       }))
       .reduce(_ || _)) &&
-    !(fetchInfos.issueInfo.info.csrReadEn && io.csrRegScores(fetchInfos.issueInfo.info.csrAddr))
+    // !(fetchInfos.issueInfo.info.csrReadEn && io.csrRegScores(fetchInfos.issueInfo.info.csrAddr))
+    !(VecInit(Csr.Index.addrs)
+      .zip(io.csrRegScores)
+      .map {
+        case (addr, score) => (addr === fetchInfos.issueInfo.info.csrAddr) && score
+      }
+      .reduce(_ || _))
   }))
 
   when(canIssueMaxNum.orR) {

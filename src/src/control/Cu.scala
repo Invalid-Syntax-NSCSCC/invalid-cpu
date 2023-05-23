@@ -224,13 +224,13 @@ class Cu(
   // select new pc
   when(extnFlush) {
     io.newPc.en     := true.B
-    io.newPc.pcAddr := io.csrValues.era
+    io.newPc.pcAddr := io.csrValues.era.asUInt
   }.elsewhen(hasException) {
     io.newPc.en := true.B
     when(isTlbRefillException) {
-      io.newPc.pcAddr := io.csrValues.tlbrentry
+      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
     }.otherwise {
-      io.newPc.pcAddr := io.csrValues.eentry
+      io.newPc.pcAddr := io.csrValues.eentry.asUInt
     }
   }.elsewhen(io.jumpPc.en) {
     io.newPc := io.jumpPc

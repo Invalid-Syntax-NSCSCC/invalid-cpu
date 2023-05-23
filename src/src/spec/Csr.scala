@@ -6,43 +6,76 @@ import control.bundles.EcodeBundle
 
 object Csr {
   object Index {
-    var count = -1
-
-    private def next = {
+    private var count = 0
+    private def h(str: String): UInt = {
       count += 1
-      count.U(Width.Csr.addr)
+      ("h" + str).U(spec.`package`.Width.Csr.addr)
     }
 
-    val crmd      = next
-    val prmd      = next
-    val euen      = next
-    val ecfg      = next
-    val estat     = next
-    val era       = next
-    val badv      = next
-    val eentry    = next
-    val tlbidx    = next
-    val tlbehi    = next
-    val tlbelo0   = next
-    val tlbelo1   = next
-    val asid      = next
-    val pgdl      = next
-    val pgdh      = next
-    val pgd       = next
-    val cpuid     = next
-    val save0     = next
-    val save1     = next
-    val save2     = next
-    val save3     = next
-    val tid       = next
-    val tcfg      = next
-    val tval      = next
-    val ticlr     = next
-    val llbctl    = next
-    val tlbrentry = next
-    val ctag      = next
-    val dmw0      = next
-    val dmw1      = next
+    val crmd      = h("0")
+    val prmd      = h("1")
+    val euen      = h("2")
+    val ecfg      = h("4")
+    val estat     = h("5")
+    val era       = h("6")
+    val badv      = h("7")
+    val eentry    = h("c")
+    val tlbidx    = h("10")
+    val tlbehi    = h("11")
+    val tlbelo0   = h("12")
+    val tlbelo1   = h("13")
+    val asid      = h("18")
+    val pgdl      = h("19")
+    val pgdh      = h("1a")
+    val pgd       = h("1b")
+    val cpuid     = h("20")
+    val save0     = h("30")
+    val save1     = h("31")
+    val save2     = h("32")
+    val save3     = h("33")
+    val tid       = h("40")
+    val tcfg      = h("41")
+    val tval      = h("42")
+    val ticlr     = h("44")
+    val llbctl    = h("60")
+    val tlbrentry = h("88")
+    val ctag      = h("98")
+    val dmw0      = h("180")
+    val dmw1      = h("181")
+
+    val addrs = Seq(
+      "0",
+      "1",
+      "2",
+      "4",
+      "5",
+      "6",
+      "7",
+      "c",
+      "10",
+      "11",
+      "12",
+      "13",
+      "18",
+      "19",
+      "1a",
+      "1b",
+      "20",
+      "30",
+      "31",
+      "32",
+      "33",
+      "40",
+      "41",
+      "42",
+      "44",
+      "60",
+      "88",
+      "98",
+      "180",
+      "181"
+    ).map { h(_) }
+    val num = addrs.length
   }
 
   object Estat {
