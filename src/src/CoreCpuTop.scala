@@ -1,24 +1,16 @@
 import axi.axi_3x1_crossbar
 import axi.bundles.AxiMasterPort
 import chisel3._
-import chisel3.internal.sourceinfo.MemTransform
 import common.{Pc, RegFile}
+import control.{Csr, Cu, StableCounter}
 import frontend.{InstQueue, SimpleFetchStage}
-import control.Cu
-import pipeline.dataforward.DataForwardStage
+import memory.{DCache, Tlb, UncachedAgent}
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
-import pipeline.writeback.WbStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
+import pipeline.writeback.WbStage
 import spec.Param.isDiffTest
-import spec.PipelineStageIndex
-import spec.zeroWord
-import control.Csr
-import spec.Param
-import spec.Count
-import control.StableCounter
-import memory.{DCache, Tlb, UncachedAgent}
-import spec.ExeInst
+import spec.{Count, Param, PipelineStageIndex}
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -265,8 +257,10 @@ class CoreCpuTop extends Module {
 
   // Connection for memory related modules
   // TODO: Finish AXI connection
+  // TODO: Finish TLB maintanence connection
   dCache.io        <> DontCare
   uncachedAgent.io <> DontCare
+  tlb.io           <> DontCare
   // Hint: dCache.io.axiMasterPort --> crossbar.io.slaves(1)
   crossbar.io.s01_axi_arid    <> dCache.io.axiMasterPort.arid
   crossbar.io.s01_axi_araddr  <> dCache.io.axiMasterPort.araddr
@@ -309,7 +303,7 @@ class CoreCpuTop extends Module {
   crossbar.io.s01_axi_bresp   <> dCache.io.axiMasterPort.bresp
   crossbar.io.s01_axi_bvalid  <> dCache.io.axiMasterPort.bvalid
   crossbar.io.s01_axi_bready  <> dCache.io.axiMasterPort.bready
-  // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(1)
+  // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(2)
   crossbar.io.s02_axi_awid    <> uncachedAgent.io.axiMasterPort.awid
   crossbar.io.s02_axi_awaddr  <> uncachedAgent.io.axiMasterPort.awaddr
   crossbar.io.s02_axi_awlen   <> uncachedAgent.io.axiMasterPort.awlen

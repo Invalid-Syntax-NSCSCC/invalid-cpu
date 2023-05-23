@@ -14,176 +14,179 @@ class Axi3x1Crossbar extends Module {
   rawModule.io.clk := clock
   rawModule.io.rst := reset
 
-  rawModule.io.s00_axi_awid :<>= io.master(0).aw.bits.id
-  rawModule.io.s00_axi_awaddr :<>= io.master(0).aw.bits.addr
-  rawModule.io.s00_axi_awlen :<>= io.master(0).aw.bits.len
-  rawModule.io.s00_axi_awsize :<>= io.master(0).aw.bits.size
-  rawModule.io.s00_axi_awburst :<>= io.master(0).aw.bits.burst
-  rawModule.io.s00_axi_awlock :<>= io.master(0).aw.bits.lock
-  rawModule.io.s00_axi_awcache :<>= io.master(0).aw.bits.cache
-  rawModule.io.s00_axi_awprot :<>= io.master(0).aw.bits.prot
-  rawModule.io.s00_axi_awqos :<>= io.master(0).aw.bits.qos
-  rawModule.io.s00_axi_awuser :<>= io.master(0).aw.bits.user
-  rawModule.io.s00_axi_awvalid :<>= io.master(0).aw.valid
-  rawModule.io.s00_axi_awready :<>= io.master(0).aw.ready
-  rawModule.io.s00_axi_wdata :<>= io.master(0).w.bits.data
-  rawModule.io.s00_axi_wstrb :<>= io.master(0).w.bits.strb
-  rawModule.io.s00_axi_wlast :<>= io.master(0).w.bits.last
-  rawModule.io.s00_axi_wuser :<>= io.master(0).w.bits.user
-  rawModule.io.s00_axi_wvalid :<>= io.master(0).w.valid
-  rawModule.io.s00_axi_wready :<>= io.master(0).w.ready
-  rawModule.io.s00_axi_bid
-  rawModule.io.s00_axi_bresp
-  rawModule.io.s00_axi_buser
-  rawModule.io.s00_axi_bvalid
-  rawModule.io.s00_axi_bready
-  rawModule.io.s00_axi_arid
-  rawModule.io.s00_axi_araddr
-  rawModule.io.s00_axi_arlen
-  rawModule.io.s00_axi_arsize
-  rawModule.io.s00_axi_arburst
-  rawModule.io.s00_axi_arlock
-  rawModule.io.s00_axi_arcache
-  rawModule.io.s00_axi_arprot
-  rawModule.io.s00_axi_arqos
-  rawModule.io.s00_axi_aruser
-  rawModule.io.s00_axi_arvalid
-  rawModule.io.s00_axi_arready
-  rawModule.io.s00_axi_rid
-  rawModule.io.s00_axi_rdata
-  rawModule.io.s00_axi_rresp
-  rawModule.io.s00_axi_rlast
-  rawModule.io.s00_axi_ruser
-  rawModule.io.s00_axi_rvalid
-  rawModule.io.s00_axi_rready
-  rawModule.io.s01_axi_awid
-  rawModule.io.s01_axi_awaddr
-  rawModule.io.s01_axi_awlen
-  rawModule.io.s01_axi_awsize
-  rawModule.io.s01_axi_awburst
-  rawModule.io.s01_axi_awlock
-  rawModule.io.s01_axi_awcache
-  rawModule.io.s01_axi_awprot
-  rawModule.io.s01_axi_awqos
-  rawModule.io.s01_axi_awuser
-  rawModule.io.s01_axi_awvalid
-  rawModule.io.s01_axi_awready
-  rawModule.io.s01_axi_wdata
-  rawModule.io.s01_axi_wstrb
-  rawModule.io.s01_axi_wlast
-  rawModule.io.s01_axi_wuser
-  rawModule.io.s01_axi_wvalid
-  rawModule.io.s01_axi_wready
-  rawModule.io.s01_axi_bid
-  rawModule.io.s01_axi_bresp
-  rawModule.io.s01_axi_buser
-  rawModule.io.s01_axi_bvalid
-  rawModule.io.s01_axi_bready
-  rawModule.io.s01_axi_arid
-  rawModule.io.s01_axi_araddr
-  rawModule.io.s01_axi_arlen
-  rawModule.io.s01_axi_arsize
-  rawModule.io.s01_axi_arburst
-  rawModule.io.s01_axi_arlock
-  rawModule.io.s01_axi_arcache
-  rawModule.io.s01_axi_arprot
-  rawModule.io.s01_axi_arqos
-  rawModule.io.s01_axi_aruser
-  rawModule.io.s01_axi_arvalid
-  rawModule.io.s01_axi_arready
-  rawModule.io.s01_axi_rid
-  rawModule.io.s01_axi_rdata
-  rawModule.io.s01_axi_rresp
-  rawModule.io.s01_axi_rlast
-  rawModule.io.s01_axi_ruser
-  rawModule.io.s01_axi_rvalid
-  rawModule.io.s01_axi_rready
-  rawModule.io.s02_axi_awid
-  rawModule.io.s02_axi_awaddr
-  rawModule.io.s02_axi_awlen
-  rawModule.io.s02_axi_awsize
-  rawModule.io.s02_axi_awburst
-  rawModule.io.s02_axi_awlock
-  rawModule.io.s02_axi_awcache
-  rawModule.io.s02_axi_awprot
-  rawModule.io.s02_axi_awqos
-  rawModule.io.s02_axi_awuser
-  rawModule.io.s02_axi_awvalid
-  rawModule.io.s02_axi_awready
-  rawModule.io.s02_axi_wdata
-  rawModule.io.s02_axi_wstrb
-  rawModule.io.s02_axi_wlast
-  rawModule.io.s02_axi_wuser
-  rawModule.io.s02_axi_wvalid
-  rawModule.io.s02_axi_wready
-  rawModule.io.s02_axi_bid
-  rawModule.io.s02_axi_bresp
-  rawModule.io.s02_axi_buser
-  rawModule.io.s02_axi_bvalid
-  rawModule.io.s02_axi_bready
-  rawModule.io.s02_axi_arid
-  rawModule.io.s02_axi_araddr
-  rawModule.io.s02_axi_arlen
-  rawModule.io.s02_axi_arsize
-  rawModule.io.s02_axi_arburst
-  rawModule.io.s02_axi_arlock
-  rawModule.io.s02_axi_arcache
-  rawModule.io.s02_axi_arprot
-  rawModule.io.s02_axi_arqos
-  rawModule.io.s02_axi_aruser
-  rawModule.io.s02_axi_arvalid
-  rawModule.io.s02_axi_arready
-  rawModule.io.s02_axi_rid
-  rawModule.io.s02_axi_rdata
-  rawModule.io.s02_axi_rresp
-  rawModule.io.s02_axi_rlast
-  rawModule.io.s02_axi_ruser
-  rawModule.io.s02_axi_rvalid
-  rawModule.io.s02_axi_rready
-  rawModule.io.m00_axi_awid
-  rawModule.io.m00_axi_awaddr
-  rawModule.io.m00_axi_awlen
-  rawModule.io.m00_axi_awsize
-  rawModule.io.m00_axi_awburst
-  rawModule.io.m00_axi_awlock
-  rawModule.io.m00_axi_awcache
-  rawModule.io.m00_axi_awprot
-  rawModule.io.m00_axi_awqos
-  rawModule.io.m00_axi_awregion
-  rawModule.io.m00_axi_awuser
-  rawModule.io.m00_axi_awvalid
-  rawModule.io.m00_axi_awready
-  rawModule.io.m00_axi_wdata
-  rawModule.io.m00_axi_wstrb
-  rawModule.io.m00_axi_wlast
-  rawModule.io.m00_axi_wuser
-  rawModule.io.m00_axi_wvalid
-  rawModule.io.m00_axi_wready
-  rawModule.io.m00_axi_bid
-  rawModule.io.m00_axi_bresp
-  rawModule.io.m00_axi_buser
-  rawModule.io.m00_axi_bvalid
-  rawModule.io.m00_axi_bready
-  rawModule.io.m00_axi_arid
-  rawModule.io.m00_axi_araddr
-  rawModule.io.m00_axi_arlen
-  rawModule.io.m00_axi_arsize
-  rawModule.io.m00_axi_arburst
-  rawModule.io.m00_axi_arlock
-  rawModule.io.m00_axi_arcache
-  rawModule.io.m00_axi_arprot
-  rawModule.io.m00_axi_arqos
-  rawModule.io.m00_axi_arregion
-  rawModule.io.m00_axi_aruser
-  rawModule.io.m00_axi_arvalid
-  rawModule.io.m00_axi_arready
-  rawModule.io.m00_axi_rid
-  rawModule.io.m00_axi_rdata
-  rawModule.io.m00_axi_rresp
-  rawModule.io.m00_axi_rlast
-  rawModule.io.m00_axi_ruser
-  rawModule.io.m00_axi_rvalid
-  rawModule.io.m00_axi_rready
+  rawModule.io.s00_axi_awid    :<>= io.slave(0).aw.bits.id
+  rawModule.io.s00_axi_awaddr  :<>= io.slave(0).aw.bits.addr
+  rawModule.io.s00_axi_awlen   :<>= io.slave(0).aw.bits.len
+  rawModule.io.s00_axi_awsize  :<>= io.slave(0).aw.bits.size
+  rawModule.io.s00_axi_awburst :<>= io.slave(0).aw.bits.burst
+  rawModule.io.s00_axi_awlock  :<>= io.slave(0).aw.bits.lock
+  rawModule.io.s00_axi_awcache :<>= io.slave(0).aw.bits.cache
+  rawModule.io.s00_axi_awprot  :<>= io.slave(0).aw.bits.prot
+  rawModule.io.s00_axi_awqos   :<>= io.slave(0).aw.bits.qos
+  rawModule.io.s00_axi_awuser  :<>= io.slave(0).aw.bits.user
+  rawModule.io.s00_axi_awvalid :<>= io.slave(0).aw.valid
+  rawModule.io.s00_axi_awready :<>= io.slave(0).aw.ready
+  rawModule.io.s00_axi_wdata   :<>= io.slave(0).w.bits.data
+  rawModule.io.s00_axi_wstrb   :<>= io.slave(0).w.bits.strb
+  rawModule.io.s00_axi_wlast   :<>= io.slave(0).w.bits.last
+  rawModule.io.s00_axi_wuser   :<>= io.slave(0).w.bits.user
+  rawModule.io.s00_axi_wvalid  :<>= io.slave(0).w.valid
+  rawModule.io.s00_axi_wready  :<>= io.slave(0).w.ready
+  rawModule.io.s00_axi_bid     :<>= io.slave(0).b.bits.id
+  rawModule.io.s00_axi_bresp   :<>= io.slave(0).b.bits.resp
+  rawModule.io.s00_axi_buser   :<>= io.slave(0).b.bits.user
+  rawModule.io.s00_axi_bvalid  :<>= io.slave(0).b.valid
+  rawModule.io.s00_axi_bready  :<>= io.slave(0).b.ready
+  rawModule.io.s00_axi_arid    :<>= io.slave(0).ar.bits.id
+  rawModule.io.s00_axi_araddr  :<>= io.slave(0).ar.bits.addr
+  rawModule.io.s00_axi_arlen   :<>= io.slave(0).ar.bits.len
+  rawModule.io.s00_axi_arsize  :<>= io.slave(0).ar.bits.size
+  rawModule.io.s00_axi_arburst :<>= io.slave(0).ar.bits.burst
+  rawModule.io.s00_axi_arlock  :<>= io.slave(0).ar.bits.lock
+  rawModule.io.s00_axi_arcache :<>= io.slave(0).ar.bits.cache
+  rawModule.io.s00_axi_arprot  :<>= io.slave(0).ar.bits.prot
+  rawModule.io.s00_axi_arqos   :<>= io.slave(0).ar.bits.qos
+  rawModule.io.s00_axi_aruser  :<>= io.slave(0).ar.bits.user
+  rawModule.io.s00_axi_arvalid :<>= io.slave(0).ar.valid
+  rawModule.io.s00_axi_arready :<>= io.slave(0).ar.ready
+  rawModule.io.s00_axi_rid     :<>= io.slave(0).r.bits.id
+  rawModule.io.s00_axi_rdata   :<>= io.slave(0).r.bits.data
+  rawModule.io.s00_axi_rresp   :<>= io.slave(0).r.bits.resp
+  rawModule.io.s00_axi_rlast   :<>= io.slave(0).r.bits.last
+  rawModule.io.s00_axi_ruser   :<>= io.slave(0).r.bits.user
+  rawModule.io.s00_axi_rvalid  :<>= io.slave(0).r.valid
+  rawModule.io.s00_axi_rready  :<>= io.slave(0).r.ready
+
+  rawModule.io.s01_axi_awid    :<>= io.slave(1).aw.bits.id
+  rawModule.io.s01_axi_awaddr  :<>= io.slave(1).aw.bits.addr
+  rawModule.io.s01_axi_awlen   :<>= io.slave(1).aw.bits.len
+  rawModule.io.s01_axi_awsize  :<>= io.slave(1).aw.bits.size
+  rawModule.io.s01_axi_awburst :<>= io.slave(1).aw.bits.burst
+  rawModule.io.s01_axi_awlock  :<>= io.slave(1).aw.bits.lock
+  rawModule.io.s01_axi_awcache :<>= io.slave(1).aw.bits.cache
+  rawModule.io.s01_axi_awprot  :<>= io.slave(1).aw.bits.prot
+  rawModule.io.s01_axi_awqos   :<>= io.slave(1).aw.bits.qos
+  rawModule.io.s01_axi_awuser  :<>= io.slave(1).aw.bits.user
+  rawModule.io.s01_axi_awvalid :<>= io.slave(1).aw.valid
+  rawModule.io.s01_axi_awready :<>= io.slave(1).aw.ready
+  rawModule.io.s01_axi_wdata   :<>= io.slave(1).w.bits.data
+  rawModule.io.s01_axi_wstrb   :<>= io.slave(1).w.bits.strb
+  rawModule.io.s01_axi_wlast   :<>= io.slave(1).w.bits.last
+  rawModule.io.s01_axi_wuser   :<>= io.slave(1).w.bits.user
+  rawModule.io.s01_axi_wvalid  :<>= io.slave(1).w.valid
+  rawModule.io.s01_axi_wready  :<>= io.slave(1).w.ready
+  rawModule.io.s01_axi_bid     :<>= io.slave(1).b.bits.id
+  rawModule.io.s01_axi_bresp   :<>= io.slave(1).b.bits.resp
+  rawModule.io.s01_axi_buser   :<>= io.slave(1).b.bits.user
+  rawModule.io.s01_axi_bvalid  :<>= io.slave(1).b.valid
+  rawModule.io.s01_axi_bready  :<>= io.slave(1).b.ready
+  rawModule.io.s01_axi_arid    :<>= io.slave(1).ar.bits.id
+  rawModule.io.s01_axi_araddr  :<>= io.slave(1).ar.bits.addr
+  rawModule.io.s01_axi_arlen   :<>= io.slave(1).ar.bits.len
+  rawModule.io.s01_axi_arsize  :<>= io.slave(1).ar.bits.size
+  rawModule.io.s01_axi_arburst :<>= io.slave(1).ar.bits.burst
+  rawModule.io.s01_axi_arlock  :<>= io.slave(1).ar.bits.lock
+  rawModule.io.s01_axi_arcache :<>= io.slave(1).ar.bits.cache
+  rawModule.io.s01_axi_arprot  :<>= io.slave(1).ar.bits.prot
+  rawModule.io.s01_axi_arqos   :<>= io.slave(1).ar.bits.qos
+  rawModule.io.s01_axi_aruser  :<>= io.slave(1).ar.bits.user
+  rawModule.io.s01_axi_arvalid :<>= io.slave(1).ar.valid
+  rawModule.io.s01_axi_arready :<>= io.slave(1).ar.ready
+  rawModule.io.s01_axi_rid     :<>= io.slave(1).r.bits.id
+  rawModule.io.s01_axi_rdata   :<>= io.slave(1).r.bits.data
+  rawModule.io.s01_axi_rresp   :<>= io.slave(1).r.bits.resp
+  rawModule.io.s01_axi_rlast   :<>= io.slave(1).r.bits.last
+  rawModule.io.s01_axi_ruser   :<>= io.slave(1).r.bits.user
+  rawModule.io.s01_axi_rvalid  :<>= io.slave(1).r.valid
+  rawModule.io.s01_axi_rready  :<>= io.slave(1).r.ready
+
+  rawModule.io.s02_axi_awid    :<>= io.slave(2).aw.bits.id
+  rawModule.io.s02_axi_awaddr  :<>= io.slave(2).aw.bits.addr
+  rawModule.io.s02_axi_awlen   :<>= io.slave(2).aw.bits.len
+  rawModule.io.s02_axi_awsize  :<>= io.slave(2).aw.bits.size
+  rawModule.io.s02_axi_awburst :<>= io.slave(2).aw.bits.burst
+  rawModule.io.s02_axi_awlock  :<>= io.slave(2).aw.bits.lock
+  rawModule.io.s02_axi_awcache :<>= io.slave(2).aw.bits.cache
+  rawModule.io.s02_axi_awprot  :<>= io.slave(2).aw.bits.prot
+  rawModule.io.s02_axi_awqos   :<>= io.slave(2).aw.bits.qos
+  rawModule.io.s02_axi_awuser  :<>= io.slave(2).aw.bits.user
+  rawModule.io.s02_axi_awvalid :<>= io.slave(2).aw.valid
+  rawModule.io.s02_axi_awready :<>= io.slave(2).aw.ready
+  rawModule.io.s02_axi_wdata   :<>= io.slave(2).w.bits.data
+  rawModule.io.s02_axi_wstrb   :<>= io.slave(2).w.bits.strb
+  rawModule.io.s02_axi_wlast   :<>= io.slave(2).w.bits.last
+  rawModule.io.s02_axi_wuser   :<>= io.slave(2).w.bits.user
+  rawModule.io.s02_axi_wvalid  :<>= io.slave(2).w.valid
+  rawModule.io.s02_axi_wready  :<>= io.slave(2).w.ready
+  rawModule.io.s02_axi_bid     :<>= io.slave(2).b.bits.id
+  rawModule.io.s02_axi_bresp   :<>= io.slave(2).b.bits.resp
+  rawModule.io.s02_axi_buser   :<>= io.slave(2).b.bits.user
+  rawModule.io.s02_axi_bvalid  :<>= io.slave(2).b.valid
+  rawModule.io.s02_axi_bready  :<>= io.slave(2).b.ready
+  rawModule.io.s02_axi_arid    :<>= io.slave(2).ar.bits.id
+  rawModule.io.s02_axi_araddr  :<>= io.slave(2).ar.bits.addr
+  rawModule.io.s02_axi_arlen   :<>= io.slave(2).ar.bits.len
+  rawModule.io.s02_axi_arsize  :<>= io.slave(2).ar.bits.size
+  rawModule.io.s02_axi_arburst :<>= io.slave(2).ar.bits.burst
+  rawModule.io.s02_axi_arlock  :<>= io.slave(2).ar.bits.lock
+  rawModule.io.s02_axi_arcache :<>= io.slave(2).ar.bits.cache
+  rawModule.io.s02_axi_arprot  :<>= io.slave(2).ar.bits.prot
+  rawModule.io.s02_axi_arqos   :<>= io.slave(2).ar.bits.qos
+  rawModule.io.s02_axi_aruser  :<>= io.slave(2).ar.bits.user
+  rawModule.io.s02_axi_arvalid :<>= io.slave(2).ar.valid
+  rawModule.io.s02_axi_arready :<>= io.slave(2).ar.ready
+  rawModule.io.s02_axi_rid     :<>= io.slave(2).r.bits.id
+  rawModule.io.s02_axi_rdata   :<>= io.slave(2).r.bits.data
+  rawModule.io.s02_axi_rresp   :<>= io.slave(2).r.bits.resp
+  rawModule.io.s02_axi_rlast   :<>= io.slave(2).r.bits.last
+  rawModule.io.s02_axi_ruser   :<>= io.slave(2).r.bits.user
+  rawModule.io.s02_axi_rvalid  :<>= io.slave(2).r.valid
+  rawModule.io.s02_axi_rready  :<>= io.slave(2).r.ready
+
+  rawModule.io.m00_axi_awid     :<>= io.master(0).aw.bits.id
+  rawModule.io.m00_axi_awaddr   :<>= io.master(0).aw.bits.addr
+  rawModule.io.m00_axi_awlen    :<>= io.master(0).aw.bits.len
+  rawModule.io.m00_axi_awsize   :<>= io.master(0).aw.bits.size
+  rawModule.io.m00_axi_awburst  :<>= io.master(0).aw.bits.burst
+  rawModule.io.m00_axi_awlock   :<>= io.master(0).aw.bits.lock
+  rawModule.io.m00_axi_awcache  :<>= io.master(0).aw.bits.cache
+  rawModule.io.m00_axi_awprot   :<>= io.master(0).aw.bits.prot
+  rawModule.io.m00_axi_awqos    :<>= io.master(0).aw.bits.qos
+  rawModule.io.m00_axi_awregion :<>= io.master(0).aw.bits.region
+  rawModule.io.m00_axi_awuser   :<>= io.master(0).aw.bits.user
+  rawModule.io.m00_axi_awvalid  :<>= io.master(0).aw.valid
+  rawModule.io.m00_axi_awready  :<>= io.master(0).aw.ready
+  rawModule.io.m00_axi_wdata    :<>= io.master(0).w.bits.data
+  rawModule.io.m00_axi_wstrb    :<>= io.master(0).w.bits.strb
+  rawModule.io.m00_axi_wlast    :<>= io.master(0).w.bits.last
+  rawModule.io.m00_axi_wuser    :<>= io.master(0).w.bits.user
+  rawModule.io.m00_axi_wvalid   :<>= io.master(0).w.valid
+  rawModule.io.m00_axi_wready   :<>= io.master(0).w.ready
+  rawModule.io.m00_axi_bid      :<>= io.master(0).b.bits.id
+  rawModule.io.m00_axi_bresp    :<>= io.master(0).b.bits.resp
+  rawModule.io.m00_axi_buser    :<>= io.master(0).b.bits.user
+  rawModule.io.m00_axi_bvalid   :<>= io.master(0).b.valid
+  rawModule.io.m00_axi_bready   :<>= io.master(0).b.ready
+  rawModule.io.m00_axi_arid     :<>= io.master(0).ar.bits.id
+  rawModule.io.m00_axi_araddr   :<>= io.master(0).ar.bits.addr
+  rawModule.io.m00_axi_arlen    :<>= io.master(0).ar.bits.len
+  rawModule.io.m00_axi_arsize   :<>= io.master(0).ar.bits.size
+  rawModule.io.m00_axi_arburst  :<>= io.master(0).ar.bits.burst
+  rawModule.io.m00_axi_arlock   :<>= io.master(0).ar.bits.lock
+  rawModule.io.m00_axi_arcache  :<>= io.master(0).ar.bits.cache
+  rawModule.io.m00_axi_arprot   :<>= io.master(0).ar.bits.prot
+  rawModule.io.m00_axi_arqos    :<>= io.master(0).ar.bits.qos
+  rawModule.io.m00_axi_arregion :<>= io.master(0).ar.bits.region
+  rawModule.io.m00_axi_aruser   :<>= io.master(0).ar.bits.user
+  rawModule.io.m00_axi_arvalid  :<>= io.master(0).ar.valid
+  rawModule.io.m00_axi_arready  :<>= io.master(0).ar.ready
+  rawModule.io.m00_axi_rid      :<>= io.master(0).r.bits.id
+  rawModule.io.m00_axi_rdata    :<>= io.master(0).r.bits.data
+  rawModule.io.m00_axi_rresp    :<>= io.master(0).r.bits.resp
+  rawModule.io.m00_axi_rlast    :<>= io.master(0).r.bits.last
+  rawModule.io.m00_axi_ruser    :<>= io.master(0).r.bits.user
+  rawModule.io.m00_axi_rvalid   :<>= io.master(0).r.valid
+  rawModule.io.m00_axi_rready   :<>= io.master(0).r.ready
 }
 
 class axi_3x1_crossbar
@@ -371,5 +374,4 @@ class axi_3x1_crossbar
     val m00_axi_rvalid   = Input(Bool())
     val m00_axi_rready   = Output(Bool())
   })
-
 }
