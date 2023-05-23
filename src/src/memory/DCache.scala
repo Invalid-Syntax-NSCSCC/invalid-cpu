@@ -1,7 +1,7 @@
 package memory
 
 import axi.BetterAxiMaster
-import axi.bundles.AxiMasterPort
+import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
@@ -19,7 +19,7 @@ class DCache(
     extends Module {
   val io = IO(new Bundle {
     val accessPort    = new MemAccessPort
-    val axiMasterPort = new AxiMasterPort
+    val axiMasterPort = new AxiMasterInterface
   })
 
   // Read cache hit diagram:

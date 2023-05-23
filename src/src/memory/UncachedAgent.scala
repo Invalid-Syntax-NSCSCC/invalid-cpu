@@ -1,18 +1,18 @@
 package memory
 
 import axi.AxiMaster
-import axi.bundles.AxiMasterPort
+import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
 import common.enums.ReadWriteSel
-import memory.bundles.{MemAccessPort, MemRequestNdPort, MemResponseNdPort}
+import memory.bundles.MemAccessPort
 import memory.enums.{UncachedAgentState => State}
 import spec._
 
 class UncachedAgent extends Module {
   val io = IO(new Bundle {
     val accessPort    = new MemAccessPort
-    val axiMasterPort = new AxiMasterPort
+    val axiMasterPort = new AxiMasterInterface
   })
 
   // Use naïve AXI master (because we don't need burst)
