@@ -27,7 +27,7 @@ object Param {
     val exeSel = log2Ceil(ExeInst.Sel.count + 1).W
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
-    object Axi { // crossbar
+    object Axi {
       private val _data = 128
 
       val data = _data.W

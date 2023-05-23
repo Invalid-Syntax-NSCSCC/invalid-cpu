@@ -1,4 +1,4 @@
-import axi.AxiCrossbar
+import axi.axi_3x1_crossbar
 import axi.bundles.AxiMasterPort
 import chisel3._
 import chisel3.internal.sourceinfo.MemTransform
@@ -112,7 +112,7 @@ class CoreCpuTop extends Module {
   val memReqStage    = Module(new MemReqStage)
   val memResStage    = Module(new MemResStage)
 
-  val crossbar = Module(new AxiCrossbar)
+  val crossbar = Module(new axi_3x1_crossbar)
 
   val scoreboard    = Module(new Scoreboard)
   val csrScoreBoard = Module(new Scoreboard(changeNum = Param.csrScoreBoardChangeNum, regNum = Count.csrReg))
@@ -137,84 +137,126 @@ class CoreCpuTop extends Module {
   // TODO: debug crossbar
 //  io.axi      <> simpleFetchStage.io.axiMasterInterface
 //  crossbar.io <> DontCare
+  crossbar.io.clk <> clock
+  crossbar.io.rst <> reset
   // AXI top <> AXI crossbar
-  crossbar.io.slaves                       <> DontCare
-  crossbar.io.masters(0).read.r.bits.user  <> DontCare
-  crossbar.io.masters(0).write.b.bits.user <> DontCare
-  io.axi.arid                              <> crossbar.io.masters(0).read.ar.bits.id
-  io.axi.araddr                            <> crossbar.io.masters(0).read.ar.bits.addr
-  io.axi.arlen                             <> crossbar.io.masters(0).read.ar.bits.len
-  io.axi.arsize                            <> crossbar.io.masters(0).read.ar.bits.size
-  io.axi.arburst                           <> crossbar.io.masters(0).read.ar.bits.burst
-  io.axi.arlock                            <> crossbar.io.masters(0).read.ar.bits.lock
-  io.axi.arcache                           <> crossbar.io.masters(0).read.ar.bits.cache
-  io.axi.arprot                            <> crossbar.io.masters(0).read.ar.bits.prot
-  io.axi.arvalid                           <> crossbar.io.masters(0).read.ar.valid
-  io.axi.arready                           <> crossbar.io.masters(0).read.ar.ready
-  io.axi.rid                               <> crossbar.io.masters(0).read.r.bits.id
-  io.axi.rdata                             <> crossbar.io.masters(0).read.r.bits.data
-  io.axi.rresp                             <> crossbar.io.masters(0).read.r.bits.resp
-  io.axi.rlast                             <> crossbar.io.masters(0).read.r.bits.last
-  io.axi.rvalid                            <> crossbar.io.masters(0).read.r.valid
-  io.axi.rready                            <> crossbar.io.masters(0).read.r.ready
-  io.axi.awid                              <> crossbar.io.masters(0).write.aw.bits.id
-  io.axi.awaddr                            <> crossbar.io.masters(0).write.aw.bits.addr
-  io.axi.awlen                             <> crossbar.io.masters(0).write.aw.bits.len
-  io.axi.awsize                            <> crossbar.io.masters(0).write.aw.bits.size
-  io.axi.awburst                           <> crossbar.io.masters(0).write.aw.bits.burst
-  io.axi.awlock                            <> crossbar.io.masters(0).write.aw.bits.lock
-  io.axi.awcache                           <> crossbar.io.masters(0).write.aw.bits.cache
-  io.axi.awprot                            <> crossbar.io.masters(0).write.aw.bits.prot
-  io.axi.awvalid                           <> crossbar.io.masters(0).write.aw.valid
-  io.axi.awready                           <> crossbar.io.masters(0).write.aw.ready
-  io.axi.wid                               <> DontCare
-  io.axi.wdata                             <> crossbar.io.masters(0).write.w.bits.data
-  io.axi.wstrb                             <> crossbar.io.masters(0).write.w.bits.strb
-  io.axi.wlast                             <> crossbar.io.masters(0).write.w.bits.last
-  io.axi.wvalid                            <> crossbar.io.masters(0).write.w.valid
-  io.axi.wready                            <> crossbar.io.masters(0).write.w.ready
-  io.axi.bid                               <> crossbar.io.masters(0).write.b.bits.id
-  io.axi.bresp                             <> crossbar.io.masters(0).write.b.bits.resp
-  io.axi.bvalid                            <> crossbar.io.masters(0).write.b.valid
-  io.axi.bready                            <> crossbar.io.masters(0).write.b.ready
+  crossbar.io.m00_axi_arid    <> io.axi.arid
+  crossbar.io.m00_axi_araddr  <> io.axi.araddr
+  crossbar.io.m00_axi_arlen   <> io.axi.arlen
+  crossbar.io.m00_axi_arsize  <> io.axi.arsize
+  crossbar.io.m00_axi_arburst <> io.axi.arburst
+  crossbar.io.m00_axi_arlock  <> io.axi.arlock
+  crossbar.io.m00_axi_arcache <> io.axi.arcache
+  crossbar.io.m00_axi_arprot  <> io.axi.arprot
+  crossbar.io.m00_axi_arvalid <> io.axi.arvalid
+  crossbar.io.m00_axi_arready <> io.axi.arready
+  crossbar.io.m00_axi_rid     <> io.axi.rid
+  crossbar.io.m00_axi_rdata   <> io.axi.rdata
+  crossbar.io.m00_axi_rresp   <> io.axi.rresp
+  crossbar.io.m00_axi_rlast   <> io.axi.rlast
+  crossbar.io.m00_axi_ruser   <> DontCare
+  crossbar.io.m00_axi_rvalid  <> io.axi.rvalid
+  crossbar.io.m00_axi_rready  <> io.axi.rready
+  crossbar.io.m00_axi_awid    <> io.axi.awid
+  crossbar.io.m00_axi_awaddr  <> io.axi.awaddr
+  crossbar.io.m00_axi_awlen   <> io.axi.awlen
+  crossbar.io.m00_axi_awsize  <> io.axi.awsize
+  crossbar.io.m00_axi_awburst <> io.axi.awburst
+  crossbar.io.m00_axi_awlock  <> io.axi.awlock
+  crossbar.io.m00_axi_awcache <> io.axi.awcache
+  crossbar.io.m00_axi_awprot  <> io.axi.awprot
+  crossbar.io.m00_axi_awvalid <> io.axi.awvalid
+  crossbar.io.m00_axi_awready <> io.axi.awready
+  crossbar.io.m00_axi_wdata   <> io.axi.wdata
+  crossbar.io.m00_axi_wstrb   <> io.axi.wstrb
+  crossbar.io.m00_axi_wlast   <> io.axi.wlast
+  crossbar.io.m00_axi_wuser   <> DontCare
+  crossbar.io.m00_axi_wvalid  <> io.axi.wvalid
+  crossbar.io.m00_axi_wready  <> io.axi.wready
+  crossbar.io.m00_axi_bid     <> io.axi.bid
+  crossbar.io.m00_axi_bresp   <> io.axi.bresp
+  crossbar.io.m00_axi_buser   <> DontCare
+  crossbar.io.m00_axi_bvalid  <> io.axi.bvalid
+  crossbar.io.m00_axi_bready  <> io.axi.bready
 
   // `SimpleFetchStage` <> AXI crossbar
-  simpleFetchStage.io.axiMasterInterface.arid    <> crossbar.io.slaves(0).read.ar.bits.id
-  simpleFetchStage.io.axiMasterInterface.araddr  <> crossbar.io.slaves(0).read.ar.bits.addr
-  simpleFetchStage.io.axiMasterInterface.arlen   <> crossbar.io.slaves(0).read.ar.bits.len
-  simpleFetchStage.io.axiMasterInterface.arsize  <> crossbar.io.slaves(0).read.ar.bits.size
-  simpleFetchStage.io.axiMasterInterface.arburst <> crossbar.io.slaves(0).read.ar.bits.burst
-  simpleFetchStage.io.axiMasterInterface.arlock  <> crossbar.io.slaves(0).read.ar.bits.lock
-  simpleFetchStage.io.axiMasterInterface.arcache <> crossbar.io.slaves(0).read.ar.bits.cache
-  simpleFetchStage.io.axiMasterInterface.arprot  <> crossbar.io.slaves(0).read.ar.bits.prot
-  simpleFetchStage.io.axiMasterInterface.arvalid <> crossbar.io.slaves(0).read.ar.valid
-  simpleFetchStage.io.axiMasterInterface.arready <> crossbar.io.slaves(0).read.ar.ready
-  simpleFetchStage.io.axiMasterInterface.rid     <> crossbar.io.slaves(0).read.r.bits.id
-  simpleFetchStage.io.axiMasterInterface.rdata   <> crossbar.io.slaves(0).read.r.bits.data
-  simpleFetchStage.io.axiMasterInterface.rresp   <> crossbar.io.slaves(0).read.r.bits.resp
-  simpleFetchStage.io.axiMasterInterface.rlast   <> crossbar.io.slaves(0).read.r.bits.last
-  simpleFetchStage.io.axiMasterInterface.rvalid  <> crossbar.io.slaves(0).read.r.valid
-  simpleFetchStage.io.axiMasterInterface.rready  <> crossbar.io.slaves(0).read.r.ready
-  simpleFetchStage.io.axiMasterInterface.awid    <> crossbar.io.slaves(0).write.aw.bits.id
-  simpleFetchStage.io.axiMasterInterface.awaddr  <> crossbar.io.slaves(0).write.aw.bits.addr
-  simpleFetchStage.io.axiMasterInterface.awlen   <> crossbar.io.slaves(0).write.aw.bits.len
-  simpleFetchStage.io.axiMasterInterface.awsize  <> crossbar.io.slaves(0).write.aw.bits.size
-  simpleFetchStage.io.axiMasterInterface.awburst <> crossbar.io.slaves(0).write.aw.bits.burst
-  simpleFetchStage.io.axiMasterInterface.awlock  <> crossbar.io.slaves(0).write.aw.bits.lock
-  simpleFetchStage.io.axiMasterInterface.awcache <> crossbar.io.slaves(0).write.aw.bits.cache
-  simpleFetchStage.io.axiMasterInterface.awprot  <> crossbar.io.slaves(0).write.aw.bits.prot
-  simpleFetchStage.io.axiMasterInterface.awvalid <> crossbar.io.slaves(0).write.aw.valid
-  simpleFetchStage.io.axiMasterInterface.awready <> crossbar.io.slaves(0).write.aw.ready
-  simpleFetchStage.io.axiMasterInterface.wid     <> DontCare
-  simpleFetchStage.io.axiMasterInterface.wdata   <> crossbar.io.slaves(0).write.w.bits.data
-  simpleFetchStage.io.axiMasterInterface.wstrb   <> crossbar.io.slaves(0).write.w.bits.strb
-  simpleFetchStage.io.axiMasterInterface.wlast   <> crossbar.io.slaves(0).write.w.bits.last
-  simpleFetchStage.io.axiMasterInterface.wvalid  <> crossbar.io.slaves(0).write.w.valid
-  simpleFetchStage.io.axiMasterInterface.wready  <> crossbar.io.slaves(0).write.w.ready
-  simpleFetchStage.io.axiMasterInterface.bid     <> crossbar.io.slaves(0).write.b.bits.id
-  simpleFetchStage.io.axiMasterInterface.bresp   <> crossbar.io.slaves(0).write.b.bits.resp
-  simpleFetchStage.io.axiMasterInterface.bvalid  <> crossbar.io.slaves(0).write.b.valid
-  simpleFetchStage.io.axiMasterInterface.bready  <> crossbar.io.slaves(0).write.b.ready
+  simpleFetchStage.io.axiMasterInterface.arid    <> io.axi.arid
+  simpleFetchStage.io.axiMasterInterface.araddr  <> io.axi.araddr
+  simpleFetchStage.io.axiMasterInterface.arlen   <> io.axi.arlen
+  simpleFetchStage.io.axiMasterInterface.arsize  <> io.axi.arsize
+  simpleFetchStage.io.axiMasterInterface.arburst <> io.axi.arburst
+  simpleFetchStage.io.axiMasterInterface.arlock  <> io.axi.arlock
+  simpleFetchStage.io.axiMasterInterface.arcache <> io.axi.arcache
+  simpleFetchStage.io.axiMasterInterface.arprot  <> io.axi.arprot
+  simpleFetchStage.io.axiMasterInterface.arvalid <> io.axi.arvalid
+  simpleFetchStage.io.axiMasterInterface.arready <> io.axi.arready
+  simpleFetchStage.io.axiMasterInterface.rid     <> io.axi.rid
+  simpleFetchStage.io.axiMasterInterface.rdata   <> io.axi.rdata
+  simpleFetchStage.io.axiMasterInterface.rresp   <> io.axi.rresp
+  simpleFetchStage.io.axiMasterInterface.rlast   <> io.axi.rlast
+  simpleFetchStage.io.axiMasterInterface.rvalid  <> io.axi.rvalid
+  simpleFetchStage.io.axiMasterInterface.rready  <> io.axi.rready
+  simpleFetchStage.io.axiMasterInterface.awid    <> io.axi.awid
+  simpleFetchStage.io.axiMasterInterface.awaddr  <> io.axi.awaddr
+  simpleFetchStage.io.axiMasterInterface.awlen   <> io.axi.awlen
+  simpleFetchStage.io.axiMasterInterface.awsize  <> io.axi.awsize
+  simpleFetchStage.io.axiMasterInterface.awburst <> io.axi.awburst
+  simpleFetchStage.io.axiMasterInterface.awlock  <> io.axi.awlock
+  simpleFetchStage.io.axiMasterInterface.awcache <> io.axi.awcache
+  simpleFetchStage.io.axiMasterInterface.awprot  <> io.axi.awprot
+  simpleFetchStage.io.axiMasterInterface.awvalid <> io.axi.awvalid
+  simpleFetchStage.io.axiMasterInterface.awready <> io.axi.awready
+  simpleFetchStage.io.axiMasterInterface.wdata   <> io.axi.wdata
+  simpleFetchStage.io.axiMasterInterface.wstrb   <> io.axi.wstrb
+  simpleFetchStage.io.axiMasterInterface.wlast   <> io.axi.wlast
+  simpleFetchStage.io.axiMasterInterface.wid     <> io.axi.wid
+  simpleFetchStage.io.axiMasterInterface.wvalid  <> io.axi.wvalid
+  simpleFetchStage.io.axiMasterInterface.wready  <> io.axi.wready
+  simpleFetchStage.io.axiMasterInterface.bid     <> io.axi.bid
+  simpleFetchStage.io.axiMasterInterface.bresp   <> io.axi.bresp
+  simpleFetchStage.io.axiMasterInterface.bvalid  <> io.axi.bvalid
+  simpleFetchStage.io.axiMasterInterface.bready  <> io.axi.bready
+  crossbar.io.s00_axi_arid                       <> DontCare
+  crossbar.io.s00_axi_araddr                     <> DontCare
+  crossbar.io.s00_axi_arlen                      <> DontCare
+  crossbar.io.s00_axi_arsize                     <> DontCare
+  crossbar.io.s00_axi_arburst                    <> DontCare
+  crossbar.io.s00_axi_arlock                     <> DontCare
+  crossbar.io.s00_axi_arcache                    <> DontCare
+  crossbar.io.s00_axi_arprot                     <> DontCare
+  crossbar.io.s00_axi_arqos                      <> DontCare
+  crossbar.io.s00_axi_aruser                     <> DontCare
+  crossbar.io.s00_axi_arvalid                    <> DontCare
+  crossbar.io.s00_axi_arready                    <> DontCare
+  crossbar.io.s00_axi_rid                        <> DontCare
+  crossbar.io.s00_axi_rdata                      <> DontCare
+  crossbar.io.s00_axi_rresp                      <> DontCare
+  crossbar.io.s00_axi_rlast                      <> DontCare
+  crossbar.io.s00_axi_ruser                      <> DontCare
+  crossbar.io.s00_axi_rvalid                     <> DontCare
+  crossbar.io.s00_axi_rready                     <> DontCare
+  crossbar.io.s00_axi_awid                       <> DontCare
+  crossbar.io.s00_axi_awaddr                     <> DontCare
+  crossbar.io.s00_axi_awlen                      <> DontCare
+  crossbar.io.s00_axi_awsize                     <> DontCare
+  crossbar.io.s00_axi_awburst                    <> DontCare
+  crossbar.io.s00_axi_awlock                     <> DontCare
+  crossbar.io.s00_axi_awcache                    <> DontCare
+  crossbar.io.s00_axi_awprot                     <> DontCare
+  crossbar.io.s00_axi_awqos                      <> DontCare
+  crossbar.io.s00_axi_awuser                     <> DontCare
+  crossbar.io.s00_axi_awvalid                    <> DontCare
+  crossbar.io.s00_axi_awready                    <> DontCare
+  crossbar.io.s00_axi_wdata                      <> DontCare
+  crossbar.io.s00_axi_wstrb                      <> DontCare
+  crossbar.io.s00_axi_wlast                      <> DontCare
+  crossbar.io.s00_axi_wuser                      <> DontCare
+  crossbar.io.s00_axi_wvalid                     <> DontCare
+  crossbar.io.s00_axi_wready                     <> DontCare
+  crossbar.io.s00_axi_bid                        <> DontCare
+  crossbar.io.s00_axi_bresp                      <> DontCare
+  crossbar.io.s00_axi_bvalid                     <> DontCare
+  crossbar.io.s00_axi_bready                     <> DontCare
 
   // Memory related modules
   val dCache        = Module(new DCache)
@@ -223,12 +265,93 @@ class CoreCpuTop extends Module {
 
   // Connection for memory related modules
   // TODO: Finish AXI connection
-  // TODO: Finish TLB maintanence connection
   dCache.io        <> DontCare
   uncachedAgent.io <> DontCare
-  tlb.io           <> DontCare
   // Hint: dCache.io.axiMasterPort --> crossbar.io.slaves(1)
-  // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(2)
+  crossbar.io.s01_axi_arid    <> dCache.io.axiMasterPort.arid
+  crossbar.io.s01_axi_araddr  <> dCache.io.axiMasterPort.araddr
+  crossbar.io.s01_axi_arlen   <> dCache.io.axiMasterPort.arlen
+  crossbar.io.s01_axi_arsize  <> dCache.io.axiMasterPort.arsize
+  crossbar.io.s01_axi_arburst <> dCache.io.axiMasterPort.arburst
+  crossbar.io.s01_axi_arlock  <> dCache.io.axiMasterPort.arlock
+  crossbar.io.s01_axi_arcache <> dCache.io.axiMasterPort.arcache
+  crossbar.io.s01_axi_arprot  <> dCache.io.axiMasterPort.arprot
+  crossbar.io.s01_axi_arqos   <> DontCare
+  crossbar.io.s01_axi_aruser  <> DontCare
+  crossbar.io.s01_axi_arvalid <> dCache.io.axiMasterPort.arvalid
+  crossbar.io.s01_axi_arready <> dCache.io.axiMasterPort.arready
+  crossbar.io.s01_axi_rid     <> dCache.io.axiMasterPort.rid
+  crossbar.io.s01_axi_rdata   <> dCache.io.axiMasterPort.rdata
+  crossbar.io.s01_axi_rresp   <> dCache.io.axiMasterPort.rresp
+  crossbar.io.s01_axi_rlast   <> dCache.io.axiMasterPort.rlast
+  crossbar.io.s01_axi_ruser   <> DontCare
+  crossbar.io.s01_axi_rvalid  <> dCache.io.axiMasterPort.rvalid
+  crossbar.io.s01_axi_rready  <> dCache.io.axiMasterPort.rready
+  crossbar.io.s01_axi_awid    <> dCache.io.axiMasterPort.awid
+  crossbar.io.s01_axi_awaddr  <> dCache.io.axiMasterPort.awaddr
+  crossbar.io.s01_axi_awlen   <> dCache.io.axiMasterPort.awlen
+  crossbar.io.s01_axi_awsize  <> dCache.io.axiMasterPort.awsize
+  crossbar.io.s01_axi_awburst <> dCache.io.axiMasterPort.awburst
+  crossbar.io.s01_axi_awlock  <> dCache.io.axiMasterPort.awlock
+  crossbar.io.s01_axi_awcache <> dCache.io.axiMasterPort.awcache
+  crossbar.io.s01_axi_awprot  <> dCache.io.axiMasterPort.awprot
+  crossbar.io.s01_axi_awqos   <> DontCare
+  crossbar.io.s01_axi_awuser  <> DontCare
+  crossbar.io.s01_axi_awvalid <> dCache.io.axiMasterPort.awvalid
+  crossbar.io.s01_axi_awready <> dCache.io.axiMasterPort.awready
+  crossbar.io.s01_axi_wdata   <> dCache.io.axiMasterPort.wdata
+  crossbar.io.s01_axi_wstrb   <> dCache.io.axiMasterPort.wstrb
+  crossbar.io.s01_axi_wlast   <> dCache.io.axiMasterPort.wlast
+  crossbar.io.s01_axi_wuser   <> DontCare
+  crossbar.io.s01_axi_wvalid  <> dCache.io.axiMasterPort.wvalid
+  crossbar.io.s01_axi_wready  <> dCache.io.axiMasterPort.wready
+  crossbar.io.s01_axi_bid     <> dCache.io.axiMasterPort.bid
+  crossbar.io.s01_axi_bresp   <> dCache.io.axiMasterPort.bresp
+  crossbar.io.s01_axi_bvalid  <> dCache.io.axiMasterPort.bvalid
+  crossbar.io.s01_axi_bready  <> dCache.io.axiMasterPort.bready
+  // Hint: uncachedAgent.io.axiMasterPort --> crossbar.io.slaves(1)
+  crossbar.io.s02_axi_awid    <> uncachedAgent.io.axiMasterPort.awid
+  crossbar.io.s02_axi_awaddr  <> uncachedAgent.io.axiMasterPort.awaddr
+  crossbar.io.s02_axi_awlen   <> uncachedAgent.io.axiMasterPort.awlen
+  crossbar.io.s02_axi_awsize  <> uncachedAgent.io.axiMasterPort.awsize
+  crossbar.io.s02_axi_awburst <> uncachedAgent.io.axiMasterPort.awburst
+  crossbar.io.s02_axi_awlock  <> uncachedAgent.io.axiMasterPort.awlock
+  crossbar.io.s02_axi_awcache <> uncachedAgent.io.axiMasterPort.awcache
+  crossbar.io.s02_axi_awprot  <> uncachedAgent.io.axiMasterPort.awprot
+  crossbar.io.s02_axi_awqos   <> DontCare
+  crossbar.io.s02_axi_awuser  <> DontCare
+  crossbar.io.s02_axi_awvalid <> uncachedAgent.io.axiMasterPort.awvalid
+  crossbar.io.s02_axi_awready <> uncachedAgent.io.axiMasterPort.awready
+  crossbar.io.s02_axi_wdata   <> uncachedAgent.io.axiMasterPort.wdata
+  crossbar.io.s02_axi_wstrb   <> uncachedAgent.io.axiMasterPort.wstrb
+  crossbar.io.s02_axi_wlast   <> uncachedAgent.io.axiMasterPort.wlast
+  crossbar.io.s02_axi_wuser   <> DontCare
+  crossbar.io.s02_axi_wvalid  <> uncachedAgent.io.axiMasterPort.wvalid
+  crossbar.io.s02_axi_wready  <> uncachedAgent.io.axiMasterPort.wready
+  crossbar.io.s02_axi_bid     <> uncachedAgent.io.axiMasterPort.bid
+  crossbar.io.s02_axi_bresp   <> uncachedAgent.io.axiMasterPort.bresp
+  crossbar.io.s02_axi_buser   <> DontCare
+  crossbar.io.s02_axi_bvalid  <> uncachedAgent.io.axiMasterPort.bvalid
+  crossbar.io.s02_axi_bready  <> uncachedAgent.io.axiMasterPort.bready
+  crossbar.io.s02_axi_arid    <> uncachedAgent.io.axiMasterPort.arid
+  crossbar.io.s02_axi_araddr  <> uncachedAgent.io.axiMasterPort.araddr
+  crossbar.io.s02_axi_arlen   <> uncachedAgent.io.axiMasterPort.arlen
+  crossbar.io.s02_axi_arsize  <> uncachedAgent.io.axiMasterPort.arsize
+  crossbar.io.s02_axi_arburst <> uncachedAgent.io.axiMasterPort.arburst
+  crossbar.io.s02_axi_arlock  <> uncachedAgent.io.axiMasterPort.arlock
+  crossbar.io.s02_axi_arcache <> uncachedAgent.io.axiMasterPort.arcache
+  crossbar.io.s02_axi_arprot  <> uncachedAgent.io.axiMasterPort.arprot
+  crossbar.io.s02_axi_arqos   <> DontCare
+  crossbar.io.s02_axi_aruser  <> DontCare
+  crossbar.io.s02_axi_arvalid <> uncachedAgent.io.axiMasterPort.arvalid
+  crossbar.io.s02_axi_arready <> uncachedAgent.io.axiMasterPort.arready
+  crossbar.io.s02_axi_rid     <> uncachedAgent.io.axiMasterPort.rid
+  crossbar.io.s02_axi_rdata   <> uncachedAgent.io.axiMasterPort.rdata
+  crossbar.io.s02_axi_rresp   <> uncachedAgent.io.axiMasterPort.rresp
+  crossbar.io.s02_axi_rlast   <> uncachedAgent.io.axiMasterPort.rlast
+  crossbar.io.s02_axi_ruser   <> DontCare
+  crossbar.io.s02_axi_rvalid  <> uncachedAgent.io.axiMasterPort.rvalid
+  crossbar.io.s02_axi_rready  <> uncachedAgent.io.axiMasterPort.rready
 
   // Simple fetch stage
   instQueue.io.enqueuePort                <> simpleFetchStage.io.instEnqueuePort
