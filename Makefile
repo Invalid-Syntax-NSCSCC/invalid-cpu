@@ -12,9 +12,8 @@ verilog:
 	./millw -i __.test.runMain Elaborate -td $(BUILD_DIR)
 	# sh scripts/modify_verilog.sh $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/final
-	# head -n -2 $(BUILD_DIR)/CoreCpuTop.v > $(BUILD_DIR)/final/CoreCpuTop.v
-	sed -e :a -e '$$d;N;2,2ba' -e 'P;D' $(BUILD_DIR)/CoreCpuTop.v > $(BUILD_DIR)/final/CoreCpuTop.v
-	cp -f ./verilog/cpu_top.v $(BUILD_DIR)/final
+	cp $(BUILD_DIR)/CoreCpuTop.v $(BUILD_DIR)/final/
+	cp -f ./verilog/* $(BUILD_DIR)/final/
 
 chiplab:
 	rm -rf $${CHIPLAB_HOME}/IP/myCPU/*

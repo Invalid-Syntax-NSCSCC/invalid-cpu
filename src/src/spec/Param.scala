@@ -1,10 +1,7 @@
 package spec
 
-import chisel3._
+import chisel3.{ChiselEnum, _}
 import chisel3.util._
-import spec.PipelineStageIndex
-import chisel3.ChiselEnum
-import memory.bundles.TlbEntryBundle
 
 object Param {
   // Configurable self-defined parameters go here
@@ -31,6 +28,13 @@ object Param {
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
     object Axi { // crossbar
+      private val _data = 128
+
+      val data = _data.W
+      val strb = (_data / byteLength).W
+
+      val user = 0.W
+
       val slaveId  = 8
       val masterId = slaveId + log2Ceil(Count.Axi.slave)
     }
