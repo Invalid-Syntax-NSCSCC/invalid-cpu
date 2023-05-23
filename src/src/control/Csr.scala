@@ -338,73 +338,73 @@ class Csr(
     }
   }
 
-  // /** CRMD 当前模式信息
-  //   */
-  // // 普通例外
-  // when(io.csrMessage.exceptionFlush) {
-  //   crmd.in.plv := 0.U
-  //   crmd.in.ie  := 0.U
-  // }
+  /** CRMD 当前模式信息
+    */
+  // 普通例外
+  when(io.csrMessage.exceptionFlush) {
+    csrValuesReg.crmd.plv := 0.U
+    csrValuesReg.crmd.ie  := 0.U
+  }
 
-  // // tlb重填例外
-  // when(io.csrMessage.tlbRefillException) {
-  //   crmd.in.da := true.B
-  //   crmd.in.pg := false.B
-  // }
+  // tlb重填例外
+  when(io.csrMessage.tlbRefillException) {
+    csrValuesReg.crmd.da := true.B
+    csrValuesReg.crmd.pg := false.B
+  }
 
-  // // 从例外处理程序返回
-  // when(io.csrMessage.ertnFlush) {
-  //   crmd.in.plv := prmd.out.pplv
-  //   crmd.in.ie  := prmd.out.pie
-  //   when(estat.out.ecode === spec.Csr.Estat.tlbr.ecode) {
-  //     crmd.in.da := false.B
-  //     crmd.in.pg := true.B
-  //   }
-  // }
+  // 从例外处理程序返回
+  when(io.csrMessage.ertnFlush) {
+    csrValuesReg.crmd.plv := csrValuesReg.prmd.pplv
+    csrValuesReg.crmd.ie  := csrValuesReg.prmd.pie
+    when(csrValuesReg.estat.ecode === spec.Csr.Estat.tlbr.ecode) {
+      csrValuesReg.crmd.da := false.B
+      csrValuesReg.crmd.pg := true.B
+    }
+  }
 
-  // /** PRMD 例外前模式信息
-  //   */
-  // when(io.csrMessage.exceptionFlush) {
-  //   prmd.in.pplv := crmd.out.plv
-  //   prmd.in.pie  := crmd.out.ie
-  // }
+  /** PRMD 例外前模式信息
+    */
+  when(io.csrMessage.exceptionFlush) {
+    csrValuesReg.prmd.pplv := csrValuesReg.crmd.plv
+    csrValuesReg.prmd.pie  := csrValuesReg.crmd.ie
+  }
 
-  // // estat
-  // when(io.csrMessage.exceptionFlush) {
-  //   estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
-  //   estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
-  // }
+  // estat
+  when(io.csrMessage.exceptionFlush) {
+    csrValuesReg.estat.ecode    := io.csrMessage.ecodeBunle.ecode
+    csrValuesReg.estat.esubcode := io.csrMessage.ecodeBunle.esubcode
+  }
 
-  // // era
-  // when(io.csrMessage.exceptionFlush) {
-  //   era.in.pc := io.csrMessage.era
-  // }
+  // era
+  when(io.csrMessage.exceptionFlush) {
+    csrValuesReg.era.pc := io.csrMessage.era
+  }
 
-  // // BADV 出错虚地址
-  // when(io.csrMessage.badVAddrSet.en) {
-  //   badv.in.vaddr := io.csrMessage.badVAddrSet.addr
-  // }
+  // BADV 出错虚地址
+  when(io.csrMessage.badVAddrSet.en) {
+    csrValuesReg.badv.vaddr := io.csrMessage.badVAddrSet.addr
+  }
 
-  // // LLBit Control
-  // when(io.csrMessage.llbitSet.en) {
-  //   llbctl.in.rollb := io.csrMessage.llbitSet.setValue
-  // }
-  // when(io.csrMessage.ertnFlush) {
-  //   llbctl.in.klo := false.B
-  // }
+  // LLBit Control
+  when(io.csrMessage.llbitSet.en) {
+    csrValuesReg.llbctl.rollb := io.csrMessage.llbitSet.setValue
+  }
+  when(io.csrMessage.ertnFlush) {
+    csrValuesReg.llbctl.klo := false.B
+  }
 
-  // // TimeVal
+  // TimeVal
 
-  // when(tval.out.timeVal.orR) { // 定时器不为0
-  //   when(tcfg.out.en) {
-  //     tval.in.timeVal := tval.out.timeVal - 1.U
-  //   }
-  // }.otherwise { // 减到0
-  //   when(tcfg.out.periodic) {
-  //     timeInterrupt   := true.B
-  //     tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
-  //   } // 为0时停止计数
-  // }
+  when(csrValuesReg.tval.timeVal.orR) { // 定时器不为0
+    when(csrValuesReg.tcfg.en) {
+      csrValuesReg.tval.timeVal := csrValuesReg.tval.timeVal - 1.U
+    }
+  }.otherwise { // 减到0
+    when(csrValuesReg.tcfg.periodic) {
+      timeInterrupt             := true.B
+      csrValuesReg.tval.timeVal := Cat(csrValuesReg.tcfg.initVal, 0.U(2.W))
+    } // 为0时停止计数
+  }
 
   // Difftest
   // io.difftest match {
