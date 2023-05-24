@@ -2,8 +2,8 @@ import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
 import chiseltest.simulator.WriteVcdAnnotation
-import frontend.InstQueue
 import pipeline.dispatch.bundles.InstInfoBundle
+import pipeline.queue.InstQueue
 import utest._
 
 import scala.collection.immutable

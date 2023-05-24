@@ -18,17 +18,22 @@ class InstInfoNdPort extends Bundle {
 }
 
 object InstInfoNdPort {
-  val default = 0.U.asTypeOf(new InstInfoNdPort)
+  val default = (new InstInfoNdPort).Lit(
+    _.pc -> 0.U,
+    _.inst -> 0.U,
+    _.exceptionRecords -> Vec.Lit(
+      Seq.fill(Csr.ExceptionIndex.count + 1)(false.B): _*
+    ),
+    _.csrWritePort -> CsrWriteNdPort.default,
+    _.exeOp -> 0.U,
+    _.robId -> 0.U
+  )
 
-  def setDefault(instInfoPort: InstInfoNdPort): Unit = {
-    // instInfoPort.pc   := zeroWord
-    // instInfoPort.inst := zeroWord
-    // instInfoPort.exceptionRecords.foreach { record =>
-    //   record := false.B
-    // }
-    // instInfoPort.csrWritePort := CsrWriteNdPort.default
-    // instInfoPort.exeOp        := 0.U
-    // instInfoPort.robId := 0.U
-    instInfoPort := 0.U.asTypeOf(new InstInfoNdPort)
+  def invalidate(instInfo: InstInfoNdPort): Unit = {
+    instInfo.pc   := 0.U
+    instInfo.inst := 0.U
+    instInfo.exceptionRecords.foreach(_ := false.B)
+    instInfo.exeOp           := ExeInst.Op.nop
+    instInfo.csrWritePort.en := false.B
   }
 }

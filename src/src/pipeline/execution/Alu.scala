@@ -5,7 +5,7 @@ import chisel3.util._
 import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}
 import spec._
 import ExeInst.Op
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import spec.Param.{AluState => State}
 import pipeline.execution.Mul
@@ -16,7 +16,7 @@ class Alu extends Module {
     val aluInst = Input(new AluInstNdPort)
     val result  = Output(new AluResultNdPort)
 
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
     val stallRequest        = Output(Bool())
   })
 

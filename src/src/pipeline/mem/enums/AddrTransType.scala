@@ -2,6 +2,6 @@ package pipeline.mem.enums
 
 import chisel3.ChiselEnum
 
-object AddrTransMode extends ChiselEnum {
+object AddrTransType extends ChiselEnum {
   val direct, directMapping, pageTableMapping = Value
 }

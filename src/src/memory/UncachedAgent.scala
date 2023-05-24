@@ -21,12 +21,12 @@ class UncachedAgent extends Module {
   // Configure AXI master
   io.axiMasterPort      <> axiMaster.io.axi
   axiMaster.io.uncached := true.B
-  axiMaster.io.size     := Value.Axi.Size.get(4)
+  axiMaster.io.size     := Value.Axi.Size._4_B
   val newReq       = WireDefault(false.B) // Fallback: No new request
   val selectedAddr = WireDefault(io.accessPort.req.client.addr) // Fallback: Current address
   val selectedData = WireDefault(io.accessPort.req.client.write.data) // Fallback: Current data
   val selectedRw   = WireDefault(io.accessPort.req.client.rw) // Fallback: Current read-write
-  val selectedMask = WireDefault(io.accessPort.req.client.write.mask) // Fallback: Current mask
+  val selectedMask = WireDefault(io.accessPort.req.client.mask) // Fallback: Current mask
   axiMaster.io.newRequest := newReq
   axiMaster.io.addr       := selectedAddr
   axiMaster.io.dataIn     := selectedData
@@ -67,7 +67,7 @@ class UncachedAgent extends Module {
           lastReg.addr := io.accessPort.req.client.addr
           lastReg.data := io.accessPort.req.client.write.data
           lastReg.rw   := io.accessPort.req.client.rw
-          lastReg.mask := io.accessPort.req.client.write.mask
+          lastReg.mask := io.accessPort.req.client.mask
 
           // Next state: Wait for AXI master ready
           stateReg := State.waitReady

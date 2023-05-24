@@ -28,11 +28,13 @@ package object spec {
       count
     }
 
-    val instQueue    = next
-    val issueStage   = next
-    val regReadStage = next
-    val exeStage     = next
-    val memStage     = next
+    val instQueue      = next
+    val issueStage     = next
+    val regReadStage   = next
+    val exeStage       = next
+    val addrTransStage = next
+    val memReqStage    = next
+    val memResStage    = next
   }
 
   object ReadWriteMode {

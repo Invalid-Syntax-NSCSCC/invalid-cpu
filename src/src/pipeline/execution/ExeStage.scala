@@ -6,7 +6,7 @@ import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
 import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
 import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import spec.Param.{ExeStageState => State}
@@ -15,14 +15,12 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import memory.bundles.MemRequestNdPort
 import common.enums.ReadWriteSel
-
-// TODO: MemLoadStoreInfoNdPort is deprecated
+import pipeline.mem.bundles.MemRequestNdPort
 
 // TODO: Add (flush ?) when jump / branch
 // throw exception: 地址未对齐 ale
-class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
+class ExeStage extends Module {
   val io = IO(new Bundle {
     val exeInstPort = Input(new ExeInstNdPort)
 
@@ -39,7 +37,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
     // Pipeline control signal
     // `Cu` -> `ExeStage`
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
     // `ExeStage` -> `Cu`
     val stallRequest = Output(Bool())
   })
@@ -53,7 +51,7 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
 
   // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
-  InstInfoNdPort.setDefault(instInfoReg)
+  InstInfoNdPort.invalidate(instInfoReg)
   io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
@@ -170,7 +168,6 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
         io.freePorts.en  := gprWriteReg.en
         gprWriteReg.data := selectedExeInst.csrData
       }
-
     }
   }
 
@@ -187,20 +184,20 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   )
   val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedExeInst.exeOp))
   // 指令未对齐
-  val isALE = WireDefault(false.B)
-  instInfoReg.exceptionRecords(Csr.ExceptionIndex.ale) := isALE
+  val isAle = WireDefault(false.B)
+  instInfoReg.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
 
   when(!isBlocking) {
-    memRequestReg.isValid    := (memReadEn || memWriteEn) && !isALE
-    memRequestReg.addr       := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
-    memRequestReg.write.data := selectedExeInst.rightOperand
-    memRequestReg.isUnsigned := memLoadUnsigned
-    memRequestReg.rw         := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
+    memRequestReg.isValid         := (memReadEn || memWriteEn) && !isAle
+    memRequestReg.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
+    memRequestReg.write.data      := selectedExeInst.rightOperand
+    memRequestReg.read.isUnsigned := memLoadUnsigned
+    memRequestReg.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
     // mask
     val maskEncode = loadStoreAddr(1, 0)
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-        memRequestReg.write.mask := Mux(
+        memRequestReg.mask := Mux(
           maskEncode(1),
           Mux(maskEncode(0), "b1000".U, "b0100".U),
           Mux(maskEncode(0), "b0010".U, "b0001".U)
@@ -208,13 +205,13 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
       }
       is(ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.st_h) {
         when(maskEncode(0)) {
-          isALE := true.B // 未对齐
+          isAle := true.B // 未对齐
         }
-        memRequestReg.write.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+        memRequestReg.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
       }
       is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-        isALE                    := maskEncode.orR
-        memRequestReg.write.mask := "b1111".U
+        isAle              := maskEncode.orR
+        memRequestReg.mask := "b1111".U
       }
     }
   }
@@ -254,14 +251,16 @@ class ExeStage(readNum: Int = Param.instRegReadNum) extends Module {
   // clear
   when(io.pipelineControlPort.clear) {
     gprWriteReg := RfWriteNdPort.default
-    InstInfoNdPort.setDefault(instInfoReg)
+    InstInfoNdPort.invalidate(instInfoReg)
     memRequestReg := MemRequestNdPort.default
   }
-  // flush all regs
+
+  // Flush
   when(io.pipelineControlPort.flush) {
-    gprWriteReg := RfWriteNdPort.default
-    InstInfoNdPort.setDefault(instInfoReg)
-    memRequestReg   := MemRequestNdPort.default
+    gprWriteReg.en := false.B
+    InstInfoNdPort.invalidate(instInfoReg)
+    memRequestReg.isValid := false.B
+
     stateReg        := State.nonBlocking
     exeInstStoreReg := ExeInstNdPort.default
     pcStoreReg      := zeroWord

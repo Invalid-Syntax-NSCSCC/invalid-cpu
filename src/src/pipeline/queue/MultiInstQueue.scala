@@ -1,11 +1,10 @@
-package frontend
+package pipeline.queue
 
 import chisel3._
 import chisel3.util._
-
-import spec._
+import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
-import control.bundles.PipelineControlNDPort
+import spec._
 
 // 尝试写多发射的queue，未接入，不用管它
 // assert: enqueuePorts总是最低的几位有效
@@ -15,7 +14,7 @@ class MultiInstQueue(
     extends Module {
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
     val enqueuePorts        = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
