@@ -18,16 +18,7 @@ class InstInfoNdPort extends Bundle {
 }
 
 object InstInfoNdPort {
-  val default = (new InstInfoNdPort).Lit(
-    _.pc -> 0.U,
-    _.inst -> 0.U,
-    _.exceptionRecords -> Vec.Lit(
-      Seq.fill(Csr.ExceptionIndex.count + 1)(false.B): _*
-    ),
-    _.csrWritePort -> CsrWriteNdPort.default,
-    _.exeOp -> 0.U,
-    _.robId -> 0.U
-  )
+  def default = 0.U.asTypeOf(new InstInfoNdPort)
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
     instInfo.pc   := 0.U
