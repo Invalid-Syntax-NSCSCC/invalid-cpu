@@ -1,7 +1,7 @@
 package pipeline.mem.bundles
 
 import chisel3._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.BundleLiterals._
 import common.enums.ReadWriteSel
 import pipeline.mem.enums.MemSizeType
 import spec._

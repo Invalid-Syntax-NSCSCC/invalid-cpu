@@ -8,7 +8,7 @@ import spec.ExeInst.Sel
 import spec._
 import control.bundles.PipelineControlNdPort
 import chisel3.experimental.VecLiterals._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.BundleLiterals._
 import spec.Param.{ExeStageState => State}
 import pipeline.execution.Alu
 import pipeline.writeback.bundles.InstInfoNdPort

@@ -10,7 +10,6 @@ object src extends ScalaModule with ScalafmtModule { m =>
   override def scalaVersion = "2.13.8"
   override def scalacOptions = Seq(
     "-language:reflectiveCalls",
-    "-deprecation",
     "-feature",
     "-Xcheckinit"
   )

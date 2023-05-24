@@ -2,7 +2,7 @@ package pipeline.dispatch.bundles
 
 import chisel3._
 import common.bundles.RfAccessInfoNdPort
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.BundleLiterals._
 
 class RenameResultNdPort(
   regReadNum:   Int                   = 2,
