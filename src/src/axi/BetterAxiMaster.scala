@@ -1,6 +1,6 @@
 package axi
 
-import axi.bundles.AxiMasterPort
+import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
 import spec._
@@ -13,7 +13,7 @@ class BetterAxiMaster(
   isInst:               Boolean = false)
     extends Module {
   val io = IO(new Bundle {
-    val axi = new AxiMasterPort
+    val axi = new AxiMasterInterface
     val write = new Bundle {
       val req = new Bundle {
         val isValid = Input(Bool())
@@ -45,14 +45,14 @@ class BetterAxiMaster(
   io.axi <> DontCare
 
   // Only need to use incremental burst
-  io.axi.arburst := Value.Axi.Burst.incr
-  io.axi.awburst := Value.Axi.Burst.incr
+  io.axi.ar.bits.burst := Value.Axi.Burst.incr
+  io.axi.aw.bits.burst := Value.Axi.Burst.incr
 
   // Use the largest possible size per transfer (default: 4 bytes [32 bits])
   // Note: Bytes in transfer is 2^AxSIZE
   assert(isPow2(bytesPerTransfer))
-  io.axi.arsize := Value.Axi.Size.get(bytesPerTransfer)
-  io.axi.awsize := Value.Axi.Size.get(bytesPerTransfer)
+  io.axi.ar.bits.size := Value.Axi.Size.get(bytesPerTransfer)
+  io.axi.aw.bits.size := Value.Axi.Size.get(bytesPerTransfer)
 
   // Set burst number
   // Note: Burst length is AxLEN + 1
@@ -60,23 +60,22 @@ class BetterAxiMaster(
   assert(writeSize % (bytesPerTransfer * byteLength) == 0)
   val writeLen = WireDefault((writeSize / (bytesPerTransfer * byteLength)).U)
   assert(writeLen <= "b_1111_1111".U)
-  io.axi.arlen := ((readSize / (bytesPerTransfer * byteLength)) - 1).U
-  io.axi.awlen := writeLen - 1.U
+  io.axi.ar.bits.len := ((readSize / (bytesPerTransfer * byteLength)) - 1).U
+  io.axi.aw.bits.len := writeLen - 1.U
 
   // Set others
-  io.axi.arid    := id.U
-  io.axi.awid    := id.U
-  io.axi.wid     := id.U
-  io.axi.arlock  := Value.Axi.Lock.normal
-  io.axi.awlock  := Value.Axi.Lock.normal
-  io.axi.arcache := Value.Axi.Cache.nonBufferable
-  io.axi.awcache := Value.Axi.Cache.nonBufferable
-  io.axi.arprot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
-  io.axi.awprot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
-  io.axi.wstrb   := io.write.req.mask
-  io.axi.wvalid  := false.B
-  io.axi.rready  := false.B
-  io.axi.bready  := false.B
+  io.axi.ar.bits.id    := id.U
+  io.axi.aw.bits.id    := id.U
+  io.axi.ar.bits.lock  := Value.Axi.Lock.normal
+  io.axi.aw.bits.lock  := Value.Axi.Lock.normal
+  io.axi.ar.bits.cache := Value.Axi.Cache.nonBufferable
+  io.axi.aw.bits.cache := Value.Axi.Cache.nonBufferable
+  io.axi.ar.bits.prot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
+  io.axi.aw.bits.prot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
+  io.axi.w.bits.strb   := io.write.req.mask
+  io.axi.w.valid       := false.B
+  io.axi.r.ready       := false.B
+  io.axi.b.ready       := false.B
 
   // Size per transfer in bits
   val transferSize = bytesPerTransfer * 8
@@ -88,7 +87,7 @@ class BetterAxiMaster(
   val readDataReg  = RegInit(0.U(readSize.W))
   val nextReadData = WireDefault(readDataReg)
   readDataReg := nextReadData // Fallback: Keep data
-  val isReadReady = WireDefault(!isReadingReg && io.axi.arready)
+  val isReadReady = WireDefault(!isReadingReg && io.axi.ar.ready)
 
   // Failing flag
   val isReadFailedReg  = RegInit(false.B)
@@ -96,8 +95,8 @@ class BetterAxiMaster(
   isReadFailedReg      := isReadFailedNext // Fallback: Keep flag
   io.read.res.isFailed := false.B // Fallback: Not failed
 
-  io.axi.araddr       := io.read.req.addr
-  io.axi.arvalid      := io.read.req.isValid
+  io.axi.ar.bits.addr := io.read.req.addr
+  io.axi.ar.valid     := io.read.req.isValid
   io.read.req.isReady := isReadReady
 
   // Fallback
@@ -113,12 +112,12 @@ class BetterAxiMaster(
 
   when(isReadingReg) {
     // Reading
-    io.axi.rready := true.B
-    when(io.axi.rvalid) {
-      switch(io.axi.rresp) {
+    io.axi.r.ready := true.B
+    when(io.axi.r.valid) {
+      switch(io.axi.r.bits.resp) {
         is(Value.Axi.Response.Okay, Value.Axi.Response.ExclusiveOkay) {
           nextReadData := Cat(
-            io.axi.rdata(transferSize - 1, 0),
+            io.axi.r.bits.data(transferSize - 1, 0),
             readDataReg(readDataReg.getWidth - 1, transferSize)
           )
         }
@@ -132,7 +131,7 @@ class BetterAxiMaster(
         }
       }
     }
-    when(io.axi.rlast) {
+    when(io.axi.r.bits.last) {
       // Reading complete
       io.read.res.isValid  := true.B
       io.read.res.data     := nextReadData
@@ -148,13 +147,13 @@ class BetterAxiMaster(
   isWritingReg := isWritingReg // Fallback: Keep state
   val writeDataReg = RegInit(0.U(writeSize.W))
   writeDataReg := writeDataReg // Fallback: Keep data
-  val isWriteReady    = WireDefault(!isWritingReg && io.axi.awready)
+  val isWriteReady    = WireDefault(!isWritingReg && io.axi.aw.ready)
   val writeCountUpReg = RegInit(writeLen)
   writeCountUpReg := writeCountUpReg // Fallback: Keep number
 
-  io.axi.awaddr        := io.write.req.addr
-  io.axi.awvalid       := io.write.req.isValid
-  io.write.req.isReady := !isWritingReg && io.axi.awready
+  io.axi.aw.bits.addr  := io.write.req.addr
+  io.axi.aw.valid      := io.write.req.isValid
+  io.write.req.isReady := !isWritingReg && io.axi.aw.ready
 
   // Fallback
   io.write.res.isComplete := false.B
@@ -169,11 +168,11 @@ class BetterAxiMaster(
 
   when(isWritingReg) {
     // Writing
-    io.axi.bready := true.B
-    io.axi.wvalid := true.B
-    io.axi.wdata  := writeDataReg(transferSize - 1, 0)
+    io.axi.b.ready     := true.B
+    io.axi.w.valid     := true.B
+    io.axi.w.bits.data := writeDataReg(transferSize - 1, 0)
 
-    when(io.axi.wready) {
+    when(io.axi.w.ready) {
       // Next cycle write the next data
       writeCountUpReg := writeCountUpReg + 1.U
       writeDataReg    := Cat(0.U(transferSize.W), writeDataReg(writeDataReg.getWidth - 1, transferSize))
@@ -181,17 +180,17 @@ class BetterAxiMaster(
 
     // The last transfer
     when(writeCountUpReg === (writeLen - 1.U)) {
-      io.axi.wlast := true.B
+      io.axi.w.bits.last := true.B
     }
 
     // No write data after the last transfer
     when(writeCountUpReg === writeLen) {
-      io.axi.wvalid := false.B
+      io.axi.w.valid := false.B
     }
 
     // Complete transfer
-    when(io.axi.bvalid) {
-      switch(io.axi.bresp) {
+    when(io.axi.b.valid) {
+      switch(io.axi.b.bits.resp) {
         is(
           Value.Axi.Response.Okay,
           Value.Axi.Response.ExclusiveOkay
