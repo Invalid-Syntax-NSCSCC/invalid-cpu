@@ -10,6 +10,8 @@ class Decoder_4R extends Decoder {
 
   io.out := DecodeOutNdPort.default
 
+  // TODO: This is empty
+
   val opcode = WireDefault(io.instInfoPort.inst(31, 20))
   val ra     = WireDefault(io.instInfoPort.inst(19, 15))
   val rk     = WireDefault(io.instInfoPort.inst(14, 10))

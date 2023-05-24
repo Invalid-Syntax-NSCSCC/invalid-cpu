@@ -10,8 +10,6 @@ class Decoder_3R extends Decoder {
 
   io.out := DecodeOutNdPort.default
 
-  io.out.isMatched := false.B
-
   val opcode      = WireDefault(io.instInfoPort.inst(31, 15))
   val rk          = WireDefault(io.instInfoPort.inst(14, 10))
   val rj          = WireDefault(io.instInfoPort.inst(9, 5))

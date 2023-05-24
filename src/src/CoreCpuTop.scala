@@ -117,15 +117,16 @@ class CoreCpuTop extends Module {
 
   // Default DontCare
   csr.io <> DontCare
+  crossbar.io <> DontCare // TODO: Fix crossbar
 
   // PC
   pc.io.newPc := cu.io.newPc
 
   // AXI top <> AXI crossbar
-  crossbar.io.master(0) <> io.axi
+  // crossbar.io.master(0) <> io.axi
 
   // `SimpleFetchStage` <> AXI crossbar
-  crossbar.io.slave(0) <> simpleFetchStage.io.axiMasterInterface
+  io.axi <> simpleFetchStage.io.axiMasterInterface
 
   // Memory related modules
   val dCache        = Module(new DCache)
@@ -135,8 +136,8 @@ class CoreCpuTop extends Module {
   // Connection for memory related modules
   // TODO: Finish TLB maintanence connection
   tlb.io               <> DontCare
-  crossbar.io.slave(1) <> dCache.io.axiMasterPort
-  crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
+  dCache.io.axiMasterPort <> DontCare
+  uncachedAgent.io.axiMasterPort <> DontCare
 
   // Simple fetch stage
   instQueue.io.enqueuePort                <> simpleFetchStage.io.instEnqueuePort
