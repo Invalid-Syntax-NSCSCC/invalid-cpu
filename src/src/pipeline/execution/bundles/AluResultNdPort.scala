@@ -3,7 +3,7 @@ package pipeline.execution.bundles
 import chisel3._
 import chisel3.util._
 import spec._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.BundleLiterals._
 
 class AluResultNdPort extends Bundle {
   val logic          = UInt(Width.Reg.data)

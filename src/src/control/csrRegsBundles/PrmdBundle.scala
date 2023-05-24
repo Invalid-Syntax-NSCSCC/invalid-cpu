@@ -1,7 +1,7 @@
 package control.csrRegsBundles
 
 import chisel3._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.BundleLiterals._
 import spec._
 
 class PrmdBundle extends Bundle {

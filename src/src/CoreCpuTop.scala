@@ -116,14 +116,7 @@ class CoreCpuTop extends Module {
   val pc      = Module(new Pc)
 
   // Default DontCare
-  instQueue.io    <> DontCare
-  issueStage.io   <> DontCare
-  regReadStage.io <> DontCare
-  regFile.io      <> DontCare
-  scoreboard.io   <> DontCare
-  cu.io           <> DontCare
-  csr.io          <> DontCare
-  crossbar.io     <> DontCare
+  csr.io <> DontCare
 
   // PC
   pc.io.newPc := cu.io.newPc
@@ -185,7 +178,7 @@ class CoreCpuTop extends Module {
   exeStage.io.instInfoPassThroughPort.in := regReadStage.io.instInfoPassThroughPort.out
 
   // Mem stages
-  addrTransStage.io                            <> DontCare
+  addrTransStage.io.csrPort                    := DontCare
   addrTransStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
   addrTransStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
   addrTransStage.io.memAccessPort              := exeStage.io.memAccessPort

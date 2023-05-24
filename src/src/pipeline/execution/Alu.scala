@@ -173,7 +173,7 @@ class Alu extends Module {
   // mulStart := useMul && !mulStage.io.mulResult.valid && !io.pipelineControlPort.stall
   switch(stateReg) {
     is(State.nonBlocking) {
-      mulStart := useMul && !mulStage.io.mulResult.valid && !io.pipelineControlPort.stall
+      mulStart := useMul && !mulStage.io.mulResult.valid // TODO: Remove `!io.pipelineControlPort.stall` here. Please check correctness
     }
     is(State.blocking) {
       mulStart := false.B
