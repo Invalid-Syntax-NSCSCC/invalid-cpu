@@ -3,11 +3,12 @@ import axi.bundles.AxiMasterInterface
 import chisel3._
 import common.{Pc, RegFile}
 import control.{Csr, Cu, StableCounter}
-import frontend.{InstQueue, SimpleFetchStage}
+import frontend.SimpleFetchStage
 import memory.{DCache, Tlb, UncachedAgent}
 import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
+import pipeline.queue.InstQueue
 import pipeline.writeback.WbStage
 import spec.Param.isDiffTest
 import spec.{Count, Param, PipelineStageIndex}
@@ -124,14 +125,14 @@ class CoreCpuTop extends Module {
   csr.io          <> DontCare
   crossbar.io     <> DontCare
 
-  // Pc
+  // PC
   pc.io.newPc := cu.io.newPc
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
 
   // `SimpleFetchStage` <> AXI crossbar
-  io.axi <> simpleFetchStage.io.axiMasterInterface
+  crossbar.io.slave(0) <> simpleFetchStage.io.axiMasterInterface
 
   // Memory related modules
   val dCache        = Module(new DCache)
@@ -140,8 +141,6 @@ class CoreCpuTop extends Module {
 
   // Connection for memory related modules
   // TODO: Finish TLB maintanence connection
-  dCache.io            <> DontCare
-  uncachedAgent.io     <> DontCare
   tlb.io               <> DontCare
   crossbar.io.slave(1) <> dCache.io.axiMasterPort
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
@@ -186,29 +185,31 @@ class CoreCpuTop extends Module {
   exeStage.io.instInfoPassThroughPort.in := regReadStage.io.instInfoPassThroughPort.out
 
   // Mem stages
-  // TODO: Also finish the connection here
   addrTransStage.io                            <> DontCare
-  memReqStage.io                               <> DontCare
-  memResStage.io                               <> DontCare
   addrTransStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
   addrTransStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
   addrTransStage.io.memAccessPort              := exeStage.io.memAccessPort
   addrTransStage.io.tlbTransPort               <> tlb.io.tlbTransPorts(0)
+  addrTransStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.addrTransStage)
   // TODO: CSR
   memReqStage.io.translatedMemRequestPort   := addrTransStage.io.translatedMemRequestPort
   memReqStage.io.isCachedAccess.in          := addrTransStage.io.isCachedAccess
   memReqStage.io.gprWritePassThroughPort.in := addrTransStage.io.gprWritePassThroughPort.out
   memReqStage.io.instInfoPassThroughPort.in := addrTransStage.io.instInfoPassThroughPort.out
+  memReqStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memReqStage)
   dCache.io.accessPort.req.client           := memReqStage.io.dCacheRequestPort
   uncachedAgent.io.accessPort.req.client    := memReqStage.io.uncachedRequestPort
   dCache.io.accessPort.req.isReady          <> DontCare // Assume ready guaranteed by in-order access
   uncachedAgent.io.accessPort.req.isReady   <> DontCare // Assume ready guaranteed by in-order access
   memResStage.io.isHasRequest               := memReqStage.io.isHasRequest
   memResStage.io.isCachedRequest            := memReqStage.io.isCachedAccess.out
+  memResStage.io.isUnsigned                 := memReqStage.io.isUnsigned
+  memResStage.io.dataMask                   := memReqStage.io.dataMask
   memResStage.io.gprWritePassThroughPort.in := addrTransStage.io.gprWritePassThroughPort.out
   memResStage.io.instInfoPassThroughPort.in := addrTransStage.io.instInfoPassThroughPort.out
   memResStage.io.dCacheResponsePort         := dCache.io.accessPort.res
   memResStage.io.uncachedResponsePort       := uncachedAgent.io.accessPort.res
+  memResStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memResStage)
 
   // Write-back stage
   wbStage.io.gprWriteInfoPort           := memResStage.io.gprWritePassThroughPort.out
@@ -222,7 +223,7 @@ class CoreCpuTop extends Module {
   // Ctrl unit
   cu.io.instInfoPorts(0)               := wbStage.io.instInfoPassThroughPort.out
   cu.io.exeStallRequest                := exeStage.io.stallRequest
-  cu.io.memStallRequest                := false.B // memStage.io.stallRequest    *********** TODO
+  cu.io.memResStallRequest             := memResStage.io.stallRequest
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io

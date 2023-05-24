@@ -1,24 +1,13 @@
-package frontend
+package pipeline.queue
 
 import chisel3._
 import chisel3.util._
-
-import spec._
+import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
-import control.bundles.PipelineControlNDPort
-import frontend._
-import pipeline.dispatch.bundles.{DecodeOutNdPort, DecodePort, InstInfoBundle, IssuedInfoNdPort, ScoreboardChangeNdPort}
-import pipeline.dispatch.decode.{
-  Decoder,
-  Decoder_2R,
-  Decoder_2RI12,
-  Decoder_2RI14,
-  Decoder_2RI16,
-  Decoder_3R,
-  Decoder_4R,
-  Decoder_special
-}
+import pipeline.queue.bundles.DecodeOutNdPort
+import pipeline.queue.decode.{Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_2RI16, Decoder_3R, Decoder_special}
 import pipeline.writeback.bundles.InstInfoNdPort
+import spec._
 import utils.BiCounter
 // 尝试写双发射的queue，未接入，不用管它
 // assert: enqueuePorts总是最低的几位有效
@@ -28,7 +17,7 @@ class BiInstQueue(
     extends Module {
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
     val enqueuePorts        = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`

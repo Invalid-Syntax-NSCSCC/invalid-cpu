@@ -103,7 +103,7 @@ object DCacheSpec extends ChiselUtestTester {
           cache.io.accessPort.req.client.rw.poke(ReadWriteSel.write)
           cache.io.accessPort.req.client.addr.poke(mAddr)
           cache.io.accessPort.req.client.write.data.poke(data)
-          cache.io.accessPort.req.client.write.mask.poke(mask)
+          cache.io.accessPort.req.client.mask.poke(mask)
 
           cache.clock.step()
 
@@ -121,7 +121,7 @@ object DCacheSpec extends ChiselUtestTester {
         cache.io.accessPort.req.client.rw.poke(ReadWriteSel.write)
         cache.io.accessPort.req.client.addr.poke(mAddr)
         cache.io.accessPort.req.client.write.data.poke(data)
-        cache.io.accessPort.req.client.write.mask.poke(mask)
+        cache.io.accessPort.req.client.mask.poke(mask)
         println(f"Write data: 0x${data.litValue}%08X")
 
         cache.clock.step()
@@ -203,7 +203,7 @@ object DCacheSpec extends ChiselUtestTester {
         cache.io.accessPort.req.client.rw.poke(ReadWriteSel.write)
         cache.io.accessPort.req.client.addr.poke(writeRefillMemAddr)
         cache.io.accessPort.req.client.write.data.poke("h_AAAA_AAAA".U)
-        cache.io.accessPort.req.client.write.mask.poke("b_0101".U)
+        cache.io.accessPort.req.client.mask.poke("b_0101".U)
 
         cache.clock.step()
 

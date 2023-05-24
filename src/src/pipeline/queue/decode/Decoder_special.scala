@@ -1,11 +1,10 @@
-package pipeline.dispatch.decode
+package pipeline.queue.decode
 
 import chisel3._
 import chisel3.util._
-import pipeline.dispatch.bundles.DecodePort
+import pipeline.queue.bundles.{DecodeOutNdPort, DecodePort}
 import spec._
 import spec.Inst.{_special => Inst}
-import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_special extends Decoder {
 

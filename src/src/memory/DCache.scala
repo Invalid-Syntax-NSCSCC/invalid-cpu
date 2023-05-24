@@ -181,6 +181,7 @@ class DCache(
                 dPort.en := false.B
             }
         }
+      case _ =>
     }
     debugAddrSeq.lazyZip(debugStatusTagSeq).lazyZip(debugDataLineSeq).lazyZip(debugSetNumSeq).zipWithIndex.foreach {
       case ((addr, st, dl, num), i) =>
@@ -195,6 +196,7 @@ class DCache(
             dPort.addr := addr
             dPort.data := dl
         }
+      case _ =>
     }
   }
 
@@ -217,7 +219,7 @@ class DCache(
 
   // Convert mask from bytes to bits
   val writeMaskBits = Cat(
-    io.accessPort.req.client.write.mask.asBools
+    io.accessPort.req.client.mask.asBools
       .map(Mux(_, "h_FF".U(byteLength.W), 0.U(byteLength.W)))
       .reverse
   )

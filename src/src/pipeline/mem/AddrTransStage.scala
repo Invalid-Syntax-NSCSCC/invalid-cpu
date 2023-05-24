@@ -4,10 +4,11 @@ import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfWriteNdPort}
 import common.enums.ReadWriteSel
-import memory.bundles.{MemRequestNdPort, TlbTransPort}
+import control.bundles.PipelineControlNdPort
+import memory.bundles.TlbTransPort
 import memory.enums.TlbMemType
-import pipeline.mem.bundles.MemCsrNdPort
-import pipeline.mem.enums.AddrTransMode
+import pipeline.mem.bundles.{MemCsrNdPort, MemRequestNdPort}
+import pipeline.mem.enums.AddrTransType
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Value.Csr
 import spec.Width
@@ -16,9 +17,10 @@ import scala.collection.immutable
 
 class AddrTransStage extends Module {
   val io = IO(new Bundle {
-    val memAccessPort = Input(new MemRequestNdPort)
-    val csrPort       = Input(new MemCsrNdPort)
-    val tlbTransPort  = Flipped(new TlbTransPort)
+    val memAccessPort       = Input(new MemRequestNdPort)
+    val csrPort             = Input(new MemCsrNdPort)
+    val tlbTransPort        = Flipped(new TlbTransPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
 
     // (Next clock pulse)
     val gprWritePassThroughPort  = new PassThroughPort(new RfWriteNdPort)
@@ -43,7 +45,7 @@ class AddrTransStage extends Module {
 
   // TODO: Might need to move to previous stage to prevent data hazard
   // Select a translation mode
-  val transMode = WireDefault(AddrTransMode.direct) // Fallback: Direct translation
+  val transMode = WireDefault(AddrTransType.direct) // Fallback: Direct translation
   when(!io.csrPort.crmd.da && io.csrPort.crmd.pg) {
     val isDirectMappingWindowHit = WireDefault(
       io.csrPort.dmw.vseg ===
@@ -55,16 +57,16 @@ class AddrTransStage extends Module {
         when(
           io.csrPort.dmw.plv3 && isDirectMappingWindowHit
         ) {
-          transMode := AddrTransMode.directMapping
+          transMode := AddrTransType.directMapping
         }.otherwise {
-          transMode := AddrTransMode.pageTableMapping
+          transMode := AddrTransType.pageTableMapping
         }
       }
       is(Csr.Crmd.Plv.high) {
         when(io.csrPort.dmw.plv0 && isDirectMappingWindowHit) {
-          transMode := AddrTransMode.directMapping
+          transMode := AddrTransType.directMapping
         }.otherwise {
-          transMode := AddrTransMode.pageTableMapping
+          transMode := AddrTransType.pageTableMapping
         }
       }
     }
@@ -82,16 +84,16 @@ class AddrTransStage extends Module {
   )
   io.tlbTransPort.virtAddr := io.memAccessPort.addr
   switch(transMode) {
-    is(AddrTransMode.direct) {
+    is(AddrTransType.direct) {
       physicalAddr := io.memAccessPort.addr
     }
-    is(AddrTransMode.directMapping) {
+    is(AddrTransType.directMapping) {
       physicalAddr := Cat(
         io.csrPort.dmw.pseg,
         io.memAccessPort.addr(io.memAccessPort.addr.getWidth - 4, 0)
       )
     }
-    is(AddrTransMode.pageTableMapping) {
+    is(AddrTransType.pageTableMapping) {
       physicalAddr                    := io.tlbTransPort.physAddr
       translatedMemRequestReg.isValid := io.memAccessPort.isValid && !io.tlbTransPort.exception.valid
 
@@ -112,5 +114,12 @@ class AddrTransStage extends Module {
     is(Csr.Crmd.Datm.cc) {
       isCachedAccessReg := true.B
     }
+  }
+
+  // Flush
+  when(io.pipelineControlPort.flush) {
+    gprWriteReg.en := false.B
+    InstInfoNdPort.invalidate(instInfoReg)
+    translatedMemRequestReg.isValid := false.B
   }
 }

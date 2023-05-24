@@ -3,16 +3,16 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import spec._
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.enums.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
 import Csr.ExceptionIndex
 import common.bundles.PassThroughPort
-import pipeline.dispatch.bundles.DecodeOutNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.bundles.IssuedInfoNdPort
 import pipeline.dataforward.bundles.ReadPortWithValid
 import pipeline.dispatch.bundles.IssueInfoWithValidBundle
+import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.rob.bundles.RobIdDistributePort
 
 // TODO: deal WAR data hazard
@@ -51,11 +51,11 @@ class BiIssueStage(
 
     // pipeline control signal
     // `Cu` -> `IssueStage`
-    val pipelineControlPorts = Vec(issueNum, Input(new PipelineControlNDPort))
+    val pipelineControlPorts = Vec(issueNum, Input(new PipelineControlNdPort))
   })
 
   val instInfosReg = Reg(Vec(issueNum, new InstInfoNdPort))
-  instInfosReg.foreach(InstInfoNdPort.setDefault(_))
+  instInfosReg.foreach(InstInfoNdPort.invalidate)
   // val instInfosReg = RegInit(VecInit(Seq.fill(issueNum)(InstInfoNdPort.default)))
   io.instInfoPorts := instInfosReg
 

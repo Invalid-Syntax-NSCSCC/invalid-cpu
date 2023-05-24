@@ -3,12 +3,12 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
 import chiseltest.simulator.WriteVcdAnnotation
-import frontend.InstQueue
 import pipeline.dispatch.bundles.InstInfoBundle
 import utest._
 import pipeline.execution.Clz
 import scala.util.Random
 import pipeline.execution.Div
+import pipeline.queue.InstQueue
 import spec.ExeInst
 
 // object DivSpec extends ChiselUtestTester {
