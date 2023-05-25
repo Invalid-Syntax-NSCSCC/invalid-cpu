@@ -6,7 +6,7 @@ import spec._
 class AxiMasterPort extends Bundle {
   // Read request
   val arid    = Output(UInt(4.W))
-  val araddr  = Output(UInt(spec.Width.Axi.addr))
+  val araddr  = Output(UInt(Width.Axi.addr))
   val arlen   = Output(UInt(8.W))
   val arsize  = Output(UInt(3.W))
   val arburst = Output(UInt(2.W))
@@ -18,7 +18,7 @@ class AxiMasterPort extends Bundle {
 
   // Read back
   val rid    = Input(UInt(4.W))
-  val rdata  = Input(UInt(Param.Width.Axi.data))
+  val rdata  = Input(UInt(Width.Axi.data))
   val rresp  = Input(UInt(2.W))
   val rlast  = Input(Bool())
   val rvalid = Input(Bool())
@@ -26,7 +26,7 @@ class AxiMasterPort extends Bundle {
 
   // Write request
   val awid    = Output(UInt(4.W))
-  val awaddr  = Output(UInt(spec.Width.Axi.addr))
+  val awaddr  = Output(UInt(Width.Axi.addr))
   val awlen   = Output(UInt(8.W))
   val awsize  = Output(UInt(3.W))
   val awburst = Output(UInt(2.W))
@@ -38,8 +38,8 @@ class AxiMasterPort extends Bundle {
 
   // Write data
   val wid    = Output(UInt(4.W))
-  val wdata  = Output(UInt(Param.Width.Axi.data))
-  val wstrb  = Output(UInt(Param.Width.Axi.strb))
+  val wdata  = Output(UInt(Width.Axi.data))
+  val wstrb  = Output(UInt(Width.Axi.strb))
   val wlast  = Output(Bool())
   val wvalid = Output(Bool())
   val wready = Input(Bool())

@@ -1,7 +1,7 @@
 package spec
 
-import chisel3.util._
 import chisel3.{ChiselEnum, _}
+import chisel3.util._
 
 object Param {
   // Configurable self-defined parameters go here
@@ -28,19 +28,15 @@ object Param {
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
     object Axi {
-      private val _data = 32
+      private val _data = 128
 
       val data = _data.W
       val strb = (_data / byteLength).W
 
-      val awuser = 0.W
-      val wuser  = 0.W
-      val aruser = 0.W
-      val ruser  = 0.W
-      val buser  = 0.W
+      val user = 0.W
 
-      val slaveId  = 2.W
-      val masterId = 4.W
+      val slaveId  = 8
+      val masterId = slaveId + log2Ceil(Count.Axi.slave)
     }
 
     object DCache {
