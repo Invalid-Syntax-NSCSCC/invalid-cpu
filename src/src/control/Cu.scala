@@ -28,8 +28,8 @@ import control.bundles.StableCounterReadPort
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
-  dispatchNum:    Int = Param.issueInstInfoMaxNum)
-    extends Module {
+  dispatchNum:    Int = 1 // Param.issueInstInfoMaxNum
+) extends Module {
   val io = IO(new Bundle {
 
     /** 回写与异常处理

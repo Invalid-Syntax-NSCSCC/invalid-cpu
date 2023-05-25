@@ -16,8 +16,9 @@ class Alu extends Module {
     val aluInst = Input(new AluInstNdPort)
     val result  = Output(new AluResultNdPort)
 
-    val pipelineControlPort = Input(new PipelineControlNdPort)
-    val stallRequest        = Output(Bool())
+    // val pipelineControlPort = Input(new PipelineControlNdPort)
+    val isBlocking   = Input(Bool())
+    val blockRequest = Output(Bool())
   })
 
   io.result := AluResultNdPort.default
@@ -26,8 +27,8 @@ class Alu extends Module {
 
   def rop = io.aluInst.rightOperand
 
-  val stallRequest = WireDefault(false.B)
-  io.stallRequest := stallRequest
+  val blockRequest = WireDefault(false.B)
+  io.blockRequest := blockRequest
 
   /** State machine
     *
@@ -43,7 +44,7 @@ class Alu extends Module {
   val nextState = WireDefault(State.nonBlocking)
   val stateReg  = RegNext(nextState, State.nonBlocking)
 
-  nextState := Mux(io.pipelineControlPort.stall || stallRequest, State.blocking, State.nonBlocking)
+  nextState := Mux(io.isBlocking || blockRequest, State.blocking, State.nonBlocking)
 
   /** Result definition
     */
@@ -60,7 +61,7 @@ class Alu extends Module {
   val computedResult = WireDefault(AluResultNdPort.default)
   io.result := computedResult
 
-  when(!(io.pipelineControlPort.stall && stallRequest)) {
+  when(!(io.isBlocking && blockRequest)) {
     computedResult.arithmetic     := arithmetic
     computedResult.logic          := logic
     computedResult.jumpBranchInfo := jumpBranchInfo
@@ -242,9 +243,9 @@ class Alu extends Module {
   val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
   val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
 
-  stallRequest := (mulStart || divStart || divStage.io.isRunning)
+  blockRequest := (mulStart || divStart || divStage.io.isRunning)
 
-  when(!stallRequest) {
+  when(!blockRequest) {
     switch(io.aluInst.op) {
       is(Op.add) {
         arithmetic := (lop.asSInt + rop.asSInt).asUInt

@@ -53,13 +53,15 @@ class BiIssueStage(
     val pipelineControlPorts = Vec(issueNum, Input(new PipelineControlNdPort))
   })
 
+  // fall back
+  io.idGetPorts.foreach(_.writeEn := false.B)
+
   val issueEnablesReg = RegInit(VecInit(Seq.fill(issueNum)(false.B)))
   issueEnablesReg.foreach(_ := false.B)
   val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(IssuedInfoNdPort.default)))
-  io.issuedInfoPorts.lazyZip(issueInfosReg).lazyZip(issueEnablesReg).foreach{
-    (dst, src, valid) => 
-      dst.bits := issueInfosReg
-      dst.valid := valid
+  io.issuedInfoPorts.lazyZip(issueInfosReg).lazyZip(issueEnablesReg).foreach { (dst, src, valid) =>
+    dst.bits  := src
+    dst.valid := valid
   }
 
   // fall back
@@ -74,7 +76,10 @@ class BiIssueStage(
     port.en   := false.B
     port.addr := zeroWord
   })
-  io.issuedInfoPorts.foreach(_ := IssuedInfoNdPort.default)
+  io.issuedInfoPorts.foreach { port =>
+    port.valid := false.B
+    port.bits  := IssuedInfoNdPort.default
+  }
 
   /** Combine stage 1 : get fetch infos
     */
@@ -86,7 +91,7 @@ class BiIssueStage(
     .foreach((dst, src) => {
       dst.valid                    := src.valid
       dst.issueInfo.instInfo       := src.bits.instInfo
-      dst.issueInfo.preExeInstInfo := src.bits.instInfo
+      dst.issueInfo.preExeInstInfo := src.bits.decode.info
     })
 
   /** Combine stage 2 : Select to issue ; decide input

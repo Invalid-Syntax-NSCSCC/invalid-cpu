@@ -17,55 +17,56 @@ import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import common.enums.ReadWriteSel
 import pipeline.mem.bundles.MemRequestNdPort
+import pipeline.execution.bundles.ExeResultPort
 
 // TODO: Add (flush ?) when jump / branch
 // throw exception: 地址未对齐 ale
 class ExeStage extends Module {
   val io = IO(new Bundle {
-    val exeInstPort = Input(new ExeInstNdPort)
+    val exeInstPort = Flipped(Decoupled(new ExeInstNdPort))
 
     // `ExeStage` -> `AddrTransStage` (next clock pulse)
-    val memAccessPort           = Output(new MemRequestNdPort)
-    val gprWritePort            = Output(new RfWriteNdPort)
+    val exeResultPort = Decoupled(new ExeResultPort)
+
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
     // `ExeStage` -> `Pc` (no delay)
     val branchSetPort = Output(new PcSetPort)
 
     // Scoreboard
-    val freePorts = Output(new ScoreboardChangeNdPort)
+    // val freePorts = Output(new ScoreboardChangeNdPort)
 
     // Pipeline control signal
     // `Cu` -> `ExeStage`
     val pipelineControlPort = Input(new PipelineControlNdPort)
-    // `ExeStage` -> `Cu`
-    val stallRequest = Output(Bool())
   })
 
   // Indicate the availability in scoreboard
   // 当再ExeStage计算出结果，则free scoreboard
-  val freePortEn = RegInit(false.B)
-  freePortEn        := false.B
-  io.freePorts.en   := freePortEn
-  io.freePorts.addr := io.gprWritePort.addr
+  // val freePortEn = RegInit(false.B)
+  // freePortEn        := false.B
+  // io.freePorts.en   := freePortEn
+  // io.freePorts.addr := io.gprWritePort.addr
 
   // Wb debug port connection
   val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
   io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
-  val gprWriteReg = RegInit(RfWriteNdPort.default)
-  io.gprWritePort := gprWriteReg
+  val exeResultReg = RegInit(ExeResultPort.default)
+  io.exeResultPort.bits := exeResultReg
+  // val gprWriteReg = RegInit(RfWriteNdPort.default)
+  // io.gprWritePort := gprWriteReg
 
-  val memRequestReg = RegInit(MemRequestNdPort.default)
-  io.memAccessPort := memRequestReg
+  // val memRequestReg = RegInit(MemRequestNdPort.default)
+  // io.memAccessPort := memRequestReg
 
   // Start: state machine
 
   /** State behaviors: --> exeInst store and select
     *   - Fallback : keep inst store reg
-    *   - `nonBlocking`: select and store input exeInst
-    *   - `blocking` : select stored exeInst
+    *   - `nonBlocking`: select and store input exeInst output valid = true
+    *   - `blocking` : select stored exeInst output valid = false
     *
     * State transitions:
     *   - `nonBlocking`: is blocking -> `blocking`, else `nonBlocking`
@@ -92,16 +93,10 @@ class ExeStage extends Module {
   // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
-      selectedExeInst := io.exeInstPort
-      exeInstStoreReg := io.exeInstPort
-      selectedPc      := io.instInfoPassThroughPort.in.pc
-      pcStoreReg      := io.instInfoPassThroughPort.in.pc
-
-      // val inMemLoadStoreInfo = Wire(new MemLoadStoreInfoNdPort)
-      // inMemLoadStoreInfo.data  := io.exeInstPort.rightOperand
-      // inMemLoadStoreInfo.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
-      // selectedMemLoadStoreInfo := inMemLoadStoreInfo
-      // memLoadStoreInfoStoreReg := inMemLoadStoreInfo
+      selectedExeInst  := io.exeInstPort.bits
+      exeInstStoreReg  := io.exeInstPort.bits
+      selectedPc       := io.instInfoPassThroughPort.in.pc
+      pcStoreReg       := io.instInfoPassThroughPort.in.pc
       selectedInstInfo := io.instInfoPassThroughPort.in
       instInfoStoreReg := io.instInfoPassThroughPort.in
     }
@@ -117,9 +112,7 @@ class ExeStage extends Module {
   val alu = Module(new Alu)
 
   // state machine input
-  val stallRequest = WireDefault(alu.io.stallRequest)
-  io.stallRequest := stallRequest
-  val isBlocking = io.pipelineControlPort.stall || stallRequest
+  val isBlocking = !io.exeResultPort.ready || alu.io.blockRequest
 
   // Next state function
   nextState := Mux(isBlocking, State.blocking, State.nonBlocking)
@@ -129,43 +122,43 @@ class ExeStage extends Module {
   alu.io.aluInst.leftOperand    := selectedExeInst.leftOperand
   alu.io.aluInst.rightOperand   := selectedExeInst.rightOperand
   alu.io.aluInst.jumpBranchAddr := selectedExeInst.jumpBranchAddr // also load-store imm
-  alu.io.pipelineControlPort    := io.pipelineControlPort
+  alu.io.isBlocking             := isBlocking
 
   // ALU output
 
   // write-back information fallback
-  gprWriteReg.en   := false.B
-  gprWriteReg.addr := zeroWord
-  gprWriteReg.data := zeroWord
+  exeResultReg.gprWritePort.en   := false.B
+  exeResultReg.gprWritePort.addr := zeroWord
+  exeResultReg.gprWritePort.data := zeroWord
 
   // write-back information selection
   when(!isBlocking) {
-    gprWriteReg.en   := selectedExeInst.gprWritePort.en
-    gprWriteReg.addr := selectedExeInst.gprWritePort.addr
+    exeResultReg.gprWritePort.en   := selectedExeInst.gprWritePort.en
+    exeResultReg.gprWritePort.addr := selectedExeInst.gprWritePort.addr
 
     switch(selectedExeInst.exeSel) {
       is(Sel.logic) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := alu.io.result.logic
+        // io.freePorts.en  := gprWriteReg.en
+        exeResultReg.gprWritePort.data := alu.io.result.logic
       }
       is(Sel.shift) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := alu.io.result.shift
+        // io.freePorts.en  := gprWriteReg.en
+        exeResultReg.gprWritePort.data := alu.io.result.shift
       }
       is(Sel.arithmetic) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := alu.io.result.arithmetic
+        // io.freePorts.en  := gprWriteReg.en
+        exeResultReg.gprWritePort.data := alu.io.result.arithmetic
       }
       is(Sel.jumpBranch) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := selectedPc + 4.U
+        // io.freePorts.en  := gprWriteReg.en
+        exeResultReg.gprWritePort.data := selectedPc + 4.U
       }
     }
 
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.csrrd) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := selectedExeInst.csrData
+        // io.freePorts.en  := gprWriteReg.en
+        exeResultReg.gprWritePort.data := selectedExeInst.csrData
       }
     }
   }
@@ -187,16 +180,16 @@ class ExeStage extends Module {
   instInfoReg.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
 
   when(!isBlocking) {
-    memRequestReg.isValid         := (memReadEn || memWriteEn) && !isAle
-    memRequestReg.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
-    memRequestReg.write.data      := selectedExeInst.rightOperand
-    memRequestReg.read.isUnsigned := memLoadUnsigned
-    memRequestReg.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
+    exeResultReg.memAccessPort.isValid         := (memReadEn || memWriteEn) && !isAle
+    exeResultReg.memAccessPort.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
+    exeResultReg.memAccessPort.write.data      := selectedExeInst.rightOperand
+    exeResultReg.memAccessPort.read.isUnsigned := memLoadUnsigned
+    exeResultReg.memAccessPort.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
     // mask
     val maskEncode = loadStoreAddr(1, 0)
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-        memRequestReg.mask := Mux(
+        exeResultReg.memAccessPort.mask := Mux(
           maskEncode(1),
           Mux(maskEncode(0), "b1000".U, "b0100".U),
           Mux(maskEncode(0), "b0010".U, "b0001".U)
@@ -206,11 +199,11 @@ class ExeStage extends Module {
         when(maskEncode(0)) {
           isAle := true.B // 未对齐
         }
-        memRequestReg.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+        exeResultReg.memAccessPort.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
       }
       is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-        isAle              := maskEncode.orR
-        memRequestReg.mask := "b1111".U
+        isAle                           := maskEncode.orR
+        exeResultReg.memAccessPort.mask := "b1111".U
       }
     }
   }
@@ -244,24 +237,24 @@ class ExeStage extends Module {
   // branch set
   io.branchSetPort := alu.io.result.jumpBranchInfo
 
+  // ready-valid
+  io.exeInstPort.ready   := !isBlocking
+  io.exeResultPort.valid := stateReg === State.nonBlocking
+
   /** InstInfo Csr read or write info
     */
 
-  // clear
-  when(io.pipelineControlPort.clear) {
-    gprWriteReg := RfWriteNdPort.default
-    InstInfoNdPort.invalidate(instInfoReg)
-    memRequestReg := MemRequestNdPort.default
-  }
-
   // Flush
   when(io.pipelineControlPort.flush) {
-    gprWriteReg.en := false.B
+    exeResultReg.gprWritePort.en := false.B
     InstInfoNdPort.invalidate(instInfoReg)
-    memRequestReg.isValid := false.B
+    exeResultReg.memAccessPort.isValid := false.B
 
     stateReg        := State.nonBlocking
     exeInstStoreReg := ExeInstNdPort.default
     pcStoreReg      := zeroWord
+
+    io.exeInstPort.ready   := false.B
+    io.exeResultPort.valid := false.B
   }
 }

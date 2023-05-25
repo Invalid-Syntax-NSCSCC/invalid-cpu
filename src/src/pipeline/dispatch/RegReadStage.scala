@@ -33,16 +33,19 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
     val pipelineControlPort = Input(new PipelineControlNdPort)
 
     // (next clock pulse)
-    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
+    val instInfoPort = Output(new InstInfoNdPort)
   })
 
   // Wb debug port connection
-  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
-  io.instInfoPassThroughPort.out := instInfoReg
+  // val instInfoReg = RegNext(io.issuedInfoPort.bits.instInfo)
+  val instInfoReg = RegInit(InstInfoNdPort.default)
+  io.instInfoPort := instInfoReg
 
   // Pass to the next stage in a sequential way
+  val outputValidReg = RegNext(false.B)
+  io.exeInstPort.valid := outputValidReg
   val exeInstReg = RegInit(ExeInstNdPort.default)
-  io.exeInstPort := exeInstReg
+  io.exeInstPort.bits := exeInstReg
 
   // Read from GPR
   io.gprReadPorts.zip(io.issuedInfoPort.bits.preExeInstInfo.gprReadPorts).foreach {
@@ -53,7 +56,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
 
   // Read from CSR
   io.csrReadPorts(0).en   := io.issuedInfoPort.bits.preExeInstInfo.csrReadEn
-  io.csrReadPorts(0).addr := io.instInfoPassThroughPort.in.csrWritePort.addr
+  io.csrReadPorts(0).addr := io.issuedInfoPort.bits.instInfo.csrWritePort.addr
 
   // read from dataforward
   // io.gprReadPorts.zip(io.dataforwardPorts).foreach {
@@ -66,7 +69,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
   when(io.issuedInfoPort.valid) {
-    
+
     when(io.issuedInfoPort.bits.preExeInstInfo.isHasImm) {
       exeInstReg.rightOperand := io.issuedInfoPort.bits.preExeInstInfo.imm
     }
@@ -82,31 +85,35 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
 
   // Pass execution instruction if valid
 
+  io.issuedInfoPort.ready := false.B
+
   exeInstReg.exeSel       := ExeInst.Sel.none
   exeInstReg.exeOp        := ExeInst.Op.nop
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
-  when(!io.pipelineControlPort.stall) {
-    when(io.issuedInfoPort.isValid) {
-      exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
-      exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
-      exeInstReg.gprWritePort := io.issuedInfoPort.info.gprWritePort
+
+  when(io.exeInstPort.ready) {
+    when(io.issuedInfoPort.valid) {
+
+      io.issuedInfoPort.ready := true.B
+      outputValidReg          := true.B
+
+      exeInstReg.exeSel       := io.issuedInfoPort.bits.preExeInstInfo.exeSel
+      exeInstReg.exeOp        := io.issuedInfoPort.bits.preExeInstInfo.exeOp
+      exeInstReg.gprWritePort := io.issuedInfoPort.bits.preExeInstInfo.gprWritePort
       // jumbBranch / memLoadStort / csr
-      exeInstReg.jumpBranchAddr := io.issuedInfoPort.info.jumpBranchAddr
-      when(io.issuedInfoPort.info.csrReadEn) {
+      exeInstReg.jumpBranchAddr := io.issuedInfoPort.bits.preExeInstInfo.jumpBranchAddr
+      when(io.issuedInfoPort.bits.preExeInstInfo.csrReadEn) {
         exeInstReg.csrData := io.csrReadPorts(0).data
       }
     }
   }
 
-  // clear
-  when(io.pipelineControlPort.clear) {
-    InstInfoNdPort.invalidate(instInfoReg)
-    exeInstReg := ExeInstNdPort.default
-  }
-
   // flush all regs
   when(io.pipelineControlPort.flush) {
+    outputValidReg := false.B
+    exeInstReg     := ExeInstNdPort.default
     InstInfoNdPort.invalidate(instInfoReg)
-    exeInstReg := ExeInstNdPort.default
+    io.issuedInfoPort.ready := false.B
+    io.exeInstPort.valid    := false.B
   }
 }
