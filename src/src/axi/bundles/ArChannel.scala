@@ -2,6 +2,7 @@ package axi.bundles
 
 import chisel3._
 import chisel3.util._
+import spec.Param
 
 class ArChannel
     extends DecoupledIO(new Bundle {
@@ -15,5 +16,5 @@ class ArChannel
       val prot   = UInt(3.W)
       val qos    = UInt(4.W)
       val region = UInt(4.W)
-      val user   = UInt(spec.Param.Width.Axi.user)
+      val user   = UInt(Param.Width.Axi.aruser)
     })
