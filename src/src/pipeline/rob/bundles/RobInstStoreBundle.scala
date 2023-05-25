@@ -14,6 +14,7 @@ class RobInstStoreBundle(idLength: Int = 32) extends Bundle {
 object RobInstStoreBundle {
   val default = (new RobInstStoreBundle).Lit(
     _.state -> RobInstState.empty,
-    _.writePort -> RfWriteNdPort.default
+    _.writePort -> RfWriteNdPort.default,
+    _.id -> 0.U
   )
 }
