@@ -61,7 +61,7 @@ class SimpleFetchStage extends Module {
       nextState := State.requestInst
     }
     is(State.requestInst) { // State Value: 1
-      when(axiReady && io.instEnqueuePort.ready) {
+      when(axiReady && io.instEnqueuePort.ready && !io.pipelineControlPort.flush) {
         nextState := State.waitInst
 
         isPcNextReg       := true.B
