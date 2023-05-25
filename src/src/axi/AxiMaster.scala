@@ -2,6 +2,7 @@ package axi
 
 import axi.bundles.AxiMasterInterface
 import chisel3._
+import chisel3.util.RegEnable
 import spec._
 
 class AxiMaster(val Id: Int = 0) extends Module {
@@ -31,25 +32,31 @@ class AxiMaster(val Id: Int = 0) extends Module {
   io.axi.ar.bits.burst := 0.U // burst type does not matter
   io.axi.r.ready       := true.B // always ready to receive data
 
-  val addrReg   = RegNext(io.addr)
-  val sizeReg   = RegNext(io.size)
-  val dataInReg = RegNext(io.dataIn)
-  val wstrbReg  = RegNext(io.wstrb)
+  val addrReg   = RegEnable(io.addr, 0.U(Width.Axi.addr), io.newRequest)
+  val sizeReg   = RegEnable(io.size, 0.U(3.W), io.newRequest)
+  val dataInReg = RegEnable(io.dataIn, 0.U(Width.Axi.data), io.newRequest)
+  val wstrbReg  = RegEnable(io.wstrb, 0.U(Width.Axi.strb), io.newRequest)
   val cacheReg  = Reg(UInt(4.W))
   when(io.uncached) {
     cacheReg := "b0000".U
   }.otherwise {
     cacheReg := "b1111".U
   }
+  io.axi.ar.bits.addr  := addrReg
+  io.axi.ar.bits.size  := sizeReg
+  io.axi.aw.bits.size  := sizeReg
+  io.axi.aw.bits.addr  := addrReg
+  io.axi.w.bits.data   := dataInReg
+  io.axi.w.bits.strb   := wstrbReg
+  io.axi.ar.bits.cache := cacheReg
+  io.axi.aw.bits.cache := cacheReg
   when(io.newRequest) {
-    io.axi.ar.bits.addr  := addrReg
-    io.axi.ar.bits.size  := sizeReg
-    io.axi.aw.bits.size  := sizeReg
-    io.axi.aw.bits.addr  := addrReg
-    io.axi.w.bits.data   := dataInReg
-    io.axi.w.bits.strb   := wstrbReg
-    io.axi.ar.bits.cache := cacheReg
-    io.axi.aw.bits.cache := cacheReg
+    io.axi.ar.bits.addr := io.addr
+    io.axi.ar.bits.size := io.size
+    io.axi.aw.bits.size := io.size
+    io.axi.aw.bits.addr := io.addr
+    io.axi.w.bits.data  := io.dataIn
+    io.axi.w.bits.strb  := io.wstrb
   }
 
   // write constants
@@ -62,7 +69,7 @@ class AxiMaster(val Id: Int = 0) extends Module {
   readyMod.io.clr := io.newRequest
   io.readyOut     := readyMod.io.result
 
-  val validReg = RegNext(io.axi.r.valid, 0.U)
+  val validReg = RegNext(io.axi.r.valid || io.axi.b.valid, false.B)
   io.validOut := validReg
 
   // read channel
