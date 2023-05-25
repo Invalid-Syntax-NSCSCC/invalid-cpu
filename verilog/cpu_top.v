@@ -1,5 +1,5 @@
 // `include "CoreCpuTop.v"
-parameter AXI_DATA_WIDTH = 128;
+parameter AXI_DATA_WIDTH = 32;
 
 module core_top (
     input aclk,
