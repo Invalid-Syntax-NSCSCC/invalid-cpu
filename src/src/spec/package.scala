@@ -84,7 +84,7 @@ package object spec {
     }
 
     object Axi {
-      val addr   = wordLength.W
+      val addr = wordLength.W
     }
   }
 
