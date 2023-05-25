@@ -17,32 +17,14 @@
 
 break和syscall译码过程只检查是否match和确定ExeOp，code等到Cu再查看（***UNFINISH***）
 
-CSR地址转换在译码时实现(***UNFINISH***)
+CSR地址转换在译码时实现
+
+# 数据传递
+
+使用`ready-valid`进行数据传递
 
 # Pipeline Control Signal
 
 ## `flush`
 
 Reset or make invalid every regs in current stage.
-
-## `stall`
-
-When a stage issue a stall request, `Control Unit` stall every previous stage but not the requester.
-
-Stages keep no output when stall.
-
-Stall Behaviours:
-
-Stage | Behaviour
----|---
-IssueStage | no issue
-RegReadStage | no output
-ExeStage | no output, but continue mul or div if started
-
-
-## `clear`
-
-If stall behaviour is **as mention above**, 
-it is not neccessary so far as `IssueStage`, `RegReadStage` and `ExeStage` were concerned. 
-
-However, `RenameStage` and `RobStage` may require the previous stage to have a `clear` singal to avoid repeatly rename or commit. So keep it temporarily. 
