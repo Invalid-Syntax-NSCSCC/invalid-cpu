@@ -43,7 +43,7 @@ class Alu extends Module {
   val nextState = WireDefault(State.nonBlocking)
   val stateReg  = RegNext(nextState, State.nonBlocking)
 
-  nextState := Mux(io.pipelineControlPort.stall, State.blocking, State.nonBlocking)
+  nextState := Mux(io.pipelineControlPort.stall || stallRequest, State.blocking, State.nonBlocking)
 
   /** Result definition
     */
@@ -173,7 +173,7 @@ class Alu extends Module {
   // mulStart := useMul && !mulStage.io.mulResult.valid && !io.pipelineControlPort.stall
   switch(stateReg) {
     is(State.nonBlocking) {
-      mulStart := useMul && !mulStage.io.mulResult.valid // TODO: Remove `!io.pipelineControlPort.stall` here. Please check correctness
+      mulStart := useMul && !mulStage.io.mulResult.valid
     }
     is(State.blocking) {
       mulStart := false.B

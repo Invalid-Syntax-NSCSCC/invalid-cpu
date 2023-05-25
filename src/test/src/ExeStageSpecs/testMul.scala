@@ -1,21 +1,21 @@
-import chisel3._
-import chisel3.util._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chiseltest._
-import chiseltest.simulator.WriteVcdAnnotation
-import pipeline.dispatch.bundles.InstInfoBundle
-import utest._
-import pipeline.execution.Clz
-import scala.util.Random
-import pipeline.execution.Mul
-import pipeline.execution.Div
-import pipeline.queue.InstQueue
-import spec.ExeInst
+// import chisel3._
+// import chisel3.util._
+// import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+// import chiseltest._
+// import chiseltest.simulator.WriteVcdAnnotation
+// import pipeline.dispatch.bundles.InstInfoBundle
+// import utest._
+// import pipeline.execution.Clz
+// import scala.util.Random
+// import pipeline.execution.Mul
+// import pipeline.execution.Div
+// import pipeline.queue.InstQueue
+// import spec.ExeInst
 
 
 // object MulSpec extends ChiselUtestTester {
 //   val tests = Tests {
-//     test("Test div module") {
+//     test("Test mul module") {
 //       testCircuit(new Mul, Seq(WriteVcdAnnotation)) { mul =>
 //         val lops = Seq(
 //           10, 0, 3, 754, 7962, 785424, 742, 427

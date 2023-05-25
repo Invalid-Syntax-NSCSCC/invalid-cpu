@@ -22,7 +22,8 @@ import scala.collection.immutable
 //   val tests = Tests {
 //     test("Test exe stage stall") {
 //       testCircuit(new ExeStage, immutable.Seq(WriteVcdAnnotation)) { exeStage =>
-//         val op  = ExeInst.Op.div
+//         // val op  = ExeInst.Op.div
+//         val op = ExeInst.Op.mul
 //         val sel = ExeInst.Sel.arithmetic
 //         val lop = 4756985
 //         val rop = 5

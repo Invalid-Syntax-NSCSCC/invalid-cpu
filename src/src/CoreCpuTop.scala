@@ -12,6 +12,7 @@ import pipeline.queue.InstQueue
 import pipeline.writeback.WbStage
 import spec.Param.isDiffTest
 import spec.{Count, Param, PipelineStageIndex}
+import spec.zeroWord
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -116,7 +117,7 @@ class CoreCpuTop extends Module {
   val pc      = Module(new Pc)
 
   // Default DontCare
-  csr.io <> DontCare
+  csr.io      <> DontCare
   crossbar.io <> DontCare // TODO: Fix crossbar
 
   // PC
@@ -135,15 +136,15 @@ class CoreCpuTop extends Module {
 
   // Connection for memory related modules
   // TODO: Finish TLB maintanence connection
-  tlb.io               <> DontCare
-  dCache.io.axiMasterPort <> DontCare
+  tlb.io                         <> DontCare
+  dCache.io.axiMasterPort        <> DontCare
   uncachedAgent.io.axiMasterPort <> DontCare
 
   // Simple fetch stage
   instQueue.io.enqueuePort                <> simpleFetchStage.io.instEnqueuePort
-  instQueue.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
+  instQueue.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.fronted)
   simpleFetchStage.io.pc                  := pc.io.pc
-  simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
+  simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.fronted)
   pc.io.isNext                            := simpleFetchStage.io.isPcNext
 
   // Issue stage
