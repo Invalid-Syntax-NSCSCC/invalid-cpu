@@ -42,7 +42,7 @@ class SimpleFetchStage extends Module {
 
   val lastPcReg = RegInit(zeroWord)
 
-  val flushReg = Reg(Bool())
+  val flushReg = RegInit(false.B)
 
   // Fallback
   isPcNextReg              := false.B
@@ -61,7 +61,7 @@ class SimpleFetchStage extends Module {
       nextState := State.requestInst
     }
     is(State.requestInst) { // State Value: 1
-      when(axiReady && io.instEnqueuePort.ready) {
+      when(axiReady && io.instEnqueuePort.ready && !io.pipelineControlPort.flush && !flushReg) {
         nextState := State.waitInst
 
         isPcNextReg       := true.B
@@ -70,6 +70,9 @@ class SimpleFetchStage extends Module {
         lastPcReg         := io.pc
       }.otherwise {
         nextState := State.requestInst
+      }
+      when(flushReg) {
+        flushReg := false.B
       }
     }
     is(State.waitInst) { // State Value: 2
