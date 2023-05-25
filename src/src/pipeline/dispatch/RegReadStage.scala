@@ -14,7 +14,7 @@ import control.bundles.CsrReadPort
 class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum) extends Module {
   val io = IO(new Bundle {
     // `IssueStage` -> `RegReadStage`
-    val issuedInfoPort = Input(new IssuedInfoNdPort)
+    val issuedInfoPort = Flipped(Decoupled(new IssuedInfoNdPort))
     // `RegReadStage` <-> `Regfile`
     val gprReadPorts = Vec(readNum, Flipped(new RfReadPort))
 
@@ -22,7 +22,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
     val csrReadPorts = Vec(csrRegsReadNum, Flipped(new CsrReadPort))
 
     // `RegReadStage` -> `ExeStage` (next clock pulse)
-    val exeInstPort = Output(new ExeInstNdPort)
+    val exeInstPort = Decoupled(new ExeInstNdPort)
 
     // 数据前推
     // `DataForwardStage` -> `RegReadStage`
@@ -45,14 +45,14 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   io.exeInstPort := exeInstReg
 
   // Read from GPR
-  io.gprReadPorts.zip(io.issuedInfoPort.info.gprReadPorts).foreach {
+  io.gprReadPorts.zip(io.issuedInfoPort.bits.preExeInstInfo.gprReadPorts).foreach {
     case (port, info) =>
       port.en   := info.en
       port.addr := info.addr
   }
 
   // Read from CSR
-  io.csrReadPorts(0).en   := io.issuedInfoPort.info.csrReadEn
+  io.csrReadPorts(0).en   := io.issuedInfoPort.bits.preExeInstInfo.csrReadEn
   io.csrReadPorts(0).addr := io.instInfoPassThroughPort.in.csrWritePort.addr
 
   // read from dataforward
@@ -65,9 +65,10 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
-  when(!io.pipelineControlPort.stall) {
-    when(io.issuedInfoPort.info.isHasImm) {
-      exeInstReg.rightOperand := io.issuedInfoPort.info.imm
+  when(io.issuedInfoPort.valid) {
+    
+    when(io.issuedInfoPort.bits.preExeInstInfo.isHasImm) {
+      exeInstReg.rightOperand := io.issuedInfoPort.bits.preExeInstInfo.imm
     }
     Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
       .lazyZip(io.gprReadPorts)

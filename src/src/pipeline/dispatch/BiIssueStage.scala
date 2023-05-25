@@ -53,8 +53,14 @@ class BiIssueStage(
     val pipelineControlPorts = Vec(issueNum, Input(new PipelineControlNdPort))
   })
 
+  val issueEnablesReg = RegInit(VecInit(Seq.fill(issueNum)(false.B)))
+  issueEnablesReg.foreach(_ := false.B)
   val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(IssuedInfoNdPort.default)))
-  io.issuedInfoPorts := issueInfosReg
+  io.issuedInfoPorts.lazyZip(issueInfosReg).lazyZip(issueEnablesReg).foreach{
+    (dst, src, valid) => 
+      dst.bits := issueInfosReg
+      dst.valid := valid
+  }
 
   // fall back
   io.fetchInstDecodePorts.foreach { port =>
@@ -147,7 +153,7 @@ class BiIssueStage(
   when(selectValidWires(0).valid) {
     when(io.issuedInfoPorts(0).ready) {
       // select 0 -> issue 0
-      io.issuedInfoPorts(0).valid := true.B
+      issueEnablesReg(0) := true.B
 
       issueInfosReg(0)      := selectValidWires(0).issueInfo
       io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort
@@ -157,7 +163,7 @@ class BiIssueStage(
 
       when(selectValidWires(1).valid && io.issuedInfoPorts(1).ready) {
         // select 1 -> issue 1
-        io.issuedInfoPorts(1).valid := true.B
+        issueEnablesReg(1) := true.B
 
         issueInfosReg(1)      := selectValidWires(1).issueInfo
         io.occupyPortss(1)(0) := selectValidWires(1).issueInfo.preExeInstInfo.gprWritePort
@@ -167,7 +173,7 @@ class BiIssueStage(
       }
     }.elsewhen(io.issuedInfoPorts(1).ready) {
       // select 0 -> issue 1
-      io.issuedInfoPorts(1).valid := true.B
+      issueEnablesReg(1) := true.B
 
       issueInfosReg(1)      := selectValidWires(0).issueInfo
       io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort
@@ -179,6 +185,7 @@ class BiIssueStage(
 
   // flush all regs
   when(io.pipelineControlPorts.map(_.flush).reduce(_ || _)) {
+    issueEnablesReg.foreach(_ := false.B)
     issueInfosReg.foreach(_ := IssuedInfoNdPort.default)
     io.fetchInstDecodePorts.foreach(_.ready := false.B)
     io.issuedInfoPorts.foreach(_.valid := false.B)
