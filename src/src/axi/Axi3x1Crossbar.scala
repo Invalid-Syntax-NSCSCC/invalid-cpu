@@ -193,7 +193,8 @@ class axi_3x1_crossbar
     extends BlackBox(
       Map(
         "ADDR_WIDTH" -> spec.Width.Axi.addr.get,
-        "DATA_WIDTH" -> spec.Param.Width.Axi.data.get
+        "DATA_WIDTH" -> spec.Param.Width.Axi.data.get,
+        "M00_ADDR_WIDTH" -> spec.Width.Axi.addr.get
       )
     ) {
   val io = IO(new Bundle {
