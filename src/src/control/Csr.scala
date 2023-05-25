@@ -320,34 +320,34 @@ class Csr(
   }
 
   // output
-  io.csrValues.crmd      := csrRegs(spec.Csr.Index.crmd).asTypeOf(io.csrValues.crmd)
-  io.csrValues.prmd      := csrRegs(spec.Csr.Index.prmd).asTypeOf(io.csrValues.prmd)
-  io.csrValues.euen      := csrRegs(spec.Csr.Index.euen).asTypeOf(io.csrValues.euen)
-  io.csrValues.ecfg      := csrRegs(spec.Csr.Index.ecfg).asTypeOf(io.csrValues.ecfg)
-  io.csrValues.estat     := csrRegs(spec.Csr.Index.estat).asTypeOf(io.csrValues.estat)
-  io.csrValues.era       := csrRegs(spec.Csr.Index.era).asTypeOf(io.csrValues.era)
-  io.csrValues.badv      := csrRegs(spec.Csr.Index.badv).asTypeOf(io.csrValues.badv)
-  io.csrValues.eentry    := csrRegs(spec.Csr.Index.eentry).asTypeOf(io.csrValues.eentry)
-  io.csrValues.tlbidx    := csrRegs(spec.Csr.Index.tlbidx).asTypeOf(io.csrValues.tlbidx)
-  io.csrValues.tlbehi    := csrRegs(spec.Csr.Index.tlbehi).asTypeOf(io.csrValues.tlbehi)
-  io.csrValues.tlbelo0   := csrRegs(spec.Csr.Index.tlbelo0).asTypeOf(io.csrValues.tlbelo0)
-  io.csrValues.tlbelo1   := csrRegs(spec.Csr.Index.tlbelo1).asTypeOf(io.csrValues.tlbelo1)
-  io.csrValues.asid      := csrRegs(spec.Csr.Index.asid).asTypeOf(io.csrValues.asid)
-  io.csrValues.pgdl      := csrRegs(spec.Csr.Index.pgdl).asTypeOf(io.csrValues.pgdl)
-  io.csrValues.pgdh      := csrRegs(spec.Csr.Index.pgdh).asTypeOf(io.csrValues.pgdh)
-  io.csrValues.pgd       := csrRegs(spec.Csr.Index.pgd).asTypeOf(io.csrValues.pgd)
-  io.csrValues.cpuid     := csrRegs(spec.Csr.Index.cpuid).asTypeOf(io.csrValues.cpuid)
-  io.csrValues.save0     := csrRegs(spec.Csr.Index.save0).asTypeOf(io.csrValues.save0)
-  io.csrValues.save1     := csrRegs(spec.Csr.Index.save1).asTypeOf(io.csrValues.save1)
-  io.csrValues.save2     := csrRegs(spec.Csr.Index.save2).asTypeOf(io.csrValues.save2)
-  io.csrValues.save3     := csrRegs(spec.Csr.Index.save3).asTypeOf(io.csrValues.save3)
-  io.csrValues.tid       := csrRegs(spec.Csr.Index.tid).asTypeOf(io.csrValues.tid)
-  io.csrValues.tcfg      := csrRegs(spec.Csr.Index.tcfg).asTypeOf(io.csrValues.tcfg)
-  io.csrValues.tval      := csrRegs(spec.Csr.Index.tval).asTypeOf(io.csrValues.tval)
-  io.csrValues.ticlr     := csrRegs(spec.Csr.Index.ticlr).asTypeOf(io.csrValues.ticlr)
-  io.csrValues.llbctl    := csrRegs(spec.Csr.Index.llbctl).asTypeOf(io.csrValues.llbctl)
-  io.csrValues.tlbrentry := csrRegs(spec.Csr.Index.tlbrentry).asTypeOf(io.csrValues.tlbrentry)
-  io.csrValues.dmw0      := csrRegs(spec.Csr.Index.dmw0).asTypeOf(io.csrValues.dmw0)
-  io.csrValues.dmw1      := csrRegs(spec.Csr.Index.dmw1).asTypeOf(io.csrValues.dmw1)
+  io.csrValues.crmd      := crmd.out
+  io.csrValues.prmd      := prmd.out
+  io.csrValues.euen      := euen.out
+  io.csrValues.ecfg      := ecfg.out
+  io.csrValues.estat     := estat.out
+  io.csrValues.era       := era.out
+  io.csrValues.badv      := badv.out
+  io.csrValues.eentry    := eentry.out
+  io.csrValues.tlbidx    := tlbidx.out
+  io.csrValues.tlbehi    := tlbehi.out
+  io.csrValues.tlbelo0   := tlbelo0.out
+  io.csrValues.tlbelo1   := tlbelo1.out
+  io.csrValues.asid      := asid.out
+  io.csrValues.pgdl      := pgdl.out
+  io.csrValues.pgdh      := pgdh.out
+  io.csrValues.pgd       := pgd.out
+  io.csrValues.cpuid     := cpuid.out
+  io.csrValues.save0     := saves(0).out
+  io.csrValues.save1     := saves(1).out
+  io.csrValues.save2     := saves(2).out
+  io.csrValues.save3     := saves(3).out
+  io.csrValues.tid       := tid.out
+  io.csrValues.tcfg      := tcfg.out
+  io.csrValues.tval      := tval.out
+  io.csrValues.ticlr     := ticlr.out
+  io.csrValues.llbctl    := llbctl.out
+  io.csrValues.tlbrentry := tlbrentry.out
+  io.csrValues.dmw0      := dmw0.out
+  io.csrValues.dmw1      := dmw1.out
 
 }
