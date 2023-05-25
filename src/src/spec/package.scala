@@ -28,7 +28,7 @@ package object spec {
       count
     }
 
-    val instQueue      = next
+    val fronted        = next
     val issueStage     = next
     val regReadStage   = next
     val exeStage       = next

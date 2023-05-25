@@ -41,7 +41,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   instInfoReg                    := io.instInfoPassThroughPort.in
   io.instInfoPassThroughPort.out := instInfoReg
 
-  val stallFromCtrl = WireDefault(io.pipelineControlPort.stall)
+  val stallFromCu = WireDefault(io.pipelineControlPort.stall)
 
   // Pass to the next stage in a sequential way
   val exeInstReg = RegInit(ExeInstNdPort.default)
@@ -68,7 +68,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
-  when(!stallFromCtrl) {
+  when(!stallFromCu) {
     when(io.issuedInfoPort.info.isHasImm) {
       exeInstReg.rightOperand := io.issuedInfoPort.info.imm
     }
@@ -99,7 +99,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   exeInstReg.exeSel       := ExeInst.Sel.none
   exeInstReg.exeOp        := ExeInst.Op.nop
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
-  when(!stallFromCtrl) {
+  when(!stallFromCu) {
     when(io.issuedInfoPort.isValid) {
       exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
       exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
