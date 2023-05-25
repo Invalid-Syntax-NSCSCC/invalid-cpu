@@ -18,9 +18,9 @@ class BetterAxiMaster(
       val req = new Bundle {
         val isValid = Input(Bool())
         val isReady = Output(Bool())
-        val addr    = Input(UInt(Width.Axi.addr))
+        val addr    = Input(UInt(spec.Width.Axi.addr))
         val data    = Input(UInt(writeSize.W))
-        val mask    = Input(UInt(Width.Axi.strb))
+        val mask    = Input(UInt(Param.Width.Axi.strb))
       }
       val res = new Bundle {
         val isComplete = Output(Bool())
@@ -31,7 +31,7 @@ class BetterAxiMaster(
       val req = new Bundle {
         val isValid = Input(Bool())
         val isReady = Output(Bool())
-        val addr    = Input(UInt(Width.Axi.addr))
+        val addr    = Input(UInt(spec.Width.Axi.addr))
       }
       val res = new Bundle {
         val isValid  = Output(Bool())
