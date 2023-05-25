@@ -1,28 +1,18 @@
-package frontend
+package pipeline.queue
 
 import chisel3._
 import chisel3.util._
-
-import spec._
+import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
-import control.bundles.PipelineControlNDPort
-import pipeline.dispatch.bundles.{DecodeOutNdPort, DecodePort, InstInfoBundle, IssuedInfoNdPort, ScoreboardChangeNdPort}
-import pipeline.dispatch.decode.{
-  Decoder,
-  Decoder_2R,
-  Decoder_2RI12,
-  Decoder_2RI14,
-  Decoder_2RI16,
-  Decoder_3R,
-  Decoder_4R,
-  Decoder_special
-}
+import pipeline.queue.bundles.DecodeOutNdPort
+import pipeline.queue.decode.{Decoder_2RI12, Decoder_2RI14, Decoder_2RI16, Decoder_3R, Decoder_special}
 import pipeline.writeback.bundles.InstInfoNdPort
+import spec._
 
 class InstQueue(val queueLength: Int = Param.instQueueLength) extends Module {
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
     val enqueuePort         = Flipped(Decoupled(new InstInfoBundle))
 
     // `InstQueue` -> `IssueStage`

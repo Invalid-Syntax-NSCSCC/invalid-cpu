@@ -1,10 +1,10 @@
-package pipeline.dispatch.decode
+package pipeline.queue.decode
 
 import chisel3._
 import chisel3.util._
+import pipeline.queue.bundles.DecodeOutNdPort
 import spec._
 import spec.Inst.{_2R => Inst}
-import pipeline.dispatch.bundles.DecodeOutNdPort
 
 class Decoder_2R extends Decoder {
   io.out := DecodeOutNdPort.default
@@ -18,6 +18,7 @@ class Decoder_2R extends Decoder {
 
   switch(io.instInfoPort.inst) {
     is(Inst.rdcnt_id_vl) {
+      io.out.isMatched := true.B
       io.out.info.gprWritePort.en := rdIsNotZero
       when(rd.orR) {
         io.out.info.gprWritePort.addr := rj
@@ -28,6 +29,7 @@ class Decoder_2R extends Decoder {
       }
     }
     is(Inst.rdcnt_vh) {
+      io.out.isMatched := true.B
       io.out.info.gprWritePort.en   := rdIsNotZero
       io.out.info.gprWritePort.addr := rd
       io.out.info.exeOp             := ExeInst.Op.rdcntvh_w

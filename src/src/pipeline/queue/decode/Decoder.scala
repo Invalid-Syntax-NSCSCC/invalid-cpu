@@ -1,8 +1,8 @@
-package pipeline.dispatch.decode
+package pipeline.queue.decode
 
 import chisel3._
 import chisel3.util._
-import pipeline.dispatch.bundles.DecodePort
+import pipeline.queue.bundles.DecodePort
 import spec._
 
 abstract class Decoder extends Module {

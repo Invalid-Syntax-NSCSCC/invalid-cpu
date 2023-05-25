@@ -9,7 +9,7 @@ import pipeline.dispatch.bundles.RenameRequestNdPort
 import pipeline.dispatch.bundles.RenameResultNdPort
 import utils.BiPriorityMux
 import utils.BiCounter
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
 
 // 重命名+计分板，仅供乱序发射使用,顺序发射时不需要
 class Rename(
@@ -30,7 +30,7 @@ class Rename(
     val renameRequestPorts = Input(Vec(renameNum, new RenameRequestNdPort))
     val renameResultPorts  = Output(Vec(renameNum, new RenameResultNdPort))
 
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
   })
 
   require(renameNum == 2)
