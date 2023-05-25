@@ -50,8 +50,7 @@ class ExeStage extends Module {
   io.freePorts.addr := io.gprWritePort.addr
 
   // Wb debug port connection
-  val instInfoReg = Reg(new InstInfoNdPort)
-  InstInfoNdPort.invalidate(instInfoReg)
+  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
   io.instInfoPassThroughPort.out := instInfoReg
 
   // Pass to the next stage in a sequential way
