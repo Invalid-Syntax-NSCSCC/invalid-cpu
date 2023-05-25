@@ -34,8 +34,8 @@ class AxiMaster(val Id: Int = 0) extends Module {
 
   val addrReg   = RegEnable(io.addr, 0.U(Width.Axi.addr), io.newRequest)
   val sizeReg   = RegEnable(io.size, 0.U(3.W), io.newRequest)
-  val dataInReg = RegEnable(io.dataIn, 0.U(Width.Axi.data), io.newRequest)
-  val wstrbReg  = RegEnable(io.wstrb, 0.U(Width.Axi.strb), io.newRequest)
+  val dataInReg = RegEnable(io.dataIn, 0.U(Param.Width.Axi.data), io.newRequest)
+  val wstrbReg  = RegEnable(io.wstrb, 0.U(Param.Width.Axi.strb), io.newRequest)
   val cacheReg  = Reg(UInt(4.W))
   when(io.uncached) {
     cacheReg := "b0000".U
