@@ -2,13 +2,12 @@ import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
 import chiseltest.simulator.WriteVcdAnnotation
-import frontend.InstQueue
 import pipeline.dispatch.bundles.InstInfoBundle
 import utest._
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
+import pipeline.queue.{BiInstQueue, InstQueue}
 import spec.wordLength
 import spec.zeroWord
-import frontend.BiInstQueue
 import spec.PipelineStageIndex
 import utils.MinFinder
 

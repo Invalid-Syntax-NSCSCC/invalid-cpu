@@ -2,9 +2,9 @@ package control
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.BundleLiterals._
 import spec.Param
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
 import spec.PipelineStageIndex
 import pipeline.writeback.bundles.InstInfoNdPort
 import common.bundles.RfWriteNdPort
@@ -55,38 +55,20 @@ class Cu(
       */
     // `ExeStage` -> `Cu`
     val exeStallRequest = Input(Bool())
-    // `AddrTransStage` -> `Cu`
-    val memStallRequest = Input(Bool())
-    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`
-    val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNDPort))
+    // `MemResStage` -> `Cu`
+    val memResStallRequest = Input(Bool())
+    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`
+    val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNdPort))
   })
 
-  /** Stall 暂停流水线前面部分
-    */
+  // Stall 暂停流水线前面部分
 
-  io.pipelineControlPorts.foreach(_ := PipelineControlNDPort.default)
-  // `ExeStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage` (STALL ITSELF)
-  io.pipelineControlPorts(PipelineStageIndex.instQueue).stall    := io.memStallRequest && io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.regReadStage).stall := io.memStallRequest && io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.exeStage).stall     := io.memStallRequest && io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.memStage).stall     := io.memStallRequest
-  // when(io.exeStallRequest) {
-  //   Seq(PipelineStageIndex.issueStage, PipelineStageIndex.regReadStage, PipelineStageIndex.exeStage)
-  //     .map(io.pipelineControlPorts(_))
-  //     .foreach(_.stall := true.B)
-  // }
-
-  // // `AddrTransStage` --stall--> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`  (STALL ITSELF)
-  // when(io.memStallRequest) {
-  //   Seq(
-  //     PipelineStageIndex.issueStage,
-  //     PipelineStageIndex.regReadStage,
-  //     PipelineStageIndex.exeStage,
-  //     PipelineStageIndex.memStage
-  //   )
-  //     .map(io.pipelineControlPorts(_))
-  //     .foreach(_.stall := true.B)
-  // }
+  io.pipelineControlPorts.foreach(_ := PipelineControlNdPort.default)
+  io.pipelineControlPorts(PipelineStageIndex.instQueue).stall      := io.memResStallRequest || io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.regReadStage).stall   := io.memResStallRequest || io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.exeStage).stall       := io.memResStallRequest || io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.addrTransStage).stall := io.memResStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.memReqStage).stall    := io.memResStallRequest
 
   /** clear
     *
@@ -96,11 +78,10 @@ class Cu(
   Seq(
     PipelineStageIndex.issueStage,
     PipelineStageIndex.regReadStage,
-    PipelineStageIndex.exeStage,
-    PipelineStageIndex.memStage
-  ).map(io.pipelineControlPorts(_)).reduce { (prev, next) =>
-    prev.clear := prev.stall && !next.stall
-    next
+    PipelineStageIndex.exeStage
+  ).map(io.pipelineControlPorts(_)).sliding(2, 1).foreach {
+    case Seq(prev, next) =>
+      prev.clear := prev.stall && !next.stall
   }
 
   /** Exception

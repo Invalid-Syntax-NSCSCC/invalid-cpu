@@ -1,9 +1,7 @@
-package pipeline.dispatch.bundles
+package pipeline.queue.bundles
 
 import chisel3._
-import chisel3.util._
-import common.bundles.RfAccessInfoNdPort
-import spec._
+import pipeline.dispatch.bundles.InstInfoBundle
 
 class DecodePort extends Bundle {
   // The original instruction

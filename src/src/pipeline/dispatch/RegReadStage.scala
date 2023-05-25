@@ -6,7 +6,7 @@ import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfReadPort, RfWriteN
 import bundles.{ExeInstNdPort, IssuedInfoNdPort}
 import chisel3.experimental.BundleLiterals._
 import spec._
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import control.bundles.CsrReadPort
 // import pipeline.dataforward.bundles.DataForwardReadPort
@@ -30,7 +30,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
 
     // `pipeline control signal
     // `Cu` -> `RegReadStage`
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
 
     // (next clock pulse)
     val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
@@ -129,12 +129,13 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
 
   // clear
   when(io.pipelineControlPort.clear) {
-    InstInfoNdPort.setDefault(instInfoReg)
+    InstInfoNdPort.invalidate(instInfoReg)
     exeInstReg := ExeInstNdPort.default
   }
+
   // flush all regs
   when(io.pipelineControlPort.flush) {
-    InstInfoNdPort.setDefault(instInfoReg)
+    InstInfoNdPort.invalidate(instInfoReg)
     exeInstReg := ExeInstNdPort.default
   }
 }

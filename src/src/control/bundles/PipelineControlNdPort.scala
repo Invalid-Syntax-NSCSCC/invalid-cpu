@@ -2,16 +2,16 @@ package control.bundles
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.BundleLiterals._
 
-class PipelineControlNDPort extends Bundle {
+class PipelineControlNdPort extends Bundle {
   val flush = Bool()
   val clear = Bool()
   val stall = Bool()
 }
 
-object PipelineControlNDPort {
-  val default = (new PipelineControlNDPort).Lit(
+object PipelineControlNdPort {
+  val default = (new PipelineControlNdPort).Lit(
     _.flush -> false.B,
     _.clear -> false.B,
     _.stall -> false.B

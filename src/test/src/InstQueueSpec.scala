@@ -2,10 +2,10 @@ import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
 import chiseltest.simulator.WriteVcdAnnotation
-import frontend.InstQueue
 import pipeline.dispatch.bundles.InstInfoBundle
 import utest._
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
+import pipeline.queue.InstQueue
 import spec.wordLength
 import spec.zeroWord
 
@@ -13,7 +13,7 @@ import spec.zeroWord
 //   val tests = Tests {
 //     test("Test inst queue") {
 //       testCircuit(new InstQueue, Seq(WriteVcdAnnotation)) { instQueue =>
-//         instQueue.io.pipelineControlPort poke PipelineControlNDPort.default
+//         instQueue.io.pipelineControlPort poke PipelineControlNdPort.default
 //         instQueue.io.enqueuePort.bits.inst.poke(false.B)
 //             instQueue.io.enqueuePort.bits.pcAddr.poke(false.B)
 //         val pcs = Seq.range(0,8).map((4*_)).map(_.U)

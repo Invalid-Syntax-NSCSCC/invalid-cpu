@@ -1,7 +1,7 @@
 package memory
 
 import axi.BetterAxiMaster
-import axi.bundles.AxiMasterPort
+import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
@@ -19,7 +19,7 @@ class DCache(
     extends Module {
   val io = IO(new Bundle {
     val accessPort    = new MemAccessPort
-    val axiMasterPort = new AxiMasterPort
+    val axiMasterPort = new AxiMasterInterface
   })
 
   // Read cache hit diagram:
@@ -101,18 +101,24 @@ class DCache(
 
   // Functions for calculation
   def byteOffsetFromMemAddr(addr: UInt) = addr(Param.Width.DCache._byteOffset - 1, 0)
+
   def dataIndexFromByteOffset(offset: UInt) =
     offset(Param.Width.DCache._byteOffset - 1, log2Ceil(wordLength / byteLength))
+
   def dataIndexFromMemAddr(addr: UInt) = dataIndexFromByteOffset(byteOffsetFromMemAddr(addr))
+
   def queryIndexFromMemAddr(addr: UInt) =
     addr(Param.Width.DCache._byteOffset + Param.Width.DCache._addr - 1, Param.Width.DCache._byteOffset)
+
   def tagFromMemAddr(addr: UInt) = addr(Width.Mem._addr - 1, Width.Mem._addr - Param.Width.DCache._tag)
+
   def toDataLine(line: UInt) = VecInit(
     line.asBools
       .grouped(Width.Mem._data)
       .toSeq
       .map(VecInit(_).asUInt)
   )
+
   def writeWithMask(oldData: UInt, newData: UInt, mask: UInt) = (newData & mask) | (oldData & (~mask).asUInt)
 
   // Debug: Prepare cache
@@ -181,6 +187,7 @@ class DCache(
                 dPort.en := false.B
             }
         }
+      case (_, _) =>
     }
     debugAddrSeq.lazyZip(debugStatusTagSeq).lazyZip(debugDataLineSeq).lazyZip(debugSetNumSeq).zipWithIndex.foreach {
       case ((addr, st, dl, num), i) =>
@@ -195,6 +202,7 @@ class DCache(
             dPort.addr := addr
             dPort.data := dl
         }
+      case (_, _) =>
     }
   }
 
@@ -217,7 +225,7 @@ class DCache(
 
   // Convert mask from bytes to bits
   val writeMaskBits = Cat(
-    io.accessPort.req.client.write.mask.asBools
+    io.accessPort.req.client.mask.asBools
       .map(Mux(_, "h_FF".U(byteLength.W), 0.U(byteLength.W)))
       .reverse
   )
@@ -279,67 +287,67 @@ class DCache(
     is(State.ready, State.write) {
       io.accessPort.req.isReady := true.B
 
+      // Stage 1 and Stage 2.a: Cache query
+
+      // Decode
+      val memAddr    = WireDefault(io.accessPort.req.client.addr)
+      val tag        = WireDefault(tagFromMemAddr(memAddr))
+      val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
+      val byteOffset = WireDefault(byteOffsetFromMemAddr(memAddr))
+      val dataIndex  = WireDefault(dataIndexFromByteOffset(byteOffset))
+
+      // Read status-tag
+      statusTagRams.foreach { ram =>
+        ram.io.readPort.addr := queryIndex
+      }
+      val statusTagLines = Wire(Vec(Param.Count.DCache.setLen, new StatusTagBundle))
+      statusTagLines.zip(statusTagRams.map(_.io.readPort.data)).foreach {
+        case (line, data) =>
+          line.isValid := data(StatusTagBundle.width - 1)
+          line.isDirty := data(StatusTagBundle.width - 2)
+          line.tag     := data(StatusTagBundle.width - 3, 0)
+      }
+
+      // Read data (for read and write)
+      dataLineRams.foreach { ram =>
+        ram.io.readPort.addr := queryIndex
+      }
+      val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.readPort.data)))
+
+      // Calculate if hit and select
+      val isSelectedVec         = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
+      val setIndex              = WireDefault(OHToUInt(isSelectedVec))
+      val selectedStatusTagLine = WireDefault(statusTagLines(setIndex))
+      val selectedDataLine      = WireDefault(toDataLine(dataLines(setIndex)))
+      val isCacheHit            = WireDefault(isSelectedVec.reduce(_ || _))
+
+      // If writing, then also query from write info
+      // Predefine write info for passing through to read
+      val writeDataLine  = WireDefault(lastReg.dataLine)
+      val writeStatusTag = WireDefault(last.selectedStatusTag)
+      when(
+        stateReg === State.write &&
+          queryIndexFromMemAddr(lastReg.memAddr) === queryIndex &&
+          last.selectedStatusTag.tag === tag
+      ) {
+        // Pass write status-tag and data line to read
+        setIndex              := lastReg.setIndex
+        selectedStatusTagLine := writeStatusTag
+        selectedDataLine      := writeDataLine
+      }
+
+      // Save data for later use
+      lastReg.memAddr        := memAddr
+      lastReg.statusTagLines := statusTagLines
+      lastReg.setIndex       := setIndex
+      lastReg.dataLine       := selectedDataLine
+      lastReg.writeData      := io.accessPort.req.client.write.data
+      lastReg.writeMask      := writeMaskBits
+
+      // Select data by data index from byte offset
+      val selectedData = WireDefault(selectedDataLine(dataIndex))
+
       when(io.accessPort.req.client.isValid) {
-        // Stage 1 and Stage 2.a: Cache query
-
-        // Decode
-        val memAddr    = WireDefault(io.accessPort.req.client.addr)
-        val tag        = WireDefault(tagFromMemAddr(memAddr))
-        val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
-        val byteOffset = WireDefault(byteOffsetFromMemAddr(memAddr))
-        val dataIndex  = WireDefault(dataIndexFromByteOffset(byteOffset))
-
-        // Read status-tag
-        statusTagRams.foreach { ram =>
-          ram.io.readPort.addr := queryIndex
-        }
-        val statusTagLines = Wire(Vec(Param.Count.DCache.setLen, new StatusTagBundle))
-        statusTagLines.zip(statusTagRams.map(_.io.readPort.data)).foreach {
-          case (line, data) =>
-            line.isValid := data(StatusTagBundle.width - 1)
-            line.isDirty := data(StatusTagBundle.width - 2)
-            line.tag     := data(StatusTagBundle.width - 3, 0)
-        }
-
-        // Read data (for read and write)
-        dataLineRams.foreach { ram =>
-          ram.io.readPort.addr := queryIndex
-        }
-        val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.readPort.data)))
-
-        // Calculate if hit and select
-        val isSelectedVec         = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
-        val setIndex              = WireDefault(OHToUInt(isSelectedVec))
-        val selectedStatusTagLine = WireDefault(statusTagLines(setIndex))
-        val selectedDataLine      = WireDefault(toDataLine(dataLines(setIndex)))
-        val isCacheHit            = WireDefault(isSelectedVec.reduce(_ || _))
-
-        // If writing, then also query from write info
-        // Predefine write info for passing through to read
-        val writeDataLine  = WireDefault(lastReg.dataLine)
-        val writeStatusTag = WireDefault(last.selectedStatusTag)
-        when(
-          stateReg === State.write &&
-            queryIndexFromMemAddr(lastReg.memAddr) === queryIndex &&
-            last.selectedStatusTag.tag === tag
-        ) {
-          // Pass write status-tag and data line to read
-          setIndex              := lastReg.setIndex
-          selectedStatusTagLine := writeStatusTag
-          selectedDataLine      := writeDataLine
-        }
-
-        // Save data for later use
-        lastReg.memAddr        := memAddr
-        lastReg.statusTagLines := statusTagLines
-        lastReg.setIndex       := setIndex
-        lastReg.dataLine       := selectedDataLine
-        lastReg.writeData      := io.accessPort.req.client.write.data
-        lastReg.writeMask      := writeMaskBits
-
-        // Select data by data index from byte offset
-        val selectedData = WireDefault(selectedDataLine(dataIndex))
-
         when(isCacheHit) {
           // Cache hit
           switch(io.accessPort.req.client.rw) {
@@ -400,39 +408,39 @@ class DCache(
             }
           }
         }
+      }
 
-        when(stateReg === State.write) {
-          // Stage 2.a: Write to cache (previous hit)
+      when(stateReg === State.write) {
+        // Stage 2.a: Write to cache (previous hit)
 
-          // Substitute write data in data line, with mask
-          val dataIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
-          val oldData   = WireDefault(lastReg.dataLine(dataIndex))
-          writeDataLine(dataIndex) := writeWithMask(oldData, lastReg.writeData, lastReg.writeMask)
+        // Substitute write data in data line, with mask
+        val dataIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
+        val oldData   = WireDefault(lastReg.dataLine(dataIndex))
+        writeDataLine(dataIndex) := writeWithMask(oldData, lastReg.writeData, lastReg.writeMask)
 
-          val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+        val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
 
-          // Set dirty bit
-          writeStatusTag.isDirty := true.B
+        // Set dirty bit
+        writeStatusTag.isDirty := true.B
 
-          // Write status-tag (especially dirty bit) to RAM
-          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
-            case (writePort, index) =>
-              writePort.en   := index.U === lastReg.setIndex
-              writePort.data := writeStatusTag.asUInt
-              writePort.addr := queryIndex
-          }
-
-          // Write to data line RAM
-          dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
-            case (writePort, index) =>
-              writePort.en   := index.U === lastReg.setIndex
-              writePort.data := writeDataLine.asUInt
-              writePort.addr := queryIndex
-          }
-
-          // Mark write as complete
-          isWriteComplete := true.B
+        // Write status-tag (especially dirty bit) to RAM
+        statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+          case (writePort, index) =>
+            writePort.en   := index.U === lastReg.setIndex
+            writePort.data := writeStatusTag.asUInt
+            writePort.addr := queryIndex
         }
+
+        // Write to data line RAM
+        dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
+          case (writePort, index) =>
+            writePort.en   := index.U === lastReg.setIndex
+            writePort.data := writeDataLine.asUInt
+            writePort.addr := queryIndex
+        }
+
+        // Mark write as complete
+        isWriteComplete := true.B
       }
     }
 

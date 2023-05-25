@@ -2,8 +2,15 @@ package pipeline.dispatch
 
 import chisel3._
 import chisel3.util._
-import pipeline.dispatch.bundles.{DecodeOutNdPort, DecodePort, InstInfoBundle, IssuedInfoNdPort, ScoreboardChangeNdPort}
-import pipeline.dispatch.decode.{
+import pipeline.dispatch.bundles.{InstInfoBundle, IssuedInfoNdPort, ScoreboardChangeNdPort}
+import spec._
+import control.bundles.PipelineControlNdPort
+import pipeline.dispatch.enums.{IssueStageState => State}
+import pipeline.writeback.bundles.InstInfoNdPort
+import Csr.ExceptionIndex
+import common.bundles.PassThroughPort
+import pipeline.queue.bundles.{DecodeOutNdPort, DecodePort}
+import pipeline.queue.decode.{
   Decoder,
   Decoder_2R,
   Decoder_2RI12,
@@ -13,12 +20,6 @@ import pipeline.dispatch.decode.{
   Decoder_4R,
   Decoder_special
 }
-import spec._
-import control.bundles.PipelineControlNDPort
-import pipeline.dispatch.enums.{IssueStageState => State}
-import pipeline.writeback.bundles.InstInfoNdPort
-import Csr.ExceptionIndex
-import common.bundles.PassThroughPort
 
 // throws exceptions: 指令不存在异常ine
 class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
@@ -41,12 +42,12 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
 
     // pipeline control signal
     // `Cu` -> `IssueStage`
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
   })
 
   // Wb debug port connection
   val instInfoReg = Reg(new InstInfoNdPort)
-  InstInfoNdPort.setDefault(instInfoReg)
+  InstInfoNdPort.invalidate(instInfoReg)
   // val instInfoReg = RegInit(InstInfoNdPort.default)
   io.instInfoPassThroughPort.out := instInfoReg
 
@@ -109,28 +110,6 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
       instInfoReg        := instInfoReg
     }
   }
-
-  // Decode
-
-  // Select a decoder
-//   val decoders = Seq(
-//     Module(new Decoder_2RI12),
-//     Module(new Decoder_2RI14),
-//     Module(new Decoder_2RI16),
-//     // Module(new Decoder_2R),
-//     Module(new Decoder_3R),
-//     // Module(new Decoder_4R),
-//     Module(new Decoder_special)
-//   )
-//   decoders.foreach(_.io.instInfoPort := selectedInstInfo)
-
-//   val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
-//   decoderWires.zip(decoders).foreach {
-//     case (port, decoder) =>
-//       port := decoder.io.out
-//   }
-//   val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
-//   val selectedDecoder = WireDefault(decoderWires(decoderIndex))
 
   // State machine input
   /** Determine blocking:
@@ -213,18 +192,18 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
 
   // clear
   when(io.pipelineControlPort.clear) {
-    InstInfoNdPort.setDefault(instInfoReg)
+    InstInfoNdPort.invalidate(instInfoReg)
     // instInfoReg := InstInfoNdPort.default
     issuedInfoReg := IssuedInfoNdPort.default
-    InstInfoNdPort.setDefault(instInfoReg)
+    InstInfoNdPort.invalidate(instInfoReg)
   }
   // flush all regs
   when(io.pipelineControlPort.flush) {
-    InstInfoNdPort.setDefault(instInfoReg)
+    InstInfoNdPort.invalidate(instInfoReg)
     // instInfoReg := InstInfoNdPort.default
     issuedInfoReg      := IssuedInfoNdPort.default
     stateReg           := State.nonBlocking
     instDecodeStoreReg := DecodeOutNdPort.default
-    InstInfoNdPort.setDefault(instInfoReg)
+    InstInfoNdPort.invalidate(instInfoReg)
   }
 }

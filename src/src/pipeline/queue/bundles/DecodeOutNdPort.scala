@@ -1,9 +1,8 @@
-package pipeline.dispatch.bundles
+package pipeline.queue.bundles
 
 import chisel3._
-import common.bundles.RfAccessInfoNdPort
-import spec._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.BundleLiterals._
+import pipeline.dispatch.bundles.PreExeInstNdPort
 
 class DecodeOutNdPort extends Bundle {
   // Is instruction matched

@@ -1,10 +1,10 @@
 package frontend
 
 import axi.AxiMaster
-import axi.bundles.AxiMasterPort
+import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
-import control.bundles.PipelineControlNDPort
+import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
 import spec.Param.{SimpleFetchStageState => State}
 import spec._
@@ -13,9 +13,9 @@ class SimpleFetchStage extends Module {
   val io = IO(new Bundle {
     val pc                  = Input(UInt(Width.Reg.data))
     val isPcNext            = Output(Bool())
-    val axiMasterInterface  = new AxiMasterPort
+    val axiMasterInterface  = new AxiMasterInterface
     val instEnqueuePort     = Decoupled(new InstInfoBundle)
-    val pipelineControlPort = Input(new PipelineControlNDPort)
+    val pipelineControlPort = Input(new PipelineControlNdPort)
   })
 
   val axiMaster = Module(new AxiMaster)
