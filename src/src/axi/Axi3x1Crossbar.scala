@@ -194,7 +194,9 @@ class axi_3x1_crossbar
       Map(
         "ADDR_WIDTH" -> spec.Width.Axi.addr.get,
         "DATA_WIDTH" -> spec.Param.Width.Axi.data.get,
-        "M00_ADDR_WIDTH" -> spec.Width.Axi.addr.get
+        "S_ID_WIDTH" -> 2,
+        "M_ID_WIDTH" -> 4,
+        "M00_ADDR_WIDTH" -> 32
       )
     ) {
   val io = IO(new Bundle {
