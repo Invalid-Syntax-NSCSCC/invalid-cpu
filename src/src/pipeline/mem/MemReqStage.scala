@@ -34,6 +34,10 @@ class MemReqStage extends Module {
   val gprWriteReg = RegNext(io.gprWritePassThroughPort.in)
   io.gprWritePassThroughPort.out := gprWriteReg
 
+  // Wb debug port connection
+  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
+  io.instInfoPassThroughPort.out := instInfoReg
+
   val isCachedReg = RegNext(io.isCachedAccess.in)
   io.isCachedAccess.out := isCachedReg
 
@@ -45,10 +49,6 @@ class MemReqStage extends Module {
 
   val dataMaskReg = RegNext(selectedMemRequest.mask)
   io.dataMask := dataMaskReg
-
-  // Wb debug port connection
-  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
-  io.instInfoPassThroughPort.out := instInfoReg
 
   // Fallback: Do not send request
   io.dCacheRequestPort           := DontCare

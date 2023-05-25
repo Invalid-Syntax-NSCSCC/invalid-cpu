@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+ARGS='--add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec --disable-annotation-unknown'
+
 # Workaround
 for arg do
   shift

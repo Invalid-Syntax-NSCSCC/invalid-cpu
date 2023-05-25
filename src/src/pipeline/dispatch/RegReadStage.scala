@@ -37,11 +37,8 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   })
 
   // Wb debug port connection
-  val instInfoReg = Reg(new InstInfoNdPort)
-  instInfoReg                    := io.instInfoPassThroughPort.in
+  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
   io.instInfoPassThroughPort.out := instInfoReg
-
-  val stallFromCu = WireDefault(io.pipelineControlPort.stall)
 
   // Pass to the next stage in a sequential way
   val exeInstReg = RegInit(ExeInstNdPort.default)
@@ -68,27 +65,15 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   // Determine left and right operands
   exeInstReg.leftOperand  := zeroWord
   exeInstReg.rightOperand := zeroWord
-  when(!stallFromCu) {
+  when(!io.pipelineControlPort.stall) {
     when(io.issuedInfoPort.info.isHasImm) {
       exeInstReg.rightOperand := io.issuedInfoPort.info.imm
     }
     Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
       .lazyZip(io.gprReadPorts)
-      // .lazyZip(io.dataforwardPorts)
       .foreach {
-        // case (oprand, gprReadPort, dataforward) =>
         case (oprand, gprReadPort) =>
-          // when(
-          //   gprReadPort.en &&
-          //     io.exeRfWriteFeedbackPort.en &&
-          //     gprReadPort.addr === io.exeRfWriteFeedbackPort.addr
-          // ) {
-          //   oprand := io.exeRfWriteFeedbackPort.data
-          // }.elsewhen(gprReadPort.en) {
-          //   oprand := gprReadPort.data
-          // }
           when(gprReadPort.en) {
-            // oprand := Mux(dataforward.valid, dataforward.data, gprReadPort.data)
             oprand := gprReadPort.data
           }
       }
@@ -99,7 +84,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   exeInstReg.exeSel       := ExeInst.Sel.none
   exeInstReg.exeOp        := ExeInst.Op.nop
   exeInstReg.gprWritePort := RfAccessInfoNdPort.default
-  when(!stallFromCu) {
+  when(!io.pipelineControlPort.stall) {
     when(io.issuedInfoPort.isValid) {
       exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
       exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
@@ -109,21 +94,6 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
       when(io.issuedInfoPort.info.csrReadEn) {
         exeInstReg.csrData := io.csrReadPorts(0).data
       }
-
-      // switch(io.issuedInfoPort.info.exeOp) {
-      //   is(ExeInst.Op.csrrd) {
-      //     instInfoReg.csrWritePort.en   := false.B
-      //     instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
-      //   }
-      //   is(ExeInst.Op.csrwr) {
-      //     instInfoReg.csrWritePort.en   := true.B
-      //     instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
-      //   }
-      //   is(ExeInst.Op.csrxchg) {
-      //     instInfoReg.csrWritePort.en   := true.B
-      //     instInfoReg.csrWritePort.addr := io.issuedInfoPort.info.csrAddr
-      //   }
-      // }
     }
   }
 

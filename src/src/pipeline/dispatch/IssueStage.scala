@@ -7,19 +7,8 @@ import spec._
 import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.enums.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
-import Csr.ExceptionIndex
 import common.bundles.PassThroughPort
 import pipeline.queue.bundles.{DecodeOutNdPort, DecodePort}
-import pipeline.queue.decode.{
-  Decoder,
-  Decoder_2R,
-  Decoder_2RI12,
-  Decoder_2RI14,
-  Decoder_2RI16,
-  Decoder_3R,
-  Decoder_4R,
-  Decoder_special
-}
 
 // throws exceptions: 指令不存在异常ine
 class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
@@ -93,7 +82,6 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   io.fetchInstDecodePort.ready := isFetch
 
   // Implement output function
-//   val isInstValid = Wire(Bool())
   switch(stateReg) {
     is(State.nonBlocking) {
       isFetch := true.B
@@ -121,7 +109,7 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
     *     - If inst invalid:
     *       - non-blocking
     */
-//   isInstValid := decoderWires.map(_.isMatched).reduce(_ || _)
+
   val isGprScoreboardBlocking = WireDefault(selectedInstDecode.info.gprReadPorts.map { port =>
     port.en && io.regScores(port.addr)
   }.reduce(_ || _))
@@ -131,9 +119,7 @@ class IssueStage(scoreChangeNum: Int = Param.regFileWriteNum) extends Module {
   )
   val isScoreboardBlocking = WireDefault(isGprScoreboardBlocking && isCsrScoreboardBlocking)
   val isBlocking = WireDefault(
-    io.pipelineControlPort.stall || (
-      isScoreboardBlocking
-    )
+    io.pipelineControlPort.stall || isScoreboardBlocking
   )
 
   // Implement output function
