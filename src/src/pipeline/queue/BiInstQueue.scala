@@ -74,7 +74,7 @@ class BiInstQueue(
 
   val enqEn = (io.enqueuePorts.map(port => (port.ready && port.valid)))
   // val enqueueNum = io.enqueuePorts.map(_.valid).map(_.asUInt).reduce(_ + _)
-  // 优化
+  // enqEn(0) + enqEn(1)
   val enqueueNum = Cat(
     enqEn(0) & enqEn(1),
     enqEn(0) ^ enqEn(1)

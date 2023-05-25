@@ -7,14 +7,12 @@ import chisel3.experimental.BundleLiterals._
 
 class IssueInfoWithValidBundle extends Bundle {
   val valid     = Bool()
-  val instInfo  = new InstInfoNdPort
   val issueInfo = new IssuedInfoNdPort
 }
 
 object IssueInfoWithValidBundle {
   val default = (new IssueInfoWithValidBundle).Lit(
     _.valid -> false.B,
-    _.instInfo -> InstInfoNdPort.default,
     _.issueInfo -> IssuedInfoNdPort.default
   )
 }

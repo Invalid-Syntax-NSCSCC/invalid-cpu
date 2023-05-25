@@ -33,6 +33,7 @@ class BiIssueStage(
     )
 
     // `IssueStage` <-> `RobStage`
+
     val robEmptyNum = Input(UInt(robLengthLog.W))
     val idGetPorts  = Vec(issueNum, Flipped(new RobIdDistributePort(idLength = robIdLength)))
 
@@ -45,19 +46,12 @@ class BiIssueStage(
     val csrRegScores    = Input(Vec(Count.csrReg, Bool()))
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
-    val issuedInfoPorts = Vec(issueNum, Output(new IssuedInfoNdPort))
-    val instInfoPorts   = Vec(issueNum, Output(new InstInfoNdPort))
-    // val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
+    val issuedInfoPorts = Vec(issueNum, Decoupled(new IssuedInfoNdPort))
 
     // pipeline control signal
     // `Cu` -> `IssueStage`
     val pipelineControlPorts = Vec(issueNum, Input(new PipelineControlNdPort))
   })
-
-  val instInfosReg = Reg(Vec(issueNum, new InstInfoNdPort))
-  instInfosReg.foreach(InstInfoNdPort.invalidate)
-  // val instInfosReg = RegInit(VecInit(Seq.fill(issueNum)(InstInfoNdPort.default)))
-  io.instInfoPorts := instInfosReg
 
   val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(IssuedInfoNdPort.default)))
   io.issuedInfoPorts := issueInfosReg
@@ -75,7 +69,6 @@ class BiIssueStage(
     port.addr := zeroWord
   })
   io.issuedInfoPorts.foreach(_ := IssuedInfoNdPort.default)
-  io.instInfoPorts.foreach(_ := InstInfoNdPort.default)
 
   /** Combine stage 1 : get fetch infos
     */
@@ -85,9 +78,9 @@ class BiIssueStage(
   fetchInfos
     .lazyZip(io.fetchInstDecodePorts)
     .foreach((dst, src) => {
-      dst.valid     := src.valid
-      dst.instInfo  := src.bits.instInfo
-      dst.issueInfo := src.bits.instInfo
+      dst.valid                    := src.valid
+      dst.issueInfo.instInfo       := src.bits.instInfo
+      dst.issueInfo.preExeInstInfo := src.bits.instInfo
     })
 
   /** Combine stage 2 : Select to issue ; decide input
@@ -102,9 +95,9 @@ class BiIssueStage(
   )
   selectValidWires.foreach(_ := 0.U.asTypeOf(selectValidWires(0)))
 
-  // val canIssueMaxNum = io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _)
-  val canIssueMaxNumFromStall = WireDefault(io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _))
-  val canIssueMaxNumFromRob   = WireDefault(io.robEmptyNum)
+  // val canIssueMaxNumFromStall = WireDefault(io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _))
+  val canIssueMaxNumFromPipeline = WireDefault(io.issuedInfoPorts.map(_.ready.asUInt).reduce(_ +& _))
+  val canIssueMaxNumFromRob      = WireDefault(io.robEmptyNum)
   when(io.robEmptyNum === 1.U && !io.fetchInstDecodePorts.map(_.bits.decode.info.gprWritePort.en).reduce(_ && _)) {
     canIssueMaxNumFromRob := 2.U
   }
@@ -112,19 +105,19 @@ class BiIssueStage(
     canIssueMaxNumFromRob := 2.U
   }
   val canIssueMaxNum = Mux(
-    canIssueMaxNumFromRob < canIssueMaxNumFromStall,
+    canIssueMaxNumFromRob < canIssueMaxNumFromPipeline,
     canIssueMaxNumFromRob,
-    canIssueMaxNumFromStall
+    canIssueMaxNumFromPipeline
   )
 
   val fetchCanIssue = WireDefault(VecInit(fetchInfos.map { fetchInfos =>
     fetchInfos.valid &&
-    !((fetchInfos.issueInfo.info.gprReadPorts
+    !((fetchInfos.issueInfo.preExeInstInfo.gprReadPorts
       .map({ readPort =>
         readPort.en && io.regScores(readPort.addr)
       }))
       .reduce(_ || _)) &&
-    !(fetchInfos.issueInfo.info.csrReadEn && io.csrRegScores(fetchInfos.issueInfo.info.csrAddr))
+    !(fetchInfos.issueInfo.preExeInstInfo.csrReadEn && io.csrRegScores(fetchInfos.issueInfo.preExeInstInfo.csrAddr))
   }))
 
   when(canIssueMaxNum.orR) {
@@ -136,9 +129,9 @@ class BiIssueStage(
       when(
         fetchCanIssue(1) &&
           !(
-            fetchInfos(0).issueInfo.info.gprWritePort.en &&
-              fetchInfos(1).issueInfo.info.gprReadPorts.map { readPort =>
-                readPort.en && (readPort.addr === fetchInfos(0).issueInfo.info.gprWritePort.addr)
+            fetchInfos(0).issueInfo.preExeInstInfo.gprWritePort.en &&
+              fetchInfos(1).issueInfo.preExeInstInfo.gprReadPorts.map { readPort =>
+                readPort.en && (readPort.addr === fetchInfos(0).issueInfo.preExeInstInfo.gprWritePort.addr)
               }.reduce(_ || _)
           )
       ) {
@@ -152,47 +145,43 @@ class BiIssueStage(
     */
   // default : no issue
   when(selectValidWires(0).valid) {
-    when(!io.pipelineControlPorts(0).stall) {
+    when(io.issuedInfoPorts(0).ready) {
       // select 0 -> issue 0
-      instInfosReg(0)       := selectValidWires(0).instInfo
+      io.issuedInfoPorts(0).valid := true.B
+
       issueInfosReg(0)      := selectValidWires(0).issueInfo
-      io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.info.gprWritePort
+      io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort
 
-      io.idGetPorts(0).writeEn           := selectValidWires(0).issueInfo.info.gprWritePort.en
-      selectValidWires(0).instInfo.robId := io.idGetPorts(0).id
-      instInfosReg(0)                    := selectValidWires(0).instInfo
+      io.idGetPorts(0).writeEn                     := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort.en
+      selectValidWires(0).issueInfo.instInfo.robId := io.idGetPorts(0).id
 
-      when(selectValidWires(1).valid && !io.pipelineControlPorts(1).stall) {
+      when(selectValidWires(1).valid && io.issuedInfoPorts(1).ready) {
         // select 1 -> issue 1
+        io.issuedInfoPorts(1).valid := true.B
+
         issueInfosReg(1)      := selectValidWires(1).issueInfo
-        io.occupyPortss(1)(0) := selectValidWires(1).issueInfo.info.gprWritePort
+        io.occupyPortss(1)(0) := selectValidWires(1).issueInfo.preExeInstInfo.gprWritePort
 
-        io.idGetPorts(1).writeEn           := selectValidWires(1).issueInfo.info.gprWritePort.en
-        selectValidWires(1).instInfo.robId := io.idGetPorts(1).id
-        instInfosReg(1)                    := selectValidWires(1).instInfo
+        io.idGetPorts(1).writeEn                     := selectValidWires(1).issueInfo.preExeInstInfo.gprWritePort.en
+        selectValidWires(1).issueInfo.instInfo.robId := io.idGetPorts(1).id
       }
-    }.elsewhen(!io.pipelineControlPorts(1).stall) {
+    }.elsewhen(io.issuedInfoPorts(1).ready) {
       // select 0 -> issue 1
-      issueInfosReg(1)      := selectValidWires(0).issueInfo
-      io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.info.gprWritePort
+      io.issuedInfoPorts(1).valid := true.B
 
-      io.idGetPorts(0).writeEn           := selectValidWires(0).issueInfo.info.gprWritePort.en
-      selectValidWires(0).instInfo.robId := io.idGetPorts(0).id
-      instInfosReg(1)                    := selectValidWires(0).instInfo
+      issueInfosReg(1)      := selectValidWires(0).issueInfo
+      io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort
+
+      io.idGetPorts(0).writeEn                     := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort.en
+      selectValidWires(0).issueInfo.instInfo.robId := io.idGetPorts(0).id
     }
   }
 
-  // clear
-  when(io.pipelineControlPorts.map(_.clear).reduce(_ || _)) {
-    instInfosReg.foreach(_ := InstInfoNdPort.default)
-    issueInfosReg.foreach(_ := IssuedInfoNdPort.default)
-    io.fetchInstDecodePorts.foreach(_.ready := false.B)
-  }
   // flush all regs
   when(io.pipelineControlPorts.map(_.flush).reduce(_ || _)) {
-    instInfosReg.foreach(_ := InstInfoNdPort.default)
     issueInfosReg.foreach(_ := IssuedInfoNdPort.default)
     io.fetchInstDecodePorts.foreach(_.ready := false.B)
+    io.issuedInfoPorts.foreach(_.valid := false.B)
   }
 
 }
