@@ -69,23 +69,17 @@ class ExeStage extends Module {
   // State machine output (including fallback)
   val exeInstStoreReg = RegInit(ExeInstNdPort.default)
   exeInstStoreReg := exeInstStoreReg
-  val pcStoreReg = RegInit(zeroWord)
-  pcStoreReg := pcStoreReg
 
   val selectedExeInst = WireDefault(ExeInstNdPort.default)
-  val selectedPc      = WireDefault(zeroWord)
 
   // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
       selectedExeInst := io.exeInstPort.bits
       exeInstStoreReg := io.exeInstPort.bits
-      selectedPc      := io.exeInstPort.bits.instInfo.pc
-      pcStoreReg      := io.exeInstPort.bits.instInfo.pc
     }
     is(State.blocking) {
       selectedExeInst := exeInstStoreReg
-      selectedPc      := pcStoreReg
     }
   }
 
@@ -132,7 +126,7 @@ class ExeStage extends Module {
       }
       is(Sel.jumpBranch) {
         // io.freePorts.en  := gprWriteReg.en
-        exeResultReg.gprWritePort.data := selectedPc + 4.U
+        exeResultReg.gprWritePort.data := selectedExeInst.instInfo.pc + 4.U
       }
     }
 
@@ -236,7 +230,6 @@ class ExeStage extends Module {
 
     stateReg        := State.nonBlocking
     exeInstStoreReg := ExeInstNdPort.default
-    pcStoreReg      := zeroWord
 
     io.exeInstPort.ready   := false.B
     io.exeResultPort.valid := false.B
