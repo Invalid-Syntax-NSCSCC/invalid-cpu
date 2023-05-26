@@ -22,22 +22,7 @@ object InstInfoNdPort {
     _.pc -> zeroWord,
     _.inst -> zeroWord,
     _.exceptionRecords -> Vec.Lit(
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B,
-      false.B
+      Seq.fill(Csr.ExceptionIndex.width)(false.B):_*
     ),
     _.csrWritePort -> CsrWriteNdPort.default,
     _.exeOp -> ExeInst.Op.nop,

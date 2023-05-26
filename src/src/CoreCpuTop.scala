@@ -146,7 +146,7 @@ class CoreCpuTop extends Module {
 
   // Simple fetch stage
   simpleFetchStage.io.pc                  := pc.io.pc
-  simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.fronted)
+  simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.frontend)
   pc.io.isNext                            := simpleFetchStage.io.isPcNext
 
   // Inst Queue
@@ -154,7 +154,7 @@ class CoreCpuTop extends Module {
   // TODO: CONNECT
   instQueue.io.enqueuePorts(1)       <> DontCare // TODO: DELETE
   instQueue.io.enqueuePorts(1).valid := false.B // TODO: DELETE
-  instQueue.io.pipelineControlPort   := cu.io.pipelineControlPorts(PipelineStageIndex.fronted)
+  instQueue.io.pipelineControlPort   := cu.io.pipelineControlPorts(PipelineStageIndex.frontend)
 
   // Issue stage
   issueStage.io.fetchInstDecodePorts(0)       <> instQueue.io.dequeuePorts(0)
