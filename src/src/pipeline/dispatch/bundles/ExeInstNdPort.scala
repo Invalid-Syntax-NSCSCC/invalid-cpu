@@ -5,6 +5,7 @@ import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import common.bundles.RfAccessInfoNdPort
 import spec._
+import pipeline.writeback.bundles.InstInfoNdPort
 
 class ExeInstNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -22,7 +23,7 @@ class ExeInstNdPort extends Bundle {
   // GPR write (writeback)
   val gprWritePort = new RfAccessInfoNdPort
 
-  // TODO: Signals in this port *might* not be sufficient
+  val instInfo = new InstInfoNdPort
 }
 
 object ExeInstNdPort {
@@ -32,6 +33,7 @@ object ExeInstNdPort {
     _.leftOperand -> 0.U,
     _.rightOperand -> 0.U,
     _.gprWritePort -> RfAccessInfoNdPort.default,
-    _.jumpBranchAddr -> zeroWord
+    _.jumpBranchAddr -> zeroWord,
+    _.instInfo -> InstInfoNdPort.default
   )
 }

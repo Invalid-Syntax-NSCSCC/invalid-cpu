@@ -64,7 +64,7 @@ class Cu(
   // Stall 暂停流水线前面部分
 
   io.pipelineControlPorts.foreach(_ := PipelineControlNdPort.default)
-  io.pipelineControlPorts(PipelineStageIndex.frontend).stall        := io.memResStallRequest || io.exeStallRequest
+  io.pipelineControlPorts(PipelineStageIndex.frontend).stall       := io.memResStallRequest || io.exeStallRequest
   io.pipelineControlPorts(PipelineStageIndex.regReadStage).stall   := io.memResStallRequest || io.exeStallRequest
   io.pipelineControlPorts(PipelineStageIndex.exeStage).stall       := io.memResStallRequest
   io.pipelineControlPorts(PipelineStageIndex.addrTransStage).stall := io.memResStallRequest

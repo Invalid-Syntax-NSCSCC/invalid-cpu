@@ -190,9 +190,8 @@ class CoreCpuTop extends Module {
   // }
 
   // Execution stage
-  exeStage.io.exeInstPort                <> regReadStage.io.exeInstPort
-  exeStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
-  exeStage.io.instInfoPassThroughPort.in := regReadStage.io.instInfoPort
+  exeStage.io.exeInstPort         <> regReadStage.io.exeInstPort
+  exeStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
 
   exeStage.io.exeResultPort.ready := false.B // TODO: DELETE
 
@@ -200,7 +199,7 @@ class CoreCpuTop extends Module {
   // TODO : Ckeck Valid-Ready
   addrTransStage.io.csrPort                    := DontCare
   addrTransStage.io.gprWritePassThroughPort.in := exeStage.io.exeResultPort.bits.gprWritePort
-  addrTransStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
+  addrTransStage.io.instInfoPassThroughPort.in := exeStage.io.exeResultPort.bits.instInfo
   addrTransStage.io.memAccessPort              := exeStage.io.exeResultPort.bits.memAccessPort
   addrTransStage.io.tlbTransPort               <> tlb.io.tlbTransPorts(0)
   addrTransStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.addrTransStage)

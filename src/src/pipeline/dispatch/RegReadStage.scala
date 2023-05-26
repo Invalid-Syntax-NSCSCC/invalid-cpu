@@ -31,15 +31,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
     // `pipeline control signal
     // `Cu` -> `RegReadStage`
     val pipelineControlPort = Input(new PipelineControlNdPort)
-
-    // (next clock pulse)
-    val instInfoPort = Output(new InstInfoNdPort)
   })
-
-  // Wb debug port connection
-  // val instInfoReg = RegNext(io.issuedInfoPort.bits.instInfo)
-  val instInfoReg = RegInit(InstInfoNdPort.default)
-  io.instInfoPort := instInfoReg
 
   // Pass to the next stage in a sequential way
   val outputValidReg = RegNext(false.B)
@@ -105,14 +97,15 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
       when(io.issuedInfoPort.bits.preExeInstInfo.csrReadEn) {
         exeInstReg.csrData := io.csrReadPorts(0).data
       }
+
+      exeInstReg.instInfo := io.issuedInfoPort.bits.instInfo
     }
   }
 
   // flush all regs
   when(io.pipelineControlPort.flush) {
-    outputValidReg := false.B
-    exeInstReg     := ExeInstNdPort.default
-    InstInfoNdPort.invalidate(instInfoReg)
+    outputValidReg          := false.B
+    exeInstReg              := ExeInstNdPort.default
     io.issuedInfoPort.ready := false.B
     io.exeInstPort.valid    := false.B
   }

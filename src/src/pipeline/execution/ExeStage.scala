@@ -28,7 +28,7 @@ class ExeStage extends Module {
     // `ExeStage` -> `AddrTransStage` (next clock pulse)
     val exeResultPort = Decoupled(new ExeResultPort)
 
-    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
+    // val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
 
     // `ExeStage` -> `Pc` (no delay)
     val branchSetPort = Output(new PcSetPort)
@@ -51,11 +51,6 @@ class ExeStage extends Module {
   // Pass to the next stage in a sequential way
   val exeResultReg = RegInit(ExeResultPort.default)
   io.exeResultPort.bits := exeResultReg
-  // val gprWriteReg = RegInit(RfWriteNdPort.default)
-  // io.gprWritePort := gprWriteReg
-
-  // val memRequestReg = RegInit(MemRequestNdPort.default)
-  // io.memAccessPort := memRequestReg
 
   // Start: state machine
 
@@ -76,33 +71,21 @@ class ExeStage extends Module {
   exeInstStoreReg := exeInstStoreReg
   val pcStoreReg = RegInit(zeroWord)
   pcStoreReg := pcStoreReg
-  val instInfoStoreReg = Reg(new InstInfoNdPort)
-  instInfoStoreReg := instInfoStoreReg
 
   val selectedExeInst = WireDefault(ExeInstNdPort.default)
   val selectedPc      = WireDefault(zeroWord)
-  // val selectedMemLoadStoreInfo = WireDefault(MemLoadStoreInfoNdPort.default)
-  val selectedInstInfo = WireDefault(instInfoStoreReg)
-
-  // Wb debug port connection
-  val instInfoReg = RegNext(selectedInstInfo)
-  io.instInfoPassThroughPort.out := instInfoReg
 
   // Implement output function
   switch(stateReg) {
     is(State.nonBlocking) {
-      selectedExeInst  := io.exeInstPort.bits
-      exeInstStoreReg  := io.exeInstPort.bits
-      selectedPc       := io.instInfoPassThroughPort.in.pc
-      pcStoreReg       := io.instInfoPassThroughPort.in.pc
-      selectedInstInfo := io.instInfoPassThroughPort.in
-      instInfoStoreReg := io.instInfoPassThroughPort.in
+      selectedExeInst := io.exeInstPort.bits
+      exeInstStoreReg := io.exeInstPort.bits
+      selectedPc      := io.exeInstPort.bits.instInfo.pc
+      pcStoreReg      := io.exeInstPort.bits.instInfo.pc
     }
     is(State.blocking) {
       selectedExeInst := exeInstStoreReg
       selectedPc      := pcStoreReg
-      // selectedMemLoadStoreInfo := memLoadStoreInfoStoreReg
-      selectedInstInfo := instInfoStoreReg
     }
   }
 
@@ -161,6 +144,39 @@ class ExeStage extends Module {
     }
   }
 
+  /** CsrWrite
+    */
+
+  // 指令未对齐
+  val isAle = WireDefault(false.B)
+
+  def csrWriteData = exeInstStoreReg.instInfo.csrWritePort.data
+  when(!isBlocking) {
+
+    exeInstStoreReg.instInfo := selectedExeInst.instInfo
+
+    exeInstStoreReg.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
+
+    switch(selectedExeInst.exeOp) {
+      is(ExeInst.Op.csrwr) {
+        csrWriteData := selectedExeInst.csrData
+      }
+      is(ExeInst.Op.csrxchg) {
+        // lop: write value  rop: mask
+        val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
+        selectedExeInst.leftOperand.asBools
+          .lazyZip(selectedExeInst.rightOperand.asBools)
+          .lazyZip(selectedExeInst.csrData.asBools)
+          .lazyZip(gprWriteDataVec)
+          .foreach {
+            case (write, mask, origin, target) =>
+              target := Mux(mask, write, origin)
+          }
+        csrWriteData := gprWriteDataVec.asUInt
+      }
+    }
+  }
+
   /** MemAccess
     */
   val loadStoreAddr = WireDefault(selectedExeInst.leftOperand + selectedExeInst.loadStoreImm)
@@ -173,9 +189,6 @@ class ExeStage extends Module {
       .contains(selectedExeInst.exeOp)
   )
   val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedExeInst.exeOp))
-  // 指令未对齐
-  val isAle = WireDefault(false.B)
-  instInfoReg.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
 
   when(!isBlocking) {
     exeResultReg.memAccessPort.isValid         := (memReadEn || memWriteEn) && !isAle
@@ -206,30 +219,6 @@ class ExeStage extends Module {
     }
   }
 
-  /** CsrWrite
-    */
-  def csrWriteData = instInfoReg.csrWritePort.data
-  when(!isBlocking) {
-    switch(selectedExeInst.exeOp) {
-      is(ExeInst.Op.csrwr) {
-        csrWriteData := selectedExeInst.csrData
-      }
-      is(ExeInst.Op.csrxchg) {
-        // lop: write value  rop: mask
-        val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
-        selectedExeInst.leftOperand.asBools
-          .lazyZip(selectedExeInst.rightOperand.asBools)
-          .lazyZip(selectedExeInst.csrData.asBools)
-          .lazyZip(gprWriteDataVec)
-          .foreach {
-            case (write, mask, origin, target) =>
-              target := Mux(mask, write, origin)
-          }
-        csrWriteData := gprWriteDataVec.asUInt
-      }
-    }
-  }
-
   // branch set
   io.branchSetPort := alu.io.result.jumpBranchInfo
 
@@ -242,8 +231,7 @@ class ExeStage extends Module {
 
   // Flush
   when(io.pipelineControlPort.flush) {
-    exeResultReg.gprWritePort.en := false.B
-    InstInfoNdPort.invalidate(instInfoReg)
+    exeResultReg.gprWritePort.en       := false.B
     exeResultReg.memAccessPort.isValid := false.B
 
     stateReg        := State.nonBlocking
