@@ -143,7 +143,7 @@ object BaseStageSpec extends ChiselUtestTester {
         stage.io.out.ready.poke(true.B)
         stage.io.out.valid.expect(true.B)
         stage.io.out.bits.expect(num.U)
-        stage.io.in.ready.expect(false.B)
+        stage.io.in.ready.expect(true.B)
         Seq.range(0, 3).foreach { _ =>
           stage.clock.step()
           stage.io.out.ready.poke(true.B)

@@ -69,7 +69,7 @@ abstract class BaseStage[InT <: Data, OutT <: Data, PT <: Data](
   io.out <> outQueue
 
   // Handle input
-  io.in.ready := isLastComputed && lastResultOut.ready && (!lastResultOut.valid || io.out.ready)
+  io.in.ready := isLastComputed && ((lastResultOut.ready && !lastResultOut.valid) || io.out.ready)
   when(io.in.valid && io.in.ready) {
     savedIn := io.in.bits
   }
