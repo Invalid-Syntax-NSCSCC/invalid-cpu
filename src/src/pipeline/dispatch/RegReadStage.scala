@@ -24,10 +24,6 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
     // `RegReadStage` -> `ExeStage` (next clock pulse)
     val exeInstPort = Decoupled(new ExeInstNdPort)
 
-    // 数据前推
-    // `DataForwardStage` -> `RegReadStage`
-    // val dataforwardPorts = Vec(readNum, Flipped(new DataForwardReadPort))
-
     // `pipeline control signal
     // `Cu` -> `RegReadStage`
     val pipelineControlPort = Input(new PipelineControlNdPort)
@@ -50,13 +46,6 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   // Read from CSR
   io.csrReadPorts(0).en   := io.issuedInfoPort.bits.preExeInstInfo.csrReadEn
   io.csrReadPorts(0).addr := io.issuedInfoPort.bits.instInfo.csrWritePort.addr
-
-  // read from dataforward
-  // io.gprReadPorts.zip(io.dataforwardPorts).foreach {
-  //   case ((gprRead, dataforward)) =>
-  //     dataforward.en   := gprRead.en
-  //     dataforward.addr := gprRead.addr
-  // }
 
   when(io.issuedInfoPort.valid && io.exeInstPort.ready) {
 

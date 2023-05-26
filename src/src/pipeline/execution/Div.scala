@@ -14,12 +14,11 @@ class Div extends Module {
       val quotient  = Output(UInt(wordLength.W)) // 商
       val remainder = Output(UInt(wordLength.W)) // 余数
     })
-    val isRunning = Output(Bool())
+    // val isRunning = Output(Bool())
   })
 
   // 正在运行
   val running = RegInit(false.B)
-  io.isRunning := running // | io.divInst.valid
 
   val inputReady = WireDefault(!running)
   io.divInst.ready := inputReady
