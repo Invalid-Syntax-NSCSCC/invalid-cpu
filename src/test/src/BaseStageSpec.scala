@@ -166,7 +166,7 @@ object BaseStageSpec extends ChiselUtestTester {
         Seq.range(0, 3).foreach { _ =>
           stage.clock.step()
           stage.io.isFlush.poke(false.B)
-          stage.io.out.ready.poke(true.B)
+          stage.io.out.ready.poke(false.B)
           stage.io.in.ready.expect(true.B)
           stage.io.out.valid.expect(false.B)
         }
