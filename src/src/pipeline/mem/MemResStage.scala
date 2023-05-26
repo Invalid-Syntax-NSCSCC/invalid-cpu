@@ -86,6 +86,9 @@ class MemResStage extends Module {
 
   switch(stateReg) {
     is(State.free) {
+      lastGprWriteReg := io.gprWritePassThroughPort.in
+      lastInstInfoReg := io.instInfoPassThroughPort.in
+
       when(io.isHasRequest) {
         // Check whether hit when has request
         when(isComplete) {
@@ -94,8 +97,6 @@ class MemResStage extends Module {
           io.gprWritePassThroughPort.out.data := readData
         }.otherwise {
           // When not hit
-          lastGprWriteReg                   := io.gprWritePassThroughPort.in
-          lastInstInfoReg                   := io.instInfoPassThroughPort.in
           io.gprWritePassThroughPort.out.en := false.B
           InstInfoNdPort.invalidate(io.instInfoPassThroughPort.out)
 
