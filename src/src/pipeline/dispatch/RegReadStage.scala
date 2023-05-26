@@ -34,6 +34,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   })
 
   // Pass to the next stage in a sequential way
+  io.issuedInfoPort.ready := false.B
   val outputValidReg = RegNext(false.B)
   io.exeInstPort.valid := outputValidReg
   val exeInstReg = RegInit(ExeInstNdPort.default)
@@ -57,10 +58,12 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   //     dataforward.addr := gprRead.addr
   // }
 
-  // Determine left and right operands
-  exeInstReg.leftOperand  := zeroWord
-  exeInstReg.rightOperand := zeroWord
-  when(io.issuedInfoPort.valid) {
+  when(io.issuedInfoPort.valid && io.exeInstPort.ready) {
+
+    io.issuedInfoPort.ready := true.B
+    outputValidReg          := true.B
+
+    // Determine left and right operands
 
     when(io.issuedInfoPort.bits.preExeInstInfo.isHasImm) {
       exeInstReg.rightOperand := io.issuedInfoPort.bits.preExeInstInfo.imm
@@ -73,33 +76,22 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
             oprand := gprReadPort.data
           }
       }
-  }
 
-  // Pass execution instruction if valid
+    // Pass execution instruction if valid
 
-  io.issuedInfoPort.ready := false.B
+    io.issuedInfoPort.ready := true.B
+    outputValidReg          := true.B
 
-  exeInstReg.exeSel       := ExeInst.Sel.none
-  exeInstReg.exeOp        := ExeInst.Op.nop
-  exeInstReg.gprWritePort := RfAccessInfoNdPort.default
-
-  when(io.exeInstPort.ready) {
-    when(io.issuedInfoPort.valid) {
-
-      io.issuedInfoPort.ready := true.B
-      outputValidReg          := true.B
-
-      exeInstReg.exeSel       := io.issuedInfoPort.bits.preExeInstInfo.exeSel
-      exeInstReg.exeOp        := io.issuedInfoPort.bits.preExeInstInfo.exeOp
-      exeInstReg.gprWritePort := io.issuedInfoPort.bits.preExeInstInfo.gprWritePort
-      // jumbBranch / memLoadStort / csr
-      exeInstReg.jumpBranchAddr := io.issuedInfoPort.bits.preExeInstInfo.jumpBranchAddr
-      when(io.issuedInfoPort.bits.preExeInstInfo.csrReadEn) {
-        exeInstReg.csrData := io.csrReadPorts(0).data
-      }
-
-      exeInstReg.instInfo := io.issuedInfoPort.bits.instInfo
+    exeInstReg.exeSel       := io.issuedInfoPort.bits.preExeInstInfo.exeSel
+    exeInstReg.exeOp        := io.issuedInfoPort.bits.preExeInstInfo.exeOp
+    exeInstReg.gprWritePort := io.issuedInfoPort.bits.preExeInstInfo.gprWritePort
+    // jumbBranch / memLoadStort / csr
+    exeInstReg.jumpBranchAddr := io.issuedInfoPort.bits.preExeInstInfo.jumpBranchAddr
+    when(io.issuedInfoPort.bits.preExeInstInfo.csrReadEn) {
+      exeInstReg.csrData := io.csrReadPorts(0).data
     }
+
+    exeInstReg.instInfo := io.issuedInfoPort.bits.instInfo
   }
 
   // flush all regs
