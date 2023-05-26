@@ -218,8 +218,8 @@ class CoreCpuTop extends Module {
   memResStage.io.isCachedRequest            := memReqStage.io.isCachedAccess.out
   memResStage.io.isUnsigned                 := memReqStage.io.isUnsigned
   memResStage.io.dataMask                   := memReqStage.io.dataMask
-  memResStage.io.gprWritePassThroughPort.in := addrTransStage.io.gprWritePassThroughPort.out
-  memResStage.io.instInfoPassThroughPort.in := addrTransStage.io.instInfoPassThroughPort.out
+  memResStage.io.gprWritePassThroughPort.in := memReqStage.io.gprWritePassThroughPort.out
+  memResStage.io.instInfoPassThroughPort.in := memReqStage.io.instInfoPassThroughPort.out
   memResStage.io.dCacheResponsePort         := dCache.io.accessPort.res
   memResStage.io.uncachedResponsePort       := uncachedAgent.io.accessPort.res
   memResStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memResStage)

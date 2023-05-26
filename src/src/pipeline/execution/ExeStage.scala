@@ -48,10 +48,6 @@ class ExeStage extends Module {
   // io.freePorts.en   := freePortEn
   // io.freePorts.addr := io.gprWritePort.addr
 
-  // Wb debug port connection
-  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
-  io.instInfoPassThroughPort.out := instInfoReg
-
   // Pass to the next stage in a sequential way
   val exeResultReg = RegInit(ExeResultPort.default)
   io.exeResultPort.bits := exeResultReg
@@ -80,8 +76,6 @@ class ExeStage extends Module {
   exeInstStoreReg := exeInstStoreReg
   val pcStoreReg = RegInit(zeroWord)
   pcStoreReg := pcStoreReg
-  // val memLoadStoreInfoStoreReg = RegInit(MemLoadStoreInfoNdPort.default)
-  // memLoadStoreInfoStoreReg := memLoadStoreInfoStoreReg
   val instInfoStoreReg = Reg(new InstInfoNdPort)
   instInfoStoreReg := instInfoStoreReg
 
@@ -89,6 +83,10 @@ class ExeStage extends Module {
   val selectedPc      = WireDefault(zeroWord)
   // val selectedMemLoadStoreInfo = WireDefault(MemLoadStoreInfoNdPort.default)
   val selectedInstInfo = WireDefault(instInfoStoreReg)
+
+  // Wb debug port connection
+  val instInfoReg = RegNext(selectedInstInfo)
+  io.instInfoPassThroughPort.out := instInfoReg
 
   // Implement output function
   switch(stateReg) {
@@ -212,8 +210,6 @@ class ExeStage extends Module {
     */
   def csrWriteData = instInfoReg.csrWritePort.data
   when(!isBlocking) {
-    instInfoReg := instInfoStoreReg
-
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.csrwr) {
         csrWriteData := selectedExeInst.csrData
