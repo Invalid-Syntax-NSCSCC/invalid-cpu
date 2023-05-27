@@ -23,8 +23,8 @@ object MemReqNdPort {
 }
 
 class MemReqPeerPort extends Bundle {
-  val dCacheReq   = new MemRequestHandshakePort
-  val uncachedReq = new MemRequestHandshakePort
+  val dCacheReq   = Flipped(new MemRequestHandshakePort)
+  val uncachedReq = Flipped(new MemRequestHandshakePort)
 }
 
 class MemReqStage

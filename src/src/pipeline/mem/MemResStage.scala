@@ -82,6 +82,6 @@ class MemResStage
       isComputed := peer.uncachedRes.isComplete
     }
     // Submit result
-    resultOutReg := isComputed
+    resultOutReg.valid := isComputed
   }
 }

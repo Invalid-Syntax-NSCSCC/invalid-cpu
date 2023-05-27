@@ -179,45 +179,41 @@ class CoreCpuTop extends Module {
   exeStage.io.instInfoPassThroughPort.in := regReadStage.io.instInfoPassThroughPort.out
 
   // Mem stages
-  addrTransStage.io.csrPort                    := DontCare
-  addrTransStage.io.gprWritePassThroughPort.in := exeStage.io.gprWritePort
-  addrTransStage.io.instInfoPassThroughPort.in := exeStage.io.instInfoPassThroughPort.out
-  addrTransStage.io.memAccessPort              := exeStage.io.memAccessPort
-  addrTransStage.io.tlbTransPort               <> tlb.io.tlbTransPorts(0)
-  addrTransStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.addrTransStage)
-  // TODO: CSR
-  memReqStage.io.translatedMemRequestPort   := addrTransStage.io.translatedMemRequestPort
-  memReqStage.io.isCachedAccess.in          := addrTransStage.io.isCachedAccess
-  memReqStage.io.gprWritePassThroughPort.in := addrTransStage.io.gprWritePassThroughPort.out
-  memReqStage.io.instInfoPassThroughPort.in := addrTransStage.io.instInfoPassThroughPort.out
-  memReqStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memReqStage)
-  dCache.io.accessPort.req.client           := memReqStage.io.dCacheRequestPort
-  uncachedAgent.io.accessPort.req.client    := memReqStage.io.uncachedRequestPort
-  dCache.io.accessPort.req.isReady          <> DontCare // Assume ready guaranteed by in-order access
-  uncachedAgent.io.accessPort.req.isReady   <> DontCare // Assume ready guaranteed by in-order access
-  memResStage.io.isHasRequest               := memReqStage.io.isHasRequest
-  memResStage.io.isCachedRequest            := memReqStage.io.isCachedAccess.out
-  memResStage.io.isUnsigned                 := memReqStage.io.isUnsigned
-  memResStage.io.dataMask                   := memReqStage.io.dataMask
-  memResStage.io.gprWritePassThroughPort.in := memReqStage.io.gprWritePassThroughPort.out
-  memResStage.io.instInfoPassThroughPort.in := memReqStage.io.instInfoPassThroughPort.out
-  memResStage.io.dCacheResponsePort         := dCache.io.accessPort.res
-  memResStage.io.uncachedResponsePort       := uncachedAgent.io.accessPort.res
-  memResStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.memResStage)
+  // TODO: Connect refactored `AddrTransStage` to `ExeStage`
+  // TODO: Connect flush
+  addrTransStage.io.in      <> DontCare
+  addrTransStage.io.isFlush := false.B
+  addrTransStage.io.peer.foreach { p =>
+    p.tlbTrans <> tlb.io.tlbTransPorts(0)
+    p.csr      := DontCare // TODO: CSR
+  }
+
+  memReqStage.io.isFlush := false.B
+  memReqStage.io.in      <> addrTransStage.io.out
+  memReqStage.io.peer.foreach { p =>
+    p.dCacheReq   <> dCache.io.accessPort.req
+    p.uncachedReq <> uncachedAgent.io.accessPort.req
+  }
+
+  memResStage.io.isFlush := false.B
+  memResStage.io.in      <> memReqStage.io.out
+  memResStage.io.peer.foreach { p =>
+    p.dCacheRes   := dCache.io.accessPort.res
+    p.uncachedRes := uncachedAgent.io.accessPort.res
+  }
 
   // Write-back stage
-  wbStage.io.gprWriteInfoPort           := memResStage.io.gprWritePassThroughPort.out
-  wbStage.io.instInfoPassThroughPort.in := memResStage.io.instInfoPassThroughPort.out
-  regFile.io.writePort                  := cu.io.gprWritePassThroughPorts.out(0)
+  wbStage.io.in        <> memResStage.io.out
+  regFile.io.writePort := cu.io.gprWritePassThroughPorts.out(0)
 
   // data forward
   // dataforward.io.writePorts(0) := exeStage.io.gprWritePort
   // dataforward.io.writePorts(1) := memStage.io.gprWritePassThroughPort.out
 
   // Ctrl unit
-  cu.io.instInfoPorts(0)               := wbStage.io.instInfoPassThroughPort.out
+  cu.io                                <> DontCare // TODO: Remove this after refactor
+  cu.io.instInfoPorts(0)               := wbStage.io.cuInstInfoPort
   cu.io.exeStallRequest                := exeStage.io.stallRequest
-  cu.io.memResStallRequest             := memResStage.io.stallRequest
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
@@ -232,11 +228,11 @@ class CoreCpuTop extends Module {
   csr.io.readPorts  <> regReadStage.io.csrReadPorts
 
   // Debug ports
-  io.debug0_wb.pc       := wbStage.io.instInfoPassThroughPort.out.pc
+  io.debug0_wb.pc       := wbStage.io.in.bits.instInfo.pc
+  io.debug0_wb.inst     := wbStage.io.in.bits.instInfo.inst
   io.debug0_wb.rf.wen   := wbStage.io.gprWritePort.en
   io.debug0_wb.rf.wnum  := wbStage.io.gprWritePort.addr
   io.debug0_wb.rf.wdata := wbStage.io.gprWritePort.data
-  io.debug0_wb.inst     := wbStage.io.instInfoPassThroughPort.out.inst
 
   // Difftest
   // TODO: DifftestInstrCommit (partial), DifftestExcpEvent, DifftestTrapEvent, DifftestStoreEvent, DifftestLoadEvent, DifftestCSRRegState
