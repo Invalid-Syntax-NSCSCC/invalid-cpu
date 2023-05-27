@@ -15,6 +15,17 @@ import spec.Width
 
 import scala.collection.immutable
 
+class AddrTransNdPort extends Bundle {
+  val memRequest = new MemRequestNdPort
+  val gprWrite   = new RfWriteNdPort
+  val instInfo   = new InstInfoNdPort
+}
+
+class AddrTransPeerPort extends Bundle {
+  val csr      = Input(new MemCsrNdPort)
+  val tlbTrans = Flipped(new TlbTransPort)
+}
+
 class AddrTransStage extends Module {
   val io = IO(new Bundle {
     val memAccessPort       = Input(new MemRequestNdPort)
