@@ -9,11 +9,10 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import Csr.ExceptionIndex
 import common.bundles.PassThroughPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import pipeline.dispatch.bundles.IssuedInfoNdPort
 import pipeline.dataforward.bundles.ReadPortWithValid
-import pipeline.dispatch.bundles.IssueInfoWithValidBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.rob.bundles.RobIdDistributePort
+import pipeline.dispatch.bundles.RegReadPortWithValidBundle
 
 // TODO: deal WAR data hazard
 class BiIssueStage(
@@ -46,7 +45,7 @@ class BiIssueStage(
     val csrRegScores    = Input(Vec(Count.csrReg, Bool()))
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
-    val issuedInfoPorts = Vec(issueNum, Decoupled(new IssuedInfoNdPort))
+    val issuedInfoPorts = Vec(issueNum, Decoupled(new RegReadNdPort))
 
     // pipeline control signal
     // `Cu` -> `IssueStage`
@@ -58,7 +57,7 @@ class BiIssueStage(
 
   val issueEnablesReg = RegInit(VecInit(Seq.fill(issueNum)(false.B)))
   issueEnablesReg.foreach(_ := false.B)
-  val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(IssuedInfoNdPort.default)))
+  val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(RegReadNdPort.default)))
   io.issuedInfoPorts.lazyZip(issueInfosReg).lazyZip(issueEnablesReg).foreach { (dst, src, valid) =>
     dst.bits  := src
     dst.valid := valid
@@ -78,13 +77,13 @@ class BiIssueStage(
   })
   io.issuedInfoPorts.foreach { port =>
     port.valid := false.B
-    port.bits  := IssuedInfoNdPort.default
+    port.bits  := RegReadNdPort.default
   }
 
   /** Combine stage 1 : get fetch infos
     */
 
-  val fetchInfos = WireDefault(VecInit(Seq.fill(issueNum)(IssueInfoWithValidBundle.default)))
+  val fetchInfos = WireDefault(VecInit(Seq.fill(issueNum)(RegReadPortWithValidBundle.default)))
 
   fetchInfos
     .lazyZip(io.fetchInstDecodePorts)
@@ -101,7 +100,7 @@ class BiIssueStage(
   val selectValidWires = Wire(
     Vec(
       issueNum,
-      new IssueInfoWithValidBundle
+      new RegReadPortWithValidBundle
     )
   )
   selectValidWires.foreach(_ := 0.U.asTypeOf(selectValidWires(0)))
@@ -191,7 +190,7 @@ class BiIssueStage(
   // flush all regs
   when(io.pipelineControlPorts.map(_.flush).reduce(_ || _)) {
     issueEnablesReg.foreach(_ := false.B)
-    issueInfosReg.foreach(_ := IssuedInfoNdPort.default)
+    issueInfosReg.foreach(_ := RegReadPortWithValidBundle.default)
     io.fetchInstDecodePorts.foreach(_.ready := false.B)
     io.issuedInfoPorts.foreach(_.valid := false.B)
   }
