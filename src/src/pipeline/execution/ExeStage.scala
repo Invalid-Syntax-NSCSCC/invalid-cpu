@@ -3,7 +3,6 @@ package pipeline.execution
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
-import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
 import control.bundles.PipelineControlNdPort
@@ -18,80 +17,94 @@ import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import common.enums.ReadWriteSel
 import pipeline.mem.bundles.MemRequestNdPort
 import pipeline.execution.bundles.ExeResultPort
+import pipeline.common.BaseStage
+import pipeline.mem.AddrTransNdPort
+
+class ExeNdPort extends Bundle {
+  // Micro-instruction for execution stage
+  val exeSel = UInt(Param.Width.exeSel)
+  val exeOp  = UInt(Param.Width.exeOp)
+  // Operands
+  val leftOperand  = UInt(Width.Reg.data)
+  val rightOperand = UInt(Width.Reg.data)
+
+  // Branch jump addr
+  val jumpBranchAddr = UInt(Width.Reg.data)
+  def loadStoreImm   = jumpBranchAddr
+  def csrData        = jumpBranchAddr
+
+  // GPR write (writeback)
+  val gprWritePort = new RfAccessInfoNdPort
+
+  val instInfo = new InstInfoNdPort
+}
+
+object ExeNdPort {
+  def default = (new ExeNdPort).Lit(
+    _.exeSel -> ExeInst.Sel.none,
+    _.exeOp -> ExeInst.Op.nop,
+    _.leftOperand -> 0.U,
+    _.rightOperand -> 0.U,
+    _.gprWritePort -> RfAccessInfoNdPort.default,
+    _.jumpBranchAddr -> zeroWord,
+    _.instInfo -> InstInfoNdPort.default
+  )
+}
+
+class ExePeerPort extends Bundle {
+    // `ExeStage` -> `Cu` (no delay)
+    val branchSetPort = Output(new PcSetPort)
+}
 
 // TODO: Add (flush ?) when jump / branch
 // throw exception: 地址未对齐 ale
-class ExeStage extends Module {
-  val io = IO(new Bundle {
-    val exeInstPort = Flipped(Decoupled(new ExeInstNdPort))
-
-    // `ExeStage` -> `AddrTransStage` (next clock pulse)
-    val exeResultPort = Decoupled(new ExeResultPort)
-
-    // `ExeStage` -> `Pc` (no delay)
-    val branchSetPort = Output(new PcSetPort)
-
-    // Pipeline control signal
-    // `Cu` -> `ExeStage`
-    val pipelineControlPort = Input(new PipelineControlNdPort)
-  })
+class ExeStage extends BaseStage(
+  new ExeNdPort, new AddrTransNdPort, ExeNdPort.default, Some(new ExePeerPort)
+) {
 
   // ALU module
   val alu = Module(new Alu)
 
-  // Pass to the next stage in a sequential way
-  val outputValidReg = RegNext(alu.io.outputValid, false.B)
-  io.exeInstPort.ready   := alu.io.outputValid
-  io.exeResultPort.valid := outputValidReg
-  val exeResultReg = RegInit(ExeResultPort.default)
-  io.exeResultPort.bits := exeResultReg
-
-  // Start: state machine
-
-  val selectedExeInst = WireDefault(io.exeInstPort.bits)
-
+  isComputed
+  resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
+  
+  
   // ALU input
-  alu.io.inputValid             := true.B
-  alu.io.aluInst.op             := selectedExeInst.exeOp
-  alu.io.aluInst.leftOperand    := selectedExeInst.leftOperand
-  alu.io.aluInst.rightOperand   := selectedExeInst.rightOperand
-  alu.io.aluInst.jumpBranchAddr := selectedExeInst.jumpBranchAddr // also load-store imm
-  // alu.io.isBlocking             := isBlocking
+  alu.io.inputValid             := selectedIn.instInfo.isValid
+  alu.io.aluInst.op             := selectedIn.exeOp
+  alu.io.aluInst.leftOperand    := selectedIn.leftOperand
+  alu.io.aluInst.rightOperand   := selectedIn.rightOperand
+  alu.io.aluInst.jumpBranchAddr := selectedIn.jumpBranchAddr // also load-store imm
 
   // ALU output
 
   // write-back information fallback
-  exeResultReg.gprWritePort.en   := false.B
-  exeResultReg.gprWritePort.addr := zeroWord
-  exeResultReg.gprWritePort.data := zeroWord
+  resultOutReg.bits.gprWrite.en   := false.B
+  resultOutReg.bits.gprWrite.addr := zeroWord
+  resultOutReg.bits.gprWrite.data := zeroWord
 
   // write-back information selection
-  exeResultReg.gprWritePort.en   := selectedExeInst.gprWritePort.en
-  exeResultReg.gprWritePort.addr := selectedExeInst.gprWritePort.addr
+  resultOutReg.bits.gprWrite.en   := selectedIn.gprWritePort.en
+  resultOutReg.bits.gprWrite.addr := selectedIn.gprWritePort.addr
 
-  switch(selectedExeInst.exeSel) {
+  switch(selectedIn.exeSel) {
     is(Sel.logic) {
-      // io.freePorts.en  := gprWriteReg.en
-      exeResultReg.gprWritePort.data := alu.io.result.logic
+      resultOutReg.bits.gprWrite.data := alu.io.result.logic
     }
     is(Sel.shift) {
-      // io.freePorts.en  := gprWriteReg.en
-      exeResultReg.gprWritePort.data := alu.io.result.shift
+      resultOutReg.bits.gprWrite.data := alu.io.result.shift
     }
     is(Sel.arithmetic) {
-      // io.freePorts.en  := gprWriteReg.en
-      exeResultReg.gprWritePort.data := alu.io.result.arithmetic
+      resultOutReg.bits.gprWrite.data := alu.io.result.arithmetic
     }
     is(Sel.jumpBranch) {
-      // io.freePorts.en  := gprWriteReg.en
-      exeResultReg.gprWritePort.data := selectedExeInst.instInfo.pc + 4.U
+      resultOutReg.bits.gprWrite.data := selectedIn.instInfo.pc + 4.U
     }
   }
 
-  switch(selectedExeInst.exeOp) {
+  switch(selectedIn.exeOp) {
     is(ExeInst.Op.csrrd) {
-      // io.freePorts.en  := gprWriteReg.en
-      exeResultReg.gprWritePort.data := selectedExeInst.csrData
+      resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
   }
 
@@ -101,20 +114,20 @@ class ExeStage extends Module {
   // 指令未对齐
   val isAle = WireDefault(false.B)
 
-  def csrWriteData = exeResultReg.instInfo.csrWritePort.data
+  def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
-  exeResultReg.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
+  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
 
-  switch(selectedExeInst.exeOp) {
+  switch(selectedIn.exeOp) {
     is(ExeInst.Op.csrwr) {
-      csrWriteData := selectedExeInst.csrData
+      csrWriteData := selectedIn.csrData
     }
     is(ExeInst.Op.csrxchg) {
       // lop: write value  rop: mask
       val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
-      selectedExeInst.leftOperand.asBools
-        .lazyZip(selectedExeInst.rightOperand.asBools)
-        .lazyZip(selectedExeInst.csrData.asBools)
+      selectedIn.leftOperand.asBools
+        .lazyZip(selectedIn.rightOperand.asBools)
+        .lazyZip(selectedIn.csrData.asBools)
         .lazyZip(gprWriteDataVec)
         .foreach {
           case (write, mask, origin, target) =>
@@ -126,27 +139,27 @@ class ExeStage extends Module {
 
   /** MemAccess
     */
-  val loadStoreAddr = WireDefault(selectedExeInst.leftOperand + selectedExeInst.loadStoreImm)
+  val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
-      .contains(selectedExeInst.exeOp)
+      .contains(selectedIn.exeOp)
   )
   val memWriteEn = WireDefault(
     VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w, ExeInst.Op.sc)
-      .contains(selectedExeInst.exeOp)
+      .contains(selectedIn.exeOp)
   )
-  val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedExeInst.exeOp))
+  val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp))
 
-  exeResultReg.memAccessPort.isValid         := (memReadEn || memWriteEn) && !isAle
-  exeResultReg.memAccessPort.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
-  exeResultReg.memAccessPort.write.data      := selectedExeInst.rightOperand
-  exeResultReg.memAccessPort.read.isUnsigned := memLoadUnsigned
-  exeResultReg.memAccessPort.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
+  resultOutReg.bits.memRequest.isValid         := (memReadEn || memWriteEn) && !isAle
+  resultOutReg.bits.memRequest.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
+  resultOutReg.bits.memRequest.write.data      := selectedIn.rightOperand
+  resultOutReg.bits.memRequest.read.isUnsigned := memLoadUnsigned
+  resultOutReg.bits.memRequest.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
   // mask
   val maskEncode = loadStoreAddr(1, 0)
-  switch(selectedExeInst.exeOp) {
+  switch(selectedIn.exeOp) {
     is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-      exeResultReg.memAccessPort.mask := Mux(
+      resultOutReg.bits.memRequest.mask := Mux(
         maskEncode(1),
         Mux(maskEncode(0), "b1000".U, "b0100".U),
         Mux(maskEncode(0), "b0010".U, "b0001".U)
@@ -156,26 +169,21 @@ class ExeStage extends Module {
       when(maskEncode(0)) {
         isAle := true.B // 未对齐
       }
-      exeResultReg.memAccessPort.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+      resultOutReg.bits.memRequest.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
     }
     is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
       isAle                           := maskEncode.orR
-      exeResultReg.memAccessPort.mask := "b1111".U
+      resultOutReg.bits.memRequest.mask := "b1111".U
     }
   }
 
   // branch set
-  io.branchSetPort := alu.io.result.jumpBranchInfo
+  io.peer.get.branchSetPort := alu.io.result.jumpBranchInfo
 
   /** InstInfo Csr read or write info
     */
 
   // Flush
-  when(io.pipelineControlPort.flush) {
-    exeResultReg.gprWritePort.en       := false.B
-    exeResultReg.memAccessPort.isValid := false.B
-    outputValidReg                     := false.B
-    io.exeInstPort.ready               := false.B
-    io.exeResultPort.valid             := false.B
+  when(io.isFlush) {
   }
 }

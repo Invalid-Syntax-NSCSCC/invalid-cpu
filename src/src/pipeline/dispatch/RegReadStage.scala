@@ -3,7 +3,7 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfReadPort, RfWriteNdPort}
-import bundles.ExeInstNdPort
+import pipeline.execution.ExeNdPort
 import chisel3.experimental.BundleLiterals._
 import spec._
 import control.bundles.PipelineControlNdPort
@@ -39,7 +39,7 @@ class RegReadPeerPort(readNum: Int, csrRegsReadNum: Int) extends Bundle {
 class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum)
     extends BaseStage(
       new RegReadNdPort,
-      new ExeInstNdPort,
+      new ExeNdPort,
       RegReadNdPort.default,
       Some(new RegReadPeerPort(readNum, csrRegsReadNum))
     ) {
