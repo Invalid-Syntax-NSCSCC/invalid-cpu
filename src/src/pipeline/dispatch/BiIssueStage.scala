@@ -3,7 +3,6 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import spec._
-import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.enums.{IssueStageState => State}
 import pipeline.writeback.bundles.InstInfoNdPort
 import Csr.ExceptionIndex
@@ -47,9 +46,8 @@ class BiIssueStage(
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPorts = Vec(issueNum, Decoupled(new RegReadNdPort))
 
-    // pipeline control signal
     // `Cu` -> `IssueStage`
-    val pipelineControlPorts = Vec(issueNum, Input(new PipelineControlNdPort))
+    val isFlushs = Vec(issueNum, Input(Bool()))
   })
 
   // fall back
@@ -104,8 +102,7 @@ class BiIssueStage(
     )
   )
   selectValidWires.foreach(_ := 0.U.asTypeOf(selectValidWires(0)))
-
-  // val canIssueMaxNumFromStall = WireDefault(io.pipelineControlPorts.map(_.stall.asUInt).reduce(_ +& _))
+ 
   val canIssueMaxNumFromPipeline = WireDefault(io.issuedInfoPorts.map(_.ready.asUInt).reduce(_ +& _))
   val canIssueMaxNumFromRob      = WireDefault(io.robEmptyNum)
   when(io.robEmptyNum === 1.U && !io.fetchInstDecodePorts.map(_.bits.decode.info.gprWritePort.en).reduce(_ && _)) {
@@ -188,9 +185,9 @@ class BiIssueStage(
   }
 
   // flush all regs
-  when(io.pipelineControlPorts.map(_.flush).reduce(_ || _)) {
+  when(io.isFlushs.reduce(_ || _)) {
     issueEnablesReg.foreach(_ := false.B)
-    issueInfosReg.foreach(_ := RegReadPortWithValidBundle.default)
+    issueInfosReg.foreach(_ := RegReadNdPort.default)
     io.fetchInstDecodePorts.foreach(_.ready := false.B)
     io.issuedInfoPorts.foreach(_.valid := false.B)
   }

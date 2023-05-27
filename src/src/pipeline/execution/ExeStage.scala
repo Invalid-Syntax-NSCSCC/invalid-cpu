@@ -56,7 +56,6 @@ class ExePeerPort extends Bundle {
     val branchSetPort = Output(new PcSetPort)
 }
 
-// TODO: Add (flush ?) when jump / branch
 // throw exception: 地址未对齐 ale
 class ExeStage extends BaseStage(
   new ExeNdPort, new AddrTransNdPort, ExeNdPort.default, Some(new ExePeerPort)

@@ -55,7 +55,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
 
   // Read from CSR
   io.peer.get.csrReadPorts(0).en := selectedIn.preExeInstInfo.csrReadEn
-  io.peer.get.csrReadPorts(0).en := selectedIn.instInfo.csrWritePort.addr
+  io.peer.get.csrReadPorts(0).addr := selectedIn.instInfo.csrWritePort.addr
 
   // Determine left and right operands
   when(selectedIn.preExeInstInfo.isHasImm) {

@@ -17,7 +17,7 @@ class BiInstQueue(
     extends Module {
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
-    val pipelineControlPort = Input(new PipelineControlNdPort)
+    val isFlush = Input(Bool())
     val enqueuePorts        = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
@@ -42,9 +42,9 @@ class BiInstQueue(
   val deq_ptr = Module(new BiCounter(queueLength))
 
   enq_ptr.io.inc   := 0.U
-  enq_ptr.io.flush := io.pipelineControlPort.flush
+  enq_ptr.io.flush := io.isFlush
   deq_ptr.io.inc   := 0.U
-  deq_ptr.io.flush := io.pipelineControlPort.flush
+  deq_ptr.io.flush := io.isFlush
 
   val maybeFull = RegInit(false.B)
   val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
@@ -188,7 +188,7 @@ class BiInstQueue(
       dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR  // TODO: Check if it can change to isMatched (see whether commit or not)
   }
 
-  when(io.pipelineControlPort.flush) {
+  when(io.isFlush) {
     ram.foreach(_ := InstInfoBundle.default)
   }
 }

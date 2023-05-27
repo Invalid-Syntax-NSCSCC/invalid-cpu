@@ -15,7 +15,8 @@ class SimpleFetchStage extends Module {
     val isPcNext            = Output(Bool())
     val axiMasterInterface  = new AxiMasterInterface
     val instEnqueuePort     = Decoupled(new InstInfoBundle)
-    val pipelineControlPort = Input(new PipelineControlNdPort)
+    // val pipelineControlPort = Input(new PipelineControlNdPort)
+    val isFlush = Input(Bool())
   })
 
   val axiMaster = Module(new AxiMaster)
@@ -52,7 +53,7 @@ class SimpleFetchStage extends Module {
   io.instEnqueuePort.bits  := DontCare
   lastPcReg                := lastPcReg
 
-  when(io.pipelineControlPort.flush) {
+  when(io.isFlush) {
     flushReg := true.B
   }
 
@@ -62,7 +63,7 @@ class SimpleFetchStage extends Module {
     }
     is(State.requestInst) { // State Value: 1
       when(
-        axiReady && io.instEnqueuePort.ready && !io.pipelineControlPort.flush && !flushReg && !io.pipelineControlPort.stall
+        axiReady && io.instEnqueuePort.ready && !io.isFlush && !flushReg && io.instEnqueuePort.ready
       ) {
         nextState := State.waitInst
 
@@ -80,7 +81,7 @@ class SimpleFetchStage extends Module {
     is(State.waitInst) { // State Value: 2
       when(axiReadValid) {
         nextState := State.requestInst
-        when(io.pipelineControlPort.flush || flushReg) {
+        when(io.isFlush || flushReg) {
           flushReg := false.B
         }.otherwise {
           io.instEnqueuePort.valid       := true.B

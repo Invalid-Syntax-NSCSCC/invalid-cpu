@@ -146,7 +146,7 @@ class CoreCpuTop extends Module {
 
   // Simple fetch stage
   simpleFetchStage.io.pc                  := pc.io.pc
-  simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.frontend)
+  simpleFetchStage.io.isFlush := cu.io.flushs(PipelineStageIndex.frontend)
   pc.io.isNext                            := simpleFetchStage.io.isPcNext
 
   // Inst Queue
@@ -154,7 +154,7 @@ class CoreCpuTop extends Module {
   // TODO: CONNECT
   instQueue.io.enqueuePorts(1)       <> DontCare // TODO: DELETE
   instQueue.io.enqueuePorts(1).valid := false.B // TODO: DELETE
-  instQueue.io.pipelineControlPort   := cu.io.pipelineControlPorts(PipelineStageIndex.frontend)
+  instQueue.io.isFlush   := cu.io.flushs(PipelineStageIndex.frontend)
 
   // Issue stage
   issueStage.io.fetchInstDecodePorts(0)       <> instQueue.io.dequeuePorts(0)
@@ -164,8 +164,8 @@ class CoreCpuTop extends Module {
   instQueue.io.dequeuePorts(1).ready          := false.B // TODO: DELETE
   issueStage.io.regScores                     := scoreboard.io.regScores
 
-  issueStage.io.pipelineControlPorts(0) := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
-  issueStage.io.pipelineControlPorts(1) := PipelineControlNdPort.default // TODO: DELETE
+  issueStage.io.isFlushs(0) := cu.io.flushs(PipelineStageIndex.issueStage)
+  issueStage.io.isFlushs(1) := false.B // TODO: DELETE
   issueStage.io.csrRegScores            := csrScoreBoard.io.regScores
 
   issueStage.io.robEmptyNum := 2.U // TODO: DELETE
@@ -174,32 +174,28 @@ class CoreCpuTop extends Module {
   } // TODO: DELETE
 
   // score boards
-  scoreboard.io.freePorts(0)    := wbStage.io.freePorts(0)
-  csrScoreBoard.io.freePorts(0) := wbStage.io.csrFreePorts(0)
+  scoreboard.io.freePorts(0)    := wbStage.io.freePort
+  csrScoreBoard.io.freePorts(0) := wbStage.io.csrFreePort
   scoreboard.io.occupyPorts     := issueStage.io.occupyPortss(0)
   csrScoreBoard.io.occupyPorts  := issueStage.io.csrOccupyPortss(0)
 
   // Reg-read stage
-  regReadStage.io.issuedInfoPort      <> issueStage.io.issuedInfoPorts(0)
-  regReadStage.io.gprReadPorts(0)     <> regFile.io.readPorts(0)
-  regReadStage.io.gprReadPorts(1)     <> regFile.io.readPorts(1)
-  regReadStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
-
-  // regReadStage.io.dataforwardPorts.zip(dataforward.io.readPorts).foreach {
-  //   case (regRead, df) => regRead <> df
-  // }
+  regReadStage.io.in <> issueStage.io.issuedInfoPorts(0)
+  regReadStage.io.peer.get.gprReadPorts.zip(regFile.io.readPorts).foreach{
+    case (stage, rf) => {
+      stage <> rf
+    }
+  }
+  regReadStage.io.peer.get.csrReadPorts(0) <> csr.io.readPorts(0)
+  regReadStage.io.isFlush := cu.io.flushs(PipelineStageIndex.regReadStage)
 
   // Execution stage
-  exeStage.io.exeInstPort         <> regReadStage.io.exeInstPort
-  exeStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
-
-  exeStage.io.exeResultPort.ready := false.B // TODO: DELETE
+  exeStage.io.in <> regReadStage.io.out
+  exeStage.io.isFlush := cu.io.flushs(PipelineStageIndex.exeStage)
 
   // Mem stages
-  // TODO: Connect refactored `AddrTransStage` to `ExeStage`
-  // TODO: Connect flush
-  addrTransStage.io.in      <> DontCare
-  addrTransStage.io.isFlush := false.B
+  addrTransStage.io.in      <> exeStage.io.out
+  addrTransStage.io.isFlush := cu.io.flushs(PipelineStageIndex.addrTransStage)
   addrTransStage.io.peer.foreach { p =>
     p.tlbTrans <> tlb.io.tlbTransPorts(0)
     p.csr      := DontCare // TODO: CSR
@@ -223,18 +219,13 @@ class CoreCpuTop extends Module {
   wbStage.io.in        <> memResStage.io.out
   regFile.io.writePort := cu.io.gprWritePassThroughPorts.out(0)
 
-  // data forward
-  // dataforward.io.writePorts(0) := exeStage.io.gprWritePort
-  // dataforward.io.writePorts(1) := memStage.io.gprWritePassThroughPort.out
-
   // Ctrl unit
-  cu.io                                <> DontCare // TODO: Remove this after refactor
+  // cu.io                                <> DontCare // TODO: Remove this after refactor
   cu.io.instInfoPorts(0)               := wbStage.io.cuInstInfoPort
-  cu.io.exeStallRequest                := exeStage.io.stallRequest
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
-  cu.io.jumpPc                         := exeStage.io.branchSetPort
+  cu.io.jumpPc                         := exeStage.io.peer.get.branchSetPort
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -242,7 +233,6 @@ class CoreCpuTop extends Module {
       dst := src
   }
   csr.io.csrMessage := cu.io.csrMessage
-  csr.io.readPorts  <> regReadStage.io.csrReadPorts
 
   // Debug ports
   io.debug0_wb.pc       := wbStage.io.in.bits.instInfo.pc

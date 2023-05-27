@@ -14,7 +14,7 @@ class WbNdPort extends Bundle {
   val instInfo = new InstInfoNdPort
 }
 
-class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
+class WbStage extends Module {
   val io = IO(new Bundle {
     val in = Flipped(Decoupled(new WbNdPort))
 
@@ -22,8 +22,8 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
     val gprWritePort = Output(new RfWriteNdPort)
 
     // Scoreboard
-    val freePorts    = Output(Vec(changeNum, new ScoreboardChangeNdPort))
-    val csrFreePorts = Output(Vec(changeNum, new ScoreboardChangeNdPort))
+    val freePort    = Output(new ScoreboardChangeNdPort)
+    val csrFreePort = Output(new ScoreboardChangeNdPort)
 
     // `AddrTransStage` -> `WbStage` -> `Cu`  NO delay
     val cuInstInfoPort = Output(new InstInfoNdPort)
@@ -56,18 +56,12 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
   io.gprWritePort.en        := io.in.valid && io.in.bits.gprWrite.en
 
   // Indicate the availability in scoreboard
-  io.freePorts.zip(Seq(io.gprWritePort)).foreach {
-    case (freePort, accessInfo) =>
-      freePort.en   := accessInfo.en
-      freePort.addr := accessInfo.addr
-  }
+  io.freePort.en := io.gprWritePort.en && io.in.valid
+  io.freePort.addr := io.gprWritePort.addr
 
-  io.csrFreePorts.zip(Seq(io.in.bits.instInfo.csrWritePort)).foreach {
-    case (freePort, accessInfo) =>
-      freePort.en   := accessInfo.en && io.in.valid
-      freePort.addr := accessInfo.addr
-  }
-
+  io.csrFreePort.en := io.in.bits.instInfo.csrWritePort.en && io.in.valid
+  io.csrFreePort.addr := io.in.bits.instInfo.csrWritePort.addr
+  
   // Diff test connection
   io.difftest match {
     case Some(dt) =>
