@@ -70,7 +70,7 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
         }
     }
 
-  isComputed         := true.B
+  isComputed         := selectedIn.instInfo.isValid
   resultOutReg.valid := true.B
 
   resultOutReg.bits.exeSel       := selectedIn.preExeInstInfo.exeSel

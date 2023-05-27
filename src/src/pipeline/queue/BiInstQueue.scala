@@ -128,12 +128,10 @@ class BiInstQueue(
       deq_ptr.io.inc := 1.U
     }
   }
+
   // Decode
 
   val decodeInstInfos = WireDefault(VecInit(ram(deq_ptr.io.value), ram(deq_ptr.io.value + 1.U)))
-
-  // io.debugPort(0) := decodeInstInfos(0)
-  // io.debugPort(1) := decodeInstInfos(1)
 
   // Select a decoder
 
@@ -161,10 +159,6 @@ class BiInstQueue(
   decoders1.foreach(_.io.instInfoPort := decodeInstInfos(1))
 
   val decoderWires = Wire(Vec(2, Vec(decoders0.length, new DecodeOutNdPort)))
-  // decoderWires.zip(decoders).foreach {
-  //   case (port, decoder) =>
-  //     port := decoder.io.out
-  // }
   decoderWires.zip(Seq(decoders0, decoders1)).foreach {
     case (decoderWire, decoders) =>
       decoderWire.zip(decoders).foreach {
@@ -173,8 +167,6 @@ class BiInstQueue(
       }
   }
 
-  // val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
-  // val selectedDecoder = WireDefault(decoderWires(decoderIndex))
   val decoderIndices = WireDefault(VecInit(decoderWires.map { decoderWire =>
     OHToUInt(Cat(decoderWire.map(_.isMatched).reverse))
   }))
@@ -190,8 +182,10 @@ class BiInstQueue(
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
+      val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
       dequeuePort.bits.instInfo
-        .exceptionRecords(Csr.ExceptionIndex.ine) := !decoderWires(index).map(_.isMatched).reduce(_ || _)
+        .exceptionRecords(Csr.ExceptionIndex.ine) := !isMatched
+      dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR  // TODO: Check if it can change to isMatched (see whether commit or not)
   }
 
   when(io.pipelineControlPort.flush) {
