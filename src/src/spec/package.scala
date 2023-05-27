@@ -37,11 +37,6 @@ package object spec {
     val memResStage    = next
   }
 
-  object ReadWriteMode {
-    val read  = false.B
-    val write = true.B
-  }
-
   object Width {
     val inst = wordLength.W
     object Reg {

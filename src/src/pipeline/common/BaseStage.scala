@@ -53,7 +53,6 @@ abstract class BaseStage[InT <: Data, OutT <: Data, PT <: Data](
 
   protected val resultOutReg: ValidIO[OutT] = RegInit(0.U.asTypeOf(ValidIO(outNdFactory)))
   resultOutReg.valid := false.B
-  resultOutReg.bits  := DontCare
   private val lastResultOut = Wire(Decoupled(outNdFactory))
   lastResultOut.valid := resultOutReg.valid
   lastResultOut.bits  := resultOutReg.bits
