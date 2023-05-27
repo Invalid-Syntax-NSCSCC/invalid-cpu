@@ -12,6 +12,7 @@ class Mul extends Module {
   val io = IO(new Bundle {
     val mulInst   = Flipped(Decoupled(new MulDivInstNdPort))
     val mulResult = Decoupled(UInt(doubleWordLength.W))
+    val isFlush   = Input(Bool())
   })
 
   val op  = WireDefault(io.mulInst.bits.op)
@@ -120,4 +121,9 @@ class Mul extends Module {
 
   io.mulInst.ready   := ~outValid
   io.mulResult.valid := outValid
+
+  when(io.isFlush) {
+    resultReg          := 0.U
+    io.mulResult.valid := false.B
+  }
 }

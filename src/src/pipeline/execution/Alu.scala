@@ -17,6 +17,8 @@ class Alu extends Module {
 
     val outputValid = Output(Bool())
     val result      = Output(new AluResultNdPort)
+
+    val isFlush = Input(Bool())
   })
 
   io.outputValid := true.B
@@ -141,6 +143,7 @@ class Alu extends Module {
 
   val mulStart = WireDefault(useMul && mulStage.io.mulInst.ready && io.inputValid)
 
+  mulStage.io.isFlush                   := io.isFlush
   mulStage.io.mulInst.valid             := mulStart
   mulStage.io.mulResult.ready           := DontCare
   mulStage.io.mulInst.bits.op           := io.aluInst.op
@@ -178,6 +181,7 @@ class Alu extends Module {
 
   val divStart = WireDefault(useDiv && divStage.io.divInst.ready && divisorValid)
 
+  divStage.io.isFlush                   := io.isFlush
   divStage.io.divInst.valid             := divStart
   divStage.io.divInst.bits.op           := io.aluInst.op
   divStage.io.divInst.bits.leftOperand  := lop
@@ -227,5 +231,12 @@ class Alu extends Module {
     is(Op.mod, Op.modu) {
       arithmetic := selectedRemainder
     }
+  }
+
+  when(io.isFlush) {
+    io.outputValid    := false.B
+    mulResultStoreReg := 0.U
+    remainderStoreReg := 0.U
+    quotientStoreReg  := 0.U
   }
 }

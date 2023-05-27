@@ -72,6 +72,7 @@ class ExeStage
   resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
 
   // ALU input
+  alu.io.isFlush                := io.isFlush
   alu.io.inputValid             := selectedIn.instInfo.isValid
   alu.io.aluInst.op             := selectedIn.exeOp
   alu.io.aluInst.leftOperand    := selectedIn.leftOperand
@@ -181,10 +182,4 @@ class ExeStage
 
   // branch set
   io.peer.get.branchSetPort := alu.io.result.jumpBranchInfo
-
-  /** InstInfo Csr read or write info
-    */
-
-  // Flush
-  when(io.isFlush) {}
 }

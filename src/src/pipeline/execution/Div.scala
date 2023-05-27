@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import spec._
 import pipeline.execution.bundles.MulDivInstNdPort
+import os.isFile
 
 // Attention : 如果运行时输入数据，输入无效
 class Div extends Module {
@@ -14,7 +15,7 @@ class Div extends Module {
       val quotient  = Output(UInt(wordLength.W)) // 商
       val remainder = Output(UInt(wordLength.W)) // 余数
     })
-    // val isRunning = Output(Bool())
+    val isFlush = Input(Bool())
   })
 
   // 正在运行
@@ -199,4 +200,17 @@ class Div extends Module {
   // 运算完成
   io.divResult.valid := (runningDelay && terminateDelay) ||
     (startDelay && divisorGreaterThanDividendDelay)
+
+  when(io.isFlush) {
+    io.divResult.valid              := false.B
+    running                         := false.B
+    quotient                        := zeroWord
+    remainder                       := zeroWord
+    shiftedDivisor                  := 0.U
+    cyclesRemaining                 := 0.U
+    runningDelay                    := false.B
+    terminateDelay                  := false.B
+    startDelay                      := false.B
+    divisorGreaterThanDividendDelay := false.B
+  }
 }
