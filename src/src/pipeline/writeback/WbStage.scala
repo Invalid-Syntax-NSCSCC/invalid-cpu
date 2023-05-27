@@ -8,10 +8,15 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec._
 
+class WbNdPort extends Bundle {
+  val gprWrite = new RfWriteNdPort
+  val instInfo = new InstInfoNdPort
+}
+
 class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
   val io = IO(new Bundle {
-    // `AddrTransStage` -> `WbStage`
-    val gprWriteInfoPort = Input(new RfWriteNdPort)
+    val in = Input(new WbNdPort)
+
     // `WbStage` -> `Cu` NO delay
     val gprWritePort = Output(new RfWriteNdPort)
 
@@ -20,7 +25,7 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
     val csrFreePorts = Output(Vec(changeNum, new ScoreboardChangeNdPort))
 
     // `AddrTransStage` -> `WbStage` -> `Cu`  NO delay
-    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
+    val cuInstInfoPort = Output(new InstInfoNdPort)
 
     val difftest =
       if (isDiffTest)
@@ -41,10 +46,9 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
       else None
   })
 
-  // Wb debug port connection
-  io.instInfoPassThroughPort.out := io.instInfoPassThroughPort.in
-
-  io.gprWritePort := io.gprWriteInfoPort
+  // Output connection
+  io.cuInstInfoPort := io.in.instInfo
+  io.gprWritePort   := io.in.gprWrite
 
   // Indicate the availability in scoreboard
   io.freePorts.zip(Seq(io.gprWritePort)).foreach {
@@ -53,7 +57,7 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
       freePort.addr := accessInfo.addr
   }
 
-  io.csrFreePorts.zip(Seq(io.instInfoPassThroughPort.in.csrWritePort)).foreach {
+  io.csrFreePorts.zip(Seq(io.in.instInfo.csrWritePort)).foreach {
     case (freePort, accessInfo) =>
       freePort.en   := accessInfo.en
       freePort.addr := accessInfo.addr
@@ -63,14 +67,14 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
   io.difftest match {
     case Some(dt) =>
       dt           := DontCare
-      dt.valid     := RegNext(io.instInfoPassThroughPort.in.pc.orR)
-      dt.pc        := RegNext(io.instInfoPassThroughPort.in.pc)
-      dt.instr     := RegNext(io.instInfoPassThroughPort.in.inst)
-      dt.wen       := RegNext(io.gprWriteInfoPort.en)
-      dt.wdest     := RegNext(io.gprWriteInfoPort.addr)
-      dt.wdata     := RegNext(io.gprWriteInfoPort.data)
-      dt.csr_rstat := RegNext(io.instInfoPassThroughPort.in.csrWritePort.en)
-      dt.csr_data  := RegNext(io.instInfoPassThroughPort.in.csrWritePort.data)
+      dt.valid     := RegNext(io.in.instInfo.isValid)
+      dt.pc        := RegNext(io.in.instInfo.pc)
+      dt.instr     := RegNext(io.in.instInfo.inst)
+      dt.wen       := RegNext(io.in.gprWrite.en)
+      dt.wdest     := RegNext(io.in.gprWrite.addr)
+      dt.wdata     := RegNext(io.in.gprWrite.data)
+      dt.csr_rstat := RegNext(io.in.instInfo.csrWritePort.en)
+      dt.csr_data  := RegNext(io.in.instInfo.csrWritePort.data)
     case _ =>
   }
 }

@@ -6,10 +6,6 @@ import pipeline.mem.bundles.MemRequestNdPort
 import spec._
 
 class MemAccessPort extends Bundle {
-  val req = new Bundle {
-    val client  = Input(new MemRequestNdPort)
-    val isReady = Output(Bool())
-  }
-
+  val req = new MemRequestHandshakePort
   val res = Output(new MemResponseNdPort)
 }

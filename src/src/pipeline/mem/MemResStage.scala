@@ -5,69 +5,60 @@ import chisel3.util._
 import common.bundles.{PassThroughPort, RfWriteNdPort}
 import control.bundles.PipelineControlNdPort
 import memory.bundles.MemResponseNdPort
-import pipeline.mem.enums.{MemResStageState => State}
+import pipeline.common.BaseStage
+import pipeline.writeback.WbNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec._
 
 import scala.collection.immutable
 
-class MemResStage extends Module {
-  val io = IO(new Bundle {
-    val dCacheResponsePort   = Input(new MemResponseNdPort) // <-- DCache
-    val uncachedResponsePort = Input(new MemResponseNdPort) // <-- UncachedAgent
-    val isHasRequest         = Input(Bool()) // <-- MemReqStage
-    val isCachedRequest      = Input(Bool()) // <-- MemReqStage
-    val isUnsigned           = Input(Bool()) // <-- MemReqStage
-    val dataMask             = Input(UInt((Width.Mem._data / byteLength).W)) // <-- MemReqStage
-    val pipelineControlPort  = Input(new PipelineControlNdPort) // <-- Cu
-    val stallRequest         = Output(Bool()) // --> Cu
+class MemResNdPort extends Bundle {
+  val isHasReq   = Bool()
+  val isCached   = Bool()
+  val isUnsigned = Bool()
+  val isRead     = Bool()
+  val dataMask   = UInt((Width.Mem._data / byteLength).W)
+  val gprWrite   = new RfWriteNdPort
+  val instInfo   = new InstInfoNdPort
+}
 
-    // (Next clock pulse)
-    val gprWritePassThroughPort = new PassThroughPort(new RfWriteNdPort)
-    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
-  })
+object MemResNdPort {
+  def default: MemResNdPort = 0.U.asTypeOf(new MemResNdPort)
+}
 
-  // Pass GPR write request to the next stage
-  val gprWriteReg = RegNext(io.gprWritePassThroughPort.in)
-  io.gprWritePassThroughPort.out := gprWriteReg // Fallback: Pass through
+class MemResPeerPort extends Bundle {
+  val dCacheRes   = Input(new MemResponseNdPort)
+  val uncachedRes = Input(new MemResponseNdPort)
+}
 
-  // Wb debug port connection
-  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
-  io.instInfoPassThroughPort.out := instInfoReg // Fallback: Pass through
+class MemResStage
+    extends BaseStage(
+      new MemResNdPort,
+      new WbNdPort,
+      MemResNdPort.default,
+      Some(new MemResPeerPort)
+    ) {
+  val peer = io.peer.get
+  val out  = resultOutReg.bits
 
-  // State
-  val stateReg = RegInit(State.free)
+  // Fallback output
+  out.gprWrite := selectedIn.gprWrite
+  out.instInfo := selectedIn.instInfo
 
-  // Persist information
-  val lastGprWriteReg = RegInit(RfWriteNdPort.default)
-  lastGprWriteReg := lastGprWriteReg // Fallback: Keep data
-
-  val lastInstInfoReg = RegInit(InstInfoNdPort.default)
-  lastInstInfoReg := lastInstInfoReg // Fallback: Keep data
-
-  // Select complete signal
-  val isComplete = WireDefault(
-    Mux(
-      io.isCachedRequest,
-      io.dCacheResponsePort.isComplete,
-      io.uncachedResponsePort.isComplete
-    )
-  )
-
-  // Select read data
+  // Get read data
   val rawReadData = WireDefault(
     Mux(
-      io.isCachedRequest,
-      io.dCacheResponsePort.read.data,
-      io.uncachedResponsePort.read.data
+      selectedIn.isCached,
+      peer.dCacheRes.read.data,
+      peer.uncachedRes.read.data
     )
   )
-  val signedReadData   = WireDefault(0.S(Width.Mem.data))
-  val unsignedReadData = WireDefault(0.U(Width.Mem.data))
-  def readDataLookup[T <: Bits](modifier: UInt => T) = MuxLookup(io.dataMask, modifier(rawReadData))(
+  val signedReadData   = WireDefault(0.S(Width.Reg.data))
+  val unsignedReadData = WireDefault(0.U(Width.Reg.data))
+  def readDataLookup[T <: Bits](modifier: UInt => T) = MuxLookup(selectedIn.dataMask, modifier(rawReadData))(
     Seq
       .range(0, 4)
-      .map(index => (1.U << index).asUInt -> modifier(rawReadData((index + 1) * 8 - 1, index * 8))) ++
+      .map(index => ("b1".U << index).asUInt -> modifier(rawReadData((index + 1) * 8 - 1, index * 8))) ++
       Seq
         .range(0, 2)
         .map(index =>
@@ -79,56 +70,18 @@ class MemResStage extends Module {
   )
   signedReadData   := readDataLookup(_.asSInt)
   unsignedReadData := readDataLookup(_.asUInt)
-  val readData = Mux(io.isUnsigned, unsignedReadData, signedReadData.asUInt)
-
-  // Fallback: Do not stall
-  io.stallRequest := false.B
-
-  switch(stateReg) {
-    is(State.free) {
-      lastGprWriteReg := io.gprWritePassThroughPort.in
-      lastInstInfoReg := io.instInfoPassThroughPort.in
-
-      when(io.isHasRequest) {
-        // Check whether hit when has request
-        when(isComplete) {
-          // When hit
-          // TODO: Handle failing (which might not be necessary)
-          io.gprWritePassThroughPort.out.data := readData
-        }.otherwise {
-          // When not hit
-          io.gprWritePassThroughPort.out.en := false.B
-          InstInfoNdPort.invalidate(io.instInfoPassThroughPort.out)
-
-          io.stallRequest := true.B
-
-          // Next state: Wait for hit
-          stateReg := State.busy
-        }
-      }
-    }
-    is(State.busy) {
-      when(isComplete) {
-        // Continue to write-back stage
-        io.gprWritePassThroughPort.out      := lastGprWriteReg
-        io.gprWritePassThroughPort.out.data := readData
-        io.instInfoPassThroughPort.out      := lastInstInfoReg
-
-        // Next state: Ready
-        stateReg := State.free
-      }.otherwise {
-        // No GPR write and invalidate instruction
-        io.gprWritePassThroughPort.out.en := false.B
-        InstInfoNdPort.invalidate(io.instInfoPassThroughPort.out)
-
-        io.stallRequest := true.B
-      }
-    }
+  when(selectedIn.isRead) {
+    out.gprWrite.data := Mux(selectedIn.isUnsigned, unsignedReadData, signedReadData.asUInt)
   }
 
-  // Flush
-  when(io.pipelineControlPort.flush) {
-    gprWriteReg.en := false.B
-    InstInfoNdPort.invalidate(instInfoReg)
+  when(selectedIn.instInfo.isValid) {
+    // Whether memory access complete
+    when(selectedIn.isCached) {
+      isComputed := peer.dCacheRes.isComplete
+    }.otherwise {
+      isComputed := peer.uncachedRes.isComplete
+    }
+    // Submit result
+    resultOutReg := isComputed
   }
 }
