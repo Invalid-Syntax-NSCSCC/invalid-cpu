@@ -145,16 +145,16 @@ class CoreCpuTop extends Module {
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
   // Simple fetch stage
-  simpleFetchStage.io.pc                  := pc.io.pc
+  simpleFetchStage.io.pc      := pc.io.pc
   simpleFetchStage.io.isFlush := cu.io.flushs(PipelineStageIndex.frontend)
-  pc.io.isNext                            := simpleFetchStage.io.isPcNext
+  pc.io.isNext                := simpleFetchStage.io.isPcNext
 
   // Inst Queue
   instQueue.io.enqueuePorts(0) <> simpleFetchStage.io.instEnqueuePort
   // TODO: CONNECT
   instQueue.io.enqueuePorts(1)       <> DontCare // TODO: DELETE
   instQueue.io.enqueuePorts(1).valid := false.B // TODO: DELETE
-  instQueue.io.isFlush   := cu.io.flushs(PipelineStageIndex.frontend)
+  instQueue.io.isFlush               := cu.io.flushs(PipelineStageIndex.frontend)
 
   // Issue stage
   issueStage.io.fetchInstDecodePorts(0)       <> instQueue.io.dequeuePorts(0)
@@ -164,9 +164,9 @@ class CoreCpuTop extends Module {
   instQueue.io.dequeuePorts(1).ready          := false.B // TODO: DELETE
   issueStage.io.regScores                     := scoreboard.io.regScores
 
-  issueStage.io.isFlushs(0) := cu.io.flushs(PipelineStageIndex.issueStage)
-  issueStage.io.isFlushs(1) := false.B // TODO: DELETE
-  issueStage.io.csrRegScores            := csrScoreBoard.io.regScores
+  issueStage.io.isFlushs(0)  := cu.io.flushs(PipelineStageIndex.issueStage)
+  issueStage.io.isFlushs(1)  := false.B // TODO: DELETE
+  issueStage.io.csrRegScores := csrScoreBoard.io.regScores
 
   issueStage.io.robEmptyNum := 2.U // TODO: DELETE
   issueStage.io.idGetPorts.foreach { port =>
@@ -181,16 +181,16 @@ class CoreCpuTop extends Module {
 
   // Reg-read stage
   regReadStage.io.in <> issueStage.io.issuedInfoPorts(0)
-  regReadStage.io.peer.get.gprReadPorts.zip(regFile.io.readPorts).foreach{
+  regReadStage.io.peer.get.gprReadPorts.zip(regFile.io.readPorts).foreach {
     case (stage, rf) => {
       stage <> rf
     }
   }
   regReadStage.io.peer.get.csrReadPorts(0) <> csr.io.readPorts(0)
-  regReadStage.io.isFlush := cu.io.flushs(PipelineStageIndex.regReadStage)
+  regReadStage.io.isFlush                  := cu.io.flushs(PipelineStageIndex.regReadStage)
 
   // Execution stage
-  exeStage.io.in <> regReadStage.io.out
+  exeStage.io.in      <> regReadStage.io.out
   exeStage.io.isFlush := cu.io.flushs(PipelineStageIndex.exeStage)
 
   // Mem stages

@@ -17,8 +17,8 @@ class BiInstQueue(
     extends Module {
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
-    val isFlush = Input(Bool())
-    val enqueuePorts        = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
+    val isFlush      = Input(Bool())
+    val enqueuePorts = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
@@ -185,7 +185,7 @@ class BiInstQueue(
       val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
       dequeuePort.bits.instInfo
         .exceptionRecords(Csr.ExceptionIndex.ine) := !isMatched
-      dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR  // TODO: Check if it can change to isMatched (see whether commit or not)
+      dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
   }
 
   when(io.isFlush) {

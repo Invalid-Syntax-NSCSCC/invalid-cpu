@@ -11,10 +11,10 @@ import spec._
 
 class SimpleFetchStage extends Module {
   val io = IO(new Bundle {
-    val pc                  = Input(UInt(Width.Reg.data))
-    val isPcNext            = Output(Bool())
-    val axiMasterInterface  = new AxiMasterInterface
-    val instEnqueuePort     = Decoupled(new InstInfoBundle)
+    val pc                 = Input(UInt(Width.Reg.data))
+    val isPcNext           = Output(Bool())
+    val axiMasterInterface = new AxiMasterInterface
+    val instEnqueuePort    = Decoupled(new InstInfoBundle)
     // val pipelineControlPort = Input(new PipelineControlNdPort)
     val isFlush = Input(Bool())
   })

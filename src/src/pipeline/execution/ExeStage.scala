@@ -52,22 +52,25 @@ object ExeNdPort {
 }
 
 class ExePeerPort extends Bundle {
-    // `ExeStage` -> `Cu` (no delay)
-    val branchSetPort = Output(new PcSetPort)
+  // `ExeStage` -> `Cu` (no delay)
+  val branchSetPort = Output(new PcSetPort)
 }
 
 // throw exception: 地址未对齐 ale
-class ExeStage extends BaseStage(
-  new ExeNdPort, new AddrTransNdPort, ExeNdPort.default, Some(new ExePeerPort)
-) {
+class ExeStage
+    extends BaseStage(
+      new ExeNdPort,
+      new AddrTransNdPort,
+      ExeNdPort.default,
+      Some(new ExePeerPort)
+    ) {
 
   // ALU module
   val alu = Module(new Alu)
 
-  isComputed
+  isComputed         := alu.io.outputValid
   resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
-  
-  
+
   // ALU input
   alu.io.inputValid             := selectedIn.instInfo.isValid
   alu.io.aluInst.op             := selectedIn.exeOp
@@ -171,7 +174,7 @@ class ExeStage extends BaseStage(
       resultOutReg.bits.memRequest.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
     }
     is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-      isAle                           := maskEncode.orR
+      isAle                             := maskEncode.orR
       resultOutReg.bits.memRequest.mask := "b1111".U
     }
   }
@@ -183,6 +186,5 @@ class ExeStage extends BaseStage(
     */
 
   // Flush
-  when(io.isFlush) {
-  }
+  when(io.isFlush) {}
 }

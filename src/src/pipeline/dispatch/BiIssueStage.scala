@@ -102,7 +102,7 @@ class BiIssueStage(
     )
   )
   selectValidWires.foreach(_ := 0.U.asTypeOf(selectValidWires(0)))
- 
+
   val canIssueMaxNumFromPipeline = WireDefault(io.issuedInfoPorts.map(_.ready.asUInt).reduce(_ +& _))
   val canIssueMaxNumFromRob      = WireDefault(io.robEmptyNum)
   when(io.robEmptyNum === 1.U && !io.fetchInstDecodePorts.map(_.bits.decode.info.gprWritePort.en).reduce(_ && _)) {
