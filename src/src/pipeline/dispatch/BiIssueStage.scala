@@ -53,15 +53,6 @@ class BiIssueStage(
   // fall back
   io.idGetPorts.foreach(_.writeEn := false.B)
 
-  val issueEnablesReg = RegInit(VecInit(Seq.fill(issueNum)(false.B)))
-  issueEnablesReg.foreach(_ := false.B)
-  val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(RegReadNdPort.default)))
-  io.issuedInfoPorts.lazyZip(issueInfosReg).lazyZip(issueEnablesReg).foreach { (dst, src, valid) =>
-    dst.bits  := src
-    dst.valid := valid
-  }
-
-  // fall back
   io.fetchInstDecodePorts.foreach { port =>
     port.ready := false.B
   }
@@ -76,6 +67,14 @@ class BiIssueStage(
   io.issuedInfoPorts.foreach { port =>
     port.valid := false.B
     port.bits  := RegReadNdPort.default
+  }
+
+  val issueEnablesReg = RegInit(VecInit(Seq.fill(issueNum)(false.B)))
+  issueEnablesReg.foreach(_ := false.B)
+  val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(RegReadNdPort.default)))
+  io.issuedInfoPorts.lazyZip(issueInfosReg).lazyZip(issueEnablesReg).foreach { (dst, src, valid) =>
+    dst.bits  := src
+    dst.valid := valid
   }
 
   /** Combine stage 1 : get fetch infos
