@@ -24,6 +24,8 @@ class MemReqStage extends Module {
     val dataMask                = Output(UInt((Width.Mem._data / byteLength).W))
   })
 
+  // TODO: Persist input for stalling and use the persisted one as output
+
   // Persist for stalling
   val isLastStall = RegNext(io.pipelineControlPort.stall, false.B)
   val translatedMemRequestReg =
