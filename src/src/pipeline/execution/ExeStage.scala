@@ -121,6 +121,8 @@ class ExeStage
   def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
   resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
+  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.sys) := selectedIn.exeOp === ExeInst.Op.syscall
+  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.brk) := selectedIn.exeOp === ExeInst.Op.break_
 
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.csrwr) {
