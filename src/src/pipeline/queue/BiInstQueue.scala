@@ -17,8 +17,8 @@ class BiInstQueue(
     extends Module {
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
-    val pipelineControlPort = Input(new PipelineControlNdPort)
-    val enqueuePorts        = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
+    val isFlush      = Input(Bool())
+    val enqueuePorts = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
@@ -42,9 +42,9 @@ class BiInstQueue(
   val deq_ptr = Module(new BiCounter(queueLength))
 
   enq_ptr.io.inc   := 0.U
-  enq_ptr.io.flush := io.pipelineControlPort.flush
+  enq_ptr.io.flush := io.isFlush
   deq_ptr.io.inc   := 0.U
-  deq_ptr.io.flush := io.pipelineControlPort.flush
+  deq_ptr.io.flush := io.isFlush
 
   val maybeFull = RegInit(false.B)
   val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
@@ -53,9 +53,13 @@ class BiInstQueue(
 
   val storeNum = WireDefault(
     Mux(
-      enq_ptr.io.value > deq_ptr.io.value,
-      enq_ptr.io.value - deq_ptr.io.value,
-      (queueLength.U - deq_ptr.io.value) + enq_ptr.io.value
+      enq_ptr.io.value === deq_ptr.io.value,
+      Mux(isEmpty, 0.U, queueLength.U),
+      Mux(
+        enq_ptr.io.value > deq_ptr.io.value,
+        enq_ptr.io.value - deq_ptr.io.value,
+        (queueLength.U - deq_ptr.io.value) + enq_ptr.io.value
+      )
     )
   )
   val emptyNum = WireDefault(queueLength.U - storeNum)
@@ -74,7 +78,7 @@ class BiInstQueue(
 
   val enqEn = (io.enqueuePorts.map(port => (port.ready && port.valid)))
   // val enqueueNum = io.enqueuePorts.map(_.valid).map(_.asUInt).reduce(_ + _)
-  // 优化
+  // enqEn(0) + enqEn(1)
   val enqueueNum = Cat(
     enqEn(0) & enqEn(1),
     enqEn(0) ^ enqEn(1)
@@ -128,12 +132,10 @@ class BiInstQueue(
       deq_ptr.io.inc := 1.U
     }
   }
+
   // Decode
 
   val decodeInstInfos = WireDefault(VecInit(ram(deq_ptr.io.value), ram(deq_ptr.io.value + 1.U)))
-
-  // io.debugPort(0) := decodeInstInfos(0)
-  // io.debugPort(1) := decodeInstInfos(1)
 
   // Select a decoder
 
@@ -161,10 +163,6 @@ class BiInstQueue(
   decoders1.foreach(_.io.instInfoPort := decodeInstInfos(1))
 
   val decoderWires = Wire(Vec(2, Vec(decoders0.length, new DecodeOutNdPort)))
-  // decoderWires.zip(decoders).foreach {
-  //   case (port, decoder) =>
-  //     port := decoder.io.out
-  // }
   decoderWires.zip(Seq(decoders0, decoders1)).foreach {
     case (decoderWire, decoders) =>
       decoderWire.zip(decoders).foreach {
@@ -173,8 +171,6 @@ class BiInstQueue(
       }
   }
 
-  // val decoderIndex    = WireDefault(OHToUInt(Cat(decoderWires.map(_.isMatched).reverse)))
-  // val selectedDecoder = WireDefault(decoderWires(decoderIndex))
   val decoderIndices = WireDefault(VecInit(decoderWires.map { decoderWire =>
     OHToUInt(Cat(decoderWire.map(_.isMatched).reverse))
   }))
@@ -190,11 +186,13 @@ class BiInstQueue(
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
+      val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
       dequeuePort.bits.instInfo
-        .exceptionRecords(Csr.ExceptionIndex.ine) := !decoderWires(index).map(_.isMatched).reduce(_ || _)
+        .exceptionRecords(Csr.ExceptionIndex.ine) := !isMatched
+      dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
   }
 
-  when(io.pipelineControlPort.flush) {
+  when(io.isFlush) {
     ram.foreach(_ := InstInfoBundle.default)
   }
 }

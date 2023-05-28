@@ -3,7 +3,6 @@ package pipeline.execution
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
-import pipeline.dispatch.bundles.ExeInstNdPort
 import spec.ExeInst.Sel
 import spec._
 import control.bundles.PipelineControlNdPort
@@ -17,266 +16,170 @@ import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import common.enums.ReadWriteSel
 import pipeline.mem.bundles.MemRequestNdPort
+import pipeline.execution.bundles.ExeResultPort
+import pipeline.common.BaseStage
+import pipeline.mem.AddrTransNdPort
 
-// TODO: Add (flush ?) when jump / branch
+class ExeNdPort extends Bundle {
+  // Micro-instruction for execution stage
+  val exeSel = UInt(Param.Width.exeSel)
+  val exeOp  = UInt(Param.Width.exeOp)
+  // Operands
+  val leftOperand  = UInt(Width.Reg.data)
+  val rightOperand = UInt(Width.Reg.data)
+
+  // Branch jump addr
+  val jumpBranchAddr = UInt(Width.Reg.data)
+  def loadStoreImm   = jumpBranchAddr
+  def csrData        = jumpBranchAddr
+
+  // GPR write (writeback)
+  val gprWritePort = new RfAccessInfoNdPort
+
+  val instInfo = new InstInfoNdPort
+}
+
+object ExeNdPort {
+  def default = (new ExeNdPort).Lit(
+    _.exeSel -> ExeInst.Sel.none,
+    _.exeOp -> ExeInst.Op.nop,
+    _.leftOperand -> 0.U,
+    _.rightOperand -> 0.U,
+    _.gprWritePort -> RfAccessInfoNdPort.default,
+    _.jumpBranchAddr -> zeroWord,
+    _.instInfo -> InstInfoNdPort.default
+  )
+}
+
+class ExePeerPort extends Bundle {
+  // `ExeStage` -> `Cu` (no delay)
+  val branchSetPort = Output(new PcSetPort)
+}
+
 // throw exception: 地址未对齐 ale
-class ExeStage extends Module {
-  val io = IO(new Bundle {
-    val exeInstPort = Input(new ExeInstNdPort)
-
-    // `ExeStage` -> `AddrTransStage` (next clock pulse)
-    val memAccessPort           = Output(new MemRequestNdPort)
-    val gprWritePort            = Output(new RfWriteNdPort)
-    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
-
-    // `ExeStage` -> `Pc` (no delay)
-    val branchSetPort = Output(new PcSetPort)
-
-    // Scoreboard
-    val freePorts = Output(new ScoreboardChangeNdPort)
-
-    // Pipeline control signal
-    // `Cu` -> `ExeStage`
-    val pipelineControlPort = Input(new PipelineControlNdPort)
-    // `ExeStage` -> `Cu`
-    val stallRequest = Output(Bool())
-  })
-
-  // Indicate the availability in scoreboard
-  // 当再ExeStage计算出结果，则free scoreboard
-  val freePortEn = RegInit(false.B)
-  freePortEn        := false.B
-  io.freePorts.en   := freePortEn
-  io.freePorts.addr := io.gprWritePort.addr
-
-  // Pass to the next stage in a sequential way
-  val gprWriteReg = RegInit(RfWriteNdPort.default)
-  io.gprWritePort := gprWriteReg
-
-  val memRequestReg = RegInit(MemRequestNdPort.default)
-  io.memAccessPort := memRequestReg
-
-  // Start: state machine
-
-  /** State behaviors: --> exeInst store and select
-    *   - Fallback : keep inst store reg
-    *   - `nonBlocking`: select and store input exeInst
-    *   - `blocking` : select stored exeInst
-    *
-    * State transitions:
-    *   - `nonBlocking`: is blocking -> `blocking`, else `nonBlocking`
-    *   - `blocking` : is blocking -> `blocking`, else `nonBlocking`
-    */
-  val nextState = WireDefault(State.nonBlocking)
-  val stateReg  = RegNext(nextState, State.nonBlocking)
-
-  // State machine output (including fallback)
-  val exeInstStoreReg = RegInit(ExeInstNdPort.default)
-  exeInstStoreReg := exeInstStoreReg
-  val pcStoreReg = RegInit(zeroWord)
-  pcStoreReg := pcStoreReg
-  val instInfoStoreReg = Reg(new InstInfoNdPort)
-  instInfoStoreReg := instInfoStoreReg
-
-  val selectedExeInst = WireDefault(ExeInstNdPort.default)
-  val selectedPc      = WireDefault(zeroWord)
-  // val selectedMemLoadStoreInfo = WireDefault(MemLoadStoreInfoNdPort.default)
-  val selectedInstInfo = WireDefault(instInfoStoreReg)
-
-  // Wb debug port connection
-  val instInfoReg = RegNext(selectedInstInfo)
-  io.instInfoPassThroughPort.out := instInfoReg
-
-  // Implement output function
-  switch(stateReg) {
-    is(State.nonBlocking) {
-      selectedExeInst := io.exeInstPort
-      exeInstStoreReg := io.exeInstPort
-      selectedPc      := io.instInfoPassThroughPort.in.pc
-      pcStoreReg      := io.instInfoPassThroughPort.in.pc
-
-      // val inMemLoadStoreInfo = Wire(new MemLoadStoreInfoNdPort)
-      // inMemLoadStoreInfo.data  := io.exeInstPort.rightOperand
-      // inMemLoadStoreInfo.vaddr := (io.exeInstPort.leftOperand + io.exeInstPort.loadStoreImm)
-      // selectedMemLoadStoreInfo := inMemLoadStoreInfo
-      // memLoadStoreInfoStoreReg := inMemLoadStoreInfo
-      selectedInstInfo := io.instInfoPassThroughPort.in
-      instInfoStoreReg := io.instInfoPassThroughPort.in
-    }
-    is(State.blocking) {
-      selectedExeInst := exeInstStoreReg
-      selectedPc      := pcStoreReg
-      // selectedMemLoadStoreInfo := memLoadStoreInfoStoreReg
-      selectedInstInfo := instInfoStoreReg
-    }
-  }
+class ExeStage
+    extends BaseStage(
+      new ExeNdPort,
+      new AddrTransNdPort,
+      ExeNdPort.default,
+      Some(new ExePeerPort)
+    ) {
 
   // ALU module
   val alu = Module(new Alu)
 
-  // state machine input
-  val stallRequest = WireDefault(alu.io.stallRequest)
-  io.stallRequest := stallRequest
-  val isBlocking = io.pipelineControlPort.stall || stallRequest
-
-  // Next state function
-  nextState := Mux(isBlocking, State.blocking, State.nonBlocking)
+  isComputed         := alu.io.outputValid
+  resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
 
   // ALU input
-  alu.io.aluInst.op             := selectedExeInst.exeOp
-  alu.io.aluInst.leftOperand    := selectedExeInst.leftOperand
-  alu.io.aluInst.rightOperand   := selectedExeInst.rightOperand
-  alu.io.aluInst.jumpBranchAddr := selectedExeInst.jumpBranchAddr // also load-store imm
-  alu.io.pipelineControlPort    := io.pipelineControlPort
+  alu.io.isFlush                := io.isFlush
+  alu.io.inputValid             := selectedIn.instInfo.isValid
+  alu.io.aluInst.op             := selectedIn.exeOp
+  alu.io.aluInst.leftOperand    := selectedIn.leftOperand
+  alu.io.aluInst.rightOperand   := selectedIn.rightOperand
+  alu.io.aluInst.jumpBranchAddr := selectedIn.jumpBranchAddr // also load-store imm
 
   // ALU output
 
-  when(isBlocking) {
-    io.instInfoPassThroughPort.out := InstInfoNdPort.default
-  }
-
-  val gprWriteWire   = WireDefault(RfWriteNdPort.default)
-  val memRequestWire = WireDefault(MemRequestNdPort.default)
-
-  when(!isBlocking) {
-    switch(stateReg) {
-      is(State.blocking) {
-        io.gprWritePort  := gprWriteWire
-        io.memAccessPort := memRequestWire
-      }
-      is(State.nonBlocking) {
-        gprWriteReg   := gprWriteWire
-        memRequestReg := memRequestWire
-      }
-    }
-  }
+  // write-back information fallback
+  resultOutReg.bits.gprWrite.en   := false.B
+  resultOutReg.bits.gprWrite.addr := zeroWord
+  resultOutReg.bits.gprWrite.data := zeroWord
 
   // write-back information selection
-  when(!isBlocking) {
-    gprWriteWire.en   := selectedExeInst.gprWritePort.en
-    gprWriteWire.addr := selectedExeInst.gprWritePort.addr
+  resultOutReg.bits.gprWrite.en   := selectedIn.gprWritePort.en
+  resultOutReg.bits.gprWrite.addr := selectedIn.gprWritePort.addr
 
-    switch(selectedExeInst.exeSel) {
-      is(Sel.logic) {
-        io.freePorts.en   := gprWriteWire.en
-        gprWriteWire.data := alu.io.result.logic
-      }
-      is(Sel.shift) {
-        io.freePorts.en   := gprWriteWire.en
-        gprWriteWire.data := alu.io.result.shift
-      }
-      is(Sel.arithmetic) {
-        io.freePorts.en   := gprWriteWire.en
-        gprWriteWire.data := alu.io.result.arithmetic
-      }
-      is(Sel.jumpBranch) {
-        io.freePorts.en   := gprWriteWire.en
-        gprWriteWire.data := selectedPc + 4.U
-      }
+  switch(selectedIn.exeSel) {
+    is(Sel.logic) {
+      resultOutReg.bits.gprWrite.data := alu.io.result.logic
     }
-
-    switch(selectedExeInst.exeOp) {
-      is(ExeInst.Op.csrrd) {
-        io.freePorts.en   := gprWriteWire.en
-        gprWriteWire.data := selectedExeInst.csrData
-      }
+    is(Sel.shift) {
+      resultOutReg.bits.gprWrite.data := alu.io.result.shift
+    }
+    is(Sel.arithmetic) {
+      resultOutReg.bits.gprWrite.data := alu.io.result.arithmetic
+    }
+    is(Sel.jumpBranch) {
+      resultOutReg.bits.gprWrite.data := selectedIn.instInfo.pc + 4.U
     }
   }
 
-  /** MemAccess
-    */
-  val loadStoreAddr = WireDefault(selectedExeInst.leftOperand + selectedExeInst.loadStoreImm)
-  val memReadEn = WireDefault(
-    VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
-      .contains(selectedExeInst.exeOp)
-  )
-  val memWriteEn = WireDefault(
-    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w, ExeInst.Op.sc)
-      .contains(selectedExeInst.exeOp)
-  )
-  val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedExeInst.exeOp))
-  // 指令未对齐
-  val isAle = WireDefault(false.B)
-  instInfoReg.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
-
-  when(!isBlocking) {
-    memRequestWire.isValid         := (memReadEn || memWriteEn) && !isAle
-    memRequestWire.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
-    memRequestWire.write.data      := selectedExeInst.rightOperand
-    memRequestWire.read.isUnsigned := memLoadUnsigned
-    memRequestWire.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
-    // mask
-    val maskEncode = loadStoreAddr(1, 0)
-    switch(selectedExeInst.exeOp) {
-      is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-        memRequestWire.mask := Mux(
-          maskEncode(1),
-          Mux(maskEncode(0), "b1000".U, "b0100".U),
-          Mux(maskEncode(0), "b0010".U, "b0001".U)
-        )
-      }
-      is(ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.st_h) {
-        when(maskEncode(0)) {
-          isAle := true.B // 未对齐
-        }
-        memRequestWire.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
-      }
-      is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-        isAle               := maskEncode.orR
-        memRequestWire.mask := "b1111".U
-      }
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.csrrd) {
+      resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
   }
 
   /** CsrWrite
     */
-  def csrWriteData = instInfoReg.csrWritePort.data
-  when(!isBlocking) {
-    switch(selectedExeInst.exeOp) {
-      is(ExeInst.Op.csrwr) {
-        csrWriteData := selectedExeInst.csrData
+
+  // 指令未对齐
+  val isAle = WireDefault(false.B)
+
+  def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
+
+  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
+
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.csrwr) {
+      csrWriteData := selectedIn.csrData
+    }
+    is(ExeInst.Op.csrxchg) {
+      // lop: write value  rop: mask
+      val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
+      selectedIn.leftOperand.asBools
+        .lazyZip(selectedIn.rightOperand.asBools)
+        .lazyZip(selectedIn.csrData.asBools)
+        .lazyZip(gprWriteDataVec)
+        .foreach {
+          case (write, mask, origin, target) =>
+            target := Mux(mask, write, origin)
+        }
+      csrWriteData := gprWriteDataVec.asUInt
+    }
+  }
+
+  /** MemAccess
+    */
+  val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
+  val memReadEn = WireDefault(
+    VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
+      .contains(selectedIn.exeOp)
+  )
+  val memWriteEn = WireDefault(
+    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w, ExeInst.Op.sc)
+      .contains(selectedIn.exeOp)
+  )
+  val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp))
+
+  resultOutReg.bits.memRequest.isValid         := (memReadEn || memWriteEn) && !isAle
+  resultOutReg.bits.memRequest.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
+  resultOutReg.bits.memRequest.write.data      := selectedIn.rightOperand
+  resultOutReg.bits.memRequest.read.isUnsigned := memLoadUnsigned
+  resultOutReg.bits.memRequest.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
+  // mask
+  val maskEncode = loadStoreAddr(1, 0)
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
+      resultOutReg.bits.memRequest.mask := Mux(
+        maskEncode(1),
+        Mux(maskEncode(0), "b1000".U, "b0100".U),
+        Mux(maskEncode(0), "b0010".U, "b0001".U)
+      )
+    }
+    is(ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.st_h) {
+      when(maskEncode(0)) {
+        isAle := true.B // 未对齐
       }
-      is(ExeInst.Op.csrxchg) {
-        // lop: write value  rop: mask
-        val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
-        selectedExeInst.leftOperand.asBools
-          .lazyZip(selectedExeInst.rightOperand.asBools)
-          .lazyZip(selectedExeInst.csrData.asBools)
-          .lazyZip(gprWriteDataVec)
-          .foreach {
-            case (write, mask, origin, target) =>
-              target := Mux(mask, write, origin)
-          }
-        csrWriteData := gprWriteDataVec.asUInt
-      }
+      resultOutReg.bits.memRequest.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+    }
+    is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
+      isAle                             := maskEncode.orR
+      resultOutReg.bits.memRequest.mask := "b1111".U
     }
   }
 
   // branch set
-  io.branchSetPort := alu.io.result.jumpBranchInfo
-
-  /** InstInfo Csr read or write info
-    */
-
-  // clear
-  when(io.pipelineControlPort.clear) {
-    gprWriteReg := RfWriteNdPort.default
-    InstInfoNdPort.invalidate(instInfoReg)
-    memRequestReg    := MemRequestNdPort.default
-    io.gprWritePort  := RfWriteNdPort.default
-    io.memAccessPort := MemRequestNdPort.default
-  }
-
-  // Flush
-  when(io.pipelineControlPort.flush) {
-    gprWriteReg.en := false.B
-    InstInfoNdPort.invalidate(instInfoReg)
-    memRequestReg.isValid := false.B
-    io.gprWritePort       := RfWriteNdPort.default
-    io.memAccessPort      := MemRequestNdPort.default
-
-    stateReg        := State.nonBlocking
-    exeInstStoreReg := ExeInstNdPort.default
-    pcStoreReg      := zeroWord
-  }
+  io.peer.get.branchSetPort := alu.io.result.jumpBranchInfo
 }

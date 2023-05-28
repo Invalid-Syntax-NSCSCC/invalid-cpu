@@ -5,13 +5,18 @@ import common.{Pc, RegFile}
 import control.{Csr, Cu, StableCounter}
 import frontend.SimpleFetchStage
 import memory.{DCache, Tlb, UncachedAgent}
-import pipeline.dispatch.{IssueStage, RegReadStage, Scoreboard}
+import pipeline.dispatch.{BiIssueStage, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
-import pipeline.queue.InstQueue
 import pipeline.writeback.WbStage
 import spec.Param.isDiffTest
 import spec.{Count, Param, PipelineStageIndex}
+import spec.zeroWord
+import pipeline.dispatch.BiIssueStage
+import pipeline.queue.BiInstQueue
+import control.bundles.PipelineControlNdPort
+import chisel3.util.is
+import pipeline.rob.bundles.RobIdDistributePort
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -91,8 +96,8 @@ class CoreCpuTop extends Module {
   io <> DontCare
 
   val simpleFetchStage = Module(new SimpleFetchStage)
-  val instQueue        = Module(new InstQueue)
-  val issueStage       = Module(new IssueStage)
+  val instQueue        = Module(new BiInstQueue)
+  val issueStage       = Module(new BiIssueStage)
   val regReadStage     = Module(new RegReadStage)
   val exeStage         = Module(new ExeStage)
   val wbStage          = Module(new WbStage)
@@ -140,49 +145,57 @@ class CoreCpuTop extends Module {
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
   // Simple fetch stage
-  instQueue.io.enqueuePort                <> simpleFetchStage.io.instEnqueuePort
-  instQueue.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
-  simpleFetchStage.io.pc                  := pc.io.pc
-  simpleFetchStage.io.pipelineControlPort := cu.io.pipelineControlPorts(PipelineStageIndex.instQueue)
-  pc.io.isNext                            := simpleFetchStage.io.isPcNext
+  simpleFetchStage.io.pc      := pc.io.pc
+  simpleFetchStage.io.isFlush := cu.io.flushs(PipelineStageIndex.frontend)
+  pc.io.isNext                := simpleFetchStage.io.isPcNext
+
+  // Inst Queue
+  instQueue.io.enqueuePorts(0) <> simpleFetchStage.io.instEnqueuePort
+  // TODO: CONNECT
+  instQueue.io.enqueuePorts(1)       <> DontCare // TODO: DELETE
+  instQueue.io.enqueuePorts(1).valid := false.B // TODO: DELETE
+  instQueue.io.isFlush               := cu.io.flushs(PipelineStageIndex.frontend)
 
   // Issue stage
-  issueStage.io.fetchInstDecodePort.bits   := instQueue.io.dequeuePort.bits.decode
-  issueStage.io.instInfoPassThroughPort.in := instQueue.io.dequeuePort.bits.instInfo
-  issueStage.io.fetchInstDecodePort.valid  := instQueue.io.dequeuePort.valid
-  instQueue.io.dequeuePort.ready           := issueStage.io.fetchInstDecodePort.ready
-  issueStage.io.regScores                  := scoreboard.io.regScores
-  scoreboard.io.occupyPorts                := issueStage.io.occupyPorts
-  issueStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.issueStage)
-  issueStage.io.csrRegScores               := csrScoreBoard.io.regScores
-  csrScoreBoard.io.occupyPorts             := issueStage.io.csrOccupyPorts
+  issueStage.io.fetchInstDecodePorts(0)       <> instQueue.io.dequeuePorts(0)
+  issueStage.io.issuedInfoPorts(1).ready      := false.B // TODO: DELETE
+  issueStage.io.fetchInstDecodePorts(1)       := DontCare // TODO: DELETE
+  issueStage.io.fetchInstDecodePorts(1).valid := false.B // TODO: DELETE
+  instQueue.io.dequeuePorts(1).ready          := false.B // TODO: DELETE
+  issueStage.io.regScores                     := scoreboard.io.regScores
 
-  // scoreboard.io.freePorts(0)    := exeStage.io.freePorts
-  // scoreboard.io.freePorts(1)    := memStage.io.freePorts
-  // scoreboard.io.freePorts(2)    := wbStage.io.freePorts(0)
-  scoreboard.io.freePorts(0)    := wbStage.io.freePorts(0)
-  csrScoreBoard.io.freePorts(0) := wbStage.io.csrFreePorts(0)
+  issueStage.io.isFlushs(0)  := cu.io.flushs(PipelineStageIndex.issueStage)
+  issueStage.io.isFlushs(1)  := false.B // TODO: DELETE
+  issueStage.io.csrRegScores := csrScoreBoard.io.regScores
+
+  issueStage.io.robEmptyNum := 2.U // TODO: DELETE
+  issueStage.io.idGetPorts.foreach { port =>
+    port.id := 0.U
+  } // TODO: DELETE
+
+  // score boards
+  scoreboard.io.freePorts(0)    := wbStage.io.freePort
+  csrScoreBoard.io.freePorts(0) := wbStage.io.csrFreePort
+  scoreboard.io.occupyPorts     := issueStage.io.occupyPortss(0)
+  csrScoreBoard.io.occupyPorts  := issueStage.io.csrOccupyPortss(0)
 
   // Reg-read stage
-  regReadStage.io.issuedInfoPort             := issueStage.io.issuedInfoPort
-  regReadStage.io.gprReadPorts(0)            <> regFile.io.readPorts(0)
-  regReadStage.io.gprReadPorts(1)            <> regFile.io.readPorts(1)
-  regReadStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.regReadStage)
-  regReadStage.io.instInfoPassThroughPort.in := issueStage.io.instInfoPassThroughPort.out
-  // regReadStage.io.dataforwardPorts.zip(dataforward.io.readPorts).foreach {
-  //   case (regRead, df) => regRead <> df
-  // }
+  regReadStage.io.in <> issueStage.io.issuedInfoPorts(0)
+  regReadStage.io.peer.get.gprReadPorts.zip(regFile.io.readPorts).foreach {
+    case (stage, rf) => {
+      stage <> rf
+    }
+  }
+  regReadStage.io.peer.get.csrReadPorts(0) <> csr.io.readPorts(0)
+  regReadStage.io.isFlush                  := cu.io.flushs(PipelineStageIndex.regReadStage)
 
   // Execution stage
-  exeStage.io.exeInstPort                := regReadStage.io.exeInstPort
-  exeStage.io.pipelineControlPort        := cu.io.pipelineControlPorts(PipelineStageIndex.exeStage)
-  exeStage.io.instInfoPassThroughPort.in := regReadStage.io.instInfoPassThroughPort.out
+  exeStage.io.in      <> regReadStage.io.out
+  exeStage.io.isFlush := cu.io.flushs(PipelineStageIndex.exeStage)
 
   // Mem stages
-  // TODO: Connect refactored `AddrTransStage` to `ExeStage`
-  // TODO: Connect flush
-  addrTransStage.io.in      <> DontCare
-  addrTransStage.io.isFlush := false.B
+  addrTransStage.io.in      <> exeStage.io.out
+  addrTransStage.io.isFlush := cu.io.flushs(PipelineStageIndex.addrTransStage)
   addrTransStage.io.peer.foreach { p =>
     p.tlbTrans <> tlb.io.tlbTransPorts(0)
     p.csr      := DontCare // TODO: CSR
@@ -206,18 +219,13 @@ class CoreCpuTop extends Module {
   wbStage.io.in        <> memResStage.io.out
   regFile.io.writePort := cu.io.gprWritePassThroughPorts.out(0)
 
-  // data forward
-  // dataforward.io.writePorts(0) := exeStage.io.gprWritePort
-  // dataforward.io.writePorts(1) := memStage.io.gprWritePassThroughPort.out
-
   // Ctrl unit
-  cu.io                                <> DontCare // TODO: Remove this after refactor
+  // cu.io                                <> DontCare // TODO: Remove this after refactor
   cu.io.instInfoPorts(0)               := wbStage.io.cuInstInfoPort
-  cu.io.exeStallRequest                := exeStage.io.stallRequest
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
-  cu.io.jumpPc                         := exeStage.io.branchSetPort
+  cu.io.jumpPc                         := exeStage.io.peer.get.branchSetPort
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -225,7 +233,6 @@ class CoreCpuTop extends Module {
       dst := src
   }
   csr.io.csrMessage := cu.io.csrMessage
-  csr.io.readPorts  <> regReadStage.io.csrReadPorts
 
   // Debug ports
   io.debug0_wb.pc       := wbStage.io.in.bits.instInfo.pc
@@ -257,34 +264,34 @@ class CoreCpuTop extends Module {
       t.regs := r.gpr
     case _ =>
   }
-  (io.diffTest, csr.io.difftest) match {
-    case (Some(t), Some(c)) =>
-      t.csr_crmd_diff_0      := c.crmd
-      t.csr_prmd_diff_0      := c.prmd
-      t.csr_ectl_diff_0      := c.ectl
-      t.csr_estat_diff_0     := c.estat.asUInt
-      t.csr_era_diff_0       := c.era
-      t.csr_badv_diff_0      := c.badv
-      t.csr_eentry_diff_0    := c.eentry
-      t.csr_tlbidx_diff_0    := c.tlbidx
-      t.csr_tlbehi_diff_0    := c.tlbehi
-      t.csr_tlbelo0_diff_0   := c.tlbelo0
-      t.csr_tlbelo1_diff_0   := c.tlbelo1
-      t.csr_asid_diff_0      := c.asid
-      t.csr_save0_diff_0     := c.save0
-      t.csr_save1_diff_0     := c.save1
-      t.csr_save2_diff_0     := c.save2
-      t.csr_save3_diff_0     := c.save3
-      t.csr_tid_diff_0       := c.tid
-      t.csr_tcfg_diff_0      := c.tcfg
-      t.csr_tval_diff_0      := c.tval
-      t.csr_ticlr_diff_0     := c.ticlr
-      t.csr_llbctl_diff_0    := c.llbctl
-      t.csr_tlbrentry_diff_0 := c.tlbrentry
-      t.csr_dmw0_diff_0      := c.dmw0
-      t.csr_dmw1_diff_0      := c.dmw1
-      t.csr_pgdl_diff_0      := c.pgdl
-      t.csr_pgdh_diff_0      := c.pgdh
+  (io.diffTest, csr.io.csrValues) match {
+    case (Some(t), c) =>
+      t.csr_crmd_diff_0      := c.crmd.asUInt
+      t.csr_prmd_diff_0      := c.prmd.asUInt
+      t.csr_ectl_diff_0      := zeroWord // TODO: 删除 ?
+      t.csr_estat_diff_0     := c.estat.asUInt.asUInt
+      t.csr_era_diff_0       := c.era.asUInt
+      t.csr_badv_diff_0      := c.badv.asUInt
+      t.csr_eentry_diff_0    := c.eentry.asUInt
+      t.csr_tlbidx_diff_0    := c.tlbidx.asUInt
+      t.csr_tlbehi_diff_0    := c.tlbehi.asUInt
+      t.csr_tlbelo0_diff_0   := c.tlbelo0.asUInt
+      t.csr_tlbelo1_diff_0   := c.tlbelo1.asUInt
+      t.csr_asid_diff_0      := c.asid.asUInt
+      t.csr_save0_diff_0     := c.save0.asUInt
+      t.csr_save1_diff_0     := c.save1.asUInt
+      t.csr_save2_diff_0     := c.save2.asUInt
+      t.csr_save3_diff_0     := c.save3.asUInt
+      t.csr_tid_diff_0       := c.tid.asUInt
+      t.csr_tcfg_diff_0      := c.tcfg.asUInt
+      t.csr_tval_diff_0      := c.tval.asUInt
+      t.csr_ticlr_diff_0     := c.ticlr.asUInt
+      t.csr_llbctl_diff_0    := c.llbctl.asUInt
+      t.csr_tlbrentry_diff_0 := c.tlbrentry.asUInt
+      t.csr_dmw0_diff_0      := c.dmw0.asUInt
+      t.csr_dmw1_diff_0      := c.dmw1.asUInt
+      t.csr_pgdl_diff_0      := c.pgdl.asUInt
+      t.csr_pgdh_diff_0      := c.pgdh.asUInt
 
       t.cmt_csr_ecode := c.estat.ecode
     case _ =>

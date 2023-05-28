@@ -27,6 +27,12 @@ class Decoder_2RI14 extends Decoder {
   immSext := imm14.asSInt
   immZext := imm14
 
+  // Csr Addr -> Index Map
+  val csrAddrMap      = WireDefault(VecInit(Csr.addrs))
+  val csrMatchIndices = csrAddrMap.map(_ === immZext)
+  val csrAddrValid    = csrMatchIndices.reduce(_ || _)
+  val csrAddr         = Mux1H(csrMatchIndices, Seq.range(0, csrMatchIndices.length).map(_.U(14.W)))
+
   // Read and write GPR
   io.out.info.gprReadPorts(0).en   := false.B
   io.out.info.gprReadPorts(0).addr := DontCare
@@ -61,9 +67,9 @@ class Decoder_2RI14 extends Decoder {
     }
     // csr读写指令
     is(Inst.csr_) {
-      io.out.isMatched := true.B
+      io.out.isMatched := csrAddrValid
       outInfo.exeSel   := ExeInst.Sel.none
-      outInfo.csrAddr  := immZext
+      outInfo.csrAddr  := csrAddr
       when(rj === "b00000".U) { // csrrd csr -> rd
         outInfo.exeOp             := ExeInst.Op.csrrd
         outInfo.gprWritePort.en   := rdIsNotZero // true.B

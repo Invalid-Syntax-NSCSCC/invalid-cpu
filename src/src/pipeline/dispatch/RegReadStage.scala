@@ -3,109 +3,82 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfReadPort, RfWriteNdPort}
-import bundles.{ExeInstNdPort, IssuedInfoNdPort}
+import pipeline.execution.ExeNdPort
 import chisel3.experimental.BundleLiterals._
 import spec._
 import control.bundles.PipelineControlNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import control.bundles.CsrReadPort
-// import pipeline.dataforward.bundles.DataForwardReadPort
+import pipeline.common.BaseStage
+import chisel3.experimental.BundleLiterals._
+import common.bundles.RfAccessInfoNdPort
+import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.dispatch.bundles.PreExeInstNdPort
 
-class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum) extends Module {
-  val io = IO(new Bundle {
-    // `IssueStage` -> `RegReadStage`
-    val issuedInfoPort = Input(new IssuedInfoNdPort)
-    // `RegReadStage` <-> `Regfile`
-    val gprReadPorts = Vec(readNum, Flipped(new RfReadPort))
+class RegReadNdPort extends Bundle {
+  val preExeInstInfo = new PreExeInstNdPort
+  val instInfo       = new InstInfoNdPort
+}
 
-    // `RegReadStage <-> `Csr`
-    val csrReadPorts = Vec(csrRegsReadNum, Flipped(new CsrReadPort))
+object RegReadNdPort {
+  def default = (new RegReadNdPort).Lit(
+    _.preExeInstInfo -> PreExeInstNdPort.default,
+    _.instInfo -> InstInfoNdPort.default
+  )
+}
 
-    // `RegReadStage` -> `ExeStage` (next clock pulse)
-    val exeInstPort = Output(new ExeInstNdPort)
+class RegReadPeerPort(readNum: Int, csrRegsReadNum: Int) extends Bundle {
+  // `RegReadStage` <-> `Regfile`
+  val gprReadPorts = Vec(readNum, Flipped(new RfReadPort))
 
-    // 数据前推
-    // `DataForwardStage` -> `RegReadStage`
-    // val dataforwardPorts = Vec(readNum, Flipped(new DataForwardReadPort))
+  // `RegReadStage <-> `Csr`
+  val csrReadPorts = Vec(csrRegsReadNum, Flipped(new CsrReadPort))
 
-    // `pipeline control signal
-    // `Cu` -> `RegReadStage`
-    val pipelineControlPort = Input(new PipelineControlNdPort)
+}
 
-    // (next clock pulse)
-    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
-  })
+class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum)
+    extends BaseStage(
+      new RegReadNdPort,
+      new ExeNdPort,
+      RegReadNdPort.default,
+      Some(new RegReadPeerPort(readNum, csrRegsReadNum))
+    ) {
 
-  // Wb debug port connection
-  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
-  io.instInfoPassThroughPort.out := instInfoReg
-
-  // Pass to the next stage in a sequential way
-  val exeInstReg = RegInit(ExeInstNdPort.default)
-  io.exeInstPort := exeInstReg
+  require(csrRegsReadNum == 1)
 
   // Read from GPR
-  io.gprReadPorts.zip(io.issuedInfoPort.info.gprReadPorts).foreach {
-    case (port, info) =>
+  selectedIn.preExeInstInfo.gprReadPorts.zip(io.peer.get.gprReadPorts).foreach {
+    case (info, port) =>
       port.en   := info.en
       port.addr := info.addr
   }
 
   // Read from CSR
-  io.csrReadPorts(0).en   := io.issuedInfoPort.info.csrReadEn
-  io.csrReadPorts(0).addr := io.instInfoPassThroughPort.in.csrWritePort.addr
-
-  // read from dataforward
-  // io.gprReadPorts.zip(io.dataforwardPorts).foreach {
-  //   case ((gprRead, dataforward)) =>
-  //     dataforward.en   := gprRead.en
-  //     dataforward.addr := gprRead.addr
-  // }
+  io.peer.get.csrReadPorts(0).en   := selectedIn.preExeInstInfo.csrReadEn
+  io.peer.get.csrReadPorts(0).addr := selectedIn.instInfo.csrWritePort.addr
 
   // Determine left and right operands
-  exeInstReg.leftOperand  := zeroWord
-  exeInstReg.rightOperand := zeroWord
-  when(!io.pipelineControlPort.stall) {
-    when(io.issuedInfoPort.info.isHasImm) {
-      exeInstReg.rightOperand := io.issuedInfoPort.info.imm
+  when(selectedIn.preExeInstInfo.isHasImm) {
+    resultOutReg.bits.rightOperand := selectedIn.preExeInstInfo.imm
+  }
+  Seq(resultOutReg.bits.leftOperand, resultOutReg.bits.rightOperand)
+    .zip(io.peer.get.gprReadPorts)
+    .foreach {
+      case (operand, gprReadPort) =>
+        when(gprReadPort.en) {
+          operand := gprReadPort.data
+        }
     }
-    Seq(exeInstReg.leftOperand, exeInstReg.rightOperand)
-      .lazyZip(io.gprReadPorts)
-      .foreach {
-        case (oprand, gprReadPort) =>
-          when(gprReadPort.en) {
-            oprand := gprReadPort.data
-          }
-      }
-  }
 
-  // Pass execution instruction if valid
+  resultOutReg.valid := selectedIn.instInfo.isValid
 
-  exeInstReg.exeSel       := ExeInst.Sel.none
-  exeInstReg.exeOp        := ExeInst.Op.nop
-  exeInstReg.gprWritePort := RfAccessInfoNdPort.default
-  when(!io.pipelineControlPort.stall) {
-    when(io.issuedInfoPort.isValid) {
-      exeInstReg.exeSel       := io.issuedInfoPort.info.exeSel
-      exeInstReg.exeOp        := io.issuedInfoPort.info.exeOp
-      exeInstReg.gprWritePort := io.issuedInfoPort.info.gprWritePort
-      // jumbBranch / memLoadStort / csr
-      exeInstReg.jumpBranchAddr := io.issuedInfoPort.info.jumpBranchAddr
-      when(io.issuedInfoPort.info.csrReadEn) {
-        exeInstReg.csrData := io.csrReadPorts(0).data
-      }
-    }
+  resultOutReg.bits.exeSel       := selectedIn.preExeInstInfo.exeSel
+  resultOutReg.bits.exeOp        := selectedIn.preExeInstInfo.exeOp
+  resultOutReg.bits.gprWritePort := selectedIn.preExeInstInfo.gprWritePort
+  // jumbBranch / memLoadStort / csr
+  resultOutReg.bits.jumpBranchAddr := selectedIn.preExeInstInfo.jumpBranchAddr
+  when(selectedIn.preExeInstInfo.csrReadEn) {
+    resultOutReg.bits.csrData := io.peer.get.csrReadPorts(0).data
   }
-
-  // clear
-  when(io.pipelineControlPort.clear) {
-    InstInfoNdPort.invalidate(instInfoReg)
-    exeInstReg := ExeInstNdPort.default
-  }
-
-  // flush all regs
-  when(io.pipelineControlPort.flush) {
-    InstInfoNdPort.invalidate(instInfoReg)
-    exeInstReg := ExeInstNdPort.default
-  }
+  resultOutReg.bits.instInfo := selectedIn.instInfo
 }
