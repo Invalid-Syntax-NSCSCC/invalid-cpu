@@ -2,22 +2,10 @@ package control
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.BundleLiterals._
-import spec.Param
-import control.bundles.PipelineControlNdPort
-import spec.PipelineStageIndex
+import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
+import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
 import pipeline.writeback.bundles.InstInfoNdPort
-import common.bundles.RfWriteNdPort
-import common.bundles.PassThroughPort
-import control.bundles.CsrWriteNdPort
-import control.bundles.CuToCsrNdPort
-import spec.Csr
-import control.bundles.CsrValuePort
-import spec.Width
-import spec.zeroWord
-import spec.ExeInst
-import common.bundles.PcSetPort
-import control.bundles.StableCounterReadPort
+import spec.{Csr, ExeInst, Param, PipelineStageIndex}
 
 // TODO: Add stall to frontend ?
 // TODO: Add deal exceptions
@@ -85,21 +73,22 @@ class Cu(
 
   /** flush
     */
-
-  io.flushs.foreach(_ := false.B)
+  val flushs = Wire(Vec(ctrlControlNum, Bool()))
+  io.flushs := RegNext(flushs)
+  flushs.foreach(_ := false.B)
 
   when(io.jumpPc.en) {
     Seq(
       PipelineStageIndex.issueStage,
       PipelineStageIndex.regReadStage,
       PipelineStageIndex.frontend
-    ).map(io.flushs(_))
+    ).map(flushs(_))
       .foreach(_ := true.B)
   }
 
   val exceptionFlush = WireDefault(hasException)
   when(exceptionFlush) {
-    io.flushs.foreach(_ := true.B)
+    flushs.foreach(_ := true.B)
   }
 
   /** 硬件写csr

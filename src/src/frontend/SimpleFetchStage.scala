@@ -4,7 +4,6 @@ import axi.AxiMaster
 import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
-import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
 import spec.Param.{SimpleFetchStageState => State}
 import spec._
@@ -43,8 +42,6 @@ class SimpleFetchStage extends Module {
 
   val lastPcReg = RegInit(zeroWord)
 
-  val flushReg = RegInit(false.B)
-
   // Fallback
   isPcNextReg              := false.B
   axiReadRequestReg        := false.B
@@ -53,17 +50,13 @@ class SimpleFetchStage extends Module {
   io.instEnqueuePort.bits  := DontCare
   lastPcReg                := lastPcReg
 
-  when(io.isFlush) {
-    flushReg := true.B
-  }
-
   switch(stateReg) {
     is(State.idle) {
       nextState := State.requestInst
     }
     is(State.requestInst) { // State Value: 1
       when(
-        axiReady && io.instEnqueuePort.ready && !io.isFlush && !flushReg && io.instEnqueuePort.ready
+        axiReady && io.instEnqueuePort.ready && !io.isFlush
       ) {
         nextState := State.waitInst
 
@@ -74,22 +67,15 @@ class SimpleFetchStage extends Module {
       }.otherwise {
         nextState := State.requestInst
       }
-      when(flushReg) {
-        flushReg := false.B
-      }
     }
     is(State.waitInst) { // State Value: 2
       when(axiReadValid) {
         nextState := State.requestInst
-        when(io.isFlush || flushReg) {
-          flushReg := false.B
-        }.otherwise {
+        when(!io.isFlush) {
           io.instEnqueuePort.valid       := true.B
           io.instEnqueuePort.bits.inst   := axiData
           io.instEnqueuePort.bits.pcAddr := lastPcReg
         }
-      }.otherwise {
-        nextState := State.waitInst
       }
     }
   }
