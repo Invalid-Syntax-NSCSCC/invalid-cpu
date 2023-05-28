@@ -131,39 +131,54 @@ class ExeStage extends Module {
 
   // ALU output
 
-  // write-back information fallback
-  gprWriteReg.en   := false.B
-  gprWriteReg.addr := zeroWord
-  gprWriteReg.data := zeroWord
+  when(isBlocking) {
+    io.instInfoPassThroughPort.out := InstInfoNdPort.default
+  }
+
+  val gprWriteWire   = WireDefault(RfWriteNdPort.default)
+  val memRequestWire = WireDefault(MemRequestNdPort.default)
+
+  when(!isBlocking) {
+    switch(stateReg) {
+      is(State.blocking) {
+        io.gprWritePort  := gprWriteWire
+        io.memAccessPort := memRequestWire
+      }
+      is(State.nonBlocking) {
+        gprWriteReg   := gprWriteWire
+        memRequestReg := memRequestWire
+      }
+    }
+  }
 
   // write-back information selection
   when(!isBlocking) {
-    gprWriteReg.en   := selectedExeInst.gprWritePort.en
-    gprWriteReg.addr := selectedExeInst.gprWritePort.addr
+    gprWriteWire.en   := selectedExeInst.gprWritePort.en
+    gprWriteWire.addr := selectedExeInst.gprWritePort.addr
 
     switch(selectedExeInst.exeSel) {
       is(Sel.logic) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := alu.io.result.logic
+        io.freePorts.en   := gprWriteWire.en
+        gprWriteWire.data := alu.io.result.logic
       }
       is(Sel.shift) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := alu.io.result.shift
+        io.freePorts.en   := gprWriteWire.en
+        gprWriteWire.data := alu.io.result.shift
       }
       is(Sel.arithmetic) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := alu.io.result.arithmetic
+        io.freePorts.en   := gprWriteWire.en
+        gprWriteWire.data := alu.io.result.arithmetic
       }
       is(Sel.jumpBranch) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := selectedPc + 4.U
+        io.freePorts.en   := gprWriteWire.en
+        gprWriteWire.data := selectedPc + 4.U
       }
     }
 
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.csrrd) {
-        io.freePorts.en  := gprWriteReg.en
-        gprWriteReg.data := selectedExeInst.csrData
+        io.freePorts.en   := gprWriteWire.en
+        gprWriteWire.data := selectedExeInst.csrData
       }
     }
   }
@@ -185,16 +200,16 @@ class ExeStage extends Module {
   instInfoReg.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
 
   when(!isBlocking) {
-    memRequestReg.isValid         := (memReadEn || memWriteEn) && !isAle
-    memRequestReg.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
-    memRequestReg.write.data      := selectedExeInst.rightOperand
-    memRequestReg.read.isUnsigned := memLoadUnsigned
-    memRequestReg.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
+    memRequestWire.isValid         := (memReadEn || memWriteEn) && !isAle
+    memRequestWire.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
+    memRequestWire.write.data      := selectedExeInst.rightOperand
+    memRequestWire.read.isUnsigned := memLoadUnsigned
+    memRequestWire.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
     // mask
     val maskEncode = loadStoreAddr(1, 0)
     switch(selectedExeInst.exeOp) {
       is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-        memRequestReg.mask := Mux(
+        memRequestWire.mask := Mux(
           maskEncode(1),
           Mux(maskEncode(0), "b1000".U, "b0100".U),
           Mux(maskEncode(0), "b0010".U, "b0001".U)
@@ -204,11 +219,11 @@ class ExeStage extends Module {
         when(maskEncode(0)) {
           isAle := true.B // 未对齐
         }
-        memRequestReg.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+        memRequestWire.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
       }
       is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-        isAle              := maskEncode.orR
-        memRequestReg.mask := "b1111".U
+        isAle               := maskEncode.orR
+        memRequestWire.mask := "b1111".U
       }
     }
   }
@@ -247,7 +262,9 @@ class ExeStage extends Module {
   when(io.pipelineControlPort.clear) {
     gprWriteReg := RfWriteNdPort.default
     InstInfoNdPort.invalidate(instInfoReg)
-    memRequestReg := MemRequestNdPort.default
+    memRequestReg    := MemRequestNdPort.default
+    io.gprWritePort  := RfWriteNdPort.default
+    io.memAccessPort := MemRequestNdPort.default
   }
 
   // Flush
@@ -255,6 +272,8 @@ class ExeStage extends Module {
     gprWriteReg.en := false.B
     InstInfoNdPort.invalidate(instInfoReg)
     memRequestReg.isValid := false.B
+    io.gprWritePort       := RfWriteNdPort.default
+    io.memAccessPort      := MemRequestNdPort.default
 
     stateReg        := State.nonBlocking
     exeInstStoreReg := ExeInstNdPort.default
