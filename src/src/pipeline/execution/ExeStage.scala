@@ -70,6 +70,7 @@ class ExeStage
 
   isComputed         := alu.io.outputValid
   resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
+  resultOutReg.bits.instInfo := selectedIn.instInfo
 
   // ALU input
   alu.io.isFlush                := io.isFlush
