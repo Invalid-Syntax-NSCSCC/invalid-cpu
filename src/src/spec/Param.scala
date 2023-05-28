@@ -53,8 +53,19 @@ object Param {
       val tag        = _tag.W
       val dataLine   = _dataLine.W
     }
-  }
 
+    object ICache {
+      val _addr       = 6 // TODO: Choose an optimal value
+      val _byteOffset = log2Ceil(Count.ICache.dataPerLine) + log2Ceil(wordLength / byteLength)
+      val _dataLine   = Count.ICache.dataPerLine * spec.Width.Mem._data
+      val _tag        = spec.Width.Mem._addr - _addr - _byteOffset
+
+      val addr       = _addr.W
+      val byteOffset = _byteOffset.W
+      val tag        = _tag.W
+      val dataLine   = _dataLine.W
+    }
+  }
   object Count {
     object Axi { // crossbar
       val master = 1
@@ -65,6 +76,12 @@ object Param {
       val setLen      = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
       val dataPerLine = 4 // TODO: One data line is 64 bytes
       val sizePerRam  = math.pow(2, Width.DCache._addr).toInt
+    }
+
+    object ICache {
+      val setLen      = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
+      val dataPerLine = 4 // TODO: One data line is 64 bytes
+      val sizePerRam  = math.pow(2, Width.ICache._addr).toInt
     }
 
     object Tlb {
