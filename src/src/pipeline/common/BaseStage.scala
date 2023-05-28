@@ -19,18 +19,22 @@ abstract class BaseStage[InT <: Data, OutT <: Data, PT <: Data](
   protected val isComputed:     Bool = WireDefault(true.B)
   protected val isLastComputed: Bool = RegNext(isComputed, true.B)
   protected val selectedIn: InT = Mux(
-    io.in.ready,
+    io.isFlush,
+    blankIn,
     Mux(
-      io.in.valid,
-      io.in.bits,
-      blankIn
-    ),
-    savedIn
+      io.in.ready,
+      Mux(
+        io.in.valid,
+        io.in.bits,
+        blankIn
+      ),
+      savedIn
+    )
   )
 
   // You should only focus on what `selectedIn` has to compute and make decision.
   // If the computation needs more than one cycle, which means `isComplete` will be false for a while,
-  //   then `selectedIn` will be keep automatically for these cycle, until `isLastComputed` is true.
+  //   then `selectedIn` will be kept automatically for these cycle, until `isLastComputed` is true.
   // If there is no input available and the stage is idle, then `selectedIn` will be `blankIn`,
   //   which should be an invalid input.
 
@@ -49,11 +53,10 @@ abstract class BaseStage[InT <: Data, OutT <: Data, PT <: Data](
   // Always remember to handle flush for self-defined registers.
 
   // Please refer to `DummyStage` in `BaseStageSpec` for more usage information.
-  // Recommend to check out the waveform to have a better understand.
+  // Recommend to check out the waveform to have a better understanding.
 
   protected val resultOutReg: ValidIO[OutT] = RegInit(0.U.asTypeOf(ValidIO(outNdFactory)))
   resultOutReg.valid := false.B
-  resultOutReg.bits  := DontCare
   private val lastResultOut = Wire(Decoupled(outNdFactory))
   lastResultOut.valid := resultOutReg.valid
   lastResultOut.bits  := resultOutReg.bits
@@ -69,7 +72,7 @@ abstract class BaseStage[InT <: Data, OutT <: Data, PT <: Data](
   io.out <> outQueue
 
   // Handle input
-  io.in.ready := isLastComputed && lastResultOut.ready && io.out.ready
+  io.in.ready := isLastComputed && ((lastResultOut.ready && !lastResultOut.valid) || io.out.ready)
   when(io.in.valid && io.in.ready) {
     savedIn := io.in.bits
   }

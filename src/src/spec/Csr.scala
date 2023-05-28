@@ -3,8 +3,47 @@ package spec
 import chisel3._
 import chisel3.experimental.BundleLiterals._
 import control.bundles.EcodeBundle
+import spec._
 
 object Csr {
+
+  private def h(s: String): UInt = {
+    ("h" + s).U(spec.Width.Csr.addr)
+  }
+
+  val addrs = Seq(
+    "0",
+    "1",
+    "2",
+    "4",
+    "5",
+    "6",
+    "7",
+    "c",
+    "10",
+    "11",
+    "12",
+    "13",
+    "18",
+    "19",
+    "1a",
+    "1b",
+    "20",
+    "30",
+    "31",
+    "32",
+    "33",
+    "40",
+    "41",
+    "42",
+    "44",
+    "60",
+    "88",
+    "98",
+    "180",
+    "181"
+  ).map(h(_))
+
   object Index {
     var count = -1
 
@@ -43,6 +82,8 @@ object Csr {
     val ctag      = next
     val dmw0      = next
     val dmw1      = next
+
+    assert(count + 1 == addrs.length)
   }
 
   object Estat {

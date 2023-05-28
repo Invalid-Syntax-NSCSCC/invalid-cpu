@@ -26,35 +26,6 @@ class Csr(
     // `Csr` <-> `IssueStage` / `RegReadStage` ???
     val readPorts = Vec(Param.csrRegsReadNum, new CsrReadPort)
 
-    val difftest = if (isDiffTest) Some(Output(new Bundle {
-      val crmd      = UInt(32.W)
-      val prmd      = UInt(32.W)
-      val ectl      = UInt(32.W)
-      val estat     = new EstatBundle
-      val era       = UInt(32.W)
-      val badv      = UInt(32.W)
-      val eentry    = UInt(32.W)
-      val tlbidx    = UInt(32.W)
-      val tlbehi    = UInt(32.W)
-      val tlbelo0   = UInt(32.W)
-      val tlbelo1   = UInt(32.W)
-      val asid      = UInt(32.W)
-      val save0     = UInt(32.W)
-      val save1     = UInt(32.W)
-      val save2     = UInt(32.W)
-      val save3     = UInt(32.W)
-      val tid       = UInt(32.W)
-      val tcfg      = UInt(32.W)
-      val tval      = UInt(32.W)
-      val ticlr     = UInt(32.W)
-      val llbctl    = UInt(32.W)
-      val tlbrentry = UInt(32.W)
-      val dmw0      = UInt(32.W)
-      val dmw1      = UInt(32.W)
-      val pgdl      = UInt(32.W)
-      val pgdh      = UInt(32.W)
-    }))
-    else None
   })
 
   // Util: view UInt as Bundle
@@ -84,11 +55,6 @@ class Csr(
       zeroWord
     )
   }
-
-  // 输出
-  io.csrValues.era       := csrRegs(spec.Csr.Index.era)
-  io.csrValues.eentry    := csrRegs(spec.Csr.Index.eentry)
-  io.csrValues.tlbrentry := csrRegs(spec.Csr.Index.tlbrentry)
 
   // 软件写csrRegs
   // 保留域断断续续的样子真是可爱捏
@@ -353,36 +319,35 @@ class Csr(
     } // 为0时停止计数
   }
 
-  // Difftest
-  io.difftest match {
-    case Some(dt) =>
-      dt.crmd := crmd.out.asUInt
-      dt.prmd := prmd.out.asUInt
-      // TODO: `ectl` is not implemented
-      dt.ectl      := DontCare
-      dt.estat     := estat.out
-      dt.era       := era.out.asUInt
-      dt.badv      := badv.out.asUInt
-      dt.eentry    := eentry.out.asUInt
-      dt.tlbidx    := tlbidx.out.asUInt
-      dt.tlbehi    := tlbehi.out.asUInt
-      dt.tlbelo0   := tlbelo0.out.asUInt
-      dt.tlbelo1   := tlbelo1.out.asUInt
-      dt.asid      := asid.out.asUInt
-      dt.save0     := saves(0).out.asUInt
-      dt.save1     := saves(1).out.asUInt
-      dt.save2     := saves(2).out.asUInt
-      dt.save3     := saves(3).out.asUInt
-      dt.tid       := tid.out.asUInt
-      dt.tcfg      := tcfg.out.asUInt
-      dt.tval      := tval.out.asUInt
-      dt.ticlr     := ticlr.out.asUInt
-      dt.llbctl    := llbctl.out.asUInt
-      dt.tlbrentry := tlbrentry.out.asUInt
-      dt.dmw0      := dmw0.out.asUInt
-      dt.dmw1      := dmw1.out.asUInt
-      dt.pgdl      := pgdl.out.asUInt
-      dt.pgdh      := pgdh.out.asUInt
-    case _ =>
-  }
+  // output
+  io.csrValues.crmd      := crmd.out
+  io.csrValues.prmd      := prmd.out
+  io.csrValues.euen      := euen.out
+  io.csrValues.ecfg      := ecfg.out
+  io.csrValues.estat     := estat.out
+  io.csrValues.era       := era.out
+  io.csrValues.badv      := badv.out
+  io.csrValues.eentry    := eentry.out
+  io.csrValues.tlbidx    := tlbidx.out
+  io.csrValues.tlbehi    := tlbehi.out
+  io.csrValues.tlbelo0   := tlbelo0.out
+  io.csrValues.tlbelo1   := tlbelo1.out
+  io.csrValues.asid      := asid.out
+  io.csrValues.pgdl      := pgdl.out
+  io.csrValues.pgdh      := pgdh.out
+  io.csrValues.pgd       := pgd.out
+  io.csrValues.cpuid     := cpuid.out
+  io.csrValues.save0     := saves(0).out
+  io.csrValues.save1     := saves(1).out
+  io.csrValues.save2     := saves(2).out
+  io.csrValues.save3     := saves(3).out
+  io.csrValues.tid       := tid.out
+  io.csrValues.tcfg      := tcfg.out
+  io.csrValues.tval      := tval.out
+  io.csrValues.ticlr     := ticlr.out
+  io.csrValues.llbctl    := llbctl.out
+  io.csrValues.tlbrentry := tlbrentry.out
+  io.csrValues.dmw0      := dmw0.out
+  io.csrValues.dmw1      := dmw1.out
+
 }

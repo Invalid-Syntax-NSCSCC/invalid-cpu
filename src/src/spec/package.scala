@@ -28,18 +28,13 @@ package object spec {
       count
     }
 
-    val instQueue      = next
+    val frontend       = next
     val issueStage     = next
     val regReadStage   = next
     val exeStage       = next
     val addrTransStage = next
     val memReqStage    = next
     val memResStage    = next
-  }
-
-  object ReadWriteMode {
-    val read  = false.B
-    val write = true.B
   }
 
   object Width {

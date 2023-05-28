@@ -10,40 +10,23 @@ import pipeline.execution.bundles.JumpBranchInfoNdPort
 import spec.Param.{AluState => State}
 import pipeline.execution.Mul
 
-// Attention: if stallRequest is true, the exeInstPort needs to keep unchange
 class Alu extends Module {
   val io = IO(new Bundle {
-    val aluInst = Input(new AluInstNdPort)
-    val result  = Output(new AluResultNdPort)
+    val inputValid = Input(Bool())
+    val aluInst    = Input(new AluInstNdPort)
 
-    val pipelineControlPort = Input(new PipelineControlNdPort)
-    val stallRequest        = Output(Bool())
+    val outputValid = Output(Bool())
+    val result      = Output(new AluResultNdPort)
+
+    val isFlush = Input(Bool())
   })
 
-  io.result := AluResultNdPort.default
+  io.outputValid := true.B
+  io.result      := AluResultNdPort.default
 
   def lop = io.aluInst.leftOperand
 
   def rop = io.aluInst.rightOperand
-
-  val stallRequest = WireDefault(false.B)
-  io.stallRequest := stallRequest
-
-  /** State machine
-    *
-    * State behaviors for shift, logic, jump and
-    *   - `nonBlocking`: permit mulStage and divStage start running
-    *   - `blocking`: forbidden mulStage and divStage start running
-    *
-    * State transition
-    *   - `nonBlocking`: blocking from other stage -> `nonblocking` else `blocking`
-    *   - `blocking` : blocking from other stage -> `nonblocking` else `blocking`
-    */
-
-  val nextState = WireDefault(State.nonBlocking)
-  val stateReg  = RegNext(nextState, State.nonBlocking)
-
-  nextState := Mux(io.pipelineControlPort.stall, State.blocking, State.nonBlocking)
 
   /** Result definition
     */
@@ -57,15 +40,11 @@ class Alu extends Module {
   // computed with one cycle
   val arithmetic = WireDefault(zeroWord)
 
-  val computedResult = WireDefault(AluResultNdPort.default)
-  io.result := computedResult
-
-  when(!(io.pipelineControlPort.stall && stallRequest)) {
-    computedResult.arithmetic     := arithmetic
-    computedResult.logic          := logic
-    computedResult.jumpBranchInfo := jumpBranchInfo
-    computedResult.shift          := shift
-  }
+  // Fallback
+  io.result.arithmetic     := arithmetic
+  io.result.logic          := logic
+  io.result.jumpBranchInfo := jumpBranchInfo
+  io.result.shift          := shift
 
   /** Logic computation
     */
@@ -160,25 +139,16 @@ class Alu extends Module {
     ).contains(io.aluInst.op)
   )
 
-  val mulStart = WireDefault(false.B)
-
   val mulStage = Module(new Mul)
+
+  val mulStart = WireDefault(useMul && mulStage.io.mulInst.ready && io.inputValid)
+
+  mulStage.io.isFlush                   := io.isFlush
   mulStage.io.mulInst.valid             := mulStart
+  mulStage.io.mulResult.ready           := DontCare
   mulStage.io.mulInst.bits.op           := io.aluInst.op
   mulStage.io.mulInst.bits.leftOperand  := lop
   mulStage.io.mulInst.bits.rightOperand := rop
-
-  mulStage.io.mulResult.ready := DontCare
-
-  // mulStart := useMul && !mulStage.io.mulResult.valid && !io.pipelineControlPort.stall
-  switch(stateReg) {
-    is(State.nonBlocking) {
-      mulStart := useMul && !mulStage.io.mulResult.valid // TODO: Remove `!io.pipelineControlPort.stall` here. Please check correctness
-    }
-    is(State.blocking) {
-      mulStart := false.B
-    }
-  }
 
   val mulResult = WireDefault(mulStage.io.mulResult.bits)
 
@@ -205,27 +175,19 @@ class Alu extends Module {
     ).contains(io.aluInst.op)
   )
 
-  val divStart = WireDefault(false.B)
-
   val divStage = Module(new Div)
+
+  val divisorValid = WireDefault(rop.orR)
+
+  val divStart = WireDefault(useDiv && divStage.io.divInst.ready && divisorValid)
+
+  divStage.io.isFlush                   := io.isFlush
   divStage.io.divInst.valid             := divStart
   divStage.io.divInst.bits.op           := io.aluInst.op
   divStage.io.divInst.bits.leftOperand  := lop
   divStage.io.divInst.bits.rightOperand := rop
 
   divStage.io.divResult.ready := DontCare
-
-  val divisorValid = WireDefault(rop.orR)
-
-  // divStart := useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid && !io.pipelineControlPort.stall
-  switch(stateReg) {
-    is(State.nonBlocking) {
-      divStart := useDiv && !divStage.io.isRunning && !divStage.io.divResult.valid && divisorValid
-    }
-    is(State.blocking) {
-      divStart := false.B
-    }
-  }
 
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
@@ -242,34 +204,39 @@ class Alu extends Module {
   val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
   val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
 
-  stallRequest := (mulStart || divStart || divStage.io.isRunning)
+  io.outputValid := !mulStart && !divStart && divStage.io.divInst.ready
 
-  when(!stallRequest) {
-    switch(io.aluInst.op) {
-      is(Op.add) {
-        arithmetic := (lop.asSInt + rop.asSInt).asUInt
-      }
-      is(Op.sub) {
-        arithmetic := (lop.asSInt - rop.asSInt).asUInt
-      }
-      is(Op.slt) {
-        arithmetic := (lop.asSInt < rop.asSInt).asUInt
-      }
-      is(Op.sltu) {
-        arithmetic := (lop < rop).asUInt
-      }
-      is(Op.mul) {
-        arithmetic := selectedMulResult(wordLength - 1, 0)
-      }
-      is(Op.mulh, Op.mulhu) {
-        arithmetic := selectedMulResult(doubleWordLength - 1, wordLength)
-      }
-      is(Op.div, Op.divu) {
-        arithmetic := selectedQuotient
-      }
-      is(Op.mod, Op.modu) {
-        arithmetic := selectedRemainder
-      }
+  switch(io.aluInst.op) {
+    is(Op.add) {
+      arithmetic := (lop.asSInt + rop.asSInt).asUInt
     }
+    is(Op.sub) {
+      arithmetic := (lop.asSInt - rop.asSInt).asUInt
+    }
+    is(Op.slt) {
+      arithmetic := (lop.asSInt < rop.asSInt).asUInt
+    }
+    is(Op.sltu) {
+      arithmetic := (lop < rop).asUInt
+    }
+    is(Op.mul) {
+      arithmetic := selectedMulResult(wordLength - 1, 0)
+    }
+    is(Op.mulh, Op.mulhu) {
+      arithmetic := selectedMulResult(doubleWordLength - 1, wordLength)
+    }
+    is(Op.div, Op.divu) {
+      arithmetic := selectedQuotient
+    }
+    is(Op.mod, Op.modu) {
+      arithmetic := selectedRemainder
+    }
+  }
+
+  when(io.isFlush) {
+    io.outputValid    := false.B
+    mulResultStoreReg := 0.U
+    remainderStoreReg := 0.U
+    quotientStoreReg  := 0.U
   }
 }
