@@ -179,7 +179,7 @@ class Alu extends Module {
 
   val divisorValid = WireDefault(rop.orR)
 
-  val divStart = WireDefault(useDiv && divStage.io.divInst.ready && divisorValid)
+  val divStart = WireDefault(useDiv && divStage.io.divInst.ready && !divStage.io.divResult.valid && divisorValid)
 
   divStage.io.isFlush                   := io.isFlush
   divStage.io.divInst.valid             := divStart
