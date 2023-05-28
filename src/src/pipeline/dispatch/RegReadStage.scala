@@ -64,9 +64,9 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
   Seq(resultOutReg.bits.leftOperand, resultOutReg.bits.rightOperand)
     .zip(io.peer.get.gprReadPorts)
     .foreach {
-      case (oprand, gprReadPort) =>
+      case (operand, gprReadPort) =>
         when(gprReadPort.en) {
-          oprand := gprReadPort.data
+          operand := gprReadPort.data
         }
     }
 

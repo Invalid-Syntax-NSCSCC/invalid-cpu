@@ -40,7 +40,7 @@ class Alu extends Module {
   // computed with one cycle
   val arithmetic = WireDefault(zeroWord)
 
-  // fall back
+  // Fallback
   io.result.arithmetic     := arithmetic
   io.result.logic          := logic
   io.result.jumpBranchInfo := jumpBranchInfo
