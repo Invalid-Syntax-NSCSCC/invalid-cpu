@@ -76,11 +76,14 @@ class MemResStage
 
   when(selectedIn.instInfo.isValid) {
     // Whether memory access complete
-    when(selectedIn.isCached) {
-      isComputed := peer.dCacheRes.isComplete
-    }.otherwise {
-      isComputed := peer.uncachedRes.isComplete
+    when(selectedIn.isHasReq) {
+      when(selectedIn.isCached) {
+        isComputed := peer.dCacheRes.isComplete
+      }.otherwise {
+        isComputed := peer.uncachedRes.isComplete
+      }
     }
+
     // Submit result
     resultOutReg.valid := isComputed
   }
