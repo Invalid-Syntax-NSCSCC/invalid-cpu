@@ -53,9 +53,13 @@ class BiInstQueue(
 
   val storeNum = WireDefault(
     Mux(
-      enq_ptr.io.value > deq_ptr.io.value,
-      enq_ptr.io.value - deq_ptr.io.value,
-      (queueLength.U - deq_ptr.io.value) + enq_ptr.io.value
+      enq_ptr.io.value === deq_ptr.io.value,
+      Mux(isEmpty, 0.U, queueLength.U),
+      Mux(
+        enq_ptr.io.value > deq_ptr.io.value,
+        enq_ptr.io.value - deq_ptr.io.value,
+        (queueLength.U - deq_ptr.io.value) + enq_ptr.io.value
+      )
     )
   )
   val emptyNum = WireDefault(queueLength.U - storeNum)
