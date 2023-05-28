@@ -52,27 +52,31 @@ class UncachedAgent extends Module {
   io.accessPort.res.isFailed   := DontCare // Successful
   io.accessPort.res.read.data  := DontCare
 
+  def handleRequest() = {
+    io.accessPort.req.isReady := true.B
+    when(io.accessPort.req.client.isValid) {
+      when(axiMaster.io.readyOut) {
+        // Send new request
+        newReq := true.B
+
+        // Next state: Wait for response
+        stateReg := State.waitRes
+      }.otherwise {
+        // Persist the request
+        lastReg.addr := io.accessPort.req.client.addr
+        lastReg.data := io.accessPort.req.client.write.data
+        lastReg.rw   := io.accessPort.req.client.rw
+        lastReg.mask := io.accessPort.req.client.mask
+
+        // Next state: Wait for AXI master ready
+        stateReg := State.waitReady
+      }
+    }
+  }
+
   switch(stateReg) {
     is(State.ready) {
-      io.accessPort.req.isReady := true.B
-      when(io.accessPort.req.client.isValid) {
-        when(axiMaster.io.readyOut) {
-          // Send new request
-          newReq := true.B
-
-          // Next state: Wait for response
-          stateReg := State.waitRes
-        }.otherwise {
-          // Persist the request
-          lastReg.addr := io.accessPort.req.client.addr
-          lastReg.data := io.accessPort.req.client.write.data
-          lastReg.rw   := io.accessPort.req.client.rw
-          lastReg.mask := io.accessPort.req.client.mask
-
-          // Next state: Wait for AXI master ready
-          stateReg := State.waitReady
-        }
-      }
+      handleRequest()
     }
     is(State.waitReady) {
       when(axiMaster.io.readyOut) {
@@ -96,6 +100,9 @@ class UncachedAgent extends Module {
 
         // Next state: Ready for new request
         stateReg := State.ready
+
+        // Also now it is equivilent to ready state
+        handleRequest()
       }
     }
   }
