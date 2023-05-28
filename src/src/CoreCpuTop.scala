@@ -3,16 +3,15 @@ import axi.Axi3x1Crossbar
 import chisel3._
 import common.{Pc, RegFile}
 import control.{Csr, Cu, StableCounter}
-import frontend.SimpleFetchStage
+import frontend.{NaiiveFetchStage, SimpleFetchStage}
 import memory.{DCache, Tlb, UncachedAgent}
-import pipeline.dispatch.{BiIssueStage, RegReadStage, Scoreboard}
+import pipeline.dispatch.{BiIssueStage, RegReadNdPort, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.writeback.WbStage
 import spec.Param.isDiffTest
 import spec.{Count, Param, PipelineStageIndex}
 import spec.zeroWord
-import pipeline.dispatch.BiIssueStage
 import pipeline.queue.BiInstQueue
 import control.bundles.PipelineControlNdPort
 import chisel3.util.is
@@ -91,19 +90,24 @@ class CoreCpuTop extends Module {
           val regs = Vec(32, UInt(32.W))
         }))
       else None
+
+    val issuedInfoPort   = Output(new RegReadNdPort)
+    val issueOutputValid = Output(Bool())
   })
 
   io <> DontCare
 
-  val simpleFetchStage = Module(new SimpleFetchStage)
+  val simpleFetchStage = Module(new NaiiveFetchStage)
   val instQueue        = Module(new BiInstQueue)
   val issueStage       = Module(new BiIssueStage)
-  val regReadStage     = Module(new RegReadStage)
-  val exeStage         = Module(new ExeStage)
-  val wbStage          = Module(new WbStage)
-  val cu               = Module(new Cu)
-  val csr              = Module(new Csr)
-  val stableCounter    = Module(new StableCounter)
+  io.issuedInfoPort   := issueStage.io.issuedInfoPorts(0).bits
+  io.issueOutputValid := issueStage.io.issuedInfoPorts(0).valid
+  val regReadStage  = Module(new RegReadStage)
+  val exeStage      = Module(new ExeStage)
+  val wbStage       = Module(new WbStage)
+  val cu            = Module(new Cu)
+  val csr           = Module(new Csr)
+  val stableCounter = Module(new StableCounter)
 
   // TODO: Finish mem stages connection
   val addrTransStage = Module(new AddrTransStage)
@@ -180,7 +184,8 @@ class CoreCpuTop extends Module {
   csrScoreBoard.io.occupyPorts  := issueStage.io.csrOccupyPortss(0)
 
   // Reg-read stage
-  regReadStage.io.in <> issueStage.io.issuedInfoPorts(0)
+  regReadStage.io.in                     <> issueStage.io.issuedInfoPorts(0)
+  issueStage.io.issuedInfoPorts(0).ready := true.B
   regReadStage.io.peer.get.gprReadPorts.zip(regFile.io.readPorts).foreach {
     case (stage, rf) => {
       stage <> rf

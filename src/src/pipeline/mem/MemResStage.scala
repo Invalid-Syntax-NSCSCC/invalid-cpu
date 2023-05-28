@@ -70,7 +70,7 @@ class MemResStage
   )
   signedReadData   := readDataLookup(_.asSInt)
   unsignedReadData := readDataLookup(_.asUInt)
-  when(selectedIn.isRead) {
+  when(selectedIn.isRead && selectedIn.isHasReq) {
     out.gprWrite.data := Mux(selectedIn.isUnsigned, unsignedReadData, signedReadData.asUInt)
   }
 

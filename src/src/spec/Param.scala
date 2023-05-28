@@ -99,6 +99,10 @@ object Param {
     val idle, requestInst, waitInst = Value
   }
 
+  object NaiiveFetchStageState extends ChiselEnum {
+    val idle, request, waitQueue = Value
+  }
+
   object ExeStageState extends ChiselEnum {
     val nonBlocking, blocking = Value
   }
