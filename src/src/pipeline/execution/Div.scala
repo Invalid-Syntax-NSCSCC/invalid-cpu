@@ -21,7 +21,7 @@ class Div extends Module {
   // 正在运行
   val running = RegInit(false.B)
 
-  val inputReady = WireDefault(!running)
+  val inputReady = RegNext(!running, true.B)
   io.divInst.ready := inputReady
 
   // 开始 正在运算或除零，忽略
