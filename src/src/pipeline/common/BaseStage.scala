@@ -19,13 +19,17 @@ abstract class BaseStage[InT <: Data, OutT <: Data, PT <: Data](
   protected val isComputed:     Bool = WireDefault(true.B)
   protected val isLastComputed: Bool = RegNext(isComputed, true.B)
   protected val selectedIn: InT = Mux(
-    io.in.ready,
+    io.isFlush,
+    blankIn,
     Mux(
-      io.in.valid,
-      io.in.bits,
-      blankIn
-    ),
-    savedIn
+      io.in.ready,
+      Mux(
+        io.in.valid,
+        io.in.bits,
+        blankIn
+      ),
+      savedIn
+    )
   )
 
   // You should only focus on what `selectedIn` has to compute and make decision.

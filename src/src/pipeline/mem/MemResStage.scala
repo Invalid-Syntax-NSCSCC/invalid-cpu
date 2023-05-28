@@ -70,17 +70,20 @@ class MemResStage
   )
   signedReadData   := readDataLookup(_.asSInt)
   unsignedReadData := readDataLookup(_.asUInt)
-  when(selectedIn.isRead) {
+  when(selectedIn.isRead && selectedIn.isHasReq) {
     out.gprWrite.data := Mux(selectedIn.isUnsigned, unsignedReadData, signedReadData.asUInt)
   }
 
   when(selectedIn.instInfo.isValid) {
     // Whether memory access complete
-    when(selectedIn.isCached) {
-      isComputed := peer.dCacheRes.isComplete
-    }.otherwise {
-      isComputed := peer.uncachedRes.isComplete
+    when(selectedIn.isHasReq) {
+      when(selectedIn.isCached) {
+        isComputed := peer.dCacheRes.isComplete
+      }.otherwise {
+        isComputed := peer.uncachedRes.isComplete
+      }
     }
+
     // Submit result
     resultOutReg.valid := isComputed
   }
