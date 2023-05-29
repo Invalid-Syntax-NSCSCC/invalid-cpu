@@ -6,6 +6,7 @@ import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.{Csr, ExeInst, Param, PipelineStageIndex}
+import spec.Param.isDiffTest
 
 // TODO: Add stall to frontend ?
 // TODO: Add deal exceptions
@@ -41,6 +42,13 @@ class Cu(
 
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`
     val flushs = Output(Vec(ctrlControlNum, Bool()))
+
+    val difftest = if (isDiffTest) {
+      Some(Output(new Bundle {
+        val cmt_ertn       = Output(Bool())
+        val cmt_excp_flush = Output(Bool())
+      }))
+    } else None
   })
 
   /** Exception
@@ -158,14 +166,14 @@ class Cu(
       }
     }
   }
-  // etrn flush (完成异常？)
-  val extnFlush = WireDefault(
+  // ertn flush (完成异常？)
+  val ertnFlush = WireDefault(
     io.instInfoPorts.map(_.exeOp === ExeInst.Op.ertn).reduce(_ || _)
   ) // 指令控制
-  io.csrMessage.ertnFlush := extnFlush
+  io.csrMessage.ertnFlush := ertnFlush
 
   // select new pc
-  when(extnFlush) {
+  when(ertnFlush) {
     io.newPc.en     := true.B
     io.newPc.pcAddr := io.csrValues.era.asUInt
   }.elsewhen(hasException) {
@@ -203,4 +211,12 @@ class Cu(
   io.csrMessage.llbitSet.en := line0Is_ll || line0Is_sc
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := line0Is_ll
+
+  io.difftest match {
+    case Some(dt) => {
+      dt.cmt_ertn       := RegNext(ertnFlush)
+      dt.cmt_excp_flush := RegNext(exceptionFlush)
+    }
+    case _ =>
+  }
 }
