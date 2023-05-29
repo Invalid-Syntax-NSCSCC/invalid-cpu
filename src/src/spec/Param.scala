@@ -41,7 +41,7 @@ object Param {
       val slaveId  = 2.W
       val masterId = 4.W
     }
-
+    
     object DCache {
       val _addr       = 6 // TODO: Choose an optimal value
       val _byteOffset = log2Ceil(Count.DCache.dataPerLine) + log2Ceil(wordLength / byteLength)
@@ -65,6 +65,7 @@ object Param {
       val tag        = _tag.W
       val dataLine   = _dataLine.W
     }
+
   }
   object Count {
     object Axi { // crossbar
