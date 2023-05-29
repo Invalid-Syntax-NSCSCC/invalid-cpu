@@ -9,7 +9,7 @@ import pipeline.queue.decode.{Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec._
 import utils.BiCounter
-// 尝试写双发射的queue，未接入，不用管它
+
 // assert: enqueuePorts总是最低的几位有效
 class BiInstQueue(
   val queueLength: Int = Param.instQueueLength,
