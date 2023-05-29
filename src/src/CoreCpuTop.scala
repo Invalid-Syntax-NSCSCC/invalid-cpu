@@ -197,6 +197,9 @@ class CoreCpuTop extends Module {
   // Execution stage
   exeStage.io.in      <> regReadStage.io.out
   exeStage.io.isFlush := cu.io.flushs(PipelineStageIndex.exeStage)
+  exeStage.io.peer.foreach { p =>
+    p.csr.llbctl := csr.io.csrValues.llbctl
+  }
 
   // Mem stages
   addrTransStage.io.in      <> exeStage.io.out
@@ -262,6 +265,13 @@ class CoreCpuTop extends Module {
       t.cmt_wdata        := w.wdata
       t.cmt_csr_rstat_en := w.csr_rstat
       t.cmt_csr_data     := w.csr_data
+      t.cmt_inst_ld_en   := w.ld_en
+      t.cmt_ld_vaddr     := w.ld_vaddr
+      t.cmt_ld_paddr     := w.ld_paddr
+      t.cmt_inst_st_en   := w.st_en
+      t.cmt_st_vaddr     := w.st_vaddr
+      t.cmt_st_paddr     := w.st_paddr
+      t.cmt_st_data      := w.st_data
     case _ =>
   }
   (io.diffTest, cu.io.difftest) match {

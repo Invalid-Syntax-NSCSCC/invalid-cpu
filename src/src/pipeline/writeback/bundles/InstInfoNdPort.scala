@@ -16,6 +16,9 @@ class InstInfoNdPort extends Bundle {
 
   val exeOp = UInt(Param.Width.exeOp)
   val robId = UInt(Param.robIdLength.W)
+
+  val load  = new DifftestLoadNdPort
+  val store = new DifftestStoreNdPort
 }
 
 object InstInfoNdPort {
@@ -35,5 +38,7 @@ object InstInfoNdPort {
     instInfo.exceptionRecords.foreach(_ := false.B)
     instInfo.exeOp           := ExeInst.Op.nop
     instInfo.csrWritePort.en := false.B
+    instInfo.load.en         := false.B
+    instInfo.store.en        := false.B
   }
 }

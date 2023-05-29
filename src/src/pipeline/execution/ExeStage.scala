@@ -15,10 +15,13 @@ import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import common.enums.ReadWriteSel
+import control.csrRegsBundles.LlbctlBundle
 import pipeline.mem.bundles.MemRequestNdPort
 import pipeline.execution.bundles.ExeResultPort
 import pipeline.common.BaseStage
 import pipeline.mem.AddrTransNdPort
+
+import scala.collection.immutable
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -54,6 +57,9 @@ object ExeNdPort {
 class ExePeerPort extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
   val branchSetPort = Output(new PcSetPort)
+  val csr = Input(new Bundle {
+    val llbctl = new LlbctlBundle
+  })
 }
 
 // throw exception: 地址未对齐 ale
@@ -145,6 +151,7 @@ class ExeStage
 
   /** MemAccess
     */
+
   val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
@@ -182,6 +189,56 @@ class ExeStage
       resultOutReg.bits.memRequest.mask := "b1111".U
     }
   }
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.st_b) {
+      resultOutReg.bits.memRequest.write.data := Cat(
+        Seq.fill(wordLength / byteLength)(selectedIn.rightOperand(byteLength - 1, 0))
+      )
+    }
+    is(ExeInst.Op.st_h) {
+      resultOutReg.bits.memRequest.write.data := Cat(Seq.fill(2)(selectedIn.rightOperand(wordLength / 2 - 1, 0)))
+    }
+  }
+
+  resultOutReg.bits.instInfo.load.en := Cat(
+    0.U(2.W),
+    selectedIn.exeOp === ExeInst.Op.ll,
+    selectedIn.exeOp === ExeInst.Op.ld_w,
+    selectedIn.exeOp === ExeInst.Op.ld_hu,
+    selectedIn.exeOp === ExeInst.Op.ld_h,
+    selectedIn.exeOp === ExeInst.Op.ld_bu,
+    selectedIn.exeOp === ExeInst.Op.ld_b
+  ) | !isAle
+  resultOutReg.bits.instInfo.store.en := Cat(
+    0.U(4.W),
+    io.peer.get.csr.llbctl.wcllb &&
+      selectedIn.exeOp === ExeInst.Op.sc,
+    selectedIn.exeOp === ExeInst.Op.st_w,
+    selectedIn.exeOp === ExeInst.Op.st_h,
+    selectedIn.exeOp === ExeInst.Op.st_b
+  ) | !isAle
+  resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
+  resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
+  resultOutReg.bits.instInfo.store.data := MuxLookup(
+    selectedIn.exeOp,
+    selectedIn.rightOperand,
+    immutable.Seq(
+      ExeInst.Op.st_b -> Mux(
+        maskEncode(1),
+        Mux(
+          maskEncode(0),
+          Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
+          Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
+        ),
+        Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
+      ),
+      ExeInst.Op.st_h -> Mux(
+        maskEncode(1),
+        Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
+        selectedIn.rightOperand(15, 0)
+      )
+    )
+  )
 
   // branch set
   io.peer.get.branchSetPort := alu.io.result.jumpBranchInfo
