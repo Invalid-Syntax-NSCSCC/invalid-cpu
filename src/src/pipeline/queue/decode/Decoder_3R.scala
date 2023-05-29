@@ -98,7 +98,7 @@ class Decoder_3R extends Decoder {
     }
     is(Inst.mulh_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.mul
+      outInfo.exeOp    := ExeInst.Op.mulh
       outInfo.exeSel   := ExeInst.Sel.arithmetic
     }
     is(Inst.mulh_wu) {
