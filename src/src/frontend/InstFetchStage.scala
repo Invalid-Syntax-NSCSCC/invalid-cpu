@@ -51,18 +51,23 @@ class InstFetchStage extends Module {
 
     is(State.waitQueue) { // State Value: 2
       shouldDiscardReg := shouldDiscard
-      when(io.iCacheAccessPort.res.isComplete && io.instEnqueuePort.ready) {
-        stateReg                 := State.request
-        shouldDiscardReg         := false.B
-        io.instEnqueuePort.valid := !shouldDiscard
-        io.isPcNext              := !shouldDiscard
+      when(io.iCacheAccessPort.res.isComplete) {
+        when(shouldDiscard) {
+          stateReg         := State.request
+          shouldDiscardReg := false.B
+        }.elsewhen(io.instEnqueuePort.ready) {
+          stateReg                 := State.request
+          shouldDiscardReg         := false.B
+          io.instEnqueuePort.valid := true.B
+          io.isPcNext              := true.B
 
-        when(io.iCacheAccessPort.req.isReady) {
-          stateReg                               := State.waitQueue
-          io.iCacheAccessPort.req.client.addr    := Mux(shouldDiscard, io.pc, io.pc + 4.U)
-          io.iCacheAccessPort.req.client.isValid := true.B
-        }.otherwise {
-          stateReg := State.request
+          when(io.iCacheAccessPort.req.isReady) {
+            stateReg                               := State.waitQueue
+            io.iCacheAccessPort.req.client.addr    := Mux(shouldDiscard, io.pc, io.pc + 4.U)
+            io.iCacheAccessPort.req.client.isValid := true.B
+          }.otherwise {
+            stateReg := State.request
+          }
         }
       }
     }
