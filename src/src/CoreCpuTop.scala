@@ -156,26 +156,26 @@ class CoreCpuTop extends Module {
   // Inst Queue
   instQueue.io.enqueuePorts(0) <> simpleFetchStage.io.instEnqueuePort
   // TODO: CONNECT
-  instQueue.io.enqueuePorts(1)       <> DontCare // TODO: DELETE
-  instQueue.io.enqueuePorts(1).valid := false.B // TODO: DELETE
+  instQueue.io.enqueuePorts(1)       <> DontCare // TODO: Connect Second Pipeline
+  instQueue.io.enqueuePorts(1).valid := false.B // TODO: Connect Second Pipeline
   instQueue.io.isFlush               := cu.io.flushs(PipelineStageIndex.frontend)
 
   // Issue stage
   issueStage.io.fetchInstDecodePorts(0)       <> instQueue.io.dequeuePorts(0)
-  issueStage.io.issuedInfoPorts(1).ready      := false.B // TODO: DELETE
-  issueStage.io.fetchInstDecodePorts(1)       := DontCare // TODO: DELETE
-  issueStage.io.fetchInstDecodePorts(1).valid := false.B // TODO: DELETE
-  instQueue.io.dequeuePorts(1).ready          := false.B // TODO: DELETE
+  issueStage.io.issuedInfoPorts(1).ready      := false.B // TODO: Connect Second Pipeline
+  issueStage.io.fetchInstDecodePorts(1)       := DontCare // TODO: Connect Second Pipeline
+  issueStage.io.fetchInstDecodePorts(1).valid := false.B // TODO: Connect Second Pipeline
+  instQueue.io.dequeuePorts(1).ready          := false.B // TODO: Connect Second Pipeline
   issueStage.io.regScores                     := scoreboard.io.regScores
 
   issueStage.io.isFlushs(0)  := cu.io.flushs(PipelineStageIndex.issueStage)
-  issueStage.io.isFlushs(1)  := false.B // TODO: DELETE
+  issueStage.io.isFlushs(1)  := false.B // TODO: Connect Second Pipeline
   issueStage.io.csrRegScores := csrScoreBoard.io.regScores
 
-  issueStage.io.robEmptyNum := 2.U // TODO: DELETE
+  issueStage.io.robEmptyNum := 2.U // TODO: Connect Second Pipeline
   issueStage.io.idGetPorts.foreach { port =>
     port.id := 0.U
-  } // TODO: DELETE
+  } // TODO: Connect Second Pipeline
 
   // score boards
   scoreboard.io.freePorts(0)    := wbStage.io.freePort
