@@ -70,12 +70,7 @@ class ICache(
   // Note: Number of RAMs is the same as the size of a set
 
   // Functions for calculation
-  def byteOffsetFromMemAddr(addr: UInt) = addr(Param.Width.ICache._byteOffset - 1, 0)
-
-  def dataIndexFromByteOffset(offset: UInt) =
-    offset(Param.Width.ICache._byteOffset - 1, log2Ceil(wordLength / byteLength))
-
-  def dataIndexFromMemAddr(addr: UInt) = dataIndexFromByteOffset(byteOffsetFromMemAddr(addr))
+  def dataIndexFromMemAddr(addr: UInt) = addr(Param.Width.ICache._byteOffset - 1, log2Ceil(wordLength / byteLength))
 
   def queryIndexFromMemAddr(addr: UInt) =
     addr(Param.Width.ICache._byteOffset + Param.Width.ICache._addr - 1, Param.Width.ICache._byteOffset)
@@ -213,8 +208,7 @@ class ICache(
       val memAddr    = WireDefault(io.iCacheAccessPort.req.client.addr)
       val tag        = WireDefault(tagFromMemAddr(memAddr))
       val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
-      val byteOffset = WireDefault(byteOffsetFromMemAddr(memAddr))
-      val dataIndex  = WireDefault(dataIndexFromByteOffset(byteOffset))
+      val dataIndex  = WireDefault(dataIndexFromMemAddr(memAddr))
 
       // Read status-tag
       statusTagRams.foreach { ram =>
@@ -292,7 +286,10 @@ class ICache(
         // Stage 2.b.1: Send read request
 
         axiMaster.io.read.req.isValid := true.B
-        axiMaster.io.read.req.addr    := lastReg.memAddr
+        axiMaster.io.read.req.addr := Cat(
+          lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset),
+          0.U(Param.Width.DCache.byteOffset)
+        )
 
         when(axiMaster.io.read.req.isReady) {
           // Next Stage 2.b.2
