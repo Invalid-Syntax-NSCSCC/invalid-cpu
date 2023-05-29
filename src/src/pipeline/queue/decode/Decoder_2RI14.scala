@@ -90,8 +90,6 @@ class Decoder_2RI14 extends Decoder {
         outInfo.csrReadEn            := true.B
         outInfo.csrWriteEn           := true.B
       }
-
     }
   }
-
 }

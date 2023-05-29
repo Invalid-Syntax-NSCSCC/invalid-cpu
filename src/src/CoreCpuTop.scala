@@ -3,7 +3,7 @@ import axi.Axi3x1Crossbar
 import chisel3._
 import common.{Pc, RegFile}
 import control.{Csr, Cu, StableCounter}
-import frontend.{NaiiveFetchStage, SimpleFetchStage}
+import frontend.{Frontend, InstFetchStage, NaiiveFetchStage, SimpleFetchStage}
 import memory.{DCache, Tlb, UncachedAgent}
 import pipeline.dispatch.{BiIssueStage, RegReadNdPort, RegReadStage, Scoreboard}
 import pipeline.execution.ExeStage
@@ -16,6 +16,8 @@ import pipeline.queue.BiInstQueue
 import control.bundles.PipelineControlNdPort
 import chisel3.util.is
 import pipeline.rob.bundles.RobIdDistributePort
+import memory.ICache
+import frontend.Frontend
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -96,10 +98,10 @@ class CoreCpuTop extends Module {
   })
 
   io <> DontCare
-
-  val simpleFetchStage = Module(new NaiiveFetchStage)
-  val instQueue        = Module(new BiInstQueue)
-  val issueStage       = Module(new BiIssueStage)
+  val iCache     = Module(new ICache)
+  val frontend   = Module(new Frontend)
+  val instQueue  = Module(new BiInstQueue)
+  val issueStage = Module(new BiIssueStage)
   io.issuedInfoPort   := issueStage.io.issuedInfoPorts(0).bits
   io.issueOutputValid := issueStage.io.issuedInfoPorts(0).valid
   val regReadStage  = Module(new RegReadStage)
@@ -134,8 +136,8 @@ class CoreCpuTop extends Module {
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
 
-  // `SimpleFetchStage` <> AXI crossbar
-  crossbar.io.slave(0) <> simpleFetchStage.io.axiMasterInterface
+  // `ICache` <> AXI crossbar
+  crossbar.io.slave(0) <> iCache.io.axiMasterPort
 
   // Memory related modules
   val dCache        = Module(new DCache)
@@ -148,13 +150,16 @@ class CoreCpuTop extends Module {
   crossbar.io.slave(1) <> dCache.io.axiMasterPort
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
-  // Simple fetch stage
-  simpleFetchStage.io.pc      := pc.io.pc
-  simpleFetchStage.io.isFlush := cu.io.flushs(PipelineStageIndex.frontend)
-  pc.io.isNext                := simpleFetchStage.io.isPcNext
+  // Frontend
+  //  instr fetch stage
+  frontend.io.iCacheAccessPort <> iCache.io.iCacheAccessPort
+  frontend.io.pc               := pc.io.pc
+  frontend.io.isFlush          := cu.io.flushs(PipelineStageIndex.frontend)
+  pc.io.isNext                 := frontend.io.isPcNext
 
   // Inst Queue
-  instQueue.io.enqueuePorts(0) <> simpleFetchStage.io.instEnqueuePort
+  instQueue.io.enqueuePorts(0) <> frontend.io.instEnqueuePort
+
   // TODO: CONNECT
   instQueue.io.enqueuePorts(1)       <> DontCare // TODO: Connect Second Pipeline
   instQueue.io.enqueuePorts(1).valid := false.B // TODO: Connect Second Pipeline

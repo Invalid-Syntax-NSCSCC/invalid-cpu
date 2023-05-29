@@ -208,7 +208,7 @@ class ExeStage
     selectedIn.exeOp === ExeInst.Op.ld_h,
     selectedIn.exeOp === ExeInst.Op.ld_bu,
     selectedIn.exeOp === ExeInst.Op.ld_b
-  ) | !isAle
+  ) & !isAle
   resultOutReg.bits.instInfo.store.en := Cat(
     0.U(4.W),
     io.peer.get.csr.llbctl.wcllb &&
@@ -216,7 +216,7 @@ class ExeStage
     selectedIn.exeOp === ExeInst.Op.st_w,
     selectedIn.exeOp === ExeInst.Op.st_h,
     selectedIn.exeOp === ExeInst.Op.st_b
-  ) | !isAle
+  ) & !isAle
   resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
   resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
   resultOutReg.bits.instInfo.store.data := MuxLookup(
