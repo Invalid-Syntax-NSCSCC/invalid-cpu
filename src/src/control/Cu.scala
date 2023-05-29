@@ -158,14 +158,14 @@ class Cu(
       }
     }
   }
-  // etrn flush (完成异常？)
-  val extnFlush = WireDefault(
+  // ertn flush (完成异常？)
+  val ertnFlush = WireDefault(
     io.instInfoPorts.map(_.exeOp === ExeInst.Op.ertn).reduce(_ || _)
   ) // 指令控制
-  io.csrMessage.ertnFlush := extnFlush
+  io.csrMessage.ertnFlush := ertnFlush
 
   // select new pc
-  when(extnFlush) {
+  when(ertnFlush) {
     io.newPc.en     := true.B
     io.newPc.pcAddr := io.csrValues.era.asUInt
   }.elsewhen(hasException) {
