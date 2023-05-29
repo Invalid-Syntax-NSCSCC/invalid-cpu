@@ -21,6 +21,8 @@ import pipeline.execution.bundles.ExeResultPort
 import pipeline.common.BaseStage
 import pipeline.mem.AddrTransNdPort
 
+import scala.collection.immutable
+
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
   val exeSel = UInt(Param.Width.exeSel)
@@ -149,26 +151,6 @@ class ExeStage
 
   /** MemAccess
     */
-  resultOutReg.bits.instInfo.load.en := Cat(
-    0.U(2.W),
-    selectedIn.exeOp === ExeInst.Op.ll,
-    selectedIn.exeOp === ExeInst.Op.ld_w,
-    selectedIn.exeOp === ExeInst.Op.ld_hu,
-    selectedIn.exeOp === ExeInst.Op.ld_h,
-    selectedIn.exeOp === ExeInst.Op.ld_bu,
-    selectedIn.exeOp === ExeInst.Op.ld_b
-  )
-  resultOutReg.bits.instInfo.store.en := Cat(
-    0.U(4.W),
-    io.peer.get.csr.llbctl.wcllb &&
-      selectedIn.exeOp === ExeInst.Op.sc,
-    selectedIn.exeOp === ExeInst.Op.st_w,
-    selectedIn.exeOp === ExeInst.Op.st_h,
-    selectedIn.exeOp === ExeInst.Op.st_b
-  )
-  resultOutReg.bits.instInfo.load.vaddr  := resultOutReg.bits.memRequest.addr
-  resultOutReg.bits.instInfo.store.vaddr := resultOutReg.bits.memRequest.addr
-  resultOutReg.bits.instInfo.store.data  := resultOutReg.bits.memRequest.write.data
 
   val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
   val memReadEn = WireDefault(
@@ -217,6 +199,34 @@ class ExeStage
       resultOutReg.bits.memRequest.write.data := Cat(Seq.fill(2)(selectedIn.rightOperand(wordLength / 2 - 1, 0)))
     }
   }
+
+  resultOutReg.bits.instInfo.load.en := Cat(
+    0.U(2.W),
+    selectedIn.exeOp === ExeInst.Op.ll,
+    selectedIn.exeOp === ExeInst.Op.ld_w,
+    selectedIn.exeOp === ExeInst.Op.ld_hu,
+    selectedIn.exeOp === ExeInst.Op.ld_h,
+    selectedIn.exeOp === ExeInst.Op.ld_bu,
+    selectedIn.exeOp === ExeInst.Op.ld_b
+  )
+  resultOutReg.bits.instInfo.store.en := Cat(
+    0.U(4.W),
+    io.peer.get.csr.llbctl.wcllb &&
+      selectedIn.exeOp === ExeInst.Op.sc,
+    selectedIn.exeOp === ExeInst.Op.st_w,
+    selectedIn.exeOp === ExeInst.Op.st_h,
+    selectedIn.exeOp === ExeInst.Op.st_b
+  )
+  resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
+  resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
+  resultOutReg.bits.instInfo.store.data := MuxLookup(
+    selectedIn.exeOp,
+    selectedIn.rightOperand,
+    immutable.Seq(
+      ExeInst.Op.st_b -> selectedIn.rightOperand(7, 0),
+      ExeInst.Op.st_h -> selectedIn.rightOperand(15, 0)
+    )
+  )
 
   // branch set
   io.peer.get.branchSetPort := alu.io.result.jumpBranchInfo
