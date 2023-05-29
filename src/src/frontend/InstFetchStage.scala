@@ -54,6 +54,7 @@ class InstFetchStage extends Module {
       when(io.iCacheAccessPort.res.isComplete) {
         io.instEnqueuePort.valid := true.B
         when(shouldDiscard) {
+          io.instEnqueuePort.valid := false.B
           stateReg         := State.request
           shouldDiscardReg := false.B
         }.elsewhen(io.instEnqueuePort.ready) {
