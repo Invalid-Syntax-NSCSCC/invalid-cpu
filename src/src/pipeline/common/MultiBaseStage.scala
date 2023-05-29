@@ -12,9 +12,8 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   outNdFactory: => OutT,
   blankIn:      => InT,
   peerFactory:  => Option[PT] = None,
-  inNum: Int = Param.issueInstInfoMaxNum,
-  outNum: Int = Param.issueInstInfoMaxNum
-  )
+  inNum:        Int           = Param.issueInstInfoMaxNum,
+  outNum:       Int           = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new MultiBaseStageIo(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
 
@@ -24,8 +23,8 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   savedIns := savedIns
   protected val isComputeds:     Vec[Bool] = WireDefault(VecInit(Seq.fill(inNum)(true.B)))
   protected val isLastComputeds: Vec[Bool] = RegNext(isComputeds, VecInit(Seq.fill(inNum)(true.B)))
-  protected val selectedIns:      Vec[InT] = WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
-  selectedIns.lazyZip(io.ins).lazyZip(savedIns).foreach{
+  protected val selectedIns:     Vec[InT]  = WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
+  selectedIns.lazyZip(io.ins).lazyZip(savedIns).foreach {
     case (selectIn, in, saveIn) => {
       selectIn := Mux(
         io.isFlush,
@@ -43,21 +42,25 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
     }
   }
 
-  protected val resultOutsReg: Vec[ValidIO[OutT]] = RegInit(VecInit(Seq.fill(outNum)(0.U.asTypeOf(ValidIO(outNdFactory)))))
+  protected val resultOutsReg: Vec[ValidIO[OutT]] = RegInit(
+    VecInit(Seq.fill(outNum)(0.U.asTypeOf(ValidIO(outNdFactory))))
+  )
   resultOutsReg.foreach(_.valid := false.B)
-  private val lastResultOuts = Wire(Vec(outNum, Decoupled(outNdFactory)))
-  lastResultOuts.zip(resultOutsReg).foreach{
-    case(lastResultOut, resultOut) =>
+  protected val lastResultOuts = Wire(Vec(outNum, Decoupled(outNdFactory)))
+  lastResultOuts.zip(resultOutsReg).foreach {
+    case (lastResultOut, resultOut) =>
       lastResultOut.valid := resultOut.valid
-      lastResultOut.bits := resultOut.bits
+      lastResultOut.bits  := resultOut.bits
   }
-  private val outQueues = lastResultOuts.map(Queue(
-    _,
-    entries = queueSize,
-    pipe    = false,
-    flow    = true,
-    flush   = Some(io.isFlush)
-  ))
+  private val outQueues = lastResultOuts.map(
+    Queue(
+      _,
+      entries = queueSize,
+      pipe    = false,
+      flow    = true,
+      flush   = Some(io.isFlush)
+    )
+  )
 
   // Handle output
   io.outs <> outQueues
@@ -70,15 +73,15 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   //   }
   // }
 
-  io.ins.zip(savedIns).foreach{
-    case(in, saveIn) => 
+  io.ins.zip(savedIns).foreach {
+    case (in, saveIn) =>
       when(in.valid && in.ready) {
         saveIn := in.bits
       }
   }
 
   // Invalidate `savedIn` when computed
-  isComputeds.zip(savedIns).foreach{
+  isComputeds.zip(savedIns).foreach {
     case (isComputed, saveIn) =>
       when(isComputed) {
         saveIn := blankIn
