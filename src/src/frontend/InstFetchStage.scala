@@ -11,9 +11,7 @@ import spec._
 import frontend.bundles.ICacheAccessPort
 
 class InstFetchStage extends Module {
-
   val io = IO(new Bundle {
-
     val pc       = Input(UInt(Width.Reg.data))
     val isPcNext = Output(Bool())
 
@@ -23,79 +21,50 @@ class InstFetchStage extends Module {
     // <-> Frontend <-> Instrution queue
     val isFlush         = Input(Bool())
     val instEnqueuePort = Decoupled(new InstInfoBundle)
-
-    // val instQueueAccessPort = new Bundle{
-    //     val isFlush      = Input(Bool())
-    //     val instEnqueuePort    = Decoupled(new InstInfoBundle)
-    //     // val instEnqueuePorts = Vec(Param.Count.frontend.instFetchNum, Flipped(Decoupled(new InstInfoBundle)))
-
-    // }
   })
 
-  val iCacheAccessPort = new ICacheAccessPort
+  io.instEnqueuePort.bits.pcAddr := io.pc
+  io.instEnqueuePort.bits.inst   := io.iCacheAccessPort.res.read.data
 
-  val pcReg   = RegInit(zeroWord)
-  val instReg = RegInit(zeroWord)
-  val pc      = WireInit(pcReg)
-  val inst    = WireInit(instReg)
-  io.instEnqueuePort.bits.pcAddr := pc
-  io.instEnqueuePort.bits.inst   := inst
+  val stateReg = RegInit(State.idle)
+  stateReg := stateReg
 
-  val nextState = WireInit(State.idle)
-  val stateReg  = RegNext(nextState, State.idle)
-
-  val shouldDiscardReg = RegInit(false.B)
+  val shouldDiscardReg = RegInit(false.B) // Fallback: Follow
   val shouldDiscard    = WireInit(io.isFlush || shouldDiscardReg)
-  val isInstValidReg   = RegInit(false.B)
-  val isInstValid      = WireInit(io.iCacheAccessPort.res.isComplete || isInstValidReg)
 
   // Fallbacks
   io.isPcNext                            := false.B
-  io.iCacheAccessPort.req.client.addr    := pcReg
-  io.instEnqueuePort.valid               := false.B
-  pc                                     := pcReg
-  inst                                   := instReg
-  pcReg                                  := pcReg
-  instReg                                := instReg
-  shouldDiscardReg                       := false.B
-  isInstValidReg                         := false.B
   io.iCacheAccessPort.req.client.isValid := false.B
+  io.iCacheAccessPort.req.client.addr    := io.pc
+  io.instEnqueuePort.valid               := false.B
 
   switch(stateReg) {
     is(State.idle) { // State Value: 0
-      nextState := State.request
+      stateReg := State.request
     }
     is(State.request) { // State Value: 1
-      when(io.isFlush) {
-        nextState := State.waitQueue
-      }.otherwise {
-        nextState                              := State.waitQueue
-        io.isPcNext                            := true.B
+      when(io.iCacheAccessPort.req.isReady) {
+        stateReg                               := State.waitQueue
         io.iCacheAccessPort.req.client.isValid := true.B
-        io.iCacheAccessPort.req.client.addr    := io.pc
-        pc                                     := io.pc
-        pcReg                                  := io.pc
-        shouldDiscardReg                       := false.B
       }
-
     }
 
     is(State.waitQueue) { // State Value: 2
       shouldDiscardReg := shouldDiscard
-      isInstValidReg   := isInstValid
-      when(io.iCacheAccessPort.res.isComplete) {
-        inst    := io.iCacheAccessPort.res.read.data
-        instReg := io.iCacheAccessPort.res.read.data
-      }
-      when(!isInstValid || !io.instEnqueuePort.ready) {
-        nextState := State.waitQueue
-      }.otherwise {
-        nextState := State.request // non-stopping fetching instructions
-        when(!shouldDiscard) {
-          io.instEnqueuePort.valid := true.B
+      when(io.iCacheAccessPort.res.isComplete && io.instEnqueuePort.ready) {
+        stateReg                 := State.request
+        shouldDiscardReg         := false.B
+        io.instEnqueuePort.valid := !shouldDiscard
+        io.isPcNext              := !shouldDiscard
+
+        when(io.iCacheAccessPort.req.isReady) {
+          stateReg                               := State.waitQueue
+          io.iCacheAccessPort.req.client.addr    := Mux(shouldDiscard, io.pc, io.pc + 4.U)
+          io.iCacheAccessPort.req.client.isValid := true.B
+        }.otherwise {
+          stateReg := State.request
         }
       }
     }
   }
-
 }
