@@ -50,16 +50,16 @@ class InstrFetchStage extends Module {
   val isInstValid      = WireInit(io.iCacheAccessPort.res.isComplete || isInstValidReg)
 
   // Fallbacks
-  io.isPcNext                                    := false.B
-  io.iCacheAccessPort.req.client.addr            := pcReg
-  io.instEnqueuePort.valid                       := false.B
-  pc                                             := pcReg
-  inst                                           := instReg
-  pcReg                                          := pcReg
-  instReg                                        := instReg
-  shouldDiscardReg                               := false.B
-  isInstValidReg                                 := false.B
-  io.iCacheAccessPort.req.client.isValid         := false.B
+  io.isPcNext                            := false.B
+  io.iCacheAccessPort.req.client.addr    := pcReg
+  io.instEnqueuePort.valid               := false.B
+  pc                                     := pcReg
+  inst                                   := instReg
+  pcReg                                  := pcReg
+  instReg                                := instReg
+  shouldDiscardReg                       := false.B
+  isInstValidReg                         := false.B
+  io.iCacheAccessPort.req.client.isValid := false.B
 
   switch(stateReg) {
     is(State.idle) { // State Value: 0
@@ -69,13 +69,13 @@ class InstrFetchStage extends Module {
       when(io.isFlush) {
         nextState := State.waitQueue
       }.otherwise {
-        nextState                                      := State.waitQueue
-        io.isPcNext                                    := true.B
+        nextState                              := State.waitQueue
+        io.isPcNext                            := true.B
         io.iCacheAccessPort.req.client.isValid := true.B
-        io.iCacheAccessPort.req.client.addr := io.pc
-        pc                                             := io.pc
-        pcReg                                          := io.pc
-        shouldDiscardReg                               := false.B
+        io.iCacheAccessPort.req.client.addr    := io.pc
+        pc                                     := io.pc
+        pcReg                                  := io.pc
+        shouldDiscardReg                       := false.B
       }
 
     }

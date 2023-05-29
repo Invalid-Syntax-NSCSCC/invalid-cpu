@@ -6,7 +6,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import common.enums.ReadWriteSel
-import memory.bundles.{ICacheStatusTagBundle}
+import memory.bundles.ICacheStatusTagBundle
 import memory.enums.{ICacheState => State}
 import spec._
 import frontend.bundles.ICacheAccessPort
@@ -19,8 +19,8 @@ class ICache(
   debugSetNumSeq:    Seq[Int]  = Seq())
     extends Module {
   val io = IO(new Bundle {
-    val iCacheAccessPort    = new ICacheAccessPort
-    val axiMasterPort = new AxiMasterInterface
+    val iCacheAccessPort = new ICacheAccessPort
+    val axiMasterPort    = new AxiMasterInterface
   })
 
   // TODO: Remove DontCare
@@ -182,7 +182,7 @@ class ICache(
   io.iCacheAccessPort.res.isComplete := isReadValidReg
 
   val readDataReg = RegInit(0.U(Width.Mem.data))
-  readDataReg                 := readDataReg // Fallback: Keep data
+  readDataReg                       := readDataReg // Fallback: Keep data
   io.iCacheAccessPort.res.read.data := readDataReg
 
   // Keep request and cache query information
@@ -306,6 +306,27 @@ class ICache(
         // Stage 2.b.2: Wait for refill data line
 
         when(axiMaster.io.read.res.isValid) {
+          val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+          val statusTag  = Wire(new ICacheStatusTagBundle)
+          statusTag.isValid := true.B
+          statusTag.tag     := tagFromMemAddr(lastReg.memAddr)
+
+          // Write status-tag to RAM
+          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := statusTag.asUInt
+              writePort.addr := queryIndex
+          }
+
+          // Write to data line RAM
+          dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := axiMaster.io.read.res.data
+              writePort.addr := queryIndex
+          }
+
           // Return read data
           val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
           val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))

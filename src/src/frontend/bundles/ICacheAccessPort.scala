@@ -20,5 +20,5 @@ class ICacheAccessPort extends Bundle {
       val data = UInt(Width.Mem.data)
     }
   })
-  
+
 }

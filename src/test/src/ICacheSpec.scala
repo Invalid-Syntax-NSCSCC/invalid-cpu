@@ -57,7 +57,7 @@ object ICacheSpec extends ChiselUtestTester {
       // val readRefillWbMemAddr = "b_1100000000000000111100_000001_0100".U
 
       // Query index: 2
-      val writeRefillMemAddr   = "b_1000000000000000111101_000010_0100".U
+      // val writeRefillMemAddr   = "b_1000000000000000111101_000010_0100".U
       // val writeRefillWbMemAddr = "b_1100000000000000111101_000010_0100".U
 
       val memReadDataSeq        = Seq("h_F".U, "h_FF".U, "h_FFF".U, "h_FFFF".U)
