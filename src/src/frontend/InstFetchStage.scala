@@ -32,6 +32,11 @@ class InstFetchStage extends Module {
   val shouldDiscardReg = RegInit(false.B) // Fallback: Follow
   val shouldDiscard    = WireInit(io.isFlush || shouldDiscardReg)
 
+  val isCompleteReg = RegInit(false.B)
+  isCompleteReg := isCompleteReg
+  val lastInstReg = RegInit(0.U(Width.inst))
+  lastInstReg := lastInstReg
+
   // Fallbacks
   io.isPcNext                            := false.B
   io.iCacheAccessPort.req.client.isValid := false.B
@@ -46,12 +51,20 @@ class InstFetchStage extends Module {
       when(io.iCacheAccessPort.req.isReady) {
         stateReg                               := State.waitQueue
         io.iCacheAccessPort.req.client.isValid := true.B
+        isCompleteReg                          := false.B
       }
     }
 
     is(State.waitQueue) { // State Value: 2
       shouldDiscardReg := shouldDiscard
       when(io.iCacheAccessPort.res.isComplete) {
+        isCompleteReg := true.B
+        lastInstReg   := io.iCacheAccessPort.res.read.data
+      }
+      when(isCompleteReg) {
+        io.instEnqueuePort.bits.inst := lastInstReg
+      }
+      when(io.iCacheAccessPort.res.isComplete || isCompleteReg) {
         io.instEnqueuePort.valid := true.B
         when(shouldDiscard) {
           io.instEnqueuePort.valid := false.B
@@ -66,6 +79,7 @@ class InstFetchStage extends Module {
             stateReg                               := State.waitQueue
             io.iCacheAccessPort.req.client.addr    := Mux(shouldDiscard, io.pc, io.pc + 4.U)
             io.iCacheAccessPort.req.client.isValid := true.B
+            isCompleteReg                          := false.B
           }.otherwise {
             stateReg := State.request
           }
