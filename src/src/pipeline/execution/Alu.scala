@@ -8,7 +8,6 @@ import ExeInst.Op
 import control.bundles.PipelineControlNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import spec.Param.{AluState => State}
-import pipeline.execution.Mul
 
 class Alu extends Module {
   val io = IO(new Bundle {
@@ -139,30 +138,24 @@ class Alu extends Module {
     ).contains(io.aluInst.op)
   )
 
-  val mulStage = Module(new Mul)
+  val mulResult = RegNext(lop * rop, 0.U(doubleWordLength.W))
 
-  val mulStart = WireDefault(useMul && mulStage.io.mulInst.ready && io.inputValid)
-
-  mulStage.io.isFlush                   := io.isFlush
-  mulStage.io.mulInst.valid             := mulStart
-  mulStage.io.mulResult.ready           := DontCare
-  mulStage.io.mulInst.bits.op           := io.aluInst.op
-  mulStage.io.mulInst.bits.leftOperand  := lop
-  mulStage.io.mulInst.bits.rightOperand := rop
-
-  val mulResult = WireDefault(mulStage.io.mulResult.bits)
-
-  val mulResultStoreReg = RegInit(0.U(doubleWordLength.W))
-  mulResultStoreReg := mulResultStoreReg
-  when(mulStage.io.mulResult.valid) {
-    mulResultStoreReg := mulResult
+  val mulResFlag = RegInit(false.B)
+  when(useMul) {
+    mulResFlag := !mulResFlag
   }
 
-  val selectedMulResult = Mux(
-    mulStage.io.mulResult.valid,
-    mulResult,
-    mulResultStoreReg
-  )
+  // val mulResultStoreReg = RegInit(0.U(doubleWordLength.W))
+  // mulResultStoreReg := mulResultStoreReg
+  // when(mulStage.io.mulResult.valid) {
+  //   mulResultStoreReg := mulResult
+  // }
+
+  // val selectedMulResult = Mux(
+  //   mulStage.io.mulResult.valid,
+  //   mulResult,
+  //   mulResultStoreReg
+  // )
 
   // Div
 
@@ -204,7 +197,7 @@ class Alu extends Module {
   val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
   val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
 
-  io.outputValid := !mulStart && !divStart && divStage.io.divInst.ready
+  io.outputValid := mulResFlag || !divStart && divStage.io.divInst.ready
 
   switch(io.aluInst.op) {
     is(Op.add) {
@@ -220,10 +213,10 @@ class Alu extends Module {
       arithmetic := (lop < rop).asUInt
     }
     is(Op.mul) {
-      arithmetic := selectedMulResult(wordLength - 1, 0)
+      arithmetic := mulResult(wordLength - 1, 0)
     }
     is(Op.mulh, Op.mulhu) {
-      arithmetic := selectedMulResult(doubleWordLength - 1, wordLength)
+      arithmetic := mulResult(doubleWordLength - 1, wordLength)
     }
     is(Op.div, Op.divu) {
       arithmetic := selectedQuotient
@@ -234,8 +227,10 @@ class Alu extends Module {
   }
 
   when(io.isFlush) {
-    io.outputValid    := false.B
-    mulResultStoreReg := 0.U
+    io.outputValid := false.B
+    // mulResultStoreReg := 0.U
+    mulResult         := 0.U
+    mulResFlag        := false.B
     remainderStoreReg := 0.U
     quotientStoreReg  := 0.U
   }
