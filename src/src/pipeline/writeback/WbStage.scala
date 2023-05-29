@@ -85,7 +85,7 @@ class WbStage extends Module {
       dt.ld_en     := RegNext(io.in.bits.instInfo.load.en)
       dt.ld_vaddr  := RegNext(io.in.bits.instInfo.load.vaddr)
       dt.ld_paddr  := RegNext(io.in.bits.instInfo.load.paddr)
-      dt.st_en     := RegNext(io.in.bits.instInfo.load.en)
+      dt.st_en     := RegNext(io.in.bits.instInfo.store.en)
       dt.st_vaddr  := RegNext(io.in.bits.instInfo.store.vaddr)
       dt.st_paddr  := RegNext(io.in.bits.instInfo.store.paddr)
       dt.st_data   := RegNext(io.in.bits.instInfo.store.data)

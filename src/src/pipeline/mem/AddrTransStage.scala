@@ -75,8 +75,10 @@ class AddrTransStage
   }
 
   // Translate address
-  out.instInfo.load.paddr  := Cat(peer.tlbTrans.physAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.vaddr(1, 0))
-  out.instInfo.store.paddr := Cat(peer.tlbTrans.physAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.store.vaddr(1, 0))
+  val translatedAddr = WireDefault(selectedIn.memRequest.addr)
+  out.instInfo.load.paddr   := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.vaddr(1, 0))
+  out.instInfo.store.paddr  := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.store.vaddr(1, 0))
+  out.translatedMemReq.addr := translatedAddr
   peer.tlbTrans.memType := MuxLookup(
     selectedIn.memRequest.rw,
     TlbMemType.load
@@ -89,16 +91,16 @@ class AddrTransStage
   peer.tlbTrans.virtAddr := selectedIn.memRequest.addr
   switch(transMode) {
     is(AddrTransType.direct) {
-      out.translatedMemReq.addr := selectedIn.memRequest.addr
+      translatedAddr := selectedIn.memRequest.addr
     }
     is(AddrTransType.directMapping) {
-      out.translatedMemReq.addr := Cat(
+      translatedAddr := Cat(
         peer.csr.dmw.pseg,
         selectedIn.memRequest.addr(selectedIn.memRequest.addr.getWidth - 4, 0)
       )
     }
     is(AddrTransType.pageTableMapping) {
-      out.translatedMemReq.addr    := peer.tlbTrans.physAddr
+      translatedAddr               := peer.tlbTrans.physAddr
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
       val exceptionIndex = peer.tlbTrans.exception.bits
