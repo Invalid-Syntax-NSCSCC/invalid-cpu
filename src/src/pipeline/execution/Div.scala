@@ -49,7 +49,7 @@ class Div extends Module {
   }
 
   def getAbs(data: UInt, sign: Bool): UInt = {
-    (Fill(wordLength, sign) ^ data) + sign.asUInt
+    Fill(wordLength, sign) ^ data + sign.asUInt
   }
 
   val dividendSign = getSign(dividend, wordLength)
@@ -187,7 +187,6 @@ class Div extends Module {
     ),
     zeroWord // 被除数为0
   )
-
   io.divResult.bits.remainder := Mux(
     remainder.orR,
     Mux(
