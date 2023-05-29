@@ -4,23 +4,29 @@ import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
+import pipeline.mem.MemResNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec._
 
-class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
+class WbNdPort extends Bundle {
+  val gprWrite = new RfWriteNdPort
+  val instInfo = new InstInfoNdPort
+}
+
+class WbStage extends Module {
   val io = IO(new Bundle {
-    // `AddrTransStage` -> `WbStage`
-    val gprWriteInfoPort = Input(new RfWriteNdPort)
+    val in = Flipped(Decoupled(new WbNdPort))
+
     // `WbStage` -> `Cu` NO delay
     val gprWritePort = Output(new RfWriteNdPort)
 
     // Scoreboard
-    val freePorts    = Output(Vec(changeNum, new ScoreboardChangeNdPort))
-    val csrFreePorts = Output(Vec(changeNum, new ScoreboardChangeNdPort))
+    val freePort    = Output(new ScoreboardChangeNdPort)
+    val csrFreePort = Output(new ScoreboardChangeNdPort)
 
     // `AddrTransStage` -> `WbStage` -> `Cu`  NO delay
-    val instInfoPassThroughPort = new PassThroughPort(new InstInfoNdPort)
+    val cuInstInfoPort = Output(new InstInfoNdPort)
 
     val difftest =
       if (isDiffTest)
@@ -40,37 +46,34 @@ class WbStage(changeNum: Int = Param.issueInstInfoMaxNum) extends Module {
         }))
       else None
   })
+  // Always assert ready for last stage
+  io.in.ready := true.B
 
-  // Wb debug port connection
-  io.instInfoPassThroughPort.out := io.instInfoPassThroughPort.in
-
-  io.gprWritePort := io.gprWriteInfoPort
+  // Output connection
+  io.cuInstInfoPort         := io.in.bits.instInfo
+  io.gprWritePort           := io.in.bits.gprWrite
+  io.cuInstInfoPort.isValid := io.in.valid && io.in.bits.instInfo.isValid
+  io.gprWritePort.en        := io.in.valid && io.in.bits.gprWrite.en
 
   // Indicate the availability in scoreboard
-  io.freePorts.zip(Seq(io.gprWritePort)).foreach {
-    case (freePort, accessInfo) =>
-      freePort.en   := accessInfo.en
-      freePort.addr := accessInfo.addr
-  }
+  io.freePort.en   := io.gprWritePort.en && io.in.valid
+  io.freePort.addr := io.gprWritePort.addr
 
-  io.csrFreePorts.zip(Seq(io.instInfoPassThroughPort.in.csrWritePort)).foreach {
-    case (freePort, accessInfo) =>
-      freePort.en   := accessInfo.en
-      freePort.addr := accessInfo.addr
-  }
+  io.csrFreePort.en   := io.in.bits.instInfo.csrWritePort.en && io.in.valid
+  io.csrFreePort.addr := io.in.bits.instInfo.csrWritePort.addr
 
   // Diff test connection
   io.difftest match {
     case Some(dt) =>
       dt           := DontCare
-      dt.valid     := RegNext(io.instInfoPassThroughPort.in.pc.orR)
-      dt.pc        := RegNext(io.instInfoPassThroughPort.in.pc)
-      dt.instr     := RegNext(io.instInfoPassThroughPort.in.inst)
-      dt.wen       := RegNext(io.gprWriteInfoPort.en)
-      dt.wdest     := RegNext(io.gprWriteInfoPort.addr)
-      dt.wdata     := RegNext(io.gprWriteInfoPort.data)
-      dt.csr_rstat := RegNext(io.instInfoPassThroughPort.in.csrWritePort.en)
-      dt.csr_data  := RegNext(io.instInfoPassThroughPort.in.csrWritePort.data)
+      dt.valid     := RegNext(io.in.bits.instInfo.isValid && io.in.valid)
+      dt.pc        := RegNext(io.in.bits.instInfo.pc)
+      dt.instr     := RegNext(io.in.bits.instInfo.inst)
+      dt.wen       := RegNext(io.in.bits.gprWrite.en)
+      dt.wdest     := RegNext(io.in.bits.gprWrite.addr)
+      dt.wdata     := RegNext(io.in.bits.gprWrite.data)
+      dt.csr_rstat := RegNext(io.in.bits.instInfo.csrWritePort.en)
+      dt.csr_data  := RegNext(io.in.bits.instInfo.csrWritePort.data)
     case _ =>
   }
 }

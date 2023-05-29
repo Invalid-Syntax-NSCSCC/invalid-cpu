@@ -7,6 +7,7 @@ import common.enums.ReadWriteSel
 import control.bundles.PipelineControlNdPort
 import memory.bundles.TlbTransPort
 import memory.enums.TlbMemType
+import pipeline.common.BaseStage
 import pipeline.mem.bundles.{MemCsrNdPort, MemRequestNdPort}
 import pipeline.mem.enums.AddrTransType
 import pipeline.writeback.bundles.InstInfoNdPort
@@ -15,47 +16,48 @@ import spec.Width
 
 import scala.collection.immutable
 
-class AddrTransStage extends Module {
-  val io = IO(new Bundle {
-    val memAccessPort       = Input(new MemRequestNdPort)
-    val csrPort             = Input(new MemCsrNdPort)
-    val tlbTransPort        = Flipped(new TlbTransPort)
-    val pipelineControlPort = Input(new PipelineControlNdPort)
+class AddrTransNdPort extends Bundle {
+  val memRequest = new MemRequestNdPort
+  val gprWrite   = new RfWriteNdPort
+  val instInfo   = new InstInfoNdPort
+}
 
-    // (Next clock pulse)
-    val gprWritePassThroughPort  = new PassThroughPort(new RfWriteNdPort)
-    val instInfoPassThroughPort  = new PassThroughPort(new InstInfoNdPort)
-    val translatedMemRequestPort = Output(new MemRequestNdPort)
-    val isCachedAccess           = Output(Bool())
-  })
+object AddrTransNdPort {
+  def default: AddrTransNdPort = 0.U.asTypeOf(new AddrTransNdPort)
+}
 
-  // Pass GPR write request to the next stage
-  val gprWriteReg = RegNext(io.gprWritePassThroughPort.in)
-  io.gprWritePassThroughPort.out := gprWriteReg
+class AddrTransPeerPort extends Bundle {
+  val csr      = Input(new MemCsrNdPort)
+  val tlbTrans = Flipped(new TlbTransPort)
+}
 
-  // Wb debug port connection
-  val instInfoReg = RegNext(io.instInfoPassThroughPort.in)
-  io.instInfoPassThroughPort.out := instInfoReg
+class AddrTransStage
+    extends BaseStage(
+      new AddrTransNdPort,
+      new MemReqNdPort,
+      AddrTransNdPort.default,
+      Some(new AddrTransPeerPort)
+    ) {
+  val peer = io.peer.get
+  val out  = resultOutReg.bits
 
-  // Pass translated memory request to the next stage
-  val physicalAddr            = WireDefault(0.U(Width.Mem.addr)) // Fallback: Dummy address
-  val translatedMemRequestReg = RegNext(io.memAccessPort)
-  translatedMemRequestReg.addr := physicalAddr
-  io.translatedMemRequestPort  := translatedMemRequestReg
+  // Fallback output
+  out.gprWrite         := selectedIn.gprWrite
+  out.instInfo         := selectedIn.instInfo
+  out.translatedMemReq := selectedIn.memRequest
+  out.isCached         := false.B // Fallback: Uncached
 
-  // TODO: Might need to move to previous stage to prevent data hazard
   // Select a translation mode
   val transMode = WireDefault(AddrTransType.direct) // Fallback: Direct translation
-  when(!io.csrPort.crmd.da && io.csrPort.crmd.pg) {
+  when(!peer.csr.crmd.da && peer.csr.crmd.pg) {
     val isDirectMappingWindowHit = WireDefault(
-      io.csrPort.dmw.vseg ===
-        io.memAccessPort.addr(io.memAccessPort.addr.getWidth - 1, io.memAccessPort.addr.getWidth - 3)
+      peer.csr.dmw.vseg ===
+        selectedIn.memRequest.addr(selectedIn.memRequest.addr.getWidth - 1, selectedIn.memRequest.addr.getWidth - 3)
     )
-
-    switch(io.csrPort.crmd.plv) {
+    switch(peer.csr.crmd.plv) {
       is(Csr.Crmd.Plv.low) {
         when(
-          io.csrPort.dmw.plv3 && isDirectMappingWindowHit
+          peer.csr.dmw.plv3 && isDirectMappingWindowHit
         ) {
           transMode := AddrTransType.directMapping
         }.otherwise {
@@ -63,7 +65,7 @@ class AddrTransStage extends Module {
         }
       }
       is(Csr.Crmd.Plv.high) {
-        when(io.csrPort.dmw.plv0 && isDirectMappingWindowHit) {
+        when(peer.csr.dmw.plv0 && isDirectMappingWindowHit) {
           transMode := AddrTransType.directMapping
         }.otherwise {
           transMode := AddrTransType.pageTableMapping
@@ -73,8 +75,8 @@ class AddrTransStage extends Module {
   }
 
   // Translate address
-  io.tlbTransPort.memType := MuxLookup(
-    io.memAccessPort.rw,
+  peer.tlbTrans.memType := MuxLookup(
+    selectedIn.memRequest.rw,
     TlbMemType.load
   )(
     immutable.Seq(
@@ -82,44 +84,39 @@ class AddrTransStage extends Module {
       ReadWriteSel.write -> TlbMemType.store
     )
   )
-  io.tlbTransPort.virtAddr := io.memAccessPort.addr
+  peer.tlbTrans.virtAddr := selectedIn.memRequest.addr
   switch(transMode) {
     is(AddrTransType.direct) {
-      physicalAddr := io.memAccessPort.addr
+      out.translatedMemReq.addr := selectedIn.memRequest.addr
     }
     is(AddrTransType.directMapping) {
-      physicalAddr := Cat(
-        io.csrPort.dmw.pseg,
-        io.memAccessPort.addr(io.memAccessPort.addr.getWidth - 4, 0)
+      out.translatedMemReq.addr := Cat(
+        peer.csr.dmw.pseg,
+        selectedIn.memRequest.addr(selectedIn.memRequest.addr.getWidth - 4, 0)
       )
     }
     is(AddrTransType.pageTableMapping) {
-      physicalAddr                    := io.tlbTransPort.physAddr
-      translatedMemRequestReg.isValid := io.memAccessPort.isValid && !io.tlbTransPort.exception.valid
+      out.translatedMemReq.addr    := peer.tlbTrans.physAddr
+      out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
-      val exceptionIndex = io.tlbTransPort.exception.bits
-      instInfoReg.exceptionRecords(exceptionIndex) :=
-        instInfoReg.exceptionRecords(exceptionIndex) || io.tlbTransPort.exception.valid
+      val exceptionIndex = peer.tlbTrans.exception.bits
+      out.instInfo.exceptionRecords(exceptionIndex) :=
+        out.instInfo.exceptionRecords(exceptionIndex) || peer.tlbTrans.exception.valid
     }
   }
 
-  // TODO: Might need to move to previous stage to prevent data hazard
   // Can use cache
-  val isCachedAccessReg = RegNext(true.B, true.B) // Fallback: Coherent cached
-  io.isCachedAccess := isCachedAccessReg
-  switch(io.csrPort.crmd.datm) {
+  switch(peer.csr.crmd.datm) {
     is(Csr.Crmd.Datm.suc) {
-      isCachedAccessReg := false.B
+      out.isCached := false.B
     }
     is(Csr.Crmd.Datm.cc) {
-      isCachedAccessReg := true.B
+      out.isCached := true.B
     }
   }
 
-  // Flush
-  when(io.pipelineControlPort.flush) {
-    gprWriteReg.en := false.B
-    InstInfoNdPort.invalidate(instInfoReg)
-    translatedMemRequestReg.isValid := false.B
+  // Submit result
+  when(selectedIn.instInfo.isValid) {
+    resultOutReg.valid := true.B
   }
 }

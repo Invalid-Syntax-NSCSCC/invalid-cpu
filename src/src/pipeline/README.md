@@ -14,4 +14,17 @@
 
 
 # 译码情况
-break和syscall译码过程只检查是否match和确定ExeOp，code等到Cu再查看
+
+break和syscall译码过程只检查是否match和确定ExeOp，code等到Cu再查看（***UNFINISH***）
+
+CSR地址转换在译码时实现
+
+# 数据传递
+
+使用`ready-valid`进行数据传递
+
+# Pipeline Control Signal
+
+## `flush`
+
+Reset or make invalid every regs in current stage.

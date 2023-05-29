@@ -2,22 +2,10 @@ package control
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.BundleLiterals._
-import spec.Param
-import control.bundles.PipelineControlNdPort
-import spec.PipelineStageIndex
+import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
+import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
 import pipeline.writeback.bundles.InstInfoNdPort
-import common.bundles.RfWriteNdPort
-import common.bundles.PassThroughPort
-import control.bundles.CsrWriteNdPort
-import control.bundles.CuToCsrNdPort
-import spec.Csr
-import control.bundles.CsrValuePort
-import spec.Width
-import spec.zeroWord
-import spec.ExeInst
-import common.bundles.PcSetPort
-import control.bundles.StableCounterReadPort
+import spec.{Csr, ExeInst, Param, PipelineStageIndex}
 
 // TODO: Add stall to frontend ?
 // TODO: Add deal exceptions
@@ -28,8 +16,8 @@ import control.bundles.StableCounterReadPort
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
-  dispatchNum:    Int = Param.dispatchInstNum)
-    extends Module {
+  dispatchNum:    Int = 1 // Param.issueInstInfoMaxNum
+) extends Module {
   val io = IO(new Bundle {
 
     /** 回写与异常处理
@@ -51,38 +39,9 @@ class Cu(
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    /** 暂停信号
-      */
-    // `ExeStage` -> `Cu`
-    val exeStallRequest = Input(Bool())
-    // `MemResStage` -> `Cu`
-    val memResStallRequest = Input(Bool())
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`
-    val pipelineControlPorts = Output(Vec(ctrlControlNum, new PipelineControlNdPort))
+    val flushs = Output(Vec(ctrlControlNum, Bool()))
   })
-
-  // Stall 暂停流水线前面部分
-
-  io.pipelineControlPorts.foreach(_ := PipelineControlNdPort.default)
-  io.pipelineControlPorts(PipelineStageIndex.issueStage).stall     := io.memResStallRequest || io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.regReadStage).stall   := io.memResStallRequest || io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.exeStage).stall       := io.memResStallRequest || io.exeStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.addrTransStage).stall := io.memResStallRequest
-  io.pipelineControlPorts(PipelineStageIndex.memReqStage).stall    := io.memResStallRequest
-
-  /** clear
-    *
-    * Assume A -> B, A is stall but B is not stall. Give A a clear signal to clear its output
-    */
-
-  Seq(
-    PipelineStageIndex.issueStage,
-    PipelineStageIndex.regReadStage,
-    PipelineStageIndex.exeStage
-  ).map(io.pipelineControlPorts(_)).sliding(2, 1).foreach {
-    case Seq(prev, next) =>
-      prev.clear := prev.stall && !next.stall
-  }
 
   /** Exception
     */
@@ -114,19 +73,22 @@ class Cu(
 
   /** flush
     */
+  val flushs = Wire(Vec(ctrlControlNum, Bool()))
+  io.flushs := RegNext(flushs)
+  flushs.foreach(_ := false.B)
 
   when(io.jumpPc.en) {
     Seq(
       PipelineStageIndex.issueStage,
       PipelineStageIndex.regReadStage,
-      PipelineStageIndex.instQueue
-    ).map(io.pipelineControlPorts(_))
-      .foreach(_.flush := true.B)
+      PipelineStageIndex.frontend
+    ).map(flushs(_))
+      .foreach(_ := true.B)
   }
 
   val exceptionFlush = WireDefault(hasException)
   when(exceptionFlush) {
-    io.pipelineControlPorts.foreach(_.flush := true.B)
+    flushs.foreach(_ := true.B)
   }
 
   /** 硬件写csr
@@ -205,13 +167,13 @@ class Cu(
   // select new pc
   when(extnFlush) {
     io.newPc.en     := true.B
-    io.newPc.pcAddr := io.csrValues.era
+    io.newPc.pcAddr := io.csrValues.era.asUInt
   }.elsewhen(hasException) {
     io.newPc.en := true.B
     when(isTlbRefillException) {
-      io.newPc.pcAddr := io.csrValues.tlbrentry
+      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
     }.otherwise {
-      io.newPc.pcAddr := io.csrValues.eentry
+      io.newPc.pcAddr := io.csrValues.eentry.asUInt
     }
   }.elsewhen(io.jumpPc.en) {
     io.newPc := io.jumpPc

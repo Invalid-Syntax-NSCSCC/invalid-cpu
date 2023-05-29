@@ -25,6 +25,7 @@ class Pc(
   when(io.newPc.en) {
     pcReg := io.newPc.pcAddr
   }.elsewhen(io.isNext) {
-    pcReg := pcReg + (4 * issueNum).U
+    // pcReg := pcReg + (4 * issueNum).U
+    pcReg := pcReg + 4.U
   }
 }

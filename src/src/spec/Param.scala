@@ -15,8 +15,7 @@ object Param {
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
   val ctrlControlNum         = PipelineStageIndex.count + 1
-  val issueInstInfoMaxNum    = 1
-  val dispatchInstNum        = 1 // 发射数量
+  val issueInstInfoMaxNum    = 2 // 发射数量
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
   val robIdLength            = 32 // rob给出的id
@@ -42,7 +41,7 @@ object Param {
       val slaveId  = 2.W
       val masterId = 4.W
     }
-
+    
     object DCache {
       val _addr       = 6 // TODO: Choose an optimal value
       val _byteOffset = log2Ceil(Count.DCache.dataPerLine) + log2Ceil(wordLength / byteLength)
@@ -66,6 +65,7 @@ object Param {
       val tag        = _tag.W
       val dataLine   = _dataLine.W
     }
+
   }
   object Count {
     object Axi { // crossbar
@@ -115,6 +115,10 @@ object Param {
 
   object SimpleFetchStageState extends ChiselEnum {
     val idle, requestInst, waitInst = Value
+  }
+
+  object NaiiveFetchStageState extends ChiselEnum {
+    val idle, request, waitQueue = Value
   }
 
   object ExeStageState extends ChiselEnum {

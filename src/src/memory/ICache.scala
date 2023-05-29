@@ -6,9 +6,10 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import common.enums.ReadWriteSel
-import memory.bundles.{ICacheStatusTagBundle, MemAccessPort}
+import memory.bundles.{ICacheStatusTagBundle}
 import memory.enums.{ICacheState => State}
 import spec._
+import frontend.bundles.ICacheAccessPort
 
 class ICache(
   isDebug:           Boolean   = false,
@@ -18,7 +19,7 @@ class ICache(
   debugSetNumSeq:    Seq[Int]  = Seq())
     extends Module {
   val io = IO(new Bundle {
-    val accessPort    = new MemAccessPort
+    val iCacheAccessPort    = new ICacheAccessPort
     val axiMasterPort = new AxiMasterInterface
   })
 
@@ -172,17 +173,17 @@ class ICache(
   val nextState = WireDefault(stateReg)
   stateReg := nextState // Fallback: Keep state
 
-  io.accessPort.req.isReady := false.B // Fallback: Not ready
+  io.iCacheAccessPort.req.isReady := false.B // Fallback: Not ready
 
-  io.accessPort.res.isFailed := false.B // Fallback: Not failed
+  // io.iCacheAccessPort.res.isFailed := false.B // Fallback: Not failed
 
   val isReadValidReg  = RegNext(false.B, false.B) // Fallback: Not valid
   val isReadFailedReg = RegNext(false.B, false.B) // Fallback: Not failed
-  io.accessPort.res.isComplete := isReadValidReg
+  io.iCacheAccessPort.res.isComplete := isReadValidReg
 
   val readDataReg = RegInit(0.U(Width.Mem.data))
   readDataReg                 := readDataReg // Fallback: Keep data
-  io.accessPort.res.read.data := readDataReg
+  io.iCacheAccessPort.res.read.data := readDataReg
 
   // Keep request and cache query information
   val lastReg = Reg(new Bundle {
@@ -203,12 +204,12 @@ class ICache(
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
     is(State.ready) {
-      io.accessPort.req.isReady := true.B
+      io.iCacheAccessPort.req.isReady := true.B
 
       // Stage 1 and Stage 2.a: Cache query
 
       // Decode
-      val memAddr    = WireDefault(io.accessPort.req.client.addr)
+      val memAddr    = WireDefault(io.iCacheAccessPort.req.client.addr)
       val tag        = WireDefault(tagFromMemAddr(memAddr))
       val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
       val byteOffset = WireDefault(byteOffsetFromMemAddr(memAddr))
@@ -247,7 +248,7 @@ class ICache(
       // Select data by data index from byte offset
       val selectedData = WireDefault(selectedDataLine(dataIndex))
 
-      when(io.accessPort.req.client.isValid) {
+      when(io.iCacheAccessPort.req.client.isValid) {
         when(isCacheHit) {
           // Cache hit
           // Remember to use regs

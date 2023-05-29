@@ -3,18 +3,17 @@ package pipeline.dispatch.bundles
 import chisel3._
 import chisel3.util._
 import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.dispatch.RegReadNdPort
 import chisel3.experimental.BundleLiterals._
 
-class IssueInfoWithValidBundle extends Bundle {
+class RegReadPortWithValidBundle extends Bundle {
   val valid     = Bool()
-  val instInfo  = new InstInfoNdPort
-  val issueInfo = new IssuedInfoNdPort
+  val issueInfo = new RegReadNdPort
 }
 
-object IssueInfoWithValidBundle {
-  val default = (new IssueInfoWithValidBundle).Lit(
+object RegReadPortWithValidBundle {
+  val default = (new RegReadPortWithValidBundle).Lit(
     _.valid -> false.B,
-    _.instInfo -> InstInfoNdPort.default,
-    _.issueInfo -> IssuedInfoNdPort.default
+    _.issueInfo -> RegReadNdPort.default
   )
 }

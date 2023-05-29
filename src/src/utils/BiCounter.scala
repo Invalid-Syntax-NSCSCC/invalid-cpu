@@ -28,7 +28,7 @@ class BiCounter(count: Int, init: Int = 0) extends Module {
   when(counter === (count - 1).U) {
     incOneResult := 0.U
   }.otherwise {
-    incTwoResult := counter + 1.U
+    incOneResult := counter + 1.U
   }
   // }.elsewhen(io.inc === 2.U) {
   when(counter === (count - 2).U) {
