@@ -10,7 +10,7 @@ import spec.Param.{NaiiveFetchStageState => State}
 import spec._
 import frontend.bundles.ICacheAccessPort
 
-class InstrFetchStage extends Module {
+class InstFetchStage extends Module {
 
   val io = IO(new Bundle {
 

@@ -8,11 +8,10 @@ import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
 import spec._
 import frontend.bundles.ICacheAccessPort
-import frontend.InstrFetchStage
+import frontend.InstFetchStage
 
 class Frontend extends Module {
   val io = IO(new Bundle {
-
     // <-> ICache
     val iCacheAccessPort = Flipped(new ICacheAccessPort)
 
@@ -24,15 +23,11 @@ class Frontend extends Module {
 
     // TODO mul FetchNum
     //     // val instEnqueuePorts = Vec(Param.Count.frontend.instFetchNum, Flipped(Decoupled(new InstInfoBundle)))
-
-    // }
   })
-
-  val instrFetchStage = Module(new InstrFetchStage)
-  instrFetchStage.io.iCacheAccessPort <> io.iCacheAccessPort
-  instrFetchStage.io.instEnqueuePort  <> io.instEnqueuePort
-  instrFetchStage.io.isFlush          := io.isFlush
-  instrFetchStage.io.pc               := io.pc
-  io.isPcNext                         := instrFetchStage.io.isPcNext
-
+  val instFetchStage = Module(new InstFetchStage)
+  instFetchStage.io.iCacheAccessPort <> io.iCacheAccessPort
+  instFetchStage.io.instEnqueuePort  <> io.instEnqueuePort
+  instFetchStage.io.isFlush          := io.isFlush
+  instFetchStage.io.pc               := io.pc
+  io.isPcNext                        := instFetchStage.io.isPcNext
 }

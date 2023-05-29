@@ -175,7 +175,7 @@ class ICache(
 
   io.iCacheAccessPort.req.isReady := false.B // Fallback: Not ready
 
-  // io.iCacheAccessPort.res.isFailed := false.B // Fallback: Not failed
+  io.iCacheAccessPort.res.isFailed := false.B // Fallback: Not failed
 
   val isReadValidReg  = RegNext(false.B, false.B) // Fallback: Not valid
   val isReadFailedReg = RegNext(false.B, false.B) // Fallback: Not failed
@@ -330,8 +330,9 @@ class ICache(
           // Return read data
           val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
           val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
-          isReadValidReg := true.B
-          readDataReg    := readData
+          isReadValidReg  := true.B
+          isReadFailedReg := axiMaster.io.read.res.isFailed
+          readDataReg     := readData
 
           // Next Stage 1
           nextState := State.ready

@@ -16,6 +16,7 @@ class ICacheAccessPort extends Bundle {
 
   val res = Output(new Bundle {
     val isComplete = Bool()
+    val isFailed   = Bool()
     val read = new Bundle {
       val data = UInt(Width.Mem.data)
     }
