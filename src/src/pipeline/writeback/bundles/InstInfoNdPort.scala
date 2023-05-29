@@ -17,21 +17,21 @@ class InstInfoNdPort extends Bundle {
   val exeOp = UInt(Param.Width.exeOp)
   val robId = UInt(Param.robIdLength.W)
 
-  val load = new Bundle {
-    val en    = UInt(8.W) // {2'b0, inst_ll_w, inst_ld_w, inst_ld_hu, inst_ld_h, inst_ld_bu, inst_ld_b}
-    val vaddr = UInt(32.W)
-    val paddr = UInt(32.W)
-  }
-  val store = new Bundle {
-    val en    = UInt(8.W) // {4'b0, ds_llbit && inst_sc_w, inst_st_w, inst_st_h, inst_st_b}
-    val vaddr = UInt(32.W)
-    val paddr = UInt(32.W)
-    val data  = UInt(32.W)
-  }
+  val load  = new DifftestLoadNdPort
+  val store = new DifftestStoreNdPort
 }
 
 object InstInfoNdPort {
-  def default = 0.U.asTypeOf(new InstInfoNdPort)
+  def default = (new InstInfoNdPort).Lit(
+    _.pc -> zeroWord,
+    _.inst -> zeroWord,
+    _.exceptionRecords -> Vec.Lit(
+      Seq.fill(Csr.ExceptionIndex.width)(false.B): _*
+    ),
+    _.csrWritePort -> CsrWriteNdPort.default,
+    _.exeOp -> ExeInst.Op.nop,
+    _.robId -> zeroWord
+  )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
     instInfo.isValid := false.B

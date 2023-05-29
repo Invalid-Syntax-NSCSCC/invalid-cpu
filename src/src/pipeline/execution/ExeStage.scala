@@ -55,9 +55,9 @@ object ExeNdPort {
 class ExePeerPort extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
   val branchSetPort = Output(new PcSetPort)
-  val csr = new Bundle {
+  val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
-  }
+  })
 }
 
 // throw exception: 地址未对齐 ale
