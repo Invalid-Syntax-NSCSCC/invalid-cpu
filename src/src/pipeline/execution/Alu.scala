@@ -130,32 +130,25 @@ class Alu extends Module {
 
   // mul
 
-  val useMul = WireDefault(
+  val useSignedMul = WireDefault(
     VecInit(
       ExeInst.Op.mul,
-      ExeInst.Op.mulh,
-      ExeInst.Op.mulhu
+      ExeInst.Op.mulh
     ).contains(io.aluInst.op)
   )
 
-  val mulResult = RegNext(lop * rop, 0.U(doubleWordLength.W))
+  val useUnsignedMul = WireDefault(io.aluInst.op === ExeInst.Op.mulhu)
 
-  val mulResFlag = RegInit(false.B)
-  when(useMul) {
-    mulResFlag := !mulResFlag
-  }
+  val useMul = WireDefault(useSignedMul || useUnsignedMul)
 
-  // val mulResultStoreReg = RegInit(0.U(doubleWordLength.W))
-  // mulResultStoreReg := mulResultStoreReg
-  // when(mulStage.io.mulResult.valid) {
-  //   mulResultStoreReg := mulResult
-  // }
-
-  // val selectedMulResult = Mux(
-  //   mulStage.io.mulResult.valid,
-  //   mulResult,
-  //   mulResultStoreReg
-  // )
+  val mulResult = RegNext(
+    Mux(
+      useSignedMul,
+      lop * rop,
+      (lop.asSInt * rop.asSInt).asUInt
+    ), 
+    0.U(doubleWordLength.W)
+  )
 
   // Div
 
@@ -197,7 +190,7 @@ class Alu extends Module {
   val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
   val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
 
-  io.outputValid := mulResFlag || !divStart && divStage.io.divInst.ready
+  io.outputValid := RegNext(useMul) || !divStart && divStage.io.divInst.ready
 
   switch(io.aluInst.op) {
     is(Op.add) {
@@ -228,9 +221,7 @@ class Alu extends Module {
 
   when(io.isFlush) {
     io.outputValid := false.B
-    // mulResultStoreReg := 0.U
     mulResult         := 0.U
-    mulResFlag        := false.B
     remainderStoreReg := 0.U
     quotientStoreReg  := 0.U
   }
