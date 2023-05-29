@@ -26,6 +26,9 @@ class ICache(
   // TODO: Remove DontCare
   io <> DontCare
 
+  // TODO: Remove debug
+  val debugDataIndex = WireDefault(0.U(8.W))
+
   // Read cache hit diagram:
   // clock: ^_____________________________^___________________
   //        isReady = T                   isReady = T
@@ -321,8 +324,9 @@ class ICache(
           }
 
           // Return read data
+          debugDataIndex := dataIndexFromMemAddr(lastReg.memAddr)
           val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
-          val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
+          val readData = WireDefault(dataLine(debugDataIndex))
           // TODO: Add one more cycle for return read data
           io.iCacheAccessPort.res.isComplete := true.B
           io.iCacheAccessPort.res.isFailed   := axiMaster.io.read.res.isFailed
