@@ -75,6 +75,8 @@ class AddrTransStage
   }
 
   // Translate address
+  out.instInfo.load.paddr  := out.translatedMemReq.addr
+  out.instInfo.store.paddr := out.translatedMemReq.addr
   peer.tlbTrans.memType := MuxLookup(
     selectedIn.memRequest.rw,
     TlbMemType.load

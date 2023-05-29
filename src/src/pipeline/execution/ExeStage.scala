@@ -15,6 +15,7 @@ import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import common.enums.ReadWriteSel
+import control.csrRegsBundles.LlbctlBundle
 import pipeline.mem.bundles.MemRequestNdPort
 import pipeline.execution.bundles.ExeResultPort
 import pipeline.common.BaseStage
@@ -54,6 +55,9 @@ object ExeNdPort {
 class ExePeerPort extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
   val branchSetPort = Output(new PcSetPort)
+  val csr = new Bundle {
+    val llbctl = new LlbctlBundle
+  }
 }
 
 // throw exception: 地址未对齐 ale
@@ -145,6 +149,27 @@ class ExeStage
 
   /** MemAccess
     */
+  resultOutReg.bits.instInfo.load.en := Cat(
+    0.U(2.W),
+    selectedIn.exeOp === ExeInst.Op.ll,
+    selectedIn.exeOp === ExeInst.Op.ld_w,
+    selectedIn.exeOp === ExeInst.Op.ld_hu,
+    selectedIn.exeOp === ExeInst.Op.ld_h,
+    selectedIn.exeOp === ExeInst.Op.ld_bu,
+    selectedIn.exeOp === ExeInst.Op.ld_b
+  )
+  resultOutReg.bits.instInfo.store.en := Cat(
+    0.U(4.W),
+    io.peer.get.csr.llbctl.wcllb &&
+      selectedIn.exeOp === ExeInst.Op.sc,
+    selectedIn.exeOp === ExeInst.Op.st_w,
+    selectedIn.exeOp === ExeInst.Op.st_h,
+    selectedIn.exeOp === ExeInst.Op.st_b
+  )
+  resultOutReg.bits.instInfo.load.vaddr  := resultOutReg.bits.memRequest.addr
+  resultOutReg.bits.instInfo.store.vaddr := resultOutReg.bits.memRequest.addr
+  resultOutReg.bits.instInfo.store.data  := resultOutReg.bits.memRequest.write.data
+
   val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
@@ -180,6 +205,16 @@ class ExeStage
     is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
       isAle                             := maskEncode.orR
       resultOutReg.bits.memRequest.mask := "b1111".U
+    }
+  }
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.st_b) {
+      resultOutReg.bits.memRequest.write.data := Cat(
+        Seq.fill(wordLength / byteLength)(selectedIn.rightOperand(byteLength - 1, 0))
+      )
+    }
+    is(ExeInst.Op.st_h) {
+      resultOutReg.bits.memRequest.write.data := Cat(Seq.fill(2)(selectedIn.rightOperand(wordLength / 2 - 1, 0)))
     }
   }
 

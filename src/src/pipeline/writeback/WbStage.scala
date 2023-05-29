@@ -43,6 +43,13 @@ class WbStage extends Module {
           val wdata          = UInt(Width.Reg.data)
           val csr_rstat      = Bool()
           val csr_data       = UInt(Width.Reg.data)
+          val ld_en          = UInt(8.W)
+          val ld_vaddr       = UInt(32.W)
+          val ld_paddr       = UInt(32.W)
+          val st_en          = UInt(8.W)
+          val st_vaddr       = UInt(32.W)
+          val st_paddr       = UInt(32.W)
+          val st_data        = UInt(32.W)
         }))
       else None
   })
@@ -63,6 +70,7 @@ class WbStage extends Module {
   io.csrFreePort.addr := io.in.bits.instInfo.csrWritePort.addr
 
   // Diff test connection
+  val exceptionVec = io.in.bits.instInfo.exceptionRecords
   io.difftest match {
     case Some(dt) =>
       dt           := DontCare
@@ -74,6 +82,13 @@ class WbStage extends Module {
       dt.wdata     := RegNext(io.in.bits.gprWrite.data)
       dt.csr_rstat := RegNext(io.in.bits.instInfo.csrWritePort.en)
       dt.csr_data  := RegNext(io.in.bits.instInfo.csrWritePort.data)
+      dt.ld_en     := RegNext(io.in.bits.instInfo.load.en)
+      dt.ld_vaddr  := RegNext(io.in.bits.instInfo.load.vaddr)
+      dt.ld_paddr  := RegNext(io.in.bits.instInfo.load.paddr)
+      dt.st_en     := RegNext(io.in.bits.instInfo.load.en)
+      dt.st_vaddr  := RegNext(io.in.bits.instInfo.store.vaddr)
+      dt.st_paddr  := RegNext(io.in.bits.instInfo.store.paddr)
+      dt.st_data   := RegNext(io.in.bits.instInfo.store.data)
     case _ =>
   }
 }
