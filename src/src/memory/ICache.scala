@@ -191,8 +191,6 @@ class ICache(
     val statusTagLines = Vec(Param.Count.ICache.setLen, new ICacheStatusTagBundle)
     val setIndex       = UInt(log2Ceil(Param.Count.ICache.setLen).W)
     val dataLine       = Vec(Param.Count.ICache.dataPerLine, UInt(Width.Mem.data))
-    // val writeData      = UInt(Width.Mem.data)
-    // val writeMask      = UInt(Width.Mem.data)
   })
   lastReg := lastReg // Fallback: Keep data
 
@@ -233,11 +231,10 @@ class ICache(
       val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.readPort.data)))
 
       // Calculate if hit and select
-      val isSelectedVec         = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
-      val setIndex              = WireDefault(OHToUInt(isSelectedVec))
-      val selectedStatusTagLine = WireDefault(statusTagLines(setIndex))
-      val selectedDataLine      = WireDefault(toDataLine(dataLines(setIndex)))
-      val isCacheHit            = WireDefault(isSelectedVec.reduce(_ || _))
+      val isSelectedVec    = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
+      val setIndex         = WireDefault(OHToUInt(isSelectedVec))
+      val selectedDataLine = WireDefault(toDataLine(dataLines(setIndex)))
+      val isCacheHit       = WireDefault(isSelectedVec.reduce(_ || _))
 
       // Save data for later use
       lastReg.memAddr        := memAddr
@@ -257,7 +254,6 @@ class ICache(
 
           // Next Stage 1
           nextState := State.ready
-
         }.otherwise {
           // Cache miss
           // Select a set to refill
@@ -272,7 +268,6 @@ class ICache(
 
             // Save data for later use
             lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
-
           }
 
           // Save data for later use
@@ -283,10 +278,8 @@ class ICache(
 
           // Next Stage 2.b.1
           nextState := State.refillForRead
-
         }
       }
-
     }
 
     is(State.refillForRead) {
@@ -330,13 +323,12 @@ class ICache(
           // Return read data
           val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
           val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
-          isReadValidReg  := true.B
-          isReadFailedReg := axiMaster.io.read.res.isFailed
-          readDataReg     := readData
+          io.iCacheAccessPort.res.isComplete := true.B
+          io.iCacheAccessPort.res.isFailed   := axiMaster.io.read.res.isFailed
+          io.iCacheAccessPort.res.read.data  := readData
 
           // Next Stage 1
           nextState := State.ready
-
         }
       }
     }
