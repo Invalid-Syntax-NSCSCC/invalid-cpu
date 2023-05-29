@@ -1,0 +1,72 @@
+Index: src/src/pipeline/queue/decode/Decoder_3R.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package pipeline.queue.decode\n\nimport chisel3._\nimport chisel3.util._\nimport pipeline.queue.bundles.DecodeOutNdPort\nimport spec._\nimport spec.Inst.{_3R => Inst}\n\nclass Decoder_3R extends Decoder {\n\n  io.out := DecodeOutNdPort.default\n\n  val opcode      = WireDefault(io.instInfoPort.inst(31, 15))\n  val rk          = WireDefault(io.instInfoPort.inst(14, 10))\n  val rj          = WireDefault(io.instInfoPort.inst(9, 5))\n  val rd          = WireDefault(io.instInfoPort.inst(4, 0))\n  val ui5         = WireDefault(rk)\n  val rdIsNotZero = WireDefault(rd.orR)\n\n  def outInfo = io.out.info\n\n  outInfo.isHasImm := false.B\n\n  outInfo.gprReadPorts(0).en   := true.B\n  outInfo.gprReadPorts(0).addr := rj\n  outInfo.gprReadPorts(1).en   := true.B\n  outInfo.gprReadPorts(1).addr := rk\n  outInfo.gprWritePort.en      := rdIsNotZero // true.B\n  outInfo.gprWritePort.addr    := rd\n\n  // Fallback\n  io.out.info.exeSel         := ExeInst.Sel.none\n  io.out.info.exeOp          := ExeInst.Op.nop\n  io.out.info.imm            := DontCare\n  io.out.isMatched           := false.B\n  io.out.info.jumpBranchAddr := DontCare\n\n  switch(opcode) {\n    is(Inst.add_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.add\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.sub_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.sub\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.slt_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.slt\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.sltu_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.sltu\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.nor_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.nor\n      outInfo.exeSel   := ExeInst.Sel.logic\n    }\n    is(Inst.and_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.and\n      outInfo.exeSel   := ExeInst.Sel.logic\n    }\n    is(Inst.or_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.or\n      outInfo.exeSel   := ExeInst.Sel.logic\n    }\n    is(Inst.xor_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.xor\n      outInfo.exeSel   := ExeInst.Sel.logic\n    }\n    is(Inst.sll_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.sll\n      outInfo.exeSel   := ExeInst.Sel.shift\n    }\n    is(Inst.srl_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.srl\n      outInfo.exeSel   := ExeInst.Sel.shift\n    }\n    is(Inst.sra_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.sra\n      outInfo.exeSel   := ExeInst.Sel.shift\n    }\n    is(Inst.mul_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.mul\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.mulh_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.mul\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.mulh_wu) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.mulhu\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.div_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.div\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.div_wu) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.divu\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.mod_w) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.mod\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.mod_wu) {\n      io.out.isMatched := true.B\n      outInfo.exeOp    := ExeInst.Op.modu\n      outInfo.exeSel   := ExeInst.Sel.arithmetic\n    }\n    is(Inst.slli_w) {\n      io.out.isMatched             := true.B\n      outInfo.exeOp                := ExeInst.Op.sll\n      outInfo.exeSel               := ExeInst.Sel.shift\n      outInfo.gprReadPorts(1).en   := false.B\n      outInfo.gprReadPorts(1).addr := DontCare\n      outInfo.isHasImm             := true.B\n      outInfo.imm                  := ui5\n    }\n    is(Inst.srli_w) {\n      io.out.isMatched             := true.B\n      outInfo.exeOp                := ExeInst.Op.srl\n      outInfo.exeSel               := ExeInst.Sel.shift\n      outInfo.gprReadPorts(1).en   := false.B\n      outInfo.gprReadPorts(1).addr := DontCare\n      outInfo.isHasImm             := true.B\n      outInfo.imm                  := ui5\n    }\n    is(Inst.srai_w) {\n      io.out.isMatched             := true.B\n      outInfo.exeOp                := ExeInst.Op.sra\n      outInfo.exeSel               := ExeInst.Sel.shift\n      outInfo.gprReadPorts(1).en   := false.B\n      outInfo.gprReadPorts(1).addr := DontCare\n      outInfo.isHasImm             := true.B\n      outInfo.imm                  := ui5\n    }\n    is(Inst.break_) {\n      io.out.isMatched             := true.B\n      outInfo.exeOp                := ExeInst.Op.break_\n      outInfo.gprReadPorts(0).en   := false.B\n      outInfo.gprReadPorts(0).addr := DontCare\n      outInfo.gprReadPorts(1).en   := false.B\n      outInfo.gprReadPorts(1).addr := DontCare\n      outInfo.gprWritePort.en      := false.B\n      outInfo.gprWritePort.addr    := DontCare\n    }\n    is(Inst.syscall) {\n      io.out.isMatched             := true.B\n      outInfo.exeOp                := ExeInst.Op.syscall\n      outInfo.gprReadPorts(0).en   := false.B\n      outInfo.gprReadPorts(0).addr := DontCare\n      outInfo.gprReadPorts(1).en   := false.B\n      outInfo.gprReadPorts(1).addr := DontCare\n      outInfo.gprWritePort.en      := false.B\n      outInfo.gprWritePort.addr    := DontCare\n    }\n  }\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/src/pipeline/queue/decode/Decoder_3R.scala b/src/src/pipeline/queue/decode/Decoder_3R.scala
+--- a/src/src/pipeline/queue/decode/Decoder_3R.scala	(revision ff32c388ed8c3fc3c68c3b9fb45055201cc3d91c)
++++ b/src/src/pipeline/queue/decode/Decoder_3R.scala	(date 1685327118645)
+@@ -98,7 +98,7 @@
+     }
+     is(Inst.mulh_w) {
+       io.out.isMatched := true.B
+-      outInfo.exeOp    := ExeInst.Op.mul
++      outInfo.exeOp    := ExeInst.Op.mulh
+       outInfo.exeSel   := ExeInst.Sel.arithmetic
+     }
+     is(Inst.mulh_wu) {
+Index: src/src/pipeline/execution/Alu.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package pipeline.execution\n\nimport chisel3._\nimport chisel3.util._\nimport pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}\nimport spec._\nimport ExeInst.Op\nimport control.bundles.PipelineControlNdPort\nimport pipeline.execution.bundles.JumpBranchInfoNdPort\nimport spec.Param.{AluState => State}\n\nclass Alu extends Module {\n  val io = IO(new Bundle {\n    val inputValid = Input(Bool())\n    val aluInst    = Input(new AluInstNdPort)\n\n    val outputValid = Output(Bool())\n    val result      = Output(new AluResultNdPort)\n\n    val isFlush = Input(Bool())\n  })\n\n  io.outputValid := true.B\n  io.result      := AluResultNdPort.default\n\n  def lop = io.aluInst.leftOperand\n\n  def rop = io.aluInst.rightOperand\n\n  /** Result definition\n    */\n\n  val logic = WireDefault(zeroWord)\n\n  val shift = WireDefault(zeroWord)\n\n  val jumpBranchInfo = WireDefault(JumpBranchInfoNdPort.default)\n\n  // computed with one cycle\n  val arithmetic = WireDefault(zeroWord)\n\n  // Fallback\n  io.result.arithmetic     := arithmetic\n  io.result.logic          := logic\n  io.result.jumpBranchInfo := jumpBranchInfo\n  io.result.shift          := shift\n\n  /** Logic computation\n    */\n  switch(io.aluInst.op) {\n    is(Op.nor) {\n      logic := ~(lop | rop)\n    }\n    is(Op.and) {\n      logic := lop & rop\n    }\n    is(Op.or) {\n      logic := lop | rop\n    }\n    is(Op.xor) {\n      logic := lop ^ rop\n    }\n  }\n\n  /** shift computation\n    */\n  switch(io.aluInst.op) {\n    is(Op.sll) {\n      shift := lop << rop(4, 0)\n    }\n    is(Op.srl) {\n      shift := lop >> rop(4, 0)\n    }\n    is(Op.sra) {\n      shift := (lop.asSInt >> rop(4, 0)).asUInt\n    }\n  }\n\n  /** jump and branch computation\n    */\n  switch(io.aluInst.op) {\n    is(Op.b, Op.bl) {\n      jumpBranchInfo.en     := true.B\n      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr\n    }\n    is(Op.jirl) {\n      jumpBranchInfo.en     := true.B\n      jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr\n    }\n    is(Op.beq) {\n      when(lop === rop) {\n        jumpBranchInfo.en     := true.B\n        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr\n      }\n    }\n    is(Op.bne) {\n      when(lop =/= rop) {\n        jumpBranchInfo.en     := true.B\n        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr\n      }\n    }\n    is(Op.blt) {\n      when(lop.asSInt < rop.asSInt) {\n        jumpBranchInfo.en     := true.B\n        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr\n      }\n    }\n    is(Op.bge) {\n      when(lop.asSInt >= rop.asSInt) {\n        jumpBranchInfo.en     := true.B\n        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr\n      }\n    }\n    is(Op.bltu) {\n      when(lop < rop) {\n        jumpBranchInfo.en     := true.B\n        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr\n      }\n    }\n    is(Op.bgeu) {\n      when(lop >= rop) {\n        jumpBranchInfo.en     := true.B\n        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr\n      }\n    }\n  }\n\n  /** arithmetic computation\n    */\n\n  // mul\n\n  val useSignedMul = WireDefault(\n    VecInit(\n      ExeInst.Op.mul,\n      ExeInst.Op.mulh\n    ).contains(io.aluInst.op)\n  )\n\n  val useUnsignedMul = WireDefault(io.aluInst.op === ExeInst.Op.mulhu)\n\n  val useMul = WireDefault(useSignedMul || useUnsignedMul)\n\n  val mulResult = RegNext(\n    Mux(\n      useSignedMul,\n      lop * rop,\n      (lop.asSInt * rop.asSInt).asUInt\n    ), \n    0.U(doubleWordLength.W)\n  )\n\n  // Div\n\n  val useDiv = WireDefault(\n    VecInit(\n      ExeInst.Op.div,\n      ExeInst.Op.divu,\n      ExeInst.Op.mod,\n      ExeInst.Op.modu\n    ).contains(io.aluInst.op)\n  )\n\n  val divStage = Module(new Div)\n\n  val divisorValid = WireDefault(rop.orR)\n\n  val divStart = WireDefault(useDiv && divStage.io.divInst.ready && !divStage.io.divResult.valid && divisorValid)\n\n  divStage.io.isFlush                   := io.isFlush\n  divStage.io.divInst.valid             := divStart\n  divStage.io.divInst.bits.op           := io.aluInst.op\n  divStage.io.divInst.bits.leftOperand  := lop\n  divStage.io.divInst.bits.rightOperand := rop\n\n  divStage.io.divResult.ready := DontCare\n\n  val quotient  = WireDefault(divStage.io.divResult.bits.quotient)\n  val remainder = WireDefault(divStage.io.divResult.bits.remainder)\n\n  val quotientStoreReg  = RegInit(zeroWord)\n  val remainderStoreReg = RegInit(zeroWord)\n  quotientStoreReg  := quotientStoreReg\n  remainderStoreReg := remainderStoreReg\n  when(divStage.io.divResult.valid) {\n    quotientStoreReg  := quotient\n    remainderStoreReg := remainder\n  }\n\n  val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)\n  val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)\n\n  io.outputValid := RegNext(useMul) || !divStart && divStage.io.divInst.ready\n\n  switch(io.aluInst.op) {\n    is(Op.add) {\n      arithmetic := (lop.asSInt + rop.asSInt).asUInt\n    }\n    is(Op.sub) {\n      arithmetic := (lop.asSInt - rop.asSInt).asUInt\n    }\n    is(Op.slt) {\n      arithmetic := (lop.asSInt < rop.asSInt).asUInt\n    }\n    is(Op.sltu) {\n      arithmetic := (lop < rop).asUInt\n    }\n    is(Op.mul) {\n      arithmetic := mulResult(wordLength - 1, 0)\n    }\n    is(Op.mulh, Op.mulhu) {\n      arithmetic := mulResult(doubleWordLength - 1, wordLength)\n    }\n    is(Op.div, Op.divu) {\n      arithmetic := selectedQuotient\n    }\n    is(Op.mod, Op.modu) {\n      arithmetic := selectedRemainder\n    }\n  }\n\n  when(io.isFlush) {\n    io.outputValid := false.B\n    mulResult         := 0.U\n    remainderStoreReg := 0.U\n    quotientStoreReg  := 0.U\n  }\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/src/pipeline/execution/Alu.scala b/src/src/pipeline/execution/Alu.scala
+--- a/src/src/pipeline/execution/Alu.scala	(revision ff32c388ed8c3fc3c68c3b9fb45055201cc3d91c)
++++ b/src/src/pipeline/execution/Alu.scala	(date 1685328728683)
+@@ -141,12 +141,19 @@
+ 
+   val useMul = WireDefault(useSignedMul || useUnsignedMul)
+ 
++  val mulResultValidReg = RegInit(false.B)
++  when(useMul) {
++    mulResultValidReg := !mulResultValidReg
++  }
++
++
+   val mulResult = RegNext(
+     Mux(
+       useSignedMul,
+-      lop * rop,
+-      (lop.asSInt * rop.asSInt).asUInt
+-    ), 
++      (lop.asSInt * rop.asSInt).asUInt,
++      lop * rop
++
++    ),
+     0.U(doubleWordLength.W)
+   )
+ 
+@@ -190,7 +197,7 @@
+   val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
+   val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
+ 
+-  io.outputValid := RegNext(useMul) || !divStart && divStage.io.divInst.ready
++  io.outputValid := mulResultValidReg || (!divStart && divStage.io.divInst.ready && !useMul)
+ 
+   switch(io.aluInst.op) {
+     is(Op.add) {
+@@ -220,8 +227,9 @@
+   }
+ 
+   when(io.isFlush) {
+-    io.outputValid := false.B
++    io.outputValid    := false.B
+     mulResult         := 0.U
++    mulResultValidReg := false.B
+     remainderStoreReg := 0.U
+     quotientStoreReg  := 0.U
+   }

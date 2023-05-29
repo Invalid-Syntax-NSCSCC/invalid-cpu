@@ -187,6 +187,7 @@ class Div extends Module {
     ),
     zeroWord // 被除数为0
   )
+
   io.divResult.bits.remainder := Mux(
     remainder.orR,
     Mux(
