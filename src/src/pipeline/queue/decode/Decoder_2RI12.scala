@@ -53,7 +53,7 @@ class Decoder_2RI12 extends Decoder {
       io.out.isMatched   := true.B
       io.out.info.exeOp  := ExeInst.Op.sltu
       io.out.info.exeSel := ExeInst.Sel.arithmetic
-      io.out.info.imm    := immZext
+      io.out.info.imm    := immSext.asUInt
     }
     is(Inst.addi_w) {
       io.out.isMatched   := true.B
