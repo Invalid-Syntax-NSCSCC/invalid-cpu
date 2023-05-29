@@ -264,6 +264,13 @@ class CoreCpuTop extends Module {
       t.cmt_csr_data     := w.csr_data
     case _ =>
   }
+  (io.diffTest, cu.io.difftest) match {
+    case (Some(t), Some(c)) => {
+      t.cmt_ertn       := c.cmt_ertn
+      t.cmt_excp_flush := c.cmt_excp_flush
+    }
+    case _ =>
+  }
   (io.diffTest, regFile.io.difftest) match {
     case (Some(t), Some(r)) =>
       t.regs := r.gpr
