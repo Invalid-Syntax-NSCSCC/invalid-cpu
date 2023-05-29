@@ -495,6 +495,7 @@ class DCache(
             nextState := State.onlyWb
           }.otherwise {
             // Next Stage 1
+            // TODO: Add one more cycle for return read data
             nextState := State.ready
           }
         }

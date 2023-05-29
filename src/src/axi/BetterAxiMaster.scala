@@ -130,14 +130,15 @@ class BetterAxiMaster(
           )
         }
       }
-    }
-    when(io.axi.r.bits.last) {
-      // Reading complete
-      io.read.res.isValid  := true.B
-      io.read.res.data     := nextReadData
-      io.read.res.isFailed := isReadFailedReg || isReadFailedNext
 
-      isReadingReg := false.B
+      when(io.axi.r.bits.last) {
+        // Reading complete
+        io.read.res.isValid  := true.B
+        io.read.res.data     := nextReadData
+        io.read.res.isFailed := isReadFailedReg || isReadFailedNext
+
+        isReadingReg := false.B
+      }
     }
   }
 

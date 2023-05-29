@@ -323,6 +323,7 @@ class ICache(
           // Return read data
           val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
           val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
+          // TODO: Add one more cycle for return read data
           io.iCacheAccessPort.res.isComplete := true.B
           io.iCacheAccessPort.res.isFailed   := axiMaster.io.read.res.isFailed
           io.iCacheAccessPort.res.read.data  := readData
