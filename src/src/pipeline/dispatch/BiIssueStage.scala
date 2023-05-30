@@ -121,12 +121,12 @@ class BiIssueStage(
     fetchInfos.valid &&
     !((fetchInfos.issueInfo.preExeInstInfo.gprReadPorts
       .map({ readPort =>
-        readPort.en && (io.regScores(readPort.addr) === ScoreboardState.free)
+        readPort.en && (io.regScores(readPort.addr) =/= ScoreboardState.free)
       }))
       .reduce(_ || _)) &&
     !(fetchInfos.issueInfo.preExeInstInfo.csrReadEn && (io.csrRegScores(
       fetchInfos.issueInfo.preExeInstInfo.csrAddr
-    ) === ScoreboardState.free))
+    ) =/= ScoreboardState.free))
   }))
 
   when(canIssueMaxNum.orR) {
