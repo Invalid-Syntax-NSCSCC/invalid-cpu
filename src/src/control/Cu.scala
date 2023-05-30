@@ -100,7 +100,8 @@ class Cu(
     Seq(
       PipelineStageIndex.issueStage,
       PipelineStageIndex.regReadStage,
-      PipelineStageIndex.frontend
+      PipelineStageIndex.frontend,
+      PipelineStageIndex.scoreboard
     ).map(flushs(_))
       .foreach(_ := true.B)
 
