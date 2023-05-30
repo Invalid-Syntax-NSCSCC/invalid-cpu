@@ -7,12 +7,12 @@ for arg do
   shift
   case $arg in
     (-disable-infer-rw) : ;;
-        (*) set -- "$@" "$arg" ;;
+        (*) set -- --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec --disable-annotation-unknown "$@" "$arg" ;;
   esac
 done
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    firtool_darwin --disable-annotation-unknown "$@"
+    firtool_darwin --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec --disable-annotation-unknown "$@"
 else
-    firtool_ubuntu2004 --disable-annotation-unknown "$@"
+    firtool_ubuntu2004 --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec --disable-annotation-unknown "$@"
 fi
