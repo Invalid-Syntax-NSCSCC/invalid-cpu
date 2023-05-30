@@ -53,7 +53,7 @@ jobs:
           ./chiplab/sims/verilator/run_prog/configure.sh --run func/func_lab9
           cd ./chiplab/sims/verilator/run_prog
           make -j`nproc` > make_log.txt 2>&1
-          sed -i '/Runing simulation/,$!d' make_log.txt
+          sed -i '/RUN simulation/,$!d' make_log.txt
           cat make_log.txt
         continue-on-error: true
         
