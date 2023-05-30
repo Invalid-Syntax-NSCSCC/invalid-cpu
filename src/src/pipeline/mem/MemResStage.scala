@@ -29,6 +29,8 @@ object MemResNdPort {
 class MemResPeerPort extends Bundle {
   val dCacheRes   = Input(new MemResponseNdPort)
   val uncachedRes = Input(new MemResponseNdPort)
+  // --> `Cu`
+  val isExceptionValid = Output(Bool())
 }
 
 class MemResStage
@@ -44,6 +46,9 @@ class MemResStage
   // Fallback output
   out.gprWrite := selectedIn.gprWrite
   out.instInfo := selectedIn.instInfo
+
+  // Whether current instruction causes exception
+  peer.isExceptionValid := selectedIn.instInfo.isValid && selectedIn.instInfo.isExceptionValid
 
   // Get read data
   val rawReadData = WireDefault(

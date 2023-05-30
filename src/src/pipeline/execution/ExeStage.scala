@@ -126,9 +126,12 @@ class ExeStage
 
   def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
+  val isSyscall = selectedIn.exeOp === ExeInst.Op.syscall
+  val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
   resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
-  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.sys) := selectedIn.exeOp === ExeInst.Op.syscall
-  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.brk) := selectedIn.exeOp === ExeInst.Op.break_
+  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.sys) := isSyscall
+  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.brk) := isBreak
+  resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || isAle || isSyscall || isBreak
 
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.csrwr) {

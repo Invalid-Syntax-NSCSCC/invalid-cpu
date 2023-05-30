@@ -11,6 +11,7 @@ class InstInfoNdPort extends Bundle {
   val isValid          = Bool()
   val pc               = UInt(Width.Reg.data)
   val inst             = UInt(Width.Reg.data)
+  val isExceptionValid = Bool()
   val exceptionRecords = Vec(Csr.ExceptionIndex.count + 1, Bool())
   val csrWritePort     = new CsrWriteNdPort
 

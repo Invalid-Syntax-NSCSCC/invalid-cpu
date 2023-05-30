@@ -108,7 +108,8 @@ class AddrTransStage
 
       val exceptionIndex = peer.tlbTrans.exception.bits
       out.instInfo.exceptionRecords(exceptionIndex) :=
-        out.instInfo.exceptionRecords(exceptionIndex) || peer.tlbTrans.exception.valid
+        selectedIn.instInfo.exceptionRecords(exceptionIndex) || peer.tlbTrans.exception.valid
+      out.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || peer.tlbTrans.exception.valid
     }
   }
 
