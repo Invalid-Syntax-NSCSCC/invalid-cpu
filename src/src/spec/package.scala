@@ -32,6 +32,7 @@ package object spec {
     val issueStage     = next
     val regReadStage   = next
     val exeStage       = next
+    val scoreboard     = next
     val addrTransStage = next
     val memReqStage    = next
     val memResStage    = next

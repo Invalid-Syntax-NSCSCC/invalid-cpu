@@ -7,7 +7,7 @@ for arg do
   shift
   case $arg in
     (-disable-infer-rw) : ;;
-        (*) set -- "$@" "$arg" ;;
+        (*) set -- --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec --disable-annotation-unknown "$@" "$arg" ;;
   esac
 done
 
