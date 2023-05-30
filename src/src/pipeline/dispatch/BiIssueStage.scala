@@ -83,9 +83,9 @@ class BiIssueStage(
   )
 
   val fetchCanIssue = WireDefault(VecInit(Seq.fill(issueNum)(true.B)))
-  isComputeds.lazyZip(fetchCanIssue).lazyZip(io.ins).foreach{
+  isComputeds.lazyZip(fetchCanIssue).lazyZip(selectedIns).foreach{
     case (isComputed, fetchValid, in) =>
-      isComputed := fetchValid || !in.bits.instInfo.isValid
+      isComputed := fetchValid || !in.instInfo.isValid
   }
 
   fetchCanIssue.lazyZip(selectedIns).zipWithIndex.foreach{
@@ -156,5 +156,10 @@ class BiIssueStage(
             connect(0, 1, 0)
         }
       }
+  }
+
+  when(io.isFlush) {
+    io.ins.foreach(_.ready := false.B)
+    io.outs.foreach(_.valid := false.B)
   }
 }
