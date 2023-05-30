@@ -6,9 +6,10 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import common.enums.ReadWriteSel
-import memory.bundles.{ICacheStatusTagBundle, MemAccessPort}
+import memory.bundles.ICacheStatusTagBundle
 import memory.enums.{ICacheState => State}
 import spec._
+import frontend.bundles.ICacheAccessPort
 
 class ICache(
   isDebug:           Boolean   = false,
@@ -18,12 +19,15 @@ class ICache(
   debugSetNumSeq:    Seq[Int]  = Seq())
     extends Module {
   val io = IO(new Bundle {
-    val accessPort    = new MemAccessPort
-    val axiMasterPort = new AxiMasterInterface
+    val iCacheAccessPort = new ICacheAccessPort
+    val axiMasterPort    = new AxiMasterInterface
   })
 
   // TODO: Remove DontCare
   io <> DontCare
+
+  // TODO: Remove debug
+  val debugDataIndex = WireDefault(0.U(8.W))
 
   // Read cache hit diagram:
   // clock: ^_____________________________^___________________
@@ -66,12 +70,7 @@ class ICache(
   // Note: Number of RAMs is the same as the size of a set
 
   // Functions for calculation
-  def byteOffsetFromMemAddr(addr: UInt) = addr(Param.Width.ICache._byteOffset - 1, 0)
-
-  def dataIndexFromByteOffset(offset: UInt) =
-    offset(Param.Width.ICache._byteOffset - 1, log2Ceil(wordLength / byteLength))
-
-  def dataIndexFromMemAddr(addr: UInt) = dataIndexFromByteOffset(byteOffsetFromMemAddr(addr))
+  def dataIndexFromMemAddr(addr: UInt) = addr(Param.Width.ICache._byteOffset - 1, log2Ceil(wordLength / byteLength))
 
   def queryIndexFromMemAddr(addr: UInt) =
     addr(Param.Width.ICache._byteOffset + Param.Width.ICache._addr - 1, Param.Width.ICache._byteOffset)
@@ -172,17 +171,17 @@ class ICache(
   val nextState = WireDefault(stateReg)
   stateReg := nextState // Fallback: Keep state
 
-  io.accessPort.req.isReady := false.B // Fallback: Not ready
+  io.iCacheAccessPort.req.isReady := false.B // Fallback: Not ready
 
-  io.accessPort.res.isFailed := false.B // Fallback: Not failed
+  io.iCacheAccessPort.res.isFailed := false.B // Fallback: Not failed
 
   val isReadValidReg  = RegNext(false.B, false.B) // Fallback: Not valid
   val isReadFailedReg = RegNext(false.B, false.B) // Fallback: Not failed
-  io.accessPort.res.isComplete := isReadValidReg
+  io.iCacheAccessPort.res.isComplete := isReadValidReg
 
   val readDataReg = RegInit(0.U(Width.Mem.data))
-  readDataReg                 := readDataReg // Fallback: Keep data
-  io.accessPort.res.read.data := readDataReg
+  readDataReg                       := readDataReg // Fallback: Keep data
+  io.iCacheAccessPort.res.read.data := readDataReg
 
   // Keep request and cache query information
   val lastReg = Reg(new Bundle {
@@ -190,8 +189,6 @@ class ICache(
     val statusTagLines = Vec(Param.Count.ICache.setLen, new ICacheStatusTagBundle)
     val setIndex       = UInt(log2Ceil(Param.Count.ICache.setLen).W)
     val dataLine       = Vec(Param.Count.ICache.dataPerLine, UInt(Width.Mem.data))
-    // val writeData      = UInt(Width.Mem.data)
-    // val writeMask      = UInt(Width.Mem.data)
   })
   lastReg := lastReg // Fallback: Keep data
 
@@ -203,16 +200,15 @@ class ICache(
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
     is(State.ready) {
-      io.accessPort.req.isReady := true.B
+      io.iCacheAccessPort.req.isReady := true.B
 
       // Stage 1 and Stage 2.a: Cache query
 
       // Decode
-      val memAddr    = WireDefault(io.accessPort.req.client.addr)
+      val memAddr    = WireDefault(io.iCacheAccessPort.req.client.addr)
       val tag        = WireDefault(tagFromMemAddr(memAddr))
       val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
-      val byteOffset = WireDefault(byteOffsetFromMemAddr(memAddr))
-      val dataIndex  = WireDefault(dataIndexFromByteOffset(byteOffset))
+      val dataIndex  = WireDefault(dataIndexFromMemAddr(memAddr))
 
       // Read status-tag
       statusTagRams.foreach { ram =>
@@ -232,11 +228,10 @@ class ICache(
       val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.readPort.data)))
 
       // Calculate if hit and select
-      val isSelectedVec         = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
-      val setIndex              = WireDefault(OHToUInt(isSelectedVec))
-      val selectedStatusTagLine = WireDefault(statusTagLines(setIndex))
-      val selectedDataLine      = WireDefault(toDataLine(dataLines(setIndex)))
-      val isCacheHit            = WireDefault(isSelectedVec.reduce(_ || _))
+      val isSelectedVec    = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
+      val setIndex         = WireDefault(OHToUInt(isSelectedVec))
+      val selectedDataLine = WireDefault(toDataLine(dataLines(setIndex)))
+      val isCacheHit       = WireDefault(isSelectedVec.reduce(_ || _))
 
       // Save data for later use
       lastReg.memAddr        := memAddr
@@ -247,7 +242,7 @@ class ICache(
       // Select data by data index from byte offset
       val selectedData = WireDefault(selectedDataLine(dataIndex))
 
-      when(io.accessPort.req.client.isValid) {
+      when(io.iCacheAccessPort.req.client.isValid) {
         when(isCacheHit) {
           // Cache hit
           // Remember to use regs
@@ -256,7 +251,6 @@ class ICache(
 
           // Next Stage 1
           nextState := State.ready
-
         }.otherwise {
           // Cache miss
           // Select a set to refill
@@ -271,7 +265,6 @@ class ICache(
 
             // Save data for later use
             lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
-
           }
 
           // Save data for later use
@@ -282,10 +275,8 @@ class ICache(
 
           // Next Stage 2.b.1
           nextState := State.refillForRead
-
         }
       }
-
     }
 
     is(State.refillForRead) {
@@ -295,7 +286,10 @@ class ICache(
         // Stage 2.b.1: Send read request
 
         axiMaster.io.read.req.isValid := true.B
-        axiMaster.io.read.req.addr    := lastReg.memAddr
+        axiMaster.io.read.req.addr := Cat(
+          lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset),
+          0.U(Param.Width.DCache.byteOffset)
+        )
 
         when(axiMaster.io.read.req.isReady) {
           // Next Stage 2.b.2
@@ -305,15 +299,38 @@ class ICache(
         // Stage 2.b.2: Wait for refill data line
 
         when(axiMaster.io.read.res.isValid) {
+          val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+          val statusTag  = Wire(new ICacheStatusTagBundle)
+          statusTag.isValid := true.B
+          statusTag.tag     := tagFromMemAddr(lastReg.memAddr)
+
+          // Write status-tag to RAM
+          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := statusTag.asUInt
+              writePort.addr := queryIndex
+          }
+
+          // Write to data line RAM
+          dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := axiMaster.io.read.res.data
+              writePort.addr := queryIndex
+          }
+
           // Return read data
+          debugDataIndex := dataIndexFromMemAddr(lastReg.memAddr)
           val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
-          val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
-          isReadValidReg := true.B
-          readDataReg    := readData
+          val readData = WireDefault(dataLine(debugDataIndex))
+          // TODO: Add one more cycle for return read data
+          io.iCacheAccessPort.res.isComplete := true.B
+          io.iCacheAccessPort.res.isFailed   := axiMaster.io.read.res.isFailed
+          io.iCacheAccessPort.res.read.data  := readData
 
           // Next Stage 1
           nextState := State.ready
-
         }
       }
     }
