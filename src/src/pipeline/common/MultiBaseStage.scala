@@ -18,10 +18,10 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
 
   private val queueSize = 1
 
-  private val savedIns = RegInit(Vec(inNum, blankIn))
+  private val savedIns = RegInit(VecInit(Seq.fill(inNum)(blankIn)))
   savedIns := savedIns
-  protected val isComputeds:     Vec[Bool] = WireDefault(VecInit(Seq.fill(inNum)(true.B)))
-  protected val isLastComputeds: Vec[Bool] = RegNext(isComputeds, VecInit(Seq.fill(inNum)(true.B)))
+  protected val isComputeds:     Vec[Bool] = WireDefault(VecInit(Seq.fill(inNum)(false.B))) // ** different from BaseStage
+  protected val isLastComputeds: Vec[Bool] = RegNext(isComputeds, VecInit(Seq.fill(inNum)(false.B)))
   protected val selectedIns:     Vec[InT]  = WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
   selectedIns.lazyZip(io.ins).lazyZip(savedIns).foreach {
     case (selectIn, in, saveIn) => {
@@ -68,8 +68,8 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   io.ins.foreach(_.ready := false.B)
   // 由于in和out不是一一对应，需要处理in.ready
   // 模板： io.ins(src).ready := validToIns(dst) && isLastComputeds(src)
-  protected val validToIns = Wire(Vec(outNum, Bool()))
-  validToIns.lazyZip(io.outs).lazyZip(lastResultOuts).foreach {
+  protected val validToOuts = Wire(Vec(outNum, Bool()))
+  validToOuts.lazyZip(io.outs).lazyZip(lastResultOuts).foreach {
     case (v, out, lastResultOut) =>
       v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
   }
