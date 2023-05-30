@@ -219,9 +219,7 @@ class ExeStage
   ) & !isAle
   resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
   resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
-  resultOutReg.bits.instInfo.store.data := MuxLookup(
-    selectedIn.exeOp,
-    selectedIn.rightOperand,
+  resultOutReg.bits.instInfo.store.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
     immutable.Seq(
       ExeInst.Op.st_b -> Mux(
         maskEncode(1),

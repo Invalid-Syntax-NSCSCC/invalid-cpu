@@ -11,6 +11,7 @@ object src extends ScalaModule with ScalafmtModule { m =>
   override def scalacOptions = Seq(
     "-language:reflectiveCalls",
     "-feature",
+    "-deprecation",
     "-Xcheckinit"
   )
 

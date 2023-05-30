@@ -12,7 +12,7 @@ for arg do
 done
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    firtool_darwin --disable-annotation-unknown "$@"
+    firtool_darwin --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec "$@"
 else
-    firtool_ubuntu2004 --disable-annotation-unknown "$@"
+    firtool_ubuntu2004 --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec "$@"
 fi
