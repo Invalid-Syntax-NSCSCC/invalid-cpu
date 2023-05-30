@@ -9,7 +9,7 @@ import pipeline.queue.decode.{Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec._
 import utils.BiCounter
-// 尝试写双发射的queue，未接入，不用管它
+
 // assert: enqueuePorts总是最低的几位有效
 class BiInstQueue(
   val queueLength: Int = Param.instQueueLength,
@@ -42,8 +42,8 @@ class BiInstQueue(
 
   val maybeFull = RegInit(false.B)
   val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
-  val isEmpty   = ptrMatch && !maybeFull
-  val isFull    = ptrMatch && maybeFull
+  val isEmpty   = WireDefault(ptrMatch && !maybeFull)
+  val isFull    = WireDefault(ptrMatch && maybeFull)
 
   val storeNum = WireDefault(
     Mux(
@@ -184,9 +184,16 @@ class BiInstQueue(
       dequeuePort.bits.instInfo
         .exceptionRecords(Csr.ExceptionIndex.ine) := !isMatched
       dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
+      dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
+      dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
   }
 
   when(io.isFlush) {
     ram.foreach(_ := InstInfoBundle.default)
+    maybeFull := false.B
+    io.dequeuePorts.foreach(_.valid := false.B)
+    storeNum := 0.U
+    isEmpty  := true.B
+    isFull   := false.B
   }
 }

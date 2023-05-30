@@ -47,30 +47,36 @@ class AddrTransStage
   out.translatedMemReq := selectedIn.memRequest
   out.isCached         := false.B // Fallback: Uncached
 
-  // Select a translation mode
-  val transMode = WireDefault(AddrTransType.direct) // Fallback: Direct translation
-  when(!peer.csr.crmd.da && peer.csr.crmd.pg) {
-    val isDirectMappingWindowHit = WireDefault(
-      peer.csr.dmw.vseg ===
-        selectedIn.memRequest.addr(selectedIn.memRequest.addr.getWidth - 1, selectedIn.memRequest.addr.getWidth - 3)
+  // DMW mapping
+  val directMapVec = Wire(
+    Vec(
+      2,
+      new Bundle {
+        val isHit      = Bool()
+        val mappedAddr = UInt(Width.Mem.addr)
+      }
     )
-    switch(peer.csr.crmd.plv) {
-      is(Csr.Crmd.Plv.low) {
-        when(
-          peer.csr.dmw.plv3 && isDirectMappingWindowHit
-        ) {
-          transMode := AddrTransType.directMapping
-        }.otherwise {
-          transMode := AddrTransType.pageTableMapping
-        }
-      }
-      is(Csr.Crmd.Plv.high) {
-        when(peer.csr.dmw.plv0 && isDirectMappingWindowHit) {
-          transMode := AddrTransType.directMapping
-        }.otherwise {
-          transMode := AddrTransType.pageTableMapping
-        }
-      }
+  )
+  directMapVec.zip(peer.csr.dmw).foreach {
+    case (target, window) =>
+      target.isHit := ((peer.csr.crmd.plv === Csr.Crmd.Plv.high && window.plv0) ||
+        (peer.csr.crmd.plv === Csr.Crmd.Plv.low && window.plv3)) &&
+        window.vseg === selectedIn.memRequest
+          .addr(selectedIn.memRequest.addr.getWidth - 1, selectedIn.memRequest.addr.getWidth - 3)
+      target.mappedAddr := Cat(
+        window.pseg,
+        selectedIn.memRequest.addr(selectedIn.memRequest.addr.getWidth - 4, 0)
+      )
+  }
+
+  // Select a translation mode
+  val transMode                = WireDefault(AddrTransType.direct) // Fallback: Direct translation
+  val isDirectMappingWindowHit = VecInit(directMapVec.map(_.isHit)).asUInt.orR
+  when(!peer.csr.crmd.da && peer.csr.crmd.pg) {
+    when(isDirectMappingWindowHit) {
+      transMode := AddrTransType.directMapping
+    }.otherwise {
+      transMode := AddrTransType.pageTableMapping
     }
   }
 
@@ -94,10 +100,7 @@ class AddrTransStage
       translatedAddr := selectedIn.memRequest.addr
     }
     is(AddrTransType.directMapping) {
-      translatedAddr := Cat(
-        peer.csr.dmw.pseg,
-        selectedIn.memRequest.addr(selectedIn.memRequest.addr.getWidth - 4, 0)
-      )
+      translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
       translatedAddr               := peer.tlbTrans.physAddr
@@ -108,6 +111,8 @@ class AddrTransStage
         out.instInfo.exceptionRecords(exceptionIndex) || peer.tlbTrans.exception.valid
     }
   }
+
+  // TODO: CSR write for TLB maintenance
 
   // Can use cache
   switch(peer.csr.crmd.datm) {

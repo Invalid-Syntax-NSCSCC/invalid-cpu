@@ -127,8 +127,7 @@ class CoreCpuTop extends Module {
   val pc      = Module(new Pc)
 
   // Default DontCare
-  csr.io      <> DontCare
-  crossbar.io <> DontCare // TODO: Fix crossbar
+  csr.io <> DontCare
 
   // PC
   pc.io.newPc := cu.io.newPc
@@ -150,14 +149,23 @@ class CoreCpuTop extends Module {
   crossbar.io.slave(1) <> dCache.io.axiMasterPort
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
+  // TLB connection
+  // TODO: Maintenance and CSR write
+  tlb.io.csr.in.asId        := csr.io.csrValues.asid
+  tlb.io.csr.in.plv         := csr.io.csrValues.crmd.plv
+  tlb.io.csr.in.tlbidx      := csr.io.csrValues.tlbidx
+  tlb.io.csr.in.tlbehi      := csr.io.csrValues.tlbehi
+  tlb.io.csr.in.tlbloVec(0) := csr.io.csrValues.tlbelo0
+  tlb.io.csr.in.tlbloVec(1) := csr.io.csrValues.tlbelo1
+
   // Frontend
-  //  instr fetch stage
+  //   inst fetch stage
   frontend.io.iCacheAccessPort <> iCache.io.iCacheAccessPort
   frontend.io.pc               := pc.io.pc
   frontend.io.isFlush          := cu.io.flushs(PipelineStageIndex.frontend)
   pc.io.isNext                 := frontend.io.isPcNext
 
-  // Inst Queue
+  // Instruction queue
   instQueue.io.enqueuePorts(0) <> frontend.io.instEnqueuePort
 
   // TODO: CONNECT
@@ -182,19 +190,20 @@ class CoreCpuTop extends Module {
     port.id := 0.U
   } // TODO: Connect Second Pipeline
 
-  // score boards
+  // Scoreboards
   scoreboard.io.freePorts(0)    := wbStage.io.freePort
   csrScoreBoard.io.freePorts(0) := wbStage.io.csrFreePort
   scoreboard.io.occupyPorts     := issueStage.io.occupyPortss(0)
   csrScoreBoard.io.occupyPorts  := issueStage.io.csrOccupyPortss(0)
+  scoreboard.io.isFlush         := false.B // cu.io.flushs(PipelineStageIndex.scoreboard)
+  csrScoreBoard.io.isFlush      := false.B // cu.io.flushs(PipelineStageIndex.scoreboard)
 
   // Reg-read stage
   regReadStage.io.in                     <> issueStage.io.issuedInfoPorts(0)
   issueStage.io.issuedInfoPorts(0).ready := true.B
   regReadStage.io.peer.get.gprReadPorts.zip(regFile.io.readPorts).foreach {
-    case (stage, rf) => {
+    case (stage, rf) =>
       stage <> rf
-    }
   }
   regReadStage.io.peer.get.csrReadPorts(0) <> csr.io.readPorts(0)
   regReadStage.io.isFlush                  := cu.io.flushs(PipelineStageIndex.regReadStage)
@@ -210,8 +219,10 @@ class CoreCpuTop extends Module {
   addrTransStage.io.in      <> exeStage.io.out
   addrTransStage.io.isFlush := cu.io.flushs(PipelineStageIndex.addrTransStage)
   addrTransStage.io.peer.foreach { p =>
-    p.tlbTrans <> tlb.io.tlbTransPorts(0)
-    p.csr      := DontCare // TODO: CSR
+    p.tlbTrans   <> tlb.io.tlbTransPorts(0)
+    p.csr.dmw(0) := csr.io.csrValues.dmw0
+    p.csr.dmw(1) := csr.io.csrValues.dmw1
+    p.csr.crmd   := csr.io.csrValues.crmd
   }
 
   memReqStage.io.isFlush := false.B
@@ -233,7 +244,6 @@ class CoreCpuTop extends Module {
   regFile.io.writePort := cu.io.gprWritePassThroughPorts.out(0)
 
   // Ctrl unit
-  // cu.io                                <> DontCare // TODO: Remove this after refactor
   cu.io.instInfoPorts(0)               := wbStage.io.cuInstInfoPort
   cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
   cu.io.csrValues                      := csr.io.csrValues
@@ -255,7 +265,7 @@ class CoreCpuTop extends Module {
   io.debug0_wb.rf.wdata := wbStage.io.gprWritePort.data
 
   // Difftest
-  // TODO: DifftestInstrCommit (partial), DifftestExcpEvent, DifftestTrapEvent, DifftestStoreEvent, DifftestLoadEvent, DifftestCSRRegState
+  // TODO: Some ports
   (io.diffTest, wbStage.io.difftest) match {
     case (Some(t), Some(w)) =>
       t.cmt_valid        := w.valid
@@ -280,10 +290,9 @@ class CoreCpuTop extends Module {
     case _ =>
   }
   (io.diffTest, cu.io.difftest) match {
-    case (Some(t), Some(c)) => {
+    case (Some(t), Some(c)) =>
       t.cmt_ertn       := c.cmt_ertn
       t.cmt_excp_flush := c.cmt_excp_flush
-    }
     case _ =>
   }
   (io.diffTest, regFile.io.difftest) match {
