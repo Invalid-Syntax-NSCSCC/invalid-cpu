@@ -3,7 +3,7 @@ package memory
 import chisel3._
 import chisel3.util._
 import control.csrRegsBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
-import memory.bundles.{TlbCompareEntryBundle, TlbEntryBundle, TlbMaintenanceNdPort, TlbTransPort}
+import memory.bundles.{TlbCompareEntryBundle, TlbCsrWriteNdPort, TlbEntryBundle, TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
 import spec.ExeInst.Op.Tlb._
 import spec._
@@ -19,11 +19,7 @@ class Tlb extends Module {
         val tlbidx   = new TlbidxBundle
         val tlbloVec = Vec(2, new TlbeloBundle)
       })
-      val out = new Bundle {
-        val tlbidx    = Valid(new TlbidxBundle)
-        val tlbehi    = Valid(new TlbehiBundle)
-        val tlbeloVec = Vec(2, Valid(new TlbeloBundle))
-      }
+      val out = Output(new TlbCsrWriteNdPort)
     }
     val tlbTransPorts = Vec(Param.Count.Tlb.transNum, new TlbTransPort)
   })
