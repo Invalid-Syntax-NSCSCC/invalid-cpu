@@ -28,14 +28,8 @@ class BiInstQueue(
         val instInfo = new InstInfoNdPort
       })
     )
-
-    // val debugPort = Output(Vec(issueNum, new InstInfoBundle))
   })
   require(issueNum == 2)
-//   val queue =
-//     Queue(io.enqueuePorts(0), entries = queueLength, pipe = false, flow = true, flush = Some(io.pipelineControlPort.flush))
-
-//   io.dequeuePort <> queue
 
   val ram     = RegInit(VecInit(Seq.fill(queueLength)(InstInfoBundle.default)))
   val enq_ptr = Module(new BiCounter(queueLength))

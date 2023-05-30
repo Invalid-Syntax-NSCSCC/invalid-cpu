@@ -8,7 +8,9 @@ import pipeline.rob.bundles.RobInstStoreBundle
 import pipeline.rob.enums.{RobInstState => State}
 import utils._
 import spec.wordLength
+import utils.BiCounter
 import pipeline.dataforward.bundles.ReadPortWithValid
+
 
 // TODO: flush
 class RobStage(

@@ -65,6 +65,7 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   io.outs <> outQueues
 
   // Handle input
+  io.ins.foreach(_.ready := false.B)
   // 由于in和out不是一一对应，需要处理in.ready
   // 模板： io.ins(src).ready := validToIns(dst) && isLastComputeds(src)
   protected val validToIns = Wire(Vec(outNum, Bool()))
