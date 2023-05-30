@@ -28,6 +28,9 @@ class WbStage extends Module {
     // `AddrTransStage` -> `WbStage` -> `Cu`  NO delay
     val cuInstInfoPort = Output(new InstInfoNdPort)
 
+    // `WbStage` -> `Cu` NO delay
+    val isExceptionValid = Output(Bool())
+
     val difftest =
       if (isDiffTest)
         Some(Output(new Bundle {
@@ -55,6 +58,9 @@ class WbStage extends Module {
   })
   // Always assert ready for last stage
   io.in.ready := true.B
+
+  // Whether current instruction causes exception
+  io.isExceptionValid := io.in.bits.instInfo.isValid && io.in.bits.instInfo.isExceptionValid
 
   // Output connection
   io.cuInstInfoPort         := io.in.bits.instInfo

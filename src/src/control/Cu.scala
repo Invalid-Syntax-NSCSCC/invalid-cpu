@@ -43,6 +43,11 @@ class Cu(
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`
     val flushs = Output(Vec(ctrlControlNum, Bool()))
 
+    // <- `MemResStage`, `WbStage`
+    val isExceptionValidVec = Input(Vec(3, Bool()))
+    // -> `MemReqStage`
+    val isAfterMemReqFlush = Output(Bool())
+
     val difftest = if (isDiffTest) {
       Some(Output(new Bundle {
         val cmt_ertn       = Output(Bool())
@@ -56,7 +61,7 @@ class Cu(
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := PcSetPort.default
 
-  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map(_.exceptionRecords.reduce(_ || _))))
+  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map(_.isExceptionValid)))
   val hasException      = WireDefault(linesHasException.reduce(_ || _))
 
   /** stable counter
@@ -72,6 +77,9 @@ class Cu(
   }.elsewhen(io.stableCounterReadPort.isMatch) {
     io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
   }
+
+  // Handle after memory request exception valid
+  io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
   // 软件写csr
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
