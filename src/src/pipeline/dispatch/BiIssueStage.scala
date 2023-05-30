@@ -193,5 +193,4 @@ class BiIssueStage(
     io.fetchInstDecodePorts.foreach(_.ready := false.B)
     io.issuedInfoPorts.foreach(_.valid := false.B)
   }
-
 }

@@ -261,6 +261,12 @@ class CoreCpuTop extends Module {
   cu.io.stableCounterReadPort          <> stableCounter.io
   cu.io.jumpPc                         := exeStage.io.peer.get.branchSetPort
 
+  // After memory request flush connection
+  memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
+  cu.io.isExceptionValidVec(0)               := memReqStage.io.peer.get.isExceptionValid
+  cu.io.isExceptionValidVec(1)               := memResStage.io.peer.get.isExceptionValid
+  cu.io.isExceptionValidVec(2)               := wbStage.io.isExceptionValid
+
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
     case (dst, src) =>

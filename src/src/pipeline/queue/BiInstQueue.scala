@@ -183,6 +183,7 @@ class BiInstQueue(
       val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
       dequeuePort.bits.instInfo
         .exceptionRecords(Csr.ExceptionIndex.ine) := !isMatched
+      dequeuePort.bits.instInfo.isExceptionValid  := !isMatched
       dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
       dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
