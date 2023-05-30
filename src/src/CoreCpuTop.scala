@@ -187,6 +187,8 @@ class CoreCpuTop extends Module {
   csrScoreBoard.io.freePorts(0) := wbStage.io.csrFreePort
   scoreboard.io.occupyPorts     := issueStage.io.occupyPortss(0)
   csrScoreBoard.io.occupyPorts  := issueStage.io.csrOccupyPortss(0)
+  scoreboard.io.isFlush         := false.B // cu.io.flushs(PipelineStageIndex.scoreboard)
+  csrScoreBoard.io.isFlush      := false.B // cu.io.flushs(PipelineStageIndex.scoreboard)
 
   // Reg-read stage
   regReadStage.io.in                     <> issueStage.io.issuedInfoPorts(0)

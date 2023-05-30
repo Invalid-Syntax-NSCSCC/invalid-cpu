@@ -14,6 +14,7 @@ class Scoreboard(
     val occupyPorts = Input(Vec(occupyNum, new ScoreboardChangeNdPort))
     val freePorts   = Input(Vec(changeNum, new ScoreboardChangeNdPort))
     val regScores   = Output(Vec(regNum, Bool()))
+    val isFlush     = Input(Bool())
   })
 
   val isRegOccupied = RegInit(VecInit(Seq.fill(Count.reg)(false.B)))
@@ -35,5 +36,9 @@ class Scoreboard(
           reg := false.B
         }
       }
+  }
+
+  when(io.isFlush) {
+    isRegOccupied.foreach(_ := false.B)
   }
 }
