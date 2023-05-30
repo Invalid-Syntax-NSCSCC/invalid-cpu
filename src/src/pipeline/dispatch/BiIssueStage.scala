@@ -145,7 +145,7 @@ class BiIssueStage(
       when (fetchCanIssue(0) && canIssueMaxNum >= 1.U) {
         when(validToOuts(0)) {
           // 0 --> 0
-          connect(0, 1, 0)
+          connect(0, 0, 0)
 
           when(validToOuts(1) && fetchCanIssue(1) && canIssueMaxNum >= 2.U) {
             // 1 --> 1
@@ -153,7 +153,7 @@ class BiIssueStage(
           }
         }.elsewhen(validToOuts(1)) {
           // 0 --> 1
-            connect(1, 0, 0)
+            connect(0, 1, 0)
         }
       }
   }
