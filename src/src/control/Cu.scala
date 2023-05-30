@@ -40,8 +40,9 @@ class Cu(
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`
-    val flushs = Output(Vec(ctrlControlNum, Bool()))
+    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`, `Scoreboard`
+    val flushs                = Output(Vec(ctrlControlNum, Bool()))
+    val branchScoreboardFlush = Output(Bool())
 
     val difftest = if (isDiffTest) {
       Some(Output(new Bundle {
@@ -82,17 +83,20 @@ class Cu(
   /** flush
     */
   val flushs = Wire(Vec(ctrlControlNum, Bool()))
-  io.flushs := RegNext(flushs)
   flushs.foreach(_ := false.B)
+  io.flushs := RegNext(flushs)
+  val branchScoreboardFlush = WireDefault(false.B)
+  io.branchScoreboardFlush := RegNext(branchScoreboardFlush)
 
   when(io.jumpPc.en) {
     Seq(
       PipelineStageIndex.issueStage,
       PipelineStageIndex.regReadStage,
-      PipelineStageIndex.frontend,
-      PipelineStageIndex.scoreboard
+      PipelineStageIndex.frontend
     ).map(flushs(_))
       .foreach(_ := true.B)
+
+    branchScoreboardFlush := true.B
   }
 
   val exceptionFlush = WireDefault(hasException)

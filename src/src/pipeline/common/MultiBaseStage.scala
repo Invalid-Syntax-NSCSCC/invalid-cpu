@@ -69,7 +69,7 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   // 由于in和out不是一一对应，需要处理in.ready
   // 模板： io.ins(src).ready := validToIns(dst) && isLastComputeds(src)
   protected val validToIns = Wire(Vec(outNum, Bool()))
-  validToIns.lazyZip(io.outs).lazyZip(lastResultOuts).foreach{
+  validToIns.lazyZip(io.outs).lazyZip(lastResultOuts).foreach {
     case (v, out, lastResultOut) =>
       v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
   }

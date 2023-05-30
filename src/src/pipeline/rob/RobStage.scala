@@ -11,7 +11,6 @@ import spec.wordLength
 import utils.BiCounter
 import pipeline.dataforward.bundles.ReadPortWithValid
 
-
 // TODO: flush
 class RobStage(
   robLength: Int = 16,

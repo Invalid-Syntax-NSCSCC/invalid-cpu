@@ -12,6 +12,7 @@ import pipeline.dataforward.bundles.ReadPortWithValid
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.rob.bundles.RobIdDistributePort
 import pipeline.dispatch.bundles.RegReadPortWithValidBundle
+import pipeline.dispatch.enums.ScoreboardState
 
 // TODO: deal WAR data hazard
 class BiIssueStage(
@@ -37,11 +38,11 @@ class BiIssueStage(
 
     // `IssueStage` <-> `Scoreboard`
     val occupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-    val regScores    = Input(Vec(Count.reg, Bool()))
+    val regScores    = Input(Vec(Count.reg, ScoreboardState()))
 
     // `IssueStage` <-> `Scoreboard(csr)`
     val csrOccupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-    val csrRegScores    = Input(Vec(Count.csrReg, Bool()))
+    val csrRegScores    = Input(Vec(Count.csrReg, ScoreboardState()))
 
     // `IssueStage` -> `RegReadStage` (next clock pulse)
     val issuedInfoPorts = Vec(issueNum, Decoupled(new RegReadNdPort))
@@ -120,10 +121,12 @@ class BiIssueStage(
     fetchInfos.valid &&
     !((fetchInfos.issueInfo.preExeInstInfo.gprReadPorts
       .map({ readPort =>
-        readPort.en && io.regScores(readPort.addr)
+        readPort.en && (io.regScores(readPort.addr) === ScoreboardState.free)
       }))
       .reduce(_ || _)) &&
-    !(fetchInfos.issueInfo.preExeInstInfo.csrReadEn && io.csrRegScores(fetchInfos.issueInfo.preExeInstInfo.csrAddr))
+    !(fetchInfos.issueInfo.preExeInstInfo.csrReadEn && (io.csrRegScores(
+      fetchInfos.issueInfo.preExeInstInfo.csrAddr
+    ) === ScoreboardState.free))
   }))
 
   when(canIssueMaxNum.orR) {
