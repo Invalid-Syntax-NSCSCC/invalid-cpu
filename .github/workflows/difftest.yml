@@ -52,8 +52,8 @@ jobs:
           export CHIPLAB_HOME=`pwd`/chiplab
           ./chiplab/sims/verilator/run_prog/configure.sh --run func/func_lab9
           cd ./chiplab/sims/verilator/run_prog
-          make -j`nproc` > make_log.txt
-          sed -nz 's/.*RUN simulation.//p' make_log.txt
+          make -j`nproc` > make_log.txt 2>&1
+          sed -i '/Runing simulation/,$!d' make_log.txt
           cat make_log.txt
         continue-on-error: true
         
@@ -63,5 +63,5 @@ jobs:
           name: difftest-log
           path: |
             ./chiplab/sims/verilator/run_prog/make_log.txt
-            ./chiplab/sims/verilator/run_prog/log
+            ./chiplab/sims/verilator/run_prog/log/**/simu_trace.*
             ./chiplab/sims/verilator/run_prog/obj/**/obj/test.s
