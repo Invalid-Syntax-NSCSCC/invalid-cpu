@@ -1,0 +1,55 @@
+name: Difftest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CHIPLAB_HOME: ./chiplab
+  
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Finetune
+        run: sudo sed -i 's/yes/no/g' /etc/initramfs-tools/update-initramfs.conf && sudo rm -f /var/lib/man-db/auto-update
+
+      - name: Clone Chiplab Repo
+        uses: actions/checkout@v3
+        with:
+          repository: Invalid-Syntax-NSCSCC/min-chiplab
+          path: chiplab
+
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y verilator libsdl2-2.0-0 libsdl2-dev
+        
+      - name: Prepare Environment
+        run: echo "./chiplab/toolchains/loongarch32r-linux-gnusf-2022-05-20/bin" >> $GITHUB_PATH
+
+      - name: Elaborate CPU
+        run: make
+        
+      - name: Save Cache
+        uses: coursier/cache-action@v6
+        
+      - name: Move to Chiplab
+        run: make chiplab
+
+      - name: Configure Difftest
+        run: ./chiplab/sims/verilator/run_prog/configure.sh --run func/func_lab9
+
+      - name: Test
+        run: cd ./chiplab/sims/verilator/run_prog && make -j`nproc`
+        continue-on-error: true
+        
+      - name: Upload Result
+        uses: actions/upload-artifact@v3
+        with:
+          name: difftest-log
+          path: ./chiplab/sims/verilator/run_prog/log
