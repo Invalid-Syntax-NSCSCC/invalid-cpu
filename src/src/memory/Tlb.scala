@@ -3,22 +3,14 @@ package memory
 import chisel3._
 import chisel3.util._
 import control.csrRegsBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
-import memory.bundles.{TlbCompareEntryBundle, TlbEntryBundle, TlbTransPort}
+import memory.bundles.{TlbCompareEntryBundle, TlbCsrWriteNdPort, TlbEntryBundle, TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
 import spec.ExeInst.Op.Tlb._
 import spec._
 
 class Tlb extends Module {
   val io = IO(new Bundle {
-    val isInvalidate = Input(Bool())
-    val isSearch     = Input(Bool())
-    val isRead       = Input(Bool())
-    val isWrite      = Input(Bool())
-    val isFill       = Input(Bool())
-    val maintenanceInfo = Input(new Bundle {
-      val virtAddr       = UInt(Width.Mem.addr)
-      val invalidateInst = UInt(Width.Tlb.op)
-    })
+    val maintenanceInfo = Input(new TlbMaintenanceNdPort)
     val csr = new Bundle {
       val in = Input(new Bundle {
         val plv      = UInt(2.W)
@@ -27,11 +19,7 @@ class Tlb extends Module {
         val tlbidx   = new TlbidxBundle
         val tlbloVec = Vec(2, new TlbeloBundle)
       })
-      val out = new Bundle {
-        val tlbidx    = Valid(new TlbidxBundle)
-        val tlbehi    = Valid(new TlbehiBundle)
-        val tlbeloVec = Vec(2, Valid(new TlbeloBundle))
-      }
+      val out = Output(new TlbCsrWriteNdPort)
     }
     val tlbTransPorts = Vec(Param.Count.Tlb.transNum, new TlbTransPort)
   })
@@ -68,7 +56,7 @@ class Tlb extends Module {
         isFound := entry.compare.isExisted && (
           entry.compare.isGlobal || (entry.compare.asId === io.csr.in.asId.asid)
         ) && Mux(
-          io.isSearch,
+          io.maintenanceInfo.isSearch,
           entry.compare.virtPageNum === io.csr.in.tlbehi.vppn,
           isVirtPageNumMatched(entry.compare, transPort.virtAddr)
         )
@@ -81,7 +69,7 @@ class Tlb extends Module {
       selectedEntry.trans(1)
     )
     val isFound = isFoundVec.asUInt.orR
-    io.csr.out.tlbidx.valid := io.isSearch
+    io.csr.out.tlbidx.valid := io.maintenanceInfo.isSearch
     when(isFound) {
       io.csr.out.tlbidx.bits.index := selectedIndex
       io.csr.out.tlbidx.bits.ne    := false.B
@@ -133,7 +121,7 @@ class Tlb extends Module {
 
   // Maintenance: Read
   val readEntry = tlbEntryVec(io.csr.in.tlbidx.index)
-  when(io.isRead) {
+  when(io.maintenanceInfo.isRead) {
     io.csr.out.tlbehi.bits.vppn := readEntry.compare.virtPageNum
     io.csr.out.tlbeloVec.map(_.bits).zip(readEntry.trans).foreach {
       case (tlbelo, trans) =>
@@ -160,12 +148,12 @@ class Tlb extends Module {
   val fillIndex = PriorityEncoder(tlbEntryVec.map(!_.compare.isExisted))
   val writeEntry = tlbEntryVec(
     Mux(
-      io.isWrite,
+      io.maintenanceInfo.isWrite,
       io.csr.in.tlbidx.index,
       fillIndex
     )
   )
-  when(io.isWrite || io.isFill) {
+  when(io.maintenanceInfo.isWrite || io.maintenanceInfo.isFill) {
     writeEntry.compare.isExisted := !io.csr.in.tlbidx.ne
 
     writeEntry.compare.pageSize    := io.csr.in.tlbidx.ps
@@ -190,7 +178,7 @@ class Tlb extends Module {
   }
   def isAsIdMatched(entry: TlbEntryBundle) = entry.compare.asId === io.csr.in.asId.asid
 
-  when(io.isInvalidate) {
+  when(io.maintenanceInfo.isInvalidate) {
     switch(io.maintenanceInfo.invalidateInst) {
       is(clrAll, clrAllAlt) {
         tlbEntryVec.foreach(invalidateEntry)
