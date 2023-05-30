@@ -197,5 +197,6 @@ class BiInstQueue(
 
   when(io.isFlush) {
     ram.foreach(_ := InstInfoBundle.default)
+    maybeFull := false.B
   }
 }
