@@ -49,7 +49,7 @@ class Div extends Module {
   }
 
   def getAbs(data: UInt, sign: Bool): UInt = {
-    Fill(wordLength, sign) ^ data + sign.asUInt
+    (Fill(wordLength, sign) ^ data) + sign.asUInt
   }
 
   val dividendSign = getSign(dividend, wordLength)
@@ -179,26 +179,18 @@ class Div extends Module {
   io.divResult.bits.quotient := Mux(
     dividend.orR,
     Mux(
-      divisorGreaterThanDividendDelay,
-      zeroWord,
-      Mux(
-        quotientSign,
-        (~quotient).asUInt + 1.U,
-        quotient
-      )
+      quotientSign,
+      (~quotient).asUInt + 1.U,
+      quotient
     ),
     zeroWord // 被除数为0
   )
   io.divResult.bits.remainder := Mux(
     remainder.orR,
     Mux(
-      divisorGreaterThanDividendDelay,
-      dividend,
-      Mux(
-        remainderSign,
-        (~remainder).asUInt + 1.U,
-        remainder
-      )
+      remainderSign,
+      (~remainder).asUInt + 1.U,
+      remainder
     ),
     zeroWord // 被除数为0
   )
