@@ -205,23 +205,31 @@ class ExeStage
     }
   }
 
-  resultOutReg.bits.instInfo.load.en := Cat(
-    0.U(2.W),
-    selectedIn.exeOp === ExeInst.Op.ll,
-    selectedIn.exeOp === ExeInst.Op.ld_w,
-    selectedIn.exeOp === ExeInst.Op.ld_hu,
-    selectedIn.exeOp === ExeInst.Op.ld_h,
-    selectedIn.exeOp === ExeInst.Op.ld_bu,
-    selectedIn.exeOp === ExeInst.Op.ld_b
-  ) & !isAle
-  resultOutReg.bits.instInfo.store.en := Cat(
-    0.U(4.W),
-    io.peer.get.csr.llbctl.wcllb &&
-      selectedIn.exeOp === ExeInst.Op.sc,
-    selectedIn.exeOp === ExeInst.Op.st_w,
-    selectedIn.exeOp === ExeInst.Op.st_h,
-    selectedIn.exeOp === ExeInst.Op.st_b
-  ) & !isAle
+  resultOutReg.bits.instInfo.load.en := Mux(
+    isAle,
+    0.U,
+    Cat(
+      0.U(2.W),
+      selectedIn.exeOp === ExeInst.Op.ll,
+      selectedIn.exeOp === ExeInst.Op.ld_w,
+      selectedIn.exeOp === ExeInst.Op.ld_hu,
+      selectedIn.exeOp === ExeInst.Op.ld_h,
+      selectedIn.exeOp === ExeInst.Op.ld_bu,
+      selectedIn.exeOp === ExeInst.Op.ld_b
+    )
+  )
+  resultOutReg.bits.instInfo.store.en := Mux(
+    isAle,
+    0.U,
+    Cat(
+      0.U(4.W),
+      io.peer.get.csr.llbctl.wcllb &&
+        selectedIn.exeOp === ExeInst.Op.sc,
+      selectedIn.exeOp === ExeInst.Op.st_w,
+      selectedIn.exeOp === ExeInst.Op.st_h,
+      selectedIn.exeOp === ExeInst.Op.st_b
+    )
+  )
   resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
   resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
   resultOutReg.bits.instInfo.store.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(

@@ -24,6 +24,7 @@ class InstInfoNdPort extends Bundle {
 
 object InstInfoNdPort {
   def default = (new InstInfoNdPort).Lit(
+    _.isValid -> false.B,
     _.pc -> zeroWord,
     _.inst -> zeroWord,
     _.exceptionRecords -> Vec.Lit(
