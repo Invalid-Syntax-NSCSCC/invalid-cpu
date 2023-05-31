@@ -13,6 +13,39 @@ import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.rob.bundles.RobIdDistributePort
 import pipeline.dispatch.bundles.RegReadPortWithValidBundle
 import pipeline.dispatch.enums.ScoreboardState
+import pipeline.common.MultiBaseStage
+import chisel3.experimental.BundleLiterals._
+
+class FetchInstDecodeNdPort extends Bundle {
+  val decode   = new DecodeOutNdPort
+  val instInfo = new InstInfoNdPort
+}
+
+object FetchInstDecodeNdPort {
+  val default = (new FetchInstDecodeNdPort).Lit(
+    _.decode -> DecodeOutNdPort.default,
+    _.instInfo -> InstInfoNdPort.default
+  )
+}
+
+class BiIssueStagePeerPort(
+  issueNum:       Int = 2,
+  scoreChangeNum: Int = Param.regFileWriteNum,
+  robIdLength:    Int = 32,
+  robLengthLog:   Int = 4)
+    extends Bundle {
+  // `IssueStage` <-> `RobStage`
+  val robEmptyNum = Input(UInt(robLengthLog.W))
+  val idGetPorts  = Vec(issueNum, Flipped(new RobIdDistributePort(idLength = robIdLength)))
+
+  // `IssueStage` <-> `Scoreboard`
+  val occupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
+  val regScores    = Input(Vec(Count.reg, ScoreboardState()))
+
+  // `IssueStage` <-> `Scoreboard(csr)`
+  val csrOccupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
+  val csrRegScores    = Input(Vec(Count.csrReg, ScoreboardState()))
+}
 
 // TODO: deal WAR data hazard
 class BiIssueStage(
@@ -20,177 +53,113 @@ class BiIssueStage(
   scoreChangeNum: Int = Param.regFileWriteNum,
   robIdLength:    Int = 32,
   robLengthLog:   Int = 4)
-    extends Module {
-  val io = IO(new Bundle {
-    // `InstQueue` -> `IssueStage`
-    val fetchInstDecodePorts = Vec(
-      issueNum,
-      Flipped(Decoupled(new Bundle {
-        val decode   = new DecodeOutNdPort
-        val instInfo = new InstInfoNdPort
-      }))
-    )
+    extends MultiBaseStage(
+      new FetchInstDecodeNdPort,
+      new RegReadNdPort,
+      FetchInstDecodeNdPort.default,
+      Some(new BiIssueStagePeerPort(issueNum, scoreChangeNum, robIdLength, robLengthLog)),
+      spec.Param.issueInstInfoMaxNum,
+      spec.Param.issueInstInfoMaxNum
+    ) {
 
-    // `IssueStage` <-> `RobStage`
+  // Fallback
+  resultOutsReg.foreach(_.bits := 0.U.asTypeOf(resultOutsReg(0).bits))
+  io.peer.get.csrOccupyPortss.foreach(_(0) := ScoreboardChangeNdPort.default)
+  io.peer.get.occupyPortss.foreach(_(0) := ScoreboardChangeNdPort.default)
+  io.peer.get.idGetPorts.foreach(_.writeEn := false.B)
 
-    val robEmptyNum = Input(UInt(robLengthLog.W))
-    val idGetPorts  = Vec(issueNum, Flipped(new RobIdDistributePort(idLength = robIdLength)))
+  // TODO: Parameterize issue number and remove the following
+  validToOuts(1) := false.B
 
-    // `IssueStage` <-> `Scoreboard`
-    val occupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-    val regScores    = Input(Vec(Count.reg, ScoreboardState()))
+  val canIssueMaxNumFromPipeline = WireDefault(validToOuts.map(_.asUInt).reduce(_ +& _))
+  val canIssueMaxNumFromRob      = WireDefault(io.peer.get.robEmptyNum)
+  // val canIssueMaxNumFromRob      = WireDefault(io.peer.get.robEmptyNum +& selectedIns.map{
+  //   in =>
+  //     (!in.decode.info.gprWritePort.en).asUInt
+  // }.reduce(_ +& _) )
 
-    // `IssueStage` <-> `Scoreboard(csr)`
-    val csrOccupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-    val csrRegScores    = Input(Vec(Count.csrReg, ScoreboardState()))
-
-    // `IssueStage` -> `RegReadStage` (next clock pulse)
-    val issuedInfoPorts = Vec(issueNum, Decoupled(new RegReadNdPort))
-
-    // `Cu` -> `IssueStage`
-    val isFlushs = Vec(issueNum, Input(Bool()))
-  })
-
-  // fall back
-  io.idGetPorts.foreach(_.writeEn := false.B)
-
-  io.fetchInstDecodePorts.foreach { port =>
-    port.ready := false.B
-  }
-  io.occupyPortss.foreach(_.foreach { port =>
-    port.en   := false.B
-    port.addr := zeroWord
-  })
-  io.csrOccupyPortss.foreach(_.foreach { port =>
-    port.en   := false.B
-    port.addr := zeroWord
-  })
-  io.issuedInfoPorts.foreach { port =>
-    port.valid := false.B
-    port.bits  := RegReadNdPort.default
-  }
-
-  val issueEnablesReg = RegInit(VecInit(Seq.fill(issueNum)(false.B)))
-  issueEnablesReg.foreach(_ := false.B)
-  val issueInfosReg = RegInit(VecInit(Seq.fill(issueNum)(RegReadNdPort.default)))
-  io.issuedInfoPorts.lazyZip(issueInfosReg).lazyZip(issueEnablesReg).foreach { (dst, src, valid) =>
-    dst.bits  := src
-    dst.valid := valid
-  }
-
-  /** Combine stage 1 : get fetch infos
-    */
-
-  val fetchInfos = WireDefault(VecInit(Seq.fill(issueNum)(RegReadPortWithValidBundle.default)))
-
-  fetchInfos
-    .lazyZip(io.fetchInstDecodePorts)
-    .foreach((dst, src) => {
-      dst.valid                    := src.valid
-      dst.issueInfo.instInfo       := src.bits.instInfo
-      dst.issueInfo.preExeInstInfo := src.bits.decode.info
-    })
-
-  /** Combine stage 2 : Select to issue ; decide input
-    */
-
-  // 优先valid第0个
-  val selectValidWires = Wire(
-    Vec(
-      issueNum,
-      new RegReadPortWithValidBundle
-    )
-  )
-  selectValidWires.foreach(_ := 0.U.asTypeOf(selectValidWires(0)))
-
-  val canIssueMaxNumFromPipeline = WireDefault(io.issuedInfoPorts.map(_.ready.asUInt).reduce(_ +& _))
-  val canIssueMaxNumFromRob      = WireDefault(io.robEmptyNum)
-  when(io.robEmptyNum === 1.U && !io.fetchInstDecodePorts.map(_.bits.decode.info.gprWritePort.en).reduce(_ && _)) {
-    canIssueMaxNumFromRob := 2.U
-  }
-  when(io.robEmptyNum === 0.U && !io.fetchInstDecodePorts.map(_.bits.decode.info.gprWritePort.en).reduce(_ || _)) {
-    canIssueMaxNumFromRob := 2.U
-  }
   val canIssueMaxNum = Mux(
     canIssueMaxNumFromRob < canIssueMaxNumFromPipeline,
     canIssueMaxNumFromRob,
     canIssueMaxNumFromPipeline
   )
 
-  val fetchCanIssue = WireDefault(VecInit(fetchInfos.map { fetchInfos =>
-    fetchInfos.valid &&
-    !((fetchInfos.issueInfo.preExeInstInfo.gprReadPorts
-      .map({ readPort =>
-        readPort.en && (io.regScores(readPort.addr) =/= ScoreboardState.free)
-      }))
-      .reduce(_ || _)) &&
-    !(fetchInfos.issueInfo.preExeInstInfo.csrReadEn && (io.csrRegScores(
-      fetchInfos.issueInfo.preExeInstInfo.csrAddr
-    ) =/= ScoreboardState.free))
-  }))
+  val fetchCanIssue = WireDefault(VecInit(Seq.fill(issueNum)(true.B)))
+  isComputeds.lazyZip(fetchCanIssue).lazyZip(selectedIns).foreach {
+    case (isComputed, fetchValid, in) =>
+      isComputed := fetchValid || !in.instInfo.isValid
+  }
 
-  when(canIssueMaxNum.orR) {
-    // 可发射至少一个
+  fetchCanIssue.lazyZip(selectedIns).zipWithIndex.foreach {
+    case ((fetchValid, in), idx) =>
+      fetchValid := in.instInfo.isValid &&
+        !(
+          in.decode.info.gprReadPorts.map { readPort =>
+            readPort.en && (io.peer.get.regScores(readPort.addr) =/= ScoreboardState.free)
+          }.reduce(_ || _)
+        ) &&
+        !(
+          in.instInfo.csrWritePort.en &&
+            (io.peer.get.csrRegScores(in.instInfo.csrWritePort.addr) =/= ScoreboardState.free)
+        ) &&
+        !selectedIns
+          .slice(0, idx)
+          .map { prevIn =>
+            in.decode.info.gprReadPorts.map { inOneRead =>
+              prevIn.decode.info.gprWritePort.en && inOneRead.en && (prevIn.decode.info.gprWritePort.addr === inOneRead.addr) && (prevIn.decode.info.gprWritePort.addr =/= 0.U)
+            }.reduce(_ || _)
+          }
+          .foldLeft(false.B)(_ || _)
+  }
 
-    when(fetchCanIssue(0)) {
-      selectValidWires(0)              := fetchInfos(0)
-      io.fetchInstDecodePorts(0).ready := true.B
-      when(
-        fetchCanIssue(1) &&
-          !(
-            fetchInfos(0).issueInfo.preExeInstInfo.gprWritePort.en &&
-              fetchInfos(1).issueInfo.preExeInstInfo.gprReadPorts.map { readPort =>
-                readPort.en && (readPort.addr === fetchInfos(0).issueInfo.preExeInstInfo.gprWritePort.addr)
-              }.reduce(_ || _)
-          )
-      ) {
-        selectValidWires(1)              := fetchInfos(1)
-        io.fetchInstDecodePorts(1).ready := true.B
+  val fetchInfos = Wire(Vec(issueNum, ValidIO(new RegReadNdPort)))
+  fetchInfos.zip(selectedIns).foreach {
+    case (dst, src) =>
+      dst.valid               := src.instInfo.isValid
+      dst.bits.instInfo       := src.instInfo
+      dst.bits.preExeInstInfo := src.decode.info
+  }
+
+  require(issueNum == 2)
+
+  // ready but cannot issue ?
+  io.ins.lazyZip(isLastComputeds).zipWithIndex.foreach {
+    case ((in, isLastComputed), index) =>
+      in.ready := isLastComputed && index.U < canIssueMaxNum
+  }
+
+  def connect(src_idx: Int, dst_idx: Int, occupy_port_idx: Int): Unit = {
+    resultOutsReg(dst_idx).valid := fetchInfos(src_idx).bits.instInfo.isValid
+    resultOutsReg(dst_idx)       := fetchInfos(src_idx)
+    isComputeds(src_idx)         := true.B
+
+    io.peer.get.occupyPortss(occupy_port_idx)(0)         := fetchInfos(src_idx).bits.preExeInstInfo.gprWritePort
+    io.peer.get.csrOccupyPortss(occupy_port_idx)(0).en   := fetchInfos(src_idx).bits.instInfo.csrWritePort.en
+    io.peer.get.csrOccupyPortss(occupy_port_idx)(0).addr := fetchInfos(src_idx).bits.instInfo.csrWritePort.addr
+
+    io.peer.get.idGetPorts(occupy_port_idx).writeEn := fetchInfos(src_idx).bits.preExeInstInfo.gprWritePort.en
+    resultOutsReg(dst_idx).bits.instInfo.robId      := io.peer.get.idGetPorts(occupy_port_idx).id
+  }
+
+  if (issueNum == 2) {
+    when(fetchCanIssue(0) && canIssueMaxNum >= 1.U) {
+      when(validToOuts(0)) {
+        // 0 --> 0
+        connect(0, 0, 0)
+
+        when(validToOuts(1) && fetchCanIssue(1) && canIssueMaxNum >= 2.U) {
+          // 1 --> 1
+          connect(1, 1, 1)
+        }
+      }.elsewhen(validToOuts(1)) {
+        // 0 --> 1
+        connect(0, 1, 0)
       }
     }
   }
 
-  /** Combine stage 3 : valid inst --> issue ; connect score board
-    */
-  // default : no issue
-  when(selectValidWires(0).valid) {
-    when(io.issuedInfoPorts(0).ready) {
-      // select 0 -> issue 0
-      issueEnablesReg(0) := true.B
-
-      issueInfosReg(0)      := selectValidWires(0).issueInfo
-      io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort
-
-      io.idGetPorts(0).writeEn                     := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort.en
-      selectValidWires(0).issueInfo.instInfo.robId := io.idGetPorts(0).id
-
-      when(selectValidWires(1).valid && io.issuedInfoPorts(1).ready) {
-        // select 1 -> issue 1
-        issueEnablesReg(1) := true.B
-
-        issueInfosReg(1)      := selectValidWires(1).issueInfo
-        io.occupyPortss(1)(0) := selectValidWires(1).issueInfo.preExeInstInfo.gprWritePort
-
-        io.idGetPorts(1).writeEn                     := selectValidWires(1).issueInfo.preExeInstInfo.gprWritePort.en
-        selectValidWires(1).issueInfo.instInfo.robId := io.idGetPorts(1).id
-      }
-    }.elsewhen(io.issuedInfoPorts(1).ready) {
-      // select 0 -> issue 1
-      issueEnablesReg(1) := true.B
-
-      issueInfosReg(1)      := selectValidWires(0).issueInfo
-      io.occupyPortss(0)(0) := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort
-
-      io.idGetPorts(0).writeEn                     := selectValidWires(0).issueInfo.preExeInstInfo.gprWritePort.en
-      selectValidWires(0).issueInfo.instInfo.robId := io.idGetPorts(0).id
-    }
-  }
-
-  // flush all regs
-  when(io.isFlushs.reduce(_ || _)) {
-    issueEnablesReg.foreach(_ := false.B)
-    issueInfosReg.foreach(_ := RegReadNdPort.default)
-    io.fetchInstDecodePorts.foreach(_.ready := false.B)
-    io.issuedInfoPorts.foreach(_.valid := false.B)
+  when(io.isFlush) {
+    io.ins.foreach(_.ready := false.B)
+    io.outs.foreach(_.valid := false.B)
   }
 }

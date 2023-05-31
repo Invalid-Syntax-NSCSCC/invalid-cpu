@@ -90,8 +90,7 @@ class Cu(
 
   /** flush
     */
-  val flushs = Wire(Vec(ctrlControlNum, Bool()))
-  flushs.foreach(_ := false.B)
+  val flushs = WireDefault(VecInit(Seq.fill(ctrlControlNum)(false.B)))
   io.flushs := RegNext(flushs)
   val branchScoreboardFlush = WireDefault(false.B)
   io.branchScoreboardFlush := RegNext(branchScoreboardFlush)
