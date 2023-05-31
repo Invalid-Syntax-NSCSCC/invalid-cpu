@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
-ARGS='--add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec --disable-annotation-unknown'
+ARGS='-O=release --add-vivado-ram-address-conflict-synthesis-bug-workaround --preserve-aggregate=1d-vec --dedup --disable-annotation-unknown'
 
 # Workaround
 for arg do
   shift
   case $arg in
     (-disable-infer-rw) : ;;
-        (*) set -- --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec --disable-annotation-unknown "$@" "$arg" ;;
+        (*) set -- "$@" "$arg" ;;
   esac
 done
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    firtool_darwin --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec "$@"
+    firtool_darwin -O=release --add-vivado-ram-address-conflict-synthesis-bug-workaround --preserve-aggregate=1d-vec --dedup --disable-annotation-unknown "$@"
 else
-    firtool_ubuntu2004 --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --dedup --preserve-aggregate=1d-vec "$@"
+    firtool_ubuntu2004 -O=release --add-vivado-ram-address-conflict-synthesis-bug-workaround --preserve-aggregate=1d-vec --dedup --disable-annotation-unknown "$@"
 fi
