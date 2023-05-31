@@ -62,11 +62,14 @@ class BiIssueStage(
       spec.Param.issueInstInfoMaxNum
     ) {
 
-  // fall back
+  // Fallback
   resultOutsReg.foreach(_.bits := 0.U.asTypeOf(resultOutsReg(0).bits))
   io.peer.get.csrOccupyPortss.foreach(_(0) := ScoreboardChangeNdPort.default)
   io.peer.get.occupyPortss.foreach(_(0) := ScoreboardChangeNdPort.default)
   io.peer.get.idGetPorts.foreach(_.writeEn := false.B)
+
+  // TODO: Parameterize issue number and remove the following
+  validToOuts(1) := false.B
 
   val canIssueMaxNumFromPipeline = WireDefault(validToOuts.map(_.asUInt).reduce(_ +& _))
   val canIssueMaxNumFromRob      = WireDefault(io.peer.get.robEmptyNum)
