@@ -56,120 +56,6 @@ class Csr(
     )
   }
 
-  // 软件写csrRegs
-  // 保留域断断续续的样子真是可爱捏
-  io.writePorts.foreach { writePort =>
-    when(writePort.en) {
-      csrRegs(writePort.addr) := writePort.data
-      // 保留域
-      switch(writePort.addr) {
-        is(spec.Csr.Index.crmd) {
-          csrRegs(writePort.addr) := Cat(0.U(23.W), writePort.data(8, 0))
-        }
-        is(spec.Csr.Index.prmd) {
-          csrRegs(writePort.addr) := Cat(0.U(29.W), writePort.data(2, 0))
-        }
-        is(spec.Csr.Index.euen) {
-          csrRegs(writePort.addr) := Cat(0.U(31.W), writePort.data(0))
-        }
-        is(spec.Csr.Index.ecfg) {
-          csrRegs(writePort.addr) := Cat(0.U(19.W), writePort.data(12, 0))
-        }
-        is(spec.Csr.Index.estat) {
-          csrRegs(writePort.addr) := Cat(false.B, writePort.data(30, 16), 0.U(3.W), writePort.data(12, 0))
-        }
-        is(
-          spec.Csr.Index.era,
-          spec.Csr.Index.badv,
-          spec.Csr.Index.save0,
-          spec.Csr.Index.save1,
-          spec.Csr.Index.save2,
-          spec.Csr.Index.save3,
-          spec.Csr.Index.tid
-        ) {
-          csrRegs(writePort.addr) := writePort.data
-        }
-        is(spec.Csr.Index.eentry) {
-          csrRegs(writePort.addr) := Cat(writePort.data(31, 6), 0.U(6.W))
-        }
-        is(spec.Csr.Index.cpuid) {
-          csrRegs(writePort.addr) := Cat(0.U(23.W), writePort.data(8, 0))
-        }
-        is(spec.Csr.Index.llbctl) {
-          csrRegs(writePort.addr) := Cat(
-            0.U(29.W),
-            writePort.data(2),
-            false.B,
-            Mux( // 软件向wcllb写1时清零llbit，写0时忽略
-              writePort.data(1),
-              false.B,
-              csrRegs(spec.Csr.Index.llbctl(1))
-            )
-          )
-        }
-        is(spec.Csr.Index.tlbidx) {
-          csrRegs(writePort.addr) := Cat(
-            writePort.data(31),
-            false.B,
-            writePort.data(29, 24),
-            0.U((24 - spec.Csr.Tlbidx.Width.index).W),
-            writePort.data(spec.Csr.Tlbidx.Width.index - 1, 0)
-          )
-        }
-        is(spec.Csr.Index.tlbehi) {
-          csrRegs(writePort.addr) := Cat(writePort.data(31, 13), 0.U(13.W))
-        }
-        is(spec.Csr.Index.tlbelo0, spec.Csr.Index.tlbelo1) {
-          csrRegs(writePort.addr) := Cat(
-            writePort.data(31, 8),
-            false.B,
-            writePort.data(6, 0)
-          )
-        }
-        is(spec.Csr.Index.asid) {
-          csrRegs(writePort.addr) := Cat(
-            0.U(8.W),
-            writePort.data(23, 16),
-            0.U(6.W),
-            writePort.data(9, 0)
-          )
-        }
-        is(spec.Csr.Index.pgdl, spec.Csr.Index.pgdh, spec.Csr.Index.pgd) {
-          csrRegs(writePort.addr) := Cat(writePort.data(31, 12), 0.U(12.W))
-        }
-        is(spec.Csr.Index.tlbrentry) {
-          csrRegs(writePort.addr) := Cat(writePort.data(31, 6), 0.U(6.W))
-        }
-        is(spec.Csr.Index.dmw0, spec.Csr.Index.dmw1) {
-          csrRegs(writePort.addr) := Cat(
-            writePort.data(31, 29),
-            false.B,
-            writePort.data(27, 25),
-            0.U(19.W),
-            writePort.data(5, 3),
-            0.U(2.W),
-            writePort.data(0)
-          )
-        }
-        is(spec.Csr.Index.tcfg, spec.Csr.Index.tval) {
-          csrRegs(writePort.addr) := Cat(
-            0.U((32 - spec.Csr.TimeVal.Width.timeVal).W),
-            writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 0)
-          )
-        }
-        is(spec.Csr.Index.ticlr) {
-          csrRegs(writePort.addr) := Cat(
-            0.U(31.W),
-            false.B
-          )
-          when(writePort.data(0) === true.B) {
-            timeInterrupt := false.B
-          }
-        }
-      }
-    }
-  }
-
   // CRMD 当前模式信息
 
   val crmd = viewUInt(csrRegs(spec.Csr.Index.crmd), new CrmdBundle)
@@ -250,6 +136,174 @@ class Csr(
 
   // TICLR 定时器中断清除
   val ticlr = viewUInt(csrRegs(spec.Csr.Index.ticlr), new TiclrBundle)
+
+  // 软件写csrRegs
+  // 保留域断断续续的样子真是可爱捏
+  io.writePorts.foreach { writePort =>
+    when(writePort.en) {
+      csrRegs(writePort.addr) := writePort.data
+      // 保留域
+      switch(writePort.addr) {
+        is(spec.Csr.Index.crmd) {
+          crmd.in := Cat(0.U(23.W), writePort.data(8, 0)).asTypeOf(crmd.in)
+        }
+        is(spec.Csr.Index.prmd) {
+          prmd.in := Cat(0.U(29.W), writePort.data(2, 0)).asTypeOf(prmd.in)
+        }
+        is(spec.Csr.Index.euen) {
+          euen.in := Cat(0.U(31.W), writePort.data(0)).asTypeOf(euen.in)
+        }
+        is(spec.Csr.Index.ecfg) {
+          ecfg.in := Cat(0.U(19.W), writePort.data(12, 0)).asTypeOf(ecfg.in)
+        }
+        is(spec.Csr.Index.estat) {
+          estat.in := Cat(false.B, writePort.data(30, 16), 0.U(3.W), writePort.data(12, 0)).asTypeOf(estat.in)
+        }
+        is(
+          spec.Csr.Index.era
+        ) {
+          era.in := writePort.data.asTypeOf(era.in)
+        }
+        is(
+          spec.Csr.Index.badv
+        ) {
+          badv.in := writePort.data.asTypeOf(badv.in)
+        }
+        is(
+          spec.Csr.Index.save0
+        ) {
+          saves(0).in := writePort.data.asTypeOf(saves(0).in)
+        }
+        is(
+          spec.Csr.Index.save1
+        ) {
+          saves(1).in := writePort.data.asTypeOf(saves(0).in)
+        }
+        is(
+          spec.Csr.Index.save2
+        ) {
+          saves(2).in := writePort.data.asTypeOf(saves(0).in)
+        }
+        is(
+          spec.Csr.Index.save3
+        ) {
+          saves(3).in := writePort.data.asTypeOf(saves(0).in)
+        }
+        is(
+          spec.Csr.Index.tid
+        ) {
+          tid.in := writePort.data.asTypeOf(tid.in)
+        }
+        is(spec.Csr.Index.eentry) {
+          eentry.in := Cat(writePort.data(31, 6), 0.U(6.W)).asTypeOf(eentry.in)
+        }
+        is(spec.Csr.Index.cpuid) {
+          cpuid.in := Cat(0.U(23.W), writePort.data(8, 0)).asTypeOf(cpuid.in)
+        }
+        is(spec.Csr.Index.llbctl) {
+          llbctl.in := Cat(
+            0.U(29.W),
+            writePort.data(2),
+            false.B,
+            Mux( // 软件向wcllb写1时清零llbit，写0时忽略
+              writePort.data(1),
+              false.B,
+              csrRegs(spec.Csr.Index.llbctl(1))
+            )
+          ).asTypeOf(llbctl.in)
+        }
+        is(spec.Csr.Index.tlbidx) {
+          tlbidx.in := Cat(
+            writePort.data(31),
+            false.B,
+            writePort.data(29, 24),
+            0.U((24 - spec.Csr.Tlbidx.Width.index).W),
+            writePort.data(spec.Csr.Tlbidx.Width.index - 1, 0)
+          ).asTypeOf(tlbidx.in)
+        }
+        is(spec.Csr.Index.tlbehi) {
+          tlbehi.in := Cat(writePort.data(31, 13), 0.U(13.W)).asTypeOf(tlbehi.in)
+        }
+        is(spec.Csr.Index.tlbelo0) {
+          tlbelo0.in := Cat(
+            writePort.data(31, 8),
+            false.B,
+            writePort.data(6, 0)
+          ).asTypeOf(tlbelo0.in)
+        }
+        is(spec.Csr.Index.tlbelo1) {
+          tlbelo1.in := Cat(
+            writePort.data(31, 8),
+            false.B,
+            writePort.data(6, 0)
+          ).asTypeOf(tlbelo1.in)
+        }
+        is(spec.Csr.Index.asid) {
+          asid.in := Cat(
+            0.U(8.W),
+            writePort.data(23, 16),
+            0.U(6.W),
+            writePort.data(9, 0)
+          ).asTypeOf(asid.in)
+        }
+        is(spec.Csr.Index.pgd) {
+          pgd.in := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(pgd.in)
+        }
+        is(spec.Csr.Index.pgdl) {
+          pgdl.in := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(pgdl.in)
+        }
+        is(spec.Csr.Index.pgdh) {
+          pgdh.in := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(pgdh.in)
+        }
+        is(spec.Csr.Index.tlbrentry) {
+          tlbrentry.in := Cat(writePort.data(31, 6), 0.U(6.W)).asTypeOf(tlbrentry.in)
+        }
+        is(spec.Csr.Index.dmw0) {
+          dmw0.in := Cat(
+            writePort.data(31, 29),
+            false.B,
+            writePort.data(27, 25),
+            0.U(19.W),
+            writePort.data(5, 3),
+            0.U(2.W),
+            writePort.data(0)
+          ).asTypeOf(dmw0.in)
+        }
+        is(spec.Csr.Index.dmw1) {
+          dmw1.in := Cat(
+            writePort.data(31, 29),
+            false.B,
+            writePort.data(27, 25),
+            0.U(19.W),
+            writePort.data(5, 3),
+            0.U(2.W),
+            writePort.data(0)
+          ).asTypeOf(dmw1.in)
+        }
+        is(spec.Csr.Index.tcfg) {
+          tcfg.in := Cat(
+            0.U((32 - spec.Csr.TimeVal.Width.timeVal).W),
+            writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 0)
+          ).asTypeOf(tcfg.in)
+        }
+        is(spec.Csr.Index.tval) {
+          tval.in := Cat(
+            0.U((32 - spec.Csr.TimeVal.Width.timeVal).W),
+            writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 0)
+          ).asTypeOf(tval.in)
+        }
+        is(spec.Csr.Index.ticlr) {
+          ticlr.in := Cat(
+            0.U(31.W),
+            false.B
+          ).asTypeOf(ticlr.in)
+          when(writePort.data(0) === true.B) {
+            timeInterrupt := false.B
+          }
+        }
+      }
+    }
+  }
 
   /** CRMD 当前模式信息
     */
