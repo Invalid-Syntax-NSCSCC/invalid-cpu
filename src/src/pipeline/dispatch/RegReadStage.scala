@@ -13,7 +13,7 @@ import pipeline.common.BaseStage
 import chisel3.experimental.BundleLiterals._
 import common.bundles.RfAccessInfoNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
-import pipeline.dispatch.bundles.PreExeInstNdPort
+import pipeline.dispatch.bundles.{PreExeInstNdPort, ScoreboardChangeNdPort}
 
 class RegReadNdPort extends Bundle {
   val preExeInstInfo = new PreExeInstNdPort
@@ -34,6 +34,8 @@ class RegReadPeerPort(readNum: Int, csrRegsReadNum: Int) extends Bundle {
   // `RegReadStage <-> `Csr`
   val csrReadPorts = Vec(csrRegsReadNum, Flipped(new CsrReadPort))
 
+  val scoreboardChangePort    = Output(new ScoreboardChangeNdPort)
+  val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
 }
 
 class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum)
@@ -81,4 +83,10 @@ class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Pa
     resultOutReg.bits.csrData := io.peer.get.csrReadPorts(0).data
   }
   resultOutReg.bits.instInfo := selectedIn.instInfo
+
+  // Change scoreboard to after register read
+  io.peer.get.scoreboardChangePort.en      := selectedIn.preExeInstInfo.gprWritePort.en && selectedIn.instInfo.isValid
+  io.peer.get.scoreboardChangePort.addr    := selectedIn.preExeInstInfo.gprWritePort.addr
+  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.csrWritePort.en && selectedIn.instInfo.isValid
+  io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
 }
