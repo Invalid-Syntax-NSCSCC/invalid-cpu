@@ -83,9 +83,7 @@ class Div extends Module {
   val divisorSubDividend = Wire(UInt((wordLog + 1).W))
   divisorSubDividend := (divisorClz -& dividendClz)
   // 1 if divisor > dividend
-  val divisorGreaterThanDividend = WireDefault(
-    getSign(divisorSubDividend, wordLog + 1)
-  )
+  val divisorGreaterThanDividend = WireDefault(getSign(divisorSubDividend, wordLog + 1))
 
   // if divisor > dividend
   val clzDelta = divisorSubDividend(wordLog - 1, 0)
@@ -181,18 +179,26 @@ class Div extends Module {
   io.divResult.bits.quotient := Mux(
     dividend.orR,
     Mux(
-      quotientSign,
-      (~quotient).asUInt + 1.U,
-      quotient
+      divisorGreaterThanDividendDelay,
+      zeroWord,
+      Mux(
+        quotientSign,
+        (~quotient).asUInt + 1.U,
+        quotient
+      )
     ),
     zeroWord // 被除数为0
   )
   io.divResult.bits.remainder := Mux(
     remainder.orR,
     Mux(
-      remainderSign,
-      (~remainder).asUInt + 1.U,
-      remainder
+      divisorGreaterThanDividendDelay,
+      dividend,
+      Mux(
+        remainderSign,
+        (~remainder).asUInt + 1.U,
+        remainder
+      )
     ),
     zeroWord // 被除数为0
   )
