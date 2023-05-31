@@ -105,7 +105,7 @@ class CoreCpuTop extends Module {
   val frontend   = Module(new Frontend)
   val instQueue  = Module(new BiInstQueue)
   val issueStage = Module(new BiIssueStage)
-  io.issuedInfoPort := issueStage.io.outs(0).bits
+  io.issuedInfoPort   := issueStage.io.outs(0).bits
   io.issueOutputValid := issueStage.io.outs(0).valid
   val regReadStage  = Module(new RegReadStage)
   val exeStage      = Module(new ExeStage)
@@ -177,14 +177,14 @@ class CoreCpuTop extends Module {
   instQueue.io.isFlush               := cu.io.flushs(PipelineStageIndex.frontend)
 
   // Issue stage
-  issueStage.io.ins(0)       <> instQueue.io.dequeuePorts(0)
-  issueStage.io.outs(1).ready      := false.B // TODO: Connect Second Pipeline
-  issueStage.io.ins(1)       := DontCare // TODO: Connect Second Pipeline
-  issueStage.io.ins(1).valid := false.B // TODO: Connect Second Pipeline
-  instQueue.io.dequeuePorts(1).ready          := false.B // TODO: Connect Second Pipeline
-  issueStage.io.peer.get.regScores                     := scoreboard.io.regScores
+  issueStage.io.ins(0)               <> instQueue.io.dequeuePorts(0)
+  issueStage.io.outs(1).ready        := false.B // TODO: Connect Second Pipeline
+  issueStage.io.ins(1)               := DontCare // TODO: Connect Second Pipeline
+  issueStage.io.ins(1).valid         := false.B // TODO: Connect Second Pipeline
+  instQueue.io.dequeuePorts(1).ready := false.B // TODO: Connect Second Pipeline
+  issueStage.io.peer.get.regScores   := scoreboard.io.regScores
 
-  issueStage.io.isFlush  := cu.io.flushs(PipelineStageIndex.issueStage)
+  issueStage.io.isFlush               := cu.io.flushs(PipelineStageIndex.issueStage)
   issueStage.io.peer.get.csrRegScores := csrScoreBoard.io.regScores
 
   issueStage.io.peer.get.robEmptyNum := 2.U // TODO: Connect Second Pipeline
@@ -211,7 +211,7 @@ class CoreCpuTop extends Module {
   csrScoreBoard.io.branchFlush    := cu.io.branchScoreboardFlush
 
   // Reg-read stage
-  regReadStage.io.in                     <> issueStage.io.outs(0)
+  regReadStage.io.in <> issueStage.io.outs(0)
   regReadStage.io.peer.get.gprReadPorts.zip(regFile.io.readPorts).foreach {
     case (stage, rf) =>
       stage <> rf
