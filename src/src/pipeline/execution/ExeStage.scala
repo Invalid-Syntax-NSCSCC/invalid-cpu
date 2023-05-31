@@ -57,6 +57,8 @@ object ExeNdPort {
 class ExePeerPort extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
   val branchSetPort           = Output(new PcSetPort)
+  val scoreboardChangePort    = Output(new ScoreboardChangeNdPort)
+  val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
   })
@@ -243,4 +245,8 @@ class ExeStage
 
   // branch set
   io.peer.get.branchSetPort                := alu.io.result.jumpBranchInfo
+  io.peer.get.scoreboardChangePort.en      := selectedIn.gprWritePort.en
+  io.peer.get.scoreboardChangePort.addr    := selectedIn.gprWritePort.addr
+  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.csrWritePort.en
+  io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
 }

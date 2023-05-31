@@ -196,9 +196,9 @@ class CoreCpuTop extends Module {
   csrScoreBoard.io.freePorts(0)   := wbStage.io.csrFreePort
   scoreboard.io.freePorts(1)      := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
   csrScoreBoard.io.freePorts(1)   := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  scoreboard.io.toMemPorts(0)     := regReadStage.io.peer.get.scoreboardChangePort
+  scoreboard.io.toMemPorts(0)     := exeStage.io.peer.get.scoreboardChangePort
   scoreboard.io.toMemPorts(1)     := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  csrScoreBoard.io.toMemPorts(0)  := regReadStage.io.peer.get.csrScoreboardChangePort
+  csrScoreBoard.io.toMemPorts(0)  := exeStage.io.peer.get.csrScoreboardChangePort
   csrScoreBoard.io.toMemPorts(1)  := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
   scoreboard.io.occupyPorts(0)    := issueStage.io.occupyPortss(0)(0)
   csrScoreBoard.io.occupyPorts(0) := issueStage.io.csrOccupyPortss(0)(0)

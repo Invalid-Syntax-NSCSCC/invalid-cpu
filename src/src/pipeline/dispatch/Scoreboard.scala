@@ -33,11 +33,11 @@ class Scoreboard(
         reg := State.free
       } else {
         when(io.occupyPorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
-          reg := State.beforeExe
+          reg := State.beforeMem
         }.elsewhen(io.freePorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
           reg := State.free
         }.elsewhen(io.toMemPorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
-          reg := State.inAfterExe
+          reg := State.inMem
         }
       }
   }
@@ -46,7 +46,7 @@ class Scoreboard(
     isRegOccupied.foreach(_ := State.free)
   }.elsewhen(io.branchFlush) {
     isRegOccupied.foreach { reg =>
-      when(reg === State.beforeExe) {
+      when(reg === State.beforeMem) {
         reg := State.free
       }
     }
