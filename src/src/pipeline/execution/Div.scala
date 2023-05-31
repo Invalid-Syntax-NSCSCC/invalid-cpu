@@ -49,7 +49,7 @@ class Div extends Module {
   }
 
   def getAbs(data: UInt, sign: Bool): UInt = {
-    Fill(wordLength, sign) ^ data + sign.asUInt
+    (Fill(wordLength, sign) ^ data) + sign.asUInt
   }
 
   val dividendSign = getSign(dividend, wordLength)
@@ -83,9 +83,7 @@ class Div extends Module {
   val divisorSubDividend = Wire(UInt((wordLog + 1).W))
   divisorSubDividend := (divisorClz -& dividendClz)
   // 1 if divisor > dividend
-  val divisorGreaterThanDividend = WireDefault(
-    getSign(divisorSubDividend, wordLog + 1)
-  )
+  val divisorGreaterThanDividend = WireDefault(getSign(divisorSubDividend, wordLog + 1))
 
   // if divisor > dividend
   val clzDelta = divisorSubDividend(wordLog - 1, 0)
