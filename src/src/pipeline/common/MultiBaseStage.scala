@@ -20,7 +20,7 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
 
   private val savedIns = RegInit(VecInit(Seq.fill(inNum)(blankIn)))
   savedIns := savedIns
-  protected val isComputeds:     Vec[Bool] = WireDefault(VecInit(Seq.fill(inNum)(false.B))) // ** different from BaseStage
+  protected val isComputeds: Vec[Bool] = WireDefault(VecInit(Seq.fill(inNum)(false.B))) // ** different from BaseStage
   protected val isLastComputeds: Vec[Bool] = RegNext(isComputeds, VecInit(Seq.fill(inNum)(false.B)))
   protected val selectedIns:     Vec[InT]  = WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
   selectedIns.lazyZip(io.ins).lazyZip(savedIns).foreach {
@@ -73,6 +73,8 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
     case (v, out, lastResultOut) =>
       v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
   }
+
+  validToOuts(1) := false.B
 
   io.ins.zip(savedIns).foreach {
     case (in, saveIn) =>
