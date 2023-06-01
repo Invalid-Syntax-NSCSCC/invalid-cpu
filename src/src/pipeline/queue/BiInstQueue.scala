@@ -186,6 +186,7 @@ class BiInstQueue(
       dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
       dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
+      dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
   }
 
   when(io.isFlush) {
