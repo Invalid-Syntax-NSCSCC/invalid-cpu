@@ -296,7 +296,6 @@ class CoreCpuTop extends Module {
       t.cmt_wdest        := w.wdest
       t.cmt_wdata        := w.wdata
       t.cmt_csr_rstat_en := w.csr_rstat
-      t.cmt_csr_data     := w.csr_data
       t.cmt_inst_ld_en   := w.ld_en
       t.cmt_ld_vaddr     := w.ld_vaddr
       t.cmt_ld_paddr     := w.ld_paddr
@@ -347,6 +346,7 @@ class CoreCpuTop extends Module {
       t.csr_pgdh_diff_0      := c.pgdh.asUInt
 
       t.cmt_csr_ecode := c.estat.ecode
+      t.cmt_csr_data  := c.estat.asUInt
     case _ =>
   }
 }
