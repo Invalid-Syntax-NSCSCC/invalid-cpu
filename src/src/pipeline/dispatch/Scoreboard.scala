@@ -7,7 +7,7 @@ import pipeline.dispatch.enums.{ScoreboardState => State}
 import spec._
 
 class Scoreboard(
-  maskZero: Boolean,
+  maskZero:  Boolean,
   changeNum: Int = Param.issueInstInfoMaxNum * Param.regFileWriteNum,
   regNum:    Int = Count.reg)
     extends Module {
