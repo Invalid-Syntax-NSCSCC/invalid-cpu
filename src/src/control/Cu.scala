@@ -129,52 +129,52 @@ class Cu(
     io.csrMessage.era := selectInstInfo.pc
     switch(selectException) {
       is(Csr.ExceptionIndex.int) {
-        io.csrMessage.ecodeBunle := Csr.Estat.int
+        io.csrMessage.ecodeBundle := Csr.Estat.int
       }
       is(Csr.ExceptionIndex.pil) {
-        io.csrMessage.ecodeBunle := Csr.Estat.pil
+        io.csrMessage.ecodeBundle := Csr.Estat.pil
       }
       is(Csr.ExceptionIndex.pis) {
-        io.csrMessage.ecodeBunle := Csr.Estat.pis
+        io.csrMessage.ecodeBundle := Csr.Estat.pis
       }
       is(Csr.ExceptionIndex.pif) {
-        io.csrMessage.ecodeBunle := Csr.Estat.pif
+        io.csrMessage.ecodeBundle := Csr.Estat.pif
       }
       is(Csr.ExceptionIndex.pme) {
-        io.csrMessage.ecodeBunle := Csr.Estat.pme
+        io.csrMessage.ecodeBundle := Csr.Estat.pme
       }
       is(Csr.ExceptionIndex.ppi) {
-        io.csrMessage.ecodeBunle := Csr.Estat.ppi
+        io.csrMessage.ecodeBundle := Csr.Estat.ppi
       }
       is(Csr.ExceptionIndex.adef) {
-        io.csrMessage.ecodeBunle := Csr.Estat.adef
+        io.csrMessage.ecodeBundle := Csr.Estat.adef
       }
       is(Csr.ExceptionIndex.adem) {
-        io.csrMessage.ecodeBunle := Csr.Estat.adem
+        io.csrMessage.ecodeBundle := Csr.Estat.adem
       }
       is(Csr.ExceptionIndex.ale) {
-        io.csrMessage.ecodeBunle := Csr.Estat.ale
+        io.csrMessage.ecodeBundle := Csr.Estat.ale
       }
       is(Csr.ExceptionIndex.sys) {
-        io.csrMessage.ecodeBunle := Csr.Estat.sys
+        io.csrMessage.ecodeBundle := Csr.Estat.sys
       }
       is(Csr.ExceptionIndex.brk) {
-        io.csrMessage.ecodeBunle := Csr.Estat.brk
+        io.csrMessage.ecodeBundle := Csr.Estat.brk
       }
       is(Csr.ExceptionIndex.ine) {
-        io.csrMessage.ecodeBunle := Csr.Estat.ine
+        io.csrMessage.ecodeBundle := Csr.Estat.ine
       }
       is(Csr.ExceptionIndex.ipe) {
-        io.csrMessage.ecodeBunle := Csr.Estat.ipe
+        io.csrMessage.ecodeBundle := Csr.Estat.ipe
       }
       is(Csr.ExceptionIndex.fpd) {
-        io.csrMessage.ecodeBunle := Csr.Estat.fpd
+        io.csrMessage.ecodeBundle := Csr.Estat.fpd
       }
       is(Csr.ExceptionIndex.fpe) {
-        io.csrMessage.ecodeBunle := Csr.Estat.fpe
+        io.csrMessage.ecodeBundle := Csr.Estat.fpe
       }
       is(Csr.ExceptionIndex.tlbr) {
-        io.csrMessage.ecodeBunle := Csr.Estat.tlbr
+        io.csrMessage.ecodeBundle := Csr.Estat.tlbr
       }
     }
   }

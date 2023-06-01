@@ -42,7 +42,7 @@ object Csr {
     "98",
     "180",
     "181"
-  ).map(h(_))
+  ).map(h)
 
   object Index {
     var count = -1

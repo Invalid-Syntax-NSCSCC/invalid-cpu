@@ -337,8 +337,8 @@ class Csr(
 
   // estat
   when(io.csrMessage.exceptionFlush) {
-    estat.in.ecode    := io.csrMessage.ecodeBunle.ecode
-    estat.in.esubcode := io.csrMessage.ecodeBunle.esubcode
+    estat.in.ecode    := io.csrMessage.ecodeBundle.ecode
+    estat.in.esubcode := io.csrMessage.ecodeBundle.esubcode
   }
 
   // era
