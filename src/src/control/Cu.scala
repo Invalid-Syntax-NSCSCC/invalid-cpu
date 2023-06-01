@@ -81,34 +81,16 @@ class Cu(
     io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
   }
 
-  // Handle after memory request exception valid
-  io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
+  /** CSR
+    */
 
-  // 软件写csr
+  // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
     case (dst, src) =>
       dst := src.csrWritePort
   }
 
-  /** flush
-    */
-  val flushes = WireDefault(VecInit(Seq.fill(ctrlControlNum)(false.B)))
-  io.flushes := RegNext(flushes)
-  val branchScoreboardFlush = WireDefault(false.B)
-  io.branchScoreboardFlush := RegNext(branchScoreboardFlush)
-
-  when(io.jumpPc.en) {
-    Seq(
-      PipelineStageIndex.issueStage,
-      PipelineStageIndex.regReadStage,
-      PipelineStageIndex.frontend
-    ).map(flushes(_))
-      .foreach(_ := true.B)
-
-    branchScoreboardFlush := true.B
-  }
-
-  /** 硬件写csr
+  /** csr write by exception
     */
 
   io.csrMessage.exceptionFlush := hasException
@@ -175,32 +157,6 @@ class Cu(
       }
     }
   }
-  // ertn flush (完成异常？)
-  val exceptionFlush = WireDefault(hasException)
-
-  val ertnFlush = WireDefault(
-    io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
-  ) // 指令控制
-
-  when(exceptionFlush || ertnFlush) {
-    flushes.foreach(_ := true.B)
-  }
-  io.csrMessage.ertnFlush := ertnFlush
-
-  // select new pc
-  when(ertnFlush) {
-    io.newPc.en     := true.B
-    io.newPc.pcAddr := io.csrValues.era.asUInt
-  }.elsewhen(hasException) {
-    io.newPc.en := true.B
-    when(isTlbRefillException) {
-      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
-    }.otherwise {
-      io.newPc.pcAddr := io.csrValues.eentry.asUInt
-    }
-  }.elsewhen(io.jumpPc.en) {
-    io.newPc := io.jumpPc
-  }
 
   // tlb
   io.csrMessage.tlbRefillException := isTlbRefillException
@@ -226,6 +182,54 @@ class Cu(
   io.csrMessage.llbitSet.en := line0Is_ll || line0Is_sc
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := line0Is_ll
+
+  /** Flush & jump
+    */
+  val flushes = WireDefault(VecInit(Seq.fill(ctrlControlNum)(false.B)))
+  io.flushes := RegNext(flushes)
+
+  val branchScoreboardFlush = WireDefault(false.B)
+  io.branchScoreboardFlush := RegNext(branchScoreboardFlush)
+
+  val exceptionFlush = WireDefault(hasException)
+
+  val ertnFlush = WireDefault(
+    io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
+  )
+
+  // Handle after memory request exception valid
+  io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
+
+  when(exceptionFlush || ertnFlush) {
+    flushes.foreach(_ := true.B)
+  }
+  io.csrMessage.ertnFlush := ertnFlush
+
+  when(io.jumpPc.en) {
+    Seq(
+      PipelineStageIndex.issueStage,
+      PipelineStageIndex.regReadStage,
+      PipelineStageIndex.frontend
+    ).map(flushes(_))
+      .foreach(_ := true.B)
+
+    branchScoreboardFlush := true.B
+  }
+
+  // select new pc
+  when(ertnFlush) {
+    io.newPc.en     := true.B
+    io.newPc.pcAddr := io.csrValues.era.asUInt
+  }.elsewhen(exceptionFlush) {
+    io.newPc.en := true.B
+    when(isTlbRefillException) {
+      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
+    }.otherwise {
+      io.newPc.pcAddr := io.csrValues.eentry.asUInt
+    }
+  }.elsewhen(io.jumpPc.en) {
+    io.newPc := io.jumpPc
+  }
 
   io.difftest match {
     case Some(dt) => {

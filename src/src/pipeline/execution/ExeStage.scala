@@ -153,6 +153,11 @@ class ExeStage
         }
       csrWriteData := gprWriteDataVec.asUInt
     }
+    is(ExeInst.Op.invtlb) {
+      // lop : asid  rop : virtual addr
+      resultOutReg.bits.instInfo.tlbInfo.registerAsid := selectedIn.leftOperand(9, 0)
+      resultOutReg.bits.instInfo.tlbInfo.virtAddr     := selectedIn.rightOperand
+    }
   }
 
   /** MemAccess

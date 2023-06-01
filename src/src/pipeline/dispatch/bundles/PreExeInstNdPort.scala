@@ -6,6 +6,7 @@ import chisel3.experimental.VecLiterals._
 import chisel3.util._
 import common.bundles.RfAccessInfoNdPort
 import spec._
+import memory.bundles.TlbMaintenanceNdPort
 
 class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   // Micro-instruction for execution stage
@@ -33,11 +34,14 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 
   def code = jumpBranchAddr
 
+  val needCsr = Bool()
+  val tlbInfo = new TlbMaintenanceNdPort
   // TODO: Signals in this port is not sufficient
 }
 
 object PreExeInstNdPort {
   def default = (new PreExeInstNdPort).Lit(
+    _.needCsr -> false.B,
     _.exeSel -> ExeInst.Sel.none,
     _.exeOp -> ExeInst.Op.nop,
     _.gprReadPorts -> Vec.Lit(RfAccessInfoNdPort.default, RfAccessInfoNdPort.default),
@@ -46,6 +50,7 @@ object PreExeInstNdPort {
     _.imm -> 0.U,
     _.jumpBranchAddr -> zeroWord,
     _.csrReadEn -> false.B,
-    _.csrWriteEn -> false.B
+    _.csrWriteEn -> false.B,
+    _.tlbInfo -> TlbMaintenanceNdPort.default
   )
 }

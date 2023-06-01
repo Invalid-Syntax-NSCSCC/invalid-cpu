@@ -5,7 +5,10 @@ import common.{Pc, RegFile}
 import control.{Csr, Cu, StableCounter}
 import frontend.{Frontend, InstFetchStage, NaiiveFetchStage, SimpleFetchStage}
 import memory.{DCache, Tlb, UncachedAgent}
-import pipeline.dispatch.{RegReadNdPort, RegReadStage, Scoreboard}
+import pipeline.dispatch.{RegReadNdPort, RegReadStage}
+import pipeline.dispatch.Scoreboard
+import pipeline.dispatch.CsrScoreboard
+
 import pipeline.dispatch.BiIssueStage
 
 import pipeline.execution.ExeStage
@@ -21,6 +24,7 @@ import pipeline.rob.bundles.RobIdDistributePort
 import memory.ICache
 import frontend.Frontend
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
+import spec.Param.csrIssuePipelineIndex
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -122,7 +126,7 @@ class CoreCpuTop extends Module {
   val crossbar = Module(new Axi3x1Crossbar)
 
   val scoreboard    = Module(new Scoreboard)
-  val csrScoreBoard = Module(new Scoreboard(regNum = Count.csrReg))
+  val csrScoreBoard = Module(new CsrScoreboard)
 
   // val dataforward = Module(new DataForwardStage)
 
@@ -184,8 +188,8 @@ class CoreCpuTop extends Module {
   instQueue.io.dequeuePorts(1).ready := false.B // TODO: Connect Second Pipeline
   issueStage.io.peer.get.regScores   := scoreboard.io.regScores
 
-  issueStage.io.isFlush               := cu.io.flushes(PipelineStageIndex.issueStage)
-  issueStage.io.peer.get.csrRegScores := csrScoreBoard.io.regScores
+  issueStage.io.isFlush              := cu.io.flushes(PipelineStageIndex.issueStage)
+  issueStage.io.peer.get.csrRegScore := csrScoreBoard.io.regScore
 
   issueStage.io.peer.get.robEmptyNum := 2.U // TODO: Connect Second Pipeline
   issueStage.io.peer.get.idGetPorts.foreach { port =>
@@ -193,22 +197,19 @@ class CoreCpuTop extends Module {
   } // TODO: Connect Second Pipeline
 
   // Scoreboards
-  scoreboard.io.freePorts(0)      := wbStage.io.freePort
-  csrScoreBoard.io.freePorts(0)   := wbStage.io.csrFreePort
-  scoreboard.io.freePorts(1)      := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  csrScoreBoard.io.freePorts(1)   := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  scoreboard.io.toMemPorts(0)     := exeStage.io.peer.get.scoreboardChangePort
-  scoreboard.io.toMemPorts(1)     := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  csrScoreBoard.io.toMemPorts(0)  := exeStage.io.peer.get.csrScoreboardChangePort
-  csrScoreBoard.io.toMemPorts(1)  := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  scoreboard.io.occupyPorts(0)    := issueStage.io.peer.get.occupyPortss(0)(0)
-  csrScoreBoard.io.occupyPorts(0) := issueStage.io.peer.get.csrOccupyPortss(0)(0)
-  scoreboard.io.occupyPorts(1)    := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  csrScoreBoard.io.occupyPorts(1) := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  scoreboard.io.isFlush           := cu.io.flushes(PipelineStageIndex.scoreboard)
-  csrScoreBoard.io.isFlush        := cu.io.flushes(PipelineStageIndex.scoreboard)
-  scoreboard.io.branchFlush       := cu.io.branchScoreboardFlush
-  csrScoreBoard.io.branchFlush    := cu.io.branchScoreboardFlush
+  scoreboard.io.freePorts(0)   := wbStage.io.freePort
+  csrScoreBoard.io.freePort    := wbStage.io.csrFreePort
+  scoreboard.io.freePorts(1)   := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
+  scoreboard.io.toMemPorts(0)  := exeStage.io.peer.get.scoreboardChangePort
+  scoreboard.io.toMemPorts(1)  := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
+  csrScoreBoard.io.toMemPort   := exeStage.io.peer.get.csrScoreboardChangePort
+  scoreboard.io.occupyPorts(0) := issueStage.io.peer.get.occupyPortss(0)(0)
+  csrScoreBoard.io.occupyPort  := issueStage.io.peer.get.csrOccupyPort
+  scoreboard.io.occupyPorts(1) := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
+  scoreboard.io.isFlush        := cu.io.flushes(PipelineStageIndex.scoreboard)
+  csrScoreBoard.io.isFlush     := cu.io.flushes(PipelineStageIndex.scoreboard)
+  scoreboard.io.branchFlush    := cu.io.branchScoreboardFlush
+  csrScoreBoard.io.branchFlush := cu.io.branchScoreboardFlush
 
   // Reg-read stage
   regReadStage.io.in <> issueStage.io.outs(0)

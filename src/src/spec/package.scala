@@ -49,6 +49,7 @@ package object spec {
       val addr           = 14.W
       val data           = wordLength.W
       val exceptionIndex = log2Ceil(spec.Csr.ExceptionIndex.count + 1).W
+      val asid           = 10.W
     }
 
     object Op {

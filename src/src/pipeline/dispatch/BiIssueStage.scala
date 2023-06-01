@@ -15,6 +15,7 @@ import pipeline.dispatch.bundles.RegReadPortWithValidBundle
 import pipeline.dispatch.enums.ScoreboardState
 import pipeline.common.MultiBaseStage
 import chisel3.experimental.BundleLiterals._
+import spec.Param.csrIssuePipelineIndex
 
 class FetchInstDecodeNdPort extends Bundle {
   val decode   = new DecodeOutNdPort
@@ -43,8 +44,10 @@ class BiIssueStagePeerPort(
   val regScores    = Input(Vec(Count.reg, ScoreboardState()))
 
   // `IssueStage` <-> `Scoreboard(csr)`
-  val csrOccupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-  val csrRegScores    = Input(Vec(Count.csrReg, ScoreboardState()))
+  // val csrOccupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
+  // val csrRegScores    = Input(Vec(Count.csrReg, ScoreboardState()))
+  val csrOccupyPort = Output(new ScoreboardChangeNdPort)
+  val csrRegScore   = Input(ScoreboardState())
 }
 
 // TODO: deal WAR data hazard
@@ -64,7 +67,7 @@ class BiIssueStage(
 
   // Fallback
   resultOutsReg.foreach(_.bits := 0.U.asTypeOf(resultOutsReg(0).bits))
-  io.peer.get.csrOccupyPortss.foreach(_(0) := ScoreboardChangeNdPort.default)
+  io.peer.get.csrOccupyPort := ScoreboardChangeNdPort.default
   io.peer.get.occupyPortss.foreach(_(0) := ScoreboardChangeNdPort.default)
   io.peer.get.idGetPorts.foreach(_.writeEn := false.B)
 
@@ -99,8 +102,12 @@ class BiIssueStage(
           }.reduce(_ || _)
         ) &&
         !(
-          in.instInfo.csrWritePort.en &&
-            (io.peer.get.csrRegScores(in.instInfo.csrWritePort.addr) =/= ScoreboardState.free)
+          // only issue in one pipeline
+          if (idx == csrIssuePipelineIndex) {
+            in.instInfo.needCsr && (io.peer.get.csrRegScore =/= ScoreboardState.free)
+          } else {
+            in.instInfo.needCsr
+          }
         ) &&
         !selectedIns
           .slice(0, idx)
@@ -133,9 +140,11 @@ class BiIssueStage(
     resultOutsReg(dst_idx)       := fetchInfos(src_idx)
     isComputeds(src_idx)         := true.B
 
-    io.peer.get.occupyPortss(occupy_port_idx)(0)         := fetchInfos(src_idx).bits.preExeInstInfo.gprWritePort
-    io.peer.get.csrOccupyPortss(occupy_port_idx)(0).en   := fetchInfos(src_idx).bits.instInfo.csrWritePort.en
-    io.peer.get.csrOccupyPortss(occupy_port_idx)(0).addr := fetchInfos(src_idx).bits.instInfo.csrWritePort.addr
+    io.peer.get.occupyPortss(occupy_port_idx)(0) := fetchInfos(src_idx).bits.preExeInstInfo.gprWritePort
+    if (dst_idx == csrIssuePipelineIndex) {
+      io.peer.get.csrOccupyPort.en   := fetchInfos(src_idx).bits.instInfo.csrWritePort.en
+      io.peer.get.csrOccupyPort.addr := fetchInfos(src_idx).bits.instInfo.csrWritePort.addr
+    }
 
     io.peer.get.idGetPorts(occupy_port_idx).writeEn := fetchInfos(src_idx).bits.preExeInstInfo.gprWritePort.en
     resultOutsReg(dst_idx).bits.instInfo.robId      := io.peer.get.idGetPorts(occupy_port_idx).id

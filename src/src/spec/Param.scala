@@ -20,6 +20,8 @@ object Param {
   val csrRegsWriteNum        = 1
   val robIdLength            = 32 // rob给出的id
 
+  val csrIssuePipelineIndex = 0 // csr 相关指令在第0条流水线
+
   val dataForwardInputNum = 2
 
   object Width {

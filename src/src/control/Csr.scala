@@ -140,7 +140,6 @@ class Csr(
   // 保留域断断续续的样子真是可爱捏
   io.writePorts.foreach { writePort =>
     when(writePort.en) {
-      csrRegs(writePort.addr) := writePort.data
       // 保留域
       switch(writePort.addr) {
         is(spec.Csr.Index.crmd) {
@@ -292,10 +291,7 @@ class Csr(
           ).asTypeOf(tval.in)
         }
         is(spec.Csr.Index.ticlr) {
-          ticlr.in := Cat(
-            0.U(31.W),
-            false.B
-          ).asTypeOf(ticlr.in)
+          ticlr.in := 0.U(32.W).asTypeOf(ticlr.in)
           when(writePort.data(0) === true.B) {
             timeInterrupt := false.B
           }
