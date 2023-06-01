@@ -62,8 +62,10 @@ class Cu(
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := PcSetPort.default
 
-  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map{instInfo =>instInfo.isExceptionValid && instInfo.isValid}))
-  val hasException      = WireDefault(linesHasException.reduce(_ || _))
+  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
+    instInfo.isExceptionValid && instInfo.isValid
+  }))
+  val hasException = WireDefault(linesHasException.reduce(_ || _))
 
   /** stable counter
     */
@@ -175,9 +177,9 @@ class Cu(
   }
   // ertn flush (完成异常？)
   val exceptionFlush = WireDefault(hasException)
-  
+
   val ertnFlush = WireDefault(
-    io.instInfoPorts.map{instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid}.reduce(_ || _)
+    io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   ) // 指令控制
 
   when(exceptionFlush || ertnFlush) {
