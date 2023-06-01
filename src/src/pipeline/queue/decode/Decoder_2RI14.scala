@@ -80,7 +80,6 @@ class Decoder_2RI14 extends Decoder {
         outInfo.gprReadPorts(0).addr := rd
         outInfo.gprWritePort.en      := true.B
         outInfo.gprWritePort.addr    := rd
-        outInfo.csrAddr
         outInfo.csrWriteEn := true.B
       }.otherwise {
         outInfo.exeOp                := ExeInst.Op.csrxchg

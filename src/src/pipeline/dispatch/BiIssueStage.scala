@@ -104,7 +104,7 @@ class BiIssueStage(
         !(
           // only issue in one pipeline
           if (idx == csrIssuePipelineIndex) {
-            in.instInfo.csrWritePort.en && (io.peer.get.csrRegScore =/= ScoreboardState.free)
+            in.instInfo.needCsr && (io.peer.get.csrRegScore =/= ScoreboardState.free)
           } else {
             in.instInfo.needCsr
           }
