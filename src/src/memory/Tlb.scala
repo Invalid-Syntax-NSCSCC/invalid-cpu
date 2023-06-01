@@ -34,6 +34,7 @@ class Tlb extends Module {
   io.csr.out.tlbidx.valid := false.B
   io.csr.out.tlbehi.valid := false.B
   io.csr.out.tlbeloVec.foreach(_.valid := false.B)
+  io.csr.out.asId.valid := false.B
   io.tlbTransPorts.foreach { port =>
     port.exception.valid := false.B
     port.exception.bits  := DontCare
@@ -70,6 +71,7 @@ class Tlb extends Module {
     )
     val isFound = isFoundVec.asUInt.orR
     io.csr.out.tlbidx.valid := io.maintenanceInfo.isSearch
+    io.csr.out.tlbidx.bits  := io.csr.in.tlbidx
     when(isFound) {
       io.csr.out.tlbidx.bits.index := selectedIndex
       io.csr.out.tlbidx.bits.ne    := false.B
@@ -122,25 +124,36 @@ class Tlb extends Module {
   // Maintenance: Read
   val readEntry = tlbEntryVec(io.csr.in.tlbidx.index)
   when(io.maintenanceInfo.isRead) {
-    io.csr.out.tlbehi.bits.vppn := readEntry.compare.virtPageNum
-    io.csr.out.tlbeloVec.map(_.bits).zip(readEntry.trans).foreach {
-      case (tlbelo, trans) =>
-        tlbelo.v   := trans.isValid
-        tlbelo.d   := trans.isDirty
-        tlbelo.plv := trans.plv
-        tlbelo.mat := trans.mat
-        tlbelo.g   := readEntry.compare.isGlobal
-        tlbelo.ppn := trans.physPageNum
+    io.csr.out.tlbidx.valid := true.B
+    io.csr.out.tlbehi.valid := true.B
+    io.csr.out.tlbeloVec.foreach(_.valid := true.B)
+    io.csr.out.tlbidx.bits := io.csr.in.tlbidx
+    io.csr.out.tlbehi.bits := io.csr.in.tlbehi
+    io.csr.out.tlbeloVec.map(_.bits).zip(io.csr.in.tlbloVec).foreach {
+      case (out, in) =>
+        out := in
     }
-    io.csr.out.tlbidx.bits.ps := readEntry.compare.pageSize
-    io.csr.out.tlbidx.valid   := true.B
+    io.csr.out.asId := io.csr.in.asId
     when(readEntry.compare.isExisted) {
-      io.csr.out.tlbidx.bits.ne := false.B
-      io.csr.out.tlbehi.valid   := true.B
-      io.csr.out.tlbeloVec.foreach(_.valid := true.B)
+      io.csr.out.tlbidx.bits.ne   := false.B
+      io.csr.out.tlbidx.bits.ps   := readEntry.compare.pageSize
+      io.csr.out.tlbehi.bits.vppn := readEntry.compare.virtPageNum
+      io.csr.out.tlbeloVec.map(_.bits).zip(readEntry.trans).foreach {
+        case (tlbelo, trans) =>
+          tlbelo.v   := trans.isValid
+          tlbelo.d   := trans.isDirty
+          tlbelo.plv := trans.plv
+          tlbelo.mat := trans.mat
+          tlbelo.g   := readEntry.compare.isGlobal
+          tlbelo.ppn := trans.physPageNum
+      }
     }.otherwise {
+      io.csr.out.asId.valid     := true.B
       io.csr.out.tlbidx.bits.ne := true.B
       io.csr.out.tlbidx.bits.ps := 0.U
+      io.csr.out.asId.bits      := 0.U.asTypeOf(new AsidBundle)
+      io.csr.out.tlbehi.bits    := 0.U.asTypeOf(new TlbehiBundle)
+      io.csr.out.tlbeloVec.foreach(_.bits := 0.U.asTypeOf(new TlbeloBundle))
     }
   }
 
@@ -159,6 +172,7 @@ class Tlb extends Module {
     writeEntry.compare.pageSize    := io.csr.in.tlbidx.ps
     writeEntry.compare.virtPageNum := io.csr.in.tlbehi.vppn
     writeEntry.compare.isGlobal    := io.csr.in.tlbloVec(0).g
+    writeEntry.compare.asId        := io.csr.in.asId.asid
     // Question: Should write ASID or not
 
     writeEntry.trans.zip(io.csr.in.tlbloVec).foreach {
@@ -176,7 +190,7 @@ class Tlb extends Module {
     entry.compare.isExisted := false.B
     entry.trans.foreach(_.isValid := false.B)
   }
-  def isAsIdMatched(entry: TlbEntryBundle) = entry.compare.asId === io.csr.in.asId.asid
+  def isAsIdMatched(entry: TlbEntryBundle) = entry.compare.asId === io.maintenanceInfo.registerAsid
 
   when(io.maintenanceInfo.isInvalidate) {
     switch(io.maintenanceInfo.invalidateInst) {

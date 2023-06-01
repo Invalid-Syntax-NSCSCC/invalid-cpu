@@ -2,6 +2,7 @@ package memory.bundles
 
 import chisel3._
 import chisel3.util._
+import control.csrRegsBundles.AsidBundle
 import spec._
 import chisel3.experimental.BundleLiterals._
 
@@ -14,6 +15,7 @@ class TlbMaintenanceNdPort extends Bundle {
   val asid           = UInt(Width.Csr.asid)
   val virtAddr       = UInt(Width.Mem.addr)
   val invalidateInst = UInt(Width.Tlb.op)
+  val registerAsid   = UInt(10.W)
 }
 
 object TlbMaintenanceNdPort {
