@@ -309,7 +309,7 @@ class CoreCpuTop extends Module {
   (io.diffTest, cu.io.difftest) match {
     case (Some(t), Some(c)) =>
       t.cmt_ertn       := c.cmt_ertn
-      t.cmt_excp_flush := c.cmt_excp_flush
+      t.cmt_excp_flush := false.B
     case _ =>
   }
   (io.diffTest, regFile.io.difftest) match {
@@ -322,7 +322,7 @@ class CoreCpuTop extends Module {
       t.csr_crmd_diff_0      := c.crmd.asUInt
       t.csr_prmd_diff_0      := c.prmd.asUInt
       t.csr_ectl_diff_0      := zeroWord // TODO: 删除 ?
-      t.csr_estat_diff_0     := c.estat.asUInt.asUInt
+      t.csr_estat_diff_0     := c.estat.asUInt
       t.csr_era_diff_0       := c.era.asUInt
       t.csr_badv_diff_0      := c.badv.asUInt
       t.csr_eentry_diff_0    := c.eentry.asUInt
