@@ -121,8 +121,8 @@ class CoreCpuTop extends Module {
 
   val crossbar = Module(new Axi3x1Crossbar)
 
-  val scoreboard    = Module(new Scoreboard)
-  val csrScoreBoard = Module(new Scoreboard(regNum = Count.csrReg))
+  val scoreboard    = Module(new Scoreboard(maskZero = true))
+  val csrScoreBoard = Module(new Scoreboard(maskZero = false, regNum = Count.csrReg))
 
   // val dataforward = Module(new DataForwardStage)
 
