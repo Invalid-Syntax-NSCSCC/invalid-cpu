@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  difftest:
+    runs-on: self-hosted
 
     steps:
       - uses: actions/checkout@v3
