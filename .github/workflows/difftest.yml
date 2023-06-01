@@ -9,15 +9,15 @@ on:
 
 jobs:
   difftest:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
       
-#      - name: Finetune
-#        run: |
-#          sudo sed -i 's/yes/no/g' /etc/initramfs-tools/update-initramfs.conf
-#          sudo rm -f /var/lib/man-db/auto-update
+      - name: Finetune
+        run: |
+          sudo sed -i 's/yes/no/g' /etc/initramfs-tools/update-initramfs.conf
+          sudo rm -f /var/lib/man-db/auto-update
 
       - name: Clone Chiplab Repo
         uses: actions/checkout@v3
@@ -30,14 +30,14 @@ jobs:
         run: |
           echo "`pwd`/chiplab/toolchains/loongarch32r-linux-gnusf-2022-05-20/bin" >> $GITHUB_PATH
 
-#      - name: Install Dependencies
-#        run: |
-#          which loongarch32r-linux-gnusf-gcc
-#          sudo apt-get update
-#          sudo apt-get install -y verilator libsdl2-2.0-0 libsdl2-dev
+      - name: Install Dependencies
+        run: |
+          which loongarch32r-linux-gnusf-gcc
+          sudo apt-get update
+          sudo apt-get install -y verilator libsdl2-2.0-0 libsdl2-dev
         
-#      - name: Use Cache
-#        uses: coursier/cache-action@v6
+      - name: Use Cache
+        uses: coursier/cache-action@v6
 
       - name: Elaborate CPU
         run: make
