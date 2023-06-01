@@ -50,7 +50,7 @@ class BiIssueStagePeerPort(
   val csrRegScore   = Input(ScoreboardState())
 }
 
-// TODO: deal WAR data hazard
+// TODO: deal WAR / WAW data hazard
 class BiIssueStage(
   issueNum:       Int = 2,
   scoreChangeNum: Int = Param.regFileWriteNum,
@@ -101,6 +101,10 @@ class BiIssueStage(
             readPort.en && (io.peer.get.regScores(readPort.addr) =/= ScoreboardState.free)
           }.reduce(_ || _)
         ) &&
+        !(
+          in.decode.info.gprWritePort.en && 
+            (io.peer.get.regScores(in.decode.info.gprWritePort.addr) =/= ScoreboardState.free)
+        )
         !(
           // only issue in one pipeline
           if (idx == csrIssuePipelineIndex) {
