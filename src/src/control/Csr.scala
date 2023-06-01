@@ -74,7 +74,6 @@ class Csr(
 
   // ERA 例外返回地址: 触发例外指令的pc记录在此
   val era = viewUInt(csrRegs(spec.Csr.Index.era), new EraBundle)
-  era.in := EraBundle.default
 
   // BADV 出错虚地址
   val badv = viewUInt(csrRegs(spec.Csr.Index.badv), new BadvBundle)
