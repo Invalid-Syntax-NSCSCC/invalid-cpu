@@ -106,11 +106,6 @@ class Cu(
     branchScoreboardFlush := true.B
   }
 
-  val exceptionFlush = WireDefault(hasException)
-  when(exceptionFlush) {
-    flushes.foreach(_ := true.B)
-  }
-
   /** 硬件写csr
     */
 
@@ -179,9 +174,15 @@ class Cu(
     }
   }
   // ertn flush (完成异常？)
+  val exceptionFlush = WireDefault(hasException)
+  
   val ertnFlush = WireDefault(
     io.instInfoPorts.map{instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid}.reduce(_ || _)
   ) // 指令控制
+
+  when(exceptionFlush || ertnFlush) {
+    flushes.foreach(_ := true.B)
+  }
   io.csrMessage.ertnFlush := ertnFlush
 
   // select new pc
