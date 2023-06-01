@@ -165,7 +165,7 @@ class CoreCpuTop extends Module {
   //   inst fetch stage
   frontend.io.iCacheAccessPort <> iCache.io.iCacheAccessPort
   frontend.io.pc               := pc.io.pc
-  frontend.io.isFlush          := cu.io.flushs(PipelineStageIndex.frontend)
+  frontend.io.isFlush          := cu.io.flushes(PipelineStageIndex.frontend)
   pc.io.isNext                 := frontend.io.isPcNext
 
   // Instruction queue
@@ -174,7 +174,7 @@ class CoreCpuTop extends Module {
   // TODO: CONNECT
   instQueue.io.enqueuePorts(1)       <> DontCare // TODO: Connect Second Pipeline
   instQueue.io.enqueuePorts(1).valid := false.B // TODO: Connect Second Pipeline
-  instQueue.io.isFlush               := cu.io.flushs(PipelineStageIndex.frontend)
+  instQueue.io.isFlush               := cu.io.flushes(PipelineStageIndex.frontend)
 
   // Issue stage
   issueStage.io.ins(0)               <> instQueue.io.dequeuePorts(0)
@@ -184,7 +184,7 @@ class CoreCpuTop extends Module {
   instQueue.io.dequeuePorts(1).ready := false.B // TODO: Connect Second Pipeline
   issueStage.io.peer.get.regScores   := scoreboard.io.regScores
 
-  issueStage.io.isFlush               := cu.io.flushs(PipelineStageIndex.issueStage)
+  issueStage.io.isFlush               := cu.io.flushes(PipelineStageIndex.issueStage)
   issueStage.io.peer.get.csrRegScores := csrScoreBoard.io.regScores
 
   issueStage.io.peer.get.robEmptyNum := 2.U // TODO: Connect Second Pipeline
@@ -205,8 +205,8 @@ class CoreCpuTop extends Module {
   csrScoreBoard.io.occupyPorts(0) := issueStage.io.peer.get.csrOccupyPortss(0)(0)
   scoreboard.io.occupyPorts(1)    := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
   csrScoreBoard.io.occupyPorts(1) := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  scoreboard.io.isFlush           := cu.io.flushs(PipelineStageIndex.scoreboard)
-  csrScoreBoard.io.isFlush        := cu.io.flushs(PipelineStageIndex.scoreboard)
+  scoreboard.io.isFlush           := cu.io.flushes(PipelineStageIndex.scoreboard)
+  csrScoreBoard.io.isFlush        := cu.io.flushes(PipelineStageIndex.scoreboard)
   scoreboard.io.branchFlush       := cu.io.branchScoreboardFlush
   csrScoreBoard.io.branchFlush    := cu.io.branchScoreboardFlush
 
@@ -217,18 +217,18 @@ class CoreCpuTop extends Module {
       stage <> rf
   }
   regReadStage.io.peer.get.csrReadPorts(0) <> csr.io.readPorts(0)
-  regReadStage.io.isFlush                  := cu.io.flushs(PipelineStageIndex.regReadStage)
+  regReadStage.io.isFlush                  := cu.io.flushes(PipelineStageIndex.regReadStage)
 
   // Execution stage
   exeStage.io.in      <> regReadStage.io.out
-  exeStage.io.isFlush := cu.io.flushs(PipelineStageIndex.exeStage)
+  exeStage.io.isFlush := cu.io.flushes(PipelineStageIndex.exeStage)
   exeStage.io.peer.foreach { p =>
     p.csr.llbctl := csr.io.csrValues.llbctl
   }
 
   // Mem stages
   addrTransStage.io.in      <> exeStage.io.out
-  addrTransStage.io.isFlush := cu.io.flushs(PipelineStageIndex.addrTransStage)
+  addrTransStage.io.isFlush := cu.io.flushes(PipelineStageIndex.addrTransStage)
   addrTransStage.io.peer.foreach { p =>
     p.tlbTrans   <> tlb.io.tlbTransPorts(0)
     p.csr.dmw(0) := csr.io.csrValues.dmw0
@@ -236,14 +236,14 @@ class CoreCpuTop extends Module {
     p.csr.crmd   := csr.io.csrValues.crmd
   }
 
-  memReqStage.io.isFlush := false.B
+  memReqStage.io.isFlush := cu.io.flushes(PipelineStageIndex.memReqStage)
   memReqStage.io.in      <> addrTransStage.io.out
   memReqStage.io.peer.foreach { p =>
     p.dCacheReq   <> dCache.io.accessPort.req
     p.uncachedReq <> uncachedAgent.io.accessPort.req
   }
 
-  memResStage.io.isFlush := false.B
+  memResStage.io.isFlush := cu.io.flushes(PipelineStageIndex.memResStage)
   memResStage.io.in      <> memReqStage.io.out
   memResStage.io.peer.foreach { p =>
     p.dCacheRes   := dCache.io.accessPort.res

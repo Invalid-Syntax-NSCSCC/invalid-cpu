@@ -41,7 +41,7 @@ class Cu(
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`, `Scoreboard`
-    val flushs                = Output(Vec(ctrlControlNum, Bool()))
+    val flushes               = Output(Vec(ctrlControlNum, Bool()))
     val branchScoreboardFlush = Output(Bool())
 
     // <- `MemResStage`, `WbStage`
@@ -90,8 +90,8 @@ class Cu(
 
   /** flush
     */
-  val flushs = WireDefault(VecInit(Seq.fill(ctrlControlNum)(false.B)))
-  io.flushs := RegNext(flushs)
+  val flushes = WireDefault(VecInit(Seq.fill(ctrlControlNum)(false.B)))
+  io.flushes := RegNext(flushes)
   val branchScoreboardFlush = WireDefault(false.B)
   io.branchScoreboardFlush := RegNext(branchScoreboardFlush)
 
@@ -100,7 +100,7 @@ class Cu(
       PipelineStageIndex.issueStage,
       PipelineStageIndex.regReadStage,
       PipelineStageIndex.frontend
-    ).map(flushs(_))
+    ).map(flushes(_))
       .foreach(_ := true.B)
 
     branchScoreboardFlush := true.B
@@ -108,7 +108,7 @@ class Cu(
 
   val exceptionFlush = WireDefault(hasException)
   when(exceptionFlush) {
-    flushs.foreach(_ := true.B)
+    flushes.foreach(_ := true.B)
   }
 
   /** 硬件写csr
