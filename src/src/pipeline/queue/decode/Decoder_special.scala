@@ -106,23 +106,31 @@ class Decoder_special extends Decoder {
       outInfo.exeOp            := ExeInst.Op.tlbsrch
       outInfo.tlbInfo.isSearch := true.B
       outInfo.needCsr          := true.B
+      outInfo.exeSel           := ExeInst.Sel.jumpBranch
+      outInfo.jumpBranchAddr   := io.instInfoPort.pcAddr + 4.U
     }
     is(Inst.tlbrd) {
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.tlbrd
       outInfo.tlbInfo.isRead := true.B
       outInfo.needCsr        := true.B
+      outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.jumpBranchAddr := io.instInfoPort.pcAddr + 4.U
     }
     is(Inst.tlbwr) {
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbwr
       outInfo.tlbInfo.isWrite := true.B
       outInfo.needCsr         := true.B
+      outInfo.exeSel          := ExeInst.Sel.jumpBranch
+      outInfo.jumpBranchAddr  := io.instInfoPort.pcAddr + 4.U
     }
     is(Inst.tlbfill) {
       io.out.isMatched       := true.B
       outInfo.tlbInfo.isFill := true.B
       outInfo.needCsr        := true.B
+      outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.jumpBranchAddr := io.instInfoPort.pcAddr + 4.U
     }
   }
 }
