@@ -62,7 +62,7 @@ class Cu(
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := PcSetPort.default
 
-  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map({instInfo =>instInfo.isExceptionValid && instInfo.isValid})))
+  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map{instInfo =>instInfo.isExceptionValid && instInfo.isValid}))
   val hasException      = WireDefault(linesHasException.reduce(_ || _))
 
   /** stable counter
