@@ -94,10 +94,30 @@ class Decoder_special extends Decoder {
     }
   }
 
-  switch(opcode32(31, 20)) {
-    is(Inst.ertn(31, 20)) {
+  // TODO: match only 31 : 20
+  switch(opcode32) {
+    is(Inst.ertn) {
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.ertn
+    }
+    is(Inst.tlbsrch) {
+      io.out.isMatched         := true.B
+      outInfo.exeOp            := ExeInst.Op.tlbsrch
+      outInfo.tlbInfo.isSearch := true.B
+    }
+    is(Inst.tlbrd) {
+      io.out.isMatched       := true.B
+      outInfo.exeOp          := ExeInst.Op.tlbrd
+      outInfo.tlbInfo.isRead := true.B
+    }
+    is(Inst.tlbwr) {
+      io.out.isMatched        := true.B
+      outInfo.exeOp           := ExeInst.Op.tlbwr
+      outInfo.tlbInfo.isWrite := true.B
+    }
+    is(Inst.tlbfill) {
+      io.out.isMatched       := true.B
+      outInfo.tlbInfo.isFill := true.B
     }
   }
 }

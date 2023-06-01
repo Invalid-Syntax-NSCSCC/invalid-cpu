@@ -6,6 +6,7 @@ import chisel3.experimental.VecLiterals._
 import chisel3.util._
 import spec._
 import control.bundles.CsrWriteNdPort
+import memory.bundles.TlbMaintenanceNdPort
 
 class InstInfoNdPort extends Bundle {
   val isValid          = Bool()
@@ -20,6 +21,8 @@ class InstInfoNdPort extends Bundle {
 
   val load  = new DifftestLoadNdPort
   val store = new DifftestStoreNdPort
+
+  val tlbInfo = new TlbMaintenanceNdPort
 }
 
 object InstInfoNdPort {
@@ -32,7 +35,8 @@ object InstInfoNdPort {
     ),
     _.csrWritePort -> CsrWriteNdPort.default,
     _.exeOp -> ExeInst.Op.nop,
-    _.robId -> zeroWord
+    _.robId -> zeroWord,
+    _.tlbInfo -> TlbMaintenanceNdPort.default
   )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
@@ -42,5 +46,6 @@ object InstInfoNdPort {
     instInfo.csrWritePort.en := false.B
     instInfo.load.en         := false.B
     instInfo.store.en        := false.B
+    instInfo.tlbInfo         := TlbMaintenanceNdPort.default
   }
 }

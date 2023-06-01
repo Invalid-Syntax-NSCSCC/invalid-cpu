@@ -87,6 +87,13 @@ object ExeInst {
     val rdcntvh_w = next
     val rdcntid   = next
 
+    // TLB
+    val tlbsrch = next
+    val tlbrd   = next
+    val tlbwr   = next
+    val tlbfill = next
+    val invtlb  = next
+
     object Tlb {
       val clrAll          = 0.U(Width.Tlb.op)
       val clrAllAlt       = 1.U(Width.Tlb.op)
