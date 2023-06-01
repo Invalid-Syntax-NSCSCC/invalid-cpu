@@ -175,8 +175,7 @@ class BiInstQueue(
 
   io.dequeuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
     case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
-      dequeuePort.bits.decode := selectedDecoder
-      // InstInfoNdPort.setDefault(dequeuePort.bits.instInfo)
+      dequeuePort.bits.decode        := selectedDecoder
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
