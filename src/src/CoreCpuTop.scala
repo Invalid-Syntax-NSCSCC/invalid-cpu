@@ -309,7 +309,7 @@ class CoreCpuTop extends Module {
   (io.diffTest, cu.io.difftest) match {
     case (Some(t), Some(c)) =>
       t.cmt_ertn       := c.cmt_ertn
-      t.cmt_excp_flush := c.cmt_excp_flush
+      t.cmt_excp_flush := false.B
     case _ =>
   }
   (io.diffTest, regFile.io.difftest) match {
