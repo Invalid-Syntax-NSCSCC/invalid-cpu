@@ -94,8 +94,8 @@ class Decoder_special extends Decoder {
     }
   }
 
-  switch(opcode32) {
-    is(Inst.ertn) {
+  switch(opcode32(31,20)) {
+    is(Inst.ertn(31,20)) {
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.ertn
     }
