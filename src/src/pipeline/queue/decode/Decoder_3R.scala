@@ -17,7 +17,7 @@ class Decoder_3R extends Decoder {
   val ui5         = WireDefault(rk)
   val rdIsNotZero = WireDefault(rd.orR)
 
-  def outInfo = io.out.info
+  val outInfo = io.out.info
 
   outInfo.isHasImm := false.B
 

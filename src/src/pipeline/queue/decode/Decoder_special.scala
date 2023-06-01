@@ -21,9 +21,8 @@ class Decoder_special extends Decoder {
   val opcode17 = WireDefault(io.instInfoPort.inst(31, 15))
   val hint     = WireDefault(io.instInfoPort.inst(14, 0))
 
-  def outInfo = io.out.info
+  val outInfo = io.out.info
 
-  io.out := DontCare
   // It has immediate
   io.out.info.isHasImm := true.B
 

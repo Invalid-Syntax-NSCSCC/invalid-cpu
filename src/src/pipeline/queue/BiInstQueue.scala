@@ -175,8 +175,7 @@ class BiInstQueue(
 
   io.dequeuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
     case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
-      dequeuePort.bits.decode := selectedDecoder
-      // InstInfoNdPort.setDefault(dequeuePort.bits.instInfo)
+      dequeuePort.bits.decode        := selectedDecoder
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
@@ -187,6 +186,7 @@ class BiInstQueue(
       dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
       dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
+      dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
   }
 
   when(io.isFlush) {

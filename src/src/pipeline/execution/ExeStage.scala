@@ -137,7 +137,8 @@ class ExeStage
 
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.csrwr) {
-      csrWriteData := selectedIn.csrData
+      csrWriteData                    := selectedIn.leftOperand
+      resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
     is(ExeInst.Op.csrxchg) {
       // lop: write value  rop: mask
