@@ -133,7 +133,7 @@ class Tlb extends Module {
       case (out, in) =>
         out := in
     }
-    io.csr.out.asId := io.csr.in.asId
+    io.csr.out.asId.bits := io.csr.in.asId
     when(readEntry.compare.isExisted) {
       io.csr.out.tlbidx.bits.ne   := false.B
       io.csr.out.tlbidx.bits.ps   := readEntry.compare.pageSize

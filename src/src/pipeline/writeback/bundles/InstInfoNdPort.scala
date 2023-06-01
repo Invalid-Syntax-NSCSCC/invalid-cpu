@@ -14,6 +14,7 @@ class InstInfoNdPort extends Bundle {
   val inst             = UInt(Width.Reg.data)
   val isExceptionValid = Bool()
   val exceptionRecords = Vec(Csr.ExceptionIndex.count + 1, Bool())
+  val needCsr          = Bool()
   val csrWritePort     = new CsrWriteNdPort
 
   val exeOp = UInt(Param.Width.exeOp)
@@ -36,11 +37,13 @@ object InstInfoNdPort {
     _.csrWritePort -> CsrWriteNdPort.default,
     _.exeOp -> ExeInst.Op.nop,
     _.robId -> zeroWord,
-    _.tlbInfo -> TlbMaintenanceNdPort.default
+    _.tlbInfo -> TlbMaintenanceNdPort.default,
+    _.needCsr -> false.B
   )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
     instInfo.isValid := false.B
+    instInfo.needCsr := false.B
     instInfo.exceptionRecords.foreach(_ := false.B)
     instInfo.exeOp           := ExeInst.Op.nop
     instInfo.csrWritePort.en := false.B

@@ -7,7 +7,6 @@ import pipeline.dispatch.enums.{ScoreboardState => State}
 import spec._
 
 class Scoreboard(
-  maskZero:  Boolean,
   changeNum: Int = Param.issueInstInfoMaxNum * Param.regFileWriteNum,
   regNum:    Int = Count.reg)
     extends Module {
@@ -29,7 +28,7 @@ class Scoreboard(
   isRegOccupied.zipWithIndex.foreach {
     case (reg, index) =>
       reg := reg
-      if (index == 0 && maskZero) {
+      if (index == 0) {
         // GPR 0 is not meant to be written and always keeps 0
         reg := State.free
       } else {
