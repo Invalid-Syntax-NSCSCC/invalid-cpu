@@ -42,6 +42,7 @@ class Decoder_3R extends Decoder {
       outInfo.tlbInfo.isInvalidate   := true.B
       outInfo.tlbInfo.invalidateInst := rd
       outInfo.gprWritePort.en        := false.B
+      outInfo.needCsr                := true.B
     }
     is(Inst.add_w) {
       io.out.isMatched := true.B

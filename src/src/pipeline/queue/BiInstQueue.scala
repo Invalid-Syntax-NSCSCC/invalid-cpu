@@ -188,6 +188,7 @@ class BiInstQueue(
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
       dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
       dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
+      dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
   }
 
   when(io.isFlush) {

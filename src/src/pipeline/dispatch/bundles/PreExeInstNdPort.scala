@@ -34,12 +34,14 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 
   def code = jumpBranchAddr
 
+  val needCsr = Bool()
   val tlbInfo = new TlbMaintenanceNdPort
   // TODO: Signals in this port is not sufficient
 }
 
 object PreExeInstNdPort {
   def default = (new PreExeInstNdPort).Lit(
+    _.needCsr -> false.B,
     _.exeSel -> ExeInst.Sel.none,
     _.exeOp -> ExeInst.Op.nop,
     _.gprReadPorts -> Vec.Lit(RfAccessInfoNdPort.default, RfAccessInfoNdPort.default),
