@@ -20,7 +20,7 @@ class Decoder_2R extends Decoder {
     is(Inst.rdcnt_id_vl) {
       io.out.isMatched            := true.B
       io.out.info.gprWritePort.en := rdIsNotZero
-      when(rd.orR) {
+      when(rj.orR) {
         io.out.info.gprWritePort.addr := rj
         io.out.info.exeOp             := ExeInst.Op.rdcntid
       }.otherwise {

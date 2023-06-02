@@ -238,8 +238,12 @@ class Cu(
 
   io.difftest match {
     case Some(dt) => {
-      dt.cmt_ertn       := RegNext(ertnFlush)
-      dt.cmt_excp_flush := RegNext(exceptionFlush)
+      dt.cmt_ertn := RegNext(ertnFlush)
+      dt.cmt_excp_flush := RegNext(
+        exceptionFlush && !(io.instInfoPorts
+          .map(_.exceptionRecords(Csr.ExceptionIndex.sys))
+          .reduce(_ || _)) && !(io.instInfoPorts.map(_.exceptionRecords(Csr.ExceptionIndex.brk)).reduce(_ || _))
+      )
     }
     case _ =>
   }

@@ -39,8 +39,6 @@ class WbStage extends Module {
           val instr          = UInt(Width.Reg.data)
           val is_TLBFILL     = Bool() // TODO
           val TLBFILL_index  = UInt(Width.Reg.addr) // TODO
-          val is_CNTinst     = Bool() // TODO
-          val timer_64_value = UInt(doubleWordLength.W) // TODO
           val wen            = Bool()
           val wdest          = UInt(Width.Reg.addr)
           val wdata          = UInt(Width.Reg.data)
@@ -71,7 +69,7 @@ class WbStage extends Module {
   io.freePort.en   := io.gprWritePort.en && io.in.valid
   io.freePort.addr := io.gprWritePort.addr
 
-  io.csrFreePort.en   := io.in.bits.instInfo.csrWritePort.en && io.in.valid
+  io.csrFreePort.en   := io.in.valid && io.in.bits.instInfo.needCsr // io.in.bits.instInfo.csrWritePort.en && io.in.valid
   io.csrFreePort.addr := io.in.bits.instInfo.csrWritePort.addr
 
   // Diff test connection

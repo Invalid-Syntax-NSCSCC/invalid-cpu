@@ -32,12 +32,12 @@ class Scoreboard(
         // GPR 0 is not meant to be written and always keeps 0
         reg := State.free
       } else {
-        when(io.freePorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
-          reg := State.free
-        }.elsewhen(io.toMemPorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
+        when(io.toMemPorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
           reg := State.afterExe
         }.elsewhen(io.occupyPorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
           reg := State.beforeExe
+        }.elsewhen(io.freePorts.map(port => port.en && port.addr === index.U).reduce(_ || _)) {
+          reg := State.free
         }
       }
   }
