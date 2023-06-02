@@ -49,6 +49,9 @@ class Cu(
     // -> `MemReqStage`
     val isAfterMemReqFlush = Output(Bool())
 
+    // <- Out
+    val hardWareInetrrupt = Input(UInt(8.W))
+
     val difftest = if (isDiffTest) {
       Some(Output(new Bundle {
         val cmt_ertn       = Output(Bool())
@@ -83,6 +86,8 @@ class Cu(
 
   /** CSR
     */
+
+  io.csrMessage.hardWareInetrrupt := io.hardWareInetrrupt
 
   // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {

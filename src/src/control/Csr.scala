@@ -42,9 +42,6 @@ class Csr(
     passPort
   }
 
-  // 定时器中断
-  val timeInterrupt = RegInit(false.B)
-
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
   // read
@@ -155,7 +152,7 @@ class Csr(
           ecfg.in := Cat(0.U(19.W), writePort.data(12, 0)).asTypeOf(ecfg.in)
         }
         is(spec.Csr.Index.estat) {
-          estat.in := Cat(false.B, writePort.data(30, 16), 0.U(3.W), writePort.data(12, 0)).asTypeOf(estat.in)
+          estat.in := Cat(false.B, writePort.data(30, 16), 0.U(14.W), writePort.data(1, 0)).asTypeOf(estat.in)
         }
         is(
           spec.Csr.Index.era
@@ -293,7 +290,7 @@ class Csr(
         is(spec.Csr.Index.ticlr) {
           ticlr.in := 0.U(32.W).asTypeOf(ticlr.in)
           when(writePort.data(0) === true.B) {
-            timeInterrupt := false.B
+            estat.in.is_timeInt := false.B
           }
         }
       }
@@ -332,6 +329,7 @@ class Csr(
   }
 
   // estat
+  estat.in.is_hardwareInt := io.csrMessage.hardWareInetrrupt
   when(io.csrMessage.exceptionFlush) {
     estat.in.ecode    := io.csrMessage.ecodeBundle.ecode
     estat.in.esubcode := io.csrMessage.ecodeBundle.esubcode
@@ -363,10 +361,13 @@ class Csr(
     }
   }.otherwise { // 减到0
     when(tcfg.out.periodic) {
-      timeInterrupt   := true.B
-      tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
+      estat.in.is_timeInt := true.B
+      tval.in.timeVal     := Cat(tcfg.out.initVal, 0.U(2.W))
     } // 为0时停止计数
   }
+
+  // 中断
+  // estat.in.is
 
   // output
   io.csrValues.crmd      := crmd.out

@@ -261,6 +261,7 @@ class CoreCpuTop extends Module {
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
   cu.io.jumpPc                         := exeStage.io.peer.get.branchSetPort
+  cu.io.hardWareInetrrupt              := io.intrpt
 
   // After memory request flush connection
   memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
