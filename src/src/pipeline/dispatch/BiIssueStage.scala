@@ -50,7 +50,7 @@ class BiIssueStagePeerPort(
   val csrRegScore   = Input(ScoreboardState())
 }
 
-// TODO: deal WAR data hazard
+// TODO: deal WAR / WAW data hazard
 class BiIssueStage(
   issueNum:       Int = 2,
   scoreChangeNum: Int = Param.regFileWriteNum,
@@ -142,7 +142,7 @@ class BiIssueStage(
 
     io.peer.get.occupyPortss(occupy_port_idx)(0) := fetchInfos(src_idx).bits.preExeInstInfo.gprWritePort
     if (dst_idx == csrIssuePipelineIndex) {
-      io.peer.get.csrOccupyPort.en   := fetchInfos(src_idx).bits.instInfo.csrWritePort.en
+      io.peer.get.csrOccupyPort.en   := fetchInfos(src_idx).bits.instInfo.needCsr // fetchInfos(src_idx).bits.instInfo.csrWritePort.en
       io.peer.get.csrOccupyPort.addr := fetchInfos(src_idx).bits.instInfo.csrWritePort.addr
     }
 
