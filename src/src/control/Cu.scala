@@ -167,19 +167,40 @@ class Cu(
   io.csrMessage.tlbRefillException := isTlbRefillException
 
   // badv
-  // TODO: 记录出错的虚地址，多数情况不是pc，待补
-  io.csrMessage.badVAddrSet.en := VecInit(
-    Csr.ExceptionIndex.tlbr,
-    Csr.ExceptionIndex.adef,
-    Csr.ExceptionIndex.adem,
-    Csr.ExceptionIndex.ale,
-    Csr.ExceptionIndex.pil,
-    Csr.ExceptionIndex.pis,
-    Csr.ExceptionIndex.pif,
-    Csr.ExceptionIndex.pme,
-    Csr.ExceptionIndex.ppi
-  ).contains(selectException) && hasException
-  io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
+  when(hasException) {
+    when(selectException === Csr.ExceptionIndex.adef) {
+      io.csrMessage.badVAddrSet.en   := true.B
+      io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
+    }.elsewhen(
+      VecInit(
+        Csr.ExceptionIndex.tlbr,
+        Csr.ExceptionIndex.adef,
+        Csr.ExceptionIndex.adem,
+        Csr.ExceptionIndex.ale,
+        Csr.ExceptionIndex.pil,
+        Csr.ExceptionIndex.pis,
+        Csr.ExceptionIndex.pif,
+        Csr.ExceptionIndex.pme,
+        Csr.ExceptionIndex.ppi
+      ).contains(selectException)
+    ) {
+      io.csrMessage.badVAddrSet.en   := true.B
+      io.csrMessage.badVAddrSet.addr := selectInstInfo.load.vaddr
+    }
+  }
+
+  // io.csrMessage.badVAddrSet.en := VecInit(
+  //   Csr.ExceptionIndex.tlbr,
+  //   Csr.ExceptionIndex.adef,
+  //   Csr.ExceptionIndex.adem,
+  //   Csr.ExceptionIndex.ale,
+  //   Csr.ExceptionIndex.pil,
+  //   Csr.ExceptionIndex.pis,
+  //   Csr.ExceptionIndex.pif,
+  //   Csr.ExceptionIndex.pme,
+  //   Csr.ExceptionIndex.ppi
+  // ).contains(selectException) && hasException
+  // io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
 
   // llbit control
   val line0Is_ll = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.ll)
