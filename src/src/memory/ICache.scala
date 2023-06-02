@@ -87,8 +87,8 @@ class ICache(
 
   def toStatusTagLine(line: UInt) = {
     val bundle = Wire(new ICacheStatusTagBundle)
-    bundle.isValid := line(StatusTagBundle.width - 1)
-    bundle.tag     := line(StatusTagBundle.width - 2, 0)
+    bundle.isValid := line(ICacheStatusTagBundle.width - 1)
+    bundle.tag     := line(ICacheStatusTagBundle.width - 2, 0)
     bundle
   }
 
@@ -386,17 +386,17 @@ class ICache(
         nextState := State.ready
       }
     }
-  }
 
-  is(State.maintenanceAll) {
-    // Maintenance: Coherent by index
+    is(State.maintenanceAll) {
+      // Maintenance: Coherent by index
 
-    val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+      val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
 
-    statusTagRams.map(_.io.writePort).foreach { writePort =>
-      writePort.en   := true.B
-      writePort.data := 0.U
-      writePort.addr := queryIndex
+      statusTagRams.map(_.io.writePort).foreach { writePort =>
+        writePort.en   := true.B
+        writePort.data := 0.U
+        writePort.addr := queryIndex
+      }
     }
   }
 }
