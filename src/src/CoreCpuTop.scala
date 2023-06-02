@@ -150,6 +150,12 @@ class CoreCpuTop extends Module {
   val uncachedAgent = Module(new UncachedAgent)
   val tlb           = Module(new Tlb)
 
+  // TODO: Finish cache maintanence connection
+  dCache.io.maintenancePort                  <> DontCare
+  dCache.io.maintenancePort.client.isL1Valid := false.B
+  iCache.io.maintenancePort                  <> DontCare
+  iCache.io.maintenancePort.client.isL1Valid := false.B
+
   // Connection for memory related modules
   // TODO: Finish TLB maintanence connection
   tlb.io               <> DontCare
@@ -167,10 +173,10 @@ class CoreCpuTop extends Module {
 
   // Frontend
   //   inst fetch stage
-  frontend.io.iCacheAccessPort <> iCache.io.iCacheAccessPort
-  frontend.io.pc               := pc.io.pc
-  frontend.io.isFlush          := cu.io.flushes(PipelineStageIndex.frontend)
-  pc.io.isNext                 := frontend.io.isPcNext
+  frontend.io.accessPort <> iCache.io.accessPort
+  frontend.io.pc         := pc.io.pc
+  frontend.io.isFlush    := cu.io.flushes(PipelineStageIndex.frontend)
+  pc.io.isNext           := frontend.io.isPcNext
 
   // Instruction queue
   instQueue.io.enqueuePorts(0) <> frontend.io.instEnqueuePort
@@ -309,7 +315,7 @@ class CoreCpuTop extends Module {
   (io.diffTest, cu.io.difftest) match {
     case (Some(t), Some(c)) =>
       t.cmt_ertn       := c.cmt_ertn
-      t.cmt_excp_flush := false.B
+      t.cmt_excp_flush := c.cmt_excp_flush
     case _ =>
   }
   (io.diffTest, regFile.io.difftest) match {
@@ -321,7 +327,7 @@ class CoreCpuTop extends Module {
     case (Some(t), c) =>
       t.csr_crmd_diff_0      := c.crmd.asUInt
       t.csr_prmd_diff_0      := c.prmd.asUInt
-      t.csr_ectl_diff_0      := zeroWord // TODO: 删除 ?
+      t.csr_ectl_diff_0      := c.ecfg.asUInt
       t.csr_estat_diff_0     := c.estat.asUInt
       t.csr_era_diff_0       := c.era.asUInt
       t.csr_badv_diff_0      := c.badv.asUInt
