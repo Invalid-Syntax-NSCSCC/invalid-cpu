@@ -226,6 +226,8 @@ class DCache(
 
   io.accessPort.res.isComplete := false.B // Falback: Not complete
 
+  io.accessPort.res.read.data := DontCare
+
   val currentMemAddr = WireDefault(
     Mux(
       io.maintenancePort.client.isL1Valid,
