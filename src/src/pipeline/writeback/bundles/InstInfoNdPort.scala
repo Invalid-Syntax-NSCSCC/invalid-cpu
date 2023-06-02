@@ -6,12 +6,15 @@ import chisel3.experimental.VecLiterals._
 import chisel3.util._
 import spec._
 import control.bundles.CsrWriteNdPort
+import memory.bundles.TlbMaintenanceNdPort
 
 class InstInfoNdPort extends Bundle {
   val isValid          = Bool()
   val pc               = UInt(Width.Reg.data)
   val inst             = UInt(Width.Reg.data)
+  val isExceptionValid = Bool()
   val exceptionRecords = Vec(Csr.ExceptionIndex.count + 1, Bool())
+  val needCsr          = Bool()
   val csrWritePort     = new CsrWriteNdPort
 
   val exeOp = UInt(Param.Width.exeOp)
@@ -19,10 +22,13 @@ class InstInfoNdPort extends Bundle {
 
   val load  = new DifftestLoadNdPort
   val store = new DifftestStoreNdPort
+
+  val tlbInfo = new TlbMaintenanceNdPort
 }
 
 object InstInfoNdPort {
   def default = (new InstInfoNdPort).Lit(
+    _.isValid -> false.B,
     _.pc -> zeroWord,
     _.inst -> zeroWord,
     _.exceptionRecords -> Vec.Lit(
@@ -30,15 +36,19 @@ object InstInfoNdPort {
     ),
     _.csrWritePort -> CsrWriteNdPort.default,
     _.exeOp -> ExeInst.Op.nop,
-    _.robId -> zeroWord
+    _.robId -> zeroWord,
+    _.tlbInfo -> TlbMaintenanceNdPort.default,
+    _.needCsr -> false.B
   )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
     instInfo.isValid := false.B
+    instInfo.needCsr := false.B
     instInfo.exceptionRecords.foreach(_ := false.B)
     instInfo.exeOp           := ExeInst.Op.nop
     instInfo.csrWritePort.en := false.B
     instInfo.load.en         := false.B
     instInfo.store.en        := false.B
+    instInfo.tlbInfo         := TlbMaintenanceNdPort.default
   }
 }

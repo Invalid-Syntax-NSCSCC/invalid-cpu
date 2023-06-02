@@ -32,6 +32,7 @@ package object spec {
     val issueStage     = next
     val regReadStage   = next
     val exeStage       = next
+    val scoreboard     = next
     val addrTransStage = next
     val memReqStage    = next
     val memResStage    = next
@@ -48,6 +49,7 @@ package object spec {
       val addr           = 14.W
       val data           = wordLength.W
       val exceptionIndex = log2Ceil(spec.Csr.ExceptionIndex.count + 1).W
+      val asid           = 10.W
     }
 
     object Op {

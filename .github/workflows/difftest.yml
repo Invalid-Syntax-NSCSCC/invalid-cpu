@@ -1,0 +1,66 @@
+name: Difftest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  difftest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Finetune
+        run: |
+          sudo sed -i 's/yes/no/g' /etc/initramfs-tools/update-initramfs.conf
+          sudo rm -f /var/lib/man-db/auto-update
+
+      - name: Clone Chiplab Repo
+        uses: actions/checkout@v3
+        with:
+          repository: Invalid-Syntax-NSCSCC/min-chiplab
+          token: ${{ secrets.DIFFTEST_ACCESS_TOKEN }}
+          path: chiplab
+      
+      - name: Prepare Environment
+        run: |
+          echo "`pwd`/chiplab/toolchains/loongarch32r-linux-gnusf-2022-05-20/bin" >> $GITHUB_PATH
+
+      - name: Install Dependencies
+        run: |
+          which loongarch32r-linux-gnusf-gcc
+          sudo apt-get update
+          sudo apt-get install -y verilator libsdl2-2.0-0 libsdl2-dev
+        
+      - name: Use Cache
+        uses: coursier/cache-action@v6
+
+      - name: Elaborate CPU
+        run: make
+        
+      - name: Move to Chiplab
+        run: |
+          export CHIPLAB_HOME=`pwd`/chiplab
+          make chiplab
+
+      - name: Test
+        run: |
+          export CHIPLAB_HOME=`pwd`/chiplab
+          ./chiplab/sims/verilator/run_prog/configure.sh --run func/func_lab8 --tail-waveform --tail-simu-trace --waveform-tail-size 200 --trace-tail-size 200
+          cd ./chiplab/sims/verilator/run_prog
+          make -j`nproc` > make_log.txt 2>&1
+          sed -i '/RUN simulation/,$!d' make_log.txt
+          cat make_log.txt
+        
+      - name: Upload Result
+        uses: actions/upload-artifact@v3
+        with:
+          name: difftest-log
+          path: |
+            ./chiplab/sims/verilator/run_prog/make_log.txt
+            ./chiplab/sims/verilator/run_prog/log/**/simu_trace.*
+            ./chiplab/sims/verilator/run_prog/obj/**/obj/test.s

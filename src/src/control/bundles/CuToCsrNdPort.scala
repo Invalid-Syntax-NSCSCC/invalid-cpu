@@ -8,7 +8,7 @@ class CuToCsrNdPort extends Bundle {
   val exceptionFlush = Bool()
   val ertnFlush      = Bool()
   val era            = UInt(Width.Reg.data)
-  val ecodeBunle     = new EcodeBundle
+  val ecodeBundle    = new EcodeBundle
   // tlb重填失效
   val tlbRefillException = Bool()
   // 出错虚地址

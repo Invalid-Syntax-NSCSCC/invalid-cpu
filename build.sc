@@ -11,11 +11,13 @@ object src extends ScalaModule with ScalafmtModule { m =>
   override def scalacOptions = Seq(
     "-language:reflectiveCalls",
     "-feature",
+    "-deprecation",
     "-Xcheckinit"
   )
 
   override def ivyDeps = Agg(
-    ivy"edu.berkeley.cs::chisel3:3.6.0"
+    ivy"edu.berkeley.cs::chisel3:3.6.0",
+    ivy"org.scalaz::scalaz-core:7.3.7"
   )
 
   override def scalacPluginIvyDeps = Agg(

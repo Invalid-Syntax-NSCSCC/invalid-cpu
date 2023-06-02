@@ -8,7 +8,7 @@ object Param {
 
   val isDiffTest = true
 
-  val instQueueLength        = 5
+  val instQueueLength        = 8
   val regFileReadNum         = 2
   val regFileWriteNum        = 1
   val scoreboardChangeNum    = 1 // 3
@@ -19,6 +19,8 @@ object Param {
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
   val robIdLength            = 32 // rob给出的id
+
+  val csrIssuePipelineIndex = 0 // csr 相关指令在第0条流水线
 
   val dataForwardInputNum = 2
 
@@ -43,7 +45,7 @@ object Param {
     }
 
     object DCache {
-      val _addr       = 6 // TODO: Choose an optimal value
+      val _addr       = 8 // TODO: Choose an optimal value
       val _byteOffset = log2Ceil(Count.DCache.dataPerLine) + log2Ceil(wordLength / byteLength)
       val _dataLine   = Count.DCache.dataPerLine * spec.Width.Mem._data
       val _tag        = spec.Width.Mem._addr - _addr - _byteOffset
@@ -55,7 +57,7 @@ object Param {
     }
 
     object ICache {
-      val _addr       = 6 // TODO: Choose an optimal value
+      val _addr       = 8 // TODO: Choose an optimal value
       val _byteOffset = log2Ceil(Count.ICache.dataPerLine) + log2Ceil(wordLength / byteLength)
       val _dataLine   = Count.ICache.dataPerLine * spec.Width.Mem._data
       val _tag        = spec.Width.Mem._addr - _addr - _byteOffset
@@ -75,13 +77,13 @@ object Param {
 
     object DCache {
       val setLen      = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
-      val dataPerLine = 4 // TODO: One data line is 64 bytes
+      val dataPerLine = 16 // TODO: One data line is 64 bytes
       val sizePerRam  = math.pow(2, Width.DCache._addr).toInt
     }
 
     object ICache {
       val setLen      = 2 // Also the number of RAMs for data; TODO: Choose an optimal value
-      val dataPerLine = 4 // TODO: One data line is 64 bytes
+      val dataPerLine = 16 // TODO: One data line is 64 bytes
       val sizePerRam  = math.pow(2, Width.ICache._addr).toInt
     }
 

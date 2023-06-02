@@ -56,7 +56,9 @@ object ExeNdPort {
 
 class ExePeerPort extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
-  val branchSetPort = Output(new PcSetPort)
+  val branchSetPort           = Output(new PcSetPort)
+  val scoreboardChangePort    = Output(new ScoreboardChangeNdPort)
+  val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
   })
@@ -126,13 +128,17 @@ class ExeStage
 
   def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
+  val isSyscall = selectedIn.exeOp === ExeInst.Op.syscall
+  val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
   resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
-  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.sys) := selectedIn.exeOp === ExeInst.Op.syscall
-  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.brk) := selectedIn.exeOp === ExeInst.Op.break_
+  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.sys) := isSyscall
+  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.brk) := isBreak
+  resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || isAle || isSyscall || isBreak
 
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.csrwr) {
-      csrWriteData := selectedIn.csrData
+      csrWriteData                    := selectedIn.leftOperand
+      resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
     is(ExeInst.Op.csrxchg) {
       // lop: write value  rop: mask
@@ -146,6 +152,11 @@ class ExeStage
             target := Mux(mask, write, origin)
         }
       csrWriteData := gprWriteDataVec.asUInt
+    }
+    is(ExeInst.Op.invtlb) {
+      // lop : asid  rop : virtual addr
+      resultOutReg.bits.instInfo.tlbInfo.registerAsid := selectedIn.leftOperand(9, 0)
+      resultOutReg.bits.instInfo.tlbInfo.virtAddr     := selectedIn.rightOperand
     }
   }
 
@@ -200,28 +211,34 @@ class ExeStage
     }
   }
 
-  resultOutReg.bits.instInfo.load.en := Cat(
-    0.U(2.W),
-    selectedIn.exeOp === ExeInst.Op.ll,
-    selectedIn.exeOp === ExeInst.Op.ld_w,
-    selectedIn.exeOp === ExeInst.Op.ld_hu,
-    selectedIn.exeOp === ExeInst.Op.ld_h,
-    selectedIn.exeOp === ExeInst.Op.ld_bu,
-    selectedIn.exeOp === ExeInst.Op.ld_b
-  ) & !isAle
-  resultOutReg.bits.instInfo.store.en := Cat(
-    0.U(4.W),
-    io.peer.get.csr.llbctl.wcllb &&
-      selectedIn.exeOp === ExeInst.Op.sc,
-    selectedIn.exeOp === ExeInst.Op.st_w,
-    selectedIn.exeOp === ExeInst.Op.st_h,
-    selectedIn.exeOp === ExeInst.Op.st_b
-  ) & !isAle
+  resultOutReg.bits.instInfo.load.en := Mux(
+    isAle,
+    0.U,
+    Cat(
+      0.U(2.W),
+      selectedIn.exeOp === ExeInst.Op.ll,
+      selectedIn.exeOp === ExeInst.Op.ld_w,
+      selectedIn.exeOp === ExeInst.Op.ld_hu,
+      selectedIn.exeOp === ExeInst.Op.ld_h,
+      selectedIn.exeOp === ExeInst.Op.ld_bu,
+      selectedIn.exeOp === ExeInst.Op.ld_b
+    )
+  )
+  resultOutReg.bits.instInfo.store.en := Mux(
+    isAle,
+    0.U,
+    Cat(
+      0.U(4.W),
+      io.peer.get.csr.llbctl.wcllb &&
+        selectedIn.exeOp === ExeInst.Op.sc,
+      selectedIn.exeOp === ExeInst.Op.st_w,
+      selectedIn.exeOp === ExeInst.Op.st_h,
+      selectedIn.exeOp === ExeInst.Op.st_b
+    )
+  )
   resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
   resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
-  resultOutReg.bits.instInfo.store.data := MuxLookup(
-    selectedIn.exeOp,
-    selectedIn.rightOperand,
+  resultOutReg.bits.instInfo.store.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
     immutable.Seq(
       ExeInst.Op.st_b -> Mux(
         maskEncode(1),
@@ -241,5 +258,9 @@ class ExeStage
   )
 
   // branch set
-  io.peer.get.branchSetPort := alu.io.result.jumpBranchInfo
+  io.peer.get.branchSetPort                := alu.io.result.jumpBranchInfo
+  io.peer.get.scoreboardChangePort.en      := selectedIn.gprWritePort.en
+  io.peer.get.scoreboardChangePort.addr    := selectedIn.gprWritePort.addr
+  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.csrWritePort.en
+  io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
 }

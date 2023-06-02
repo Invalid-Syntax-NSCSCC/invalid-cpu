@@ -15,9 +15,8 @@ class Decoder_2RI12 extends Decoder {
   val rd          = WireDefault(io.instInfoPort.inst(4, 0))
   val rdIsNotZero = WireDefault(rd.orR)
 
-  def outInfo = io.out.info
+  val outInfo = io.out.info
 
-  io.out := DontCare
   // It has immediate
   io.out.info.isHasImm := true.B
 

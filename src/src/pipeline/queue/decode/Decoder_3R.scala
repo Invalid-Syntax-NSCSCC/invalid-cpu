@@ -17,7 +17,7 @@ class Decoder_3R extends Decoder {
   val ui5         = WireDefault(rk)
   val rdIsNotZero = WireDefault(rd.orR)
 
-  def outInfo = io.out.info
+  val outInfo = io.out.info
 
   outInfo.isHasImm := false.B
 
@@ -36,6 +36,14 @@ class Decoder_3R extends Decoder {
   io.out.info.jumpBranchAddr := DontCare
 
   switch(opcode) {
+    is(Inst.invtlb) {
+      io.out.isMatched               := true.B
+      outInfo.exeOp                  := ExeInst.Op.invtlb
+      outInfo.tlbInfo.isInvalidate   := true.B
+      outInfo.tlbInfo.invalidateInst := rd
+      outInfo.gprWritePort.en        := false.B
+      outInfo.needCsr                := true.B
+    }
     is(Inst.add_w) {
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.add

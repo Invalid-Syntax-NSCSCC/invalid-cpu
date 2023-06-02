@@ -42,7 +42,7 @@ object Csr {
     "98",
     "180",
     "181"
-  ).map(h(_))
+  ).map(h)
 
   object Index {
     var count = -1
@@ -67,7 +67,7 @@ object Csr {
     val asid      = next
     val pgdl      = next
     val pgdh      = next
-    val pgd       = next
+    val pgd       = next // f ->
     val cpuid     = next
     val save0     = next
     val save1     = next
@@ -76,7 +76,7 @@ object Csr {
     val tid       = next
     val tcfg      = next
     val tval      = next
-    val ticlr     = next
+    val ticlr     = next // 0x18 -> 0x44
     val llbctl    = next
     val tlbrentry = next
     val ctag      = next

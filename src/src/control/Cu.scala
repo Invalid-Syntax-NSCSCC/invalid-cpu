@@ -40,8 +40,14 @@ class Cu(
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`
-    val flushs = Output(Vec(ctrlControlNum, Bool()))
+    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`, `Scoreboard`
+    val flushes               = Output(Vec(ctrlControlNum, Bool()))
+    val branchScoreboardFlush = Output(Bool())
+
+    // <- `MemResStage`, `WbStage`
+    val isExceptionValidVec = Input(Vec(3, Bool()))
+    // -> `MemReqStage`
+    val isAfterMemReqFlush = Output(Bool())
 
     val difftest = if (isDiffTest) {
       Some(Output(new Bundle {
@@ -56,8 +62,10 @@ class Cu(
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := PcSetPort.default
 
-  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map(_.exceptionRecords.reduce(_ || _))))
-  val hasException      = WireDefault(linesHasException.reduce(_ || _))
+  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
+    instInfo.isExceptionValid && instInfo.isValid
+  }))
+  val hasException = WireDefault(linesHasException.reduce(_ || _))
 
   /** stable counter
     */
@@ -73,33 +81,16 @@ class Cu(
     io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
   }
 
-  // 软件写csr
+  /** CSR
+    */
+
+  // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
     case (dst, src) =>
       dst := src.csrWritePort
   }
 
-  /** flush
-    */
-  val flushs = Wire(Vec(ctrlControlNum, Bool()))
-  io.flushs := RegNext(flushs)
-  flushs.foreach(_ := false.B)
-
-  when(io.jumpPc.en) {
-    Seq(
-      PipelineStageIndex.issueStage,
-      PipelineStageIndex.regReadStage,
-      PipelineStageIndex.frontend
-    ).map(flushs(_))
-      .foreach(_ := true.B)
-  }
-
-  val exceptionFlush = WireDefault(hasException)
-  when(exceptionFlush) {
-    flushs.foreach(_ := true.B)
-  }
-
-  /** 硬件写csr
+  /** csr write by exception
     */
 
   io.csrMessage.exceptionFlush := hasException
@@ -117,74 +108,54 @@ class Cu(
     io.csrMessage.era := selectInstInfo.pc
     switch(selectException) {
       is(Csr.ExceptionIndex.int) {
-        io.csrMessage.ecodeBunle := Csr.Estat.int
+        io.csrMessage.ecodeBundle := Csr.Estat.int
       }
       is(Csr.ExceptionIndex.pil) {
-        io.csrMessage.ecodeBunle := Csr.Estat.pil
+        io.csrMessage.ecodeBundle := Csr.Estat.pil
       }
       is(Csr.ExceptionIndex.pis) {
-        io.csrMessage.ecodeBunle := Csr.Estat.pis
+        io.csrMessage.ecodeBundle := Csr.Estat.pis
       }
       is(Csr.ExceptionIndex.pif) {
-        io.csrMessage.ecodeBunle := Csr.Estat.pif
+        io.csrMessage.ecodeBundle := Csr.Estat.pif
       }
       is(Csr.ExceptionIndex.pme) {
-        io.csrMessage.ecodeBunle := Csr.Estat.pme
+        io.csrMessage.ecodeBundle := Csr.Estat.pme
       }
       is(Csr.ExceptionIndex.ppi) {
-        io.csrMessage.ecodeBunle := Csr.Estat.ppi
+        io.csrMessage.ecodeBundle := Csr.Estat.ppi
       }
       is(Csr.ExceptionIndex.adef) {
-        io.csrMessage.ecodeBunle := Csr.Estat.adef
+        io.csrMessage.ecodeBundle := Csr.Estat.adef
       }
       is(Csr.ExceptionIndex.adem) {
-        io.csrMessage.ecodeBunle := Csr.Estat.adem
+        io.csrMessage.ecodeBundle := Csr.Estat.adem
       }
       is(Csr.ExceptionIndex.ale) {
-        io.csrMessage.ecodeBunle := Csr.Estat.ale
+        io.csrMessage.ecodeBundle := Csr.Estat.ale
       }
       is(Csr.ExceptionIndex.sys) {
-        io.csrMessage.ecodeBunle := Csr.Estat.sys
+        io.csrMessage.ecodeBundle := Csr.Estat.sys
       }
       is(Csr.ExceptionIndex.brk) {
-        io.csrMessage.ecodeBunle := Csr.Estat.brk
+        io.csrMessage.ecodeBundle := Csr.Estat.brk
       }
       is(Csr.ExceptionIndex.ine) {
-        io.csrMessage.ecodeBunle := Csr.Estat.ine
+        io.csrMessage.ecodeBundle := Csr.Estat.ine
       }
       is(Csr.ExceptionIndex.ipe) {
-        io.csrMessage.ecodeBunle := Csr.Estat.ipe
+        io.csrMessage.ecodeBundle := Csr.Estat.ipe
       }
       is(Csr.ExceptionIndex.fpd) {
-        io.csrMessage.ecodeBunle := Csr.Estat.fpd
+        io.csrMessage.ecodeBundle := Csr.Estat.fpd
       }
       is(Csr.ExceptionIndex.fpe) {
-        io.csrMessage.ecodeBunle := Csr.Estat.fpe
+        io.csrMessage.ecodeBundle := Csr.Estat.fpe
       }
       is(Csr.ExceptionIndex.tlbr) {
-        io.csrMessage.ecodeBunle := Csr.Estat.tlbr
+        io.csrMessage.ecodeBundle := Csr.Estat.tlbr
       }
     }
-  }
-  // ertn flush (完成异常？)
-  val ertnFlush = WireDefault(
-    io.instInfoPorts.map(_.exeOp === ExeInst.Op.ertn).reduce(_ || _)
-  ) // 指令控制
-  io.csrMessage.ertnFlush := ertnFlush
-
-  // select new pc
-  when(ertnFlush) {
-    io.newPc.en     := true.B
-    io.newPc.pcAddr := io.csrValues.era.asUInt
-  }.elsewhen(hasException) {
-    io.newPc.en := true.B
-    when(isTlbRefillException) {
-      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
-    }.otherwise {
-      io.newPc.pcAddr := io.csrValues.eentry.asUInt
-    }
-  }.elsewhen(io.jumpPc.en) {
-    io.newPc := io.jumpPc
   }
 
   // tlb
@@ -212,10 +183,62 @@ class Cu(
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := line0Is_ll
 
+  /** Flush & jump
+    */
+  val flushes = WireDefault(VecInit(Seq.fill(ctrlControlNum)(false.B)))
+  io.flushes := RegNext(flushes)
+
+  val branchScoreboardFlush = WireDefault(false.B)
+  io.branchScoreboardFlush := RegNext(branchScoreboardFlush)
+
+  val exceptionFlush = WireDefault(hasException)
+
+  val ertnFlush = WireDefault(
+    io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
+  )
+
+  // Handle after memory request exception valid
+  io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
+
+  when(exceptionFlush || ertnFlush) {
+    flushes.foreach(_ := true.B)
+  }
+  io.csrMessage.ertnFlush := ertnFlush
+
+  when(io.jumpPc.en) {
+    Seq(
+      PipelineStageIndex.issueStage,
+      PipelineStageIndex.regReadStage,
+      PipelineStageIndex.frontend
+    ).map(flushes(_))
+      .foreach(_ := true.B)
+
+    branchScoreboardFlush := true.B
+  }
+
+  // select new pc
+  when(ertnFlush) {
+    io.newPc.en     := true.B
+    io.newPc.pcAddr := io.csrValues.era.asUInt
+  }.elsewhen(exceptionFlush) {
+    io.newPc.en := true.B
+    when(isTlbRefillException) {
+      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
+    }.otherwise {
+      io.newPc.pcAddr := io.csrValues.eentry.asUInt
+    }
+  }.elsewhen(io.jumpPc.en) {
+    io.newPc := io.jumpPc
+  }
+
   io.difftest match {
     case Some(dt) => {
-      dt.cmt_ertn       := RegNext(ertnFlush)
-      dt.cmt_excp_flush := RegNext(exceptionFlush)
+      dt.cmt_ertn := RegNext(ertnFlush)
+      dt.cmt_excp_flush := RegNext(
+        exceptionFlush && !(io.instInfoPorts
+          .map(_.exceptionRecords(Csr.ExceptionIndex.sys))
+          .reduce(_ || _)) && !(io.instInfoPorts.map(_.exceptionRecords(Csr.ExceptionIndex.brk)).reduce(_ || _))
+      )
     }
     case _ =>
   }

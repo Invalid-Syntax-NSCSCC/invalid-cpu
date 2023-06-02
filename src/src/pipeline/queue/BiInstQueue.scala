@@ -9,7 +9,7 @@ import pipeline.queue.decode.{Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec._
 import utils.BiCounter
-// 尝试写双发射的queue，未接入，不用管它
+
 // assert: enqueuePorts总是最低的几位有效
 class BiInstQueue(
   val queueLength: Int = Param.instQueueLength,
@@ -28,14 +28,8 @@ class BiInstQueue(
         val instInfo = new InstInfoNdPort
       })
     )
-
-    // val debugPort = Output(Vec(issueNum, new InstInfoBundle))
   })
   require(issueNum == 2)
-//   val queue =
-//     Queue(io.enqueuePorts(0), entries = queueLength, pipe = false, flow = true, flush = Some(io.pipelineControlPort.flush))
-
-//   io.dequeuePort <> queue
 
   val ram     = RegInit(VecInit(Seq.fill(queueLength)(InstInfoBundle.default)))
   val enq_ptr = Module(new BiCounter(queueLength))
@@ -48,8 +42,8 @@ class BiInstQueue(
 
   val maybeFull = RegInit(false.B)
   val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
-  val isEmpty   = ptrMatch && !maybeFull
-  val isFull    = ptrMatch && maybeFull
+  val isEmpty   = WireDefault(ptrMatch && !maybeFull)
+  val isFull    = WireDefault(ptrMatch && maybeFull)
 
   val storeNum = WireDefault(
     Mux(
@@ -181,18 +175,28 @@ class BiInstQueue(
 
   io.dequeuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
     case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
-      dequeuePort.bits.decode := selectedDecoder
-      // InstInfoNdPort.setDefault(dequeuePort.bits.instInfo)
+      dequeuePort.bits.decode        := selectedDecoder
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
       val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
       dequeuePort.bits.instInfo
         .exceptionRecords(Csr.ExceptionIndex.ine) := !isMatched
+      dequeuePort.bits.instInfo.isExceptionValid  := !isMatched
       dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
+      dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
+      dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
+      dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
+      dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
+      dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
   }
 
   when(io.isFlush) {
     ram.foreach(_ := InstInfoBundle.default)
+    maybeFull := false.B
+    io.dequeuePorts.foreach(_.valid := false.B)
+    storeNum := 0.U
+    isEmpty  := true.B
+    isFull   := false.B
   }
 }

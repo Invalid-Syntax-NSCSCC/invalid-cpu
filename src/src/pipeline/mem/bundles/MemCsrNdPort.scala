@@ -7,6 +7,5 @@ import spec._
 
 class MemCsrNdPort extends Bundle {
   val crmd = new CrmdBundle
-  val dmw  = new DmwBundle
-  // TODO
+  val dmw  = Vec(2, new DmwBundle)
 }

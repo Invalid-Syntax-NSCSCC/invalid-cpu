@@ -10,7 +10,6 @@ import control.bundles.PipelineControlNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import control.bundles.CsrReadPort
 import pipeline.common.BaseStage
-import chisel3.experimental.BundleLiterals._
 import common.bundles.RfAccessInfoNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import pipeline.dispatch.bundles.PreExeInstNdPort
