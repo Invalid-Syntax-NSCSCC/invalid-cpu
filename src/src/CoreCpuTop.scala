@@ -291,8 +291,6 @@ class CoreCpuTop extends Module {
       t.cmt_inst         := w.instr
       t.cmt_tlbfill_en   := w.is_TLBFILL
       t.cmt_rand_index   := w.TLBFILL_index
-      t.cmt_cnt_inst     := w.is_CNTinst
-      t.cmt_timer_64     := w.timer_64_value
       t.cmt_wen          := w.wen
       t.cmt_wdest        := w.wdest
       t.cmt_wdata        := w.wdata
@@ -311,6 +309,11 @@ class CoreCpuTop extends Module {
       t.cmt_ertn       := c.cmt_ertn
       t.cmt_excp_flush := c.cmt_excp_flush
     case _ =>
+  }
+  (io.diffTest, stableCounter.io.difftest) match {
+    case (Some(t), Some(c)) =>
+      t.cmt_cnt_inst := c.isCnt
+      t.cmt_timer_64 := c.value
   }
   (io.diffTest, regFile.io.difftest) match {
     case (Some(t), Some(r)) =>

@@ -5,6 +5,7 @@ import spec.doubleWordLength
 import spec._
 import chisel3.util._
 import control.bundles.StableCounterReadPort
+import spec.Param.isDiffTest
 
 class StableCounter extends Module {
 
@@ -31,6 +32,14 @@ class StableCounter extends Module {
     is(ExeInst.Op.rdcntvh_w) {
       io.isMatch := true.B
       io.output  := timer64(doubleWordLength - 1, wordLength)
+    }
+  }
+
+  if (isDiffTest) {
+    io.difftest match {
+      case Some(d) =>
+        d.isCnt := RegNext(io.isMatch)
+        d.value := RegNext(timer64)
     }
   }
 }
