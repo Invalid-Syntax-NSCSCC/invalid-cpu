@@ -23,6 +23,8 @@ class DCache(
     val axiMasterPort   = new AxiMasterInterface
   })
 
+  // TODO: Maintenance is not tailored for BRAM
+
   // Read cache hit diagram:
   // clock: ^_____________________________^___________________
   //        isReady = T                   isReady = T
