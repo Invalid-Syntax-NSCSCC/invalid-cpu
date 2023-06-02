@@ -50,7 +50,7 @@ jobs:
       - name: Test
         run: |
           export CHIPLAB_HOME=`pwd`/chiplab
-          ./chiplab/sims/verilator/run_prog/configure.sh --run func/func_lab12 --tail-waveform --tail-simu-trace --waveform-tail-size 200 --trace-tail-size 200
+          ./chiplab/sims/verilator/run_prog/configure.sh --run func/func_lab14 --tail-waveform --tail-simu-trace --waveform-tail-size 200 --trace-tail-size 200
           cd ./chiplab/sims/verilator/run_prog
           make -j`nproc` > make_log.txt 2>&1
           sed -i '/RUN simulation/,$!d' make_log.txt
