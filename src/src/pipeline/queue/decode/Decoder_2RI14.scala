@@ -35,11 +35,11 @@ class Decoder_2RI14 extends Decoder {
 
   // Read and write GPR
   io.out.info.gprReadPorts(0).en   := false.B
-  io.out.info.gprReadPorts(0).addr := DontCare
+  io.out.info.gprReadPorts(0).addr := zeroWord
   io.out.info.gprReadPorts(1).en   := false.B
-  io.out.info.gprReadPorts(1).addr := DontCare
+  io.out.info.gprReadPorts(1).addr := zeroWord
   io.out.info.gprWritePort.en      := false.B
-  io.out.info.gprWritePort.addr    := DontCare
+  io.out.info.gprWritePort.addr    := zeroWord
 
   // Fallback
   io.out.info.exeSel         := ExeInst.Sel.none

@@ -102,10 +102,6 @@ class BiIssueStage(
           }.reduce(_ || _)
         ) &&
         !(
-          in.decode.info.gprWritePort.en && 
-            (io.peer.get.regScores(in.decode.info.gprWritePort.addr) =/= ScoreboardState.free)
-        ) &&
-        !(
           // only issue in one pipeline
           if (idx == csrIssuePipelineIndex) {
             in.instInfo.needCsr && (io.peer.get.csrRegScore =/= ScoreboardState.free)
@@ -146,7 +142,7 @@ class BiIssueStage(
 
     io.peer.get.occupyPortss(occupy_port_idx)(0) := fetchInfos(src_idx).bits.preExeInstInfo.gprWritePort
     if (dst_idx == csrIssuePipelineIndex) {
-      io.peer.get.csrOccupyPort.en   := fetchInfos(src_idx).bits.instInfo.csrWritePort.en
+      io.peer.get.csrOccupyPort.en   := fetchInfos(src_idx).bits.instInfo.needCsr // fetchInfos(src_idx).bits.instInfo.csrWritePort.en
       io.peer.get.csrOccupyPort.addr := fetchInfos(src_idx).bits.instInfo.csrWritePort.addr
     }
 
