@@ -23,9 +23,10 @@ class Csr(
     val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
     val csrMessage = Input(new CuToCsrNdPort)
     val csrValues  = Output(new CsrValuePort)
-    // `Csr` <-> `IssueStage` / `RegReadStage` ???
+    // `Csr` <-> `RegReadStage`
     val readPorts = Vec(Param.csrRegsReadNum, new CsrReadPort)
-
+    // `Csr` -> `WbStage`
+    val hasInterrupt = Output(Bool())
   })
 
   // Util: view UInt as Bundle
@@ -367,7 +368,11 @@ class Csr(
   }
 
   // 中断
-  // estat.in.is
+  // la 空出来了一位
+  estat.in.is_hardwareInt := Cat(false.B, io.csrMessage.hardWareInetrrupt)
+
+  val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie).orR && crmd.out.ie
+  io.hasInterrupt := hasInterrupt
 
   // output
   io.csrValues.crmd      := crmd.out

@@ -40,6 +40,7 @@ class StableCounter extends Module {
       case Some(d) =>
         d.isCnt := RegNext(io.isMatch)
         d.value := RegNext(timer64)
+      case None =>
     }
   }
 }

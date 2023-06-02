@@ -252,8 +252,9 @@ class CoreCpuTop extends Module {
   }
 
   // Write-back stage
-  wbStage.io.in        <> memResStage.io.out
-  regFile.io.writePort := cu.io.gprWritePassThroughPorts.out(0)
+  wbStage.io.in           <> memResStage.io.out
+  wbStage.io.hasInterrupt := csr.io.hasInterrupt
+  regFile.io.writePort    := cu.io.gprWritePassThroughPorts.out(0)
 
   // Ctrl unit
   cu.io.instInfoPorts(0)               := wbStage.io.cuInstInfoPort
@@ -315,6 +316,7 @@ class CoreCpuTop extends Module {
     case (Some(t), Some(c)) =>
       t.cmt_cnt_inst := c.isCnt
       t.cmt_timer_64 := c.value
+    case _ =>
   }
   (io.diffTest, regFile.io.difftest) match {
     case (Some(t), Some(r)) =>
