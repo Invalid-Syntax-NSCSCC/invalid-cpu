@@ -7,13 +7,13 @@ import chisel3.util._
 import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
 import spec._
-import frontend.bundles.ICacheAccessPort
 import frontend.InstFetchStage
+import frontend.bundles.ICacheAccessPort
 
 class Frontend extends Module {
   val io = IO(new Bundle {
     // <-> ICache
-    val iCacheAccessPort = Flipped(new ICacheAccessPort)
+    val accessPort = Flipped(new ICacheAccessPort)
 
     // <-> Frontend <-> Instrution queue
     val pc              = Input(UInt(Width.Reg.data))
@@ -25,9 +25,9 @@ class Frontend extends Module {
     //     // val instEnqueuePorts = Vec(Param.Count.frontend.instFetchNum, Flipped(Decoupled(new InstInfoBundle)))
   })
   val instFetchStage = Module(new InstFetchStage)
-  instFetchStage.io.iCacheAccessPort <> io.iCacheAccessPort
-  instFetchStage.io.instEnqueuePort  <> io.instEnqueuePort
-  instFetchStage.io.isFlush          := io.isFlush
-  instFetchStage.io.pc               := io.pc
-  io.isPcNext                        := instFetchStage.io.isPcNext
+  instFetchStage.io.accessPort      <> io.accessPort
+  instFetchStage.io.instEnqueuePort <> io.instEnqueuePort
+  instFetchStage.io.isFlush         := io.isFlush
+  instFetchStage.io.pc              := io.pc
+  io.isPcNext                       := instFetchStage.io.isPcNext
 }

@@ -150,6 +150,12 @@ class CoreCpuTop extends Module {
   val uncachedAgent = Module(new UncachedAgent)
   val tlb           = Module(new Tlb)
 
+  // TODO: Finish cache maintanence connection
+  dCache.io.maintenancePort                  <> DontCare
+  dCache.io.maintenancePort.client.isL1Valid := false.B
+  iCache.io.maintenancePort                  <> DontCare
+  iCache.io.maintenancePort.client.isL1Valid := false.B
+
   // Connection for memory related modules
   // TODO: Finish TLB maintanence connection
   tlb.io               <> DontCare
@@ -167,10 +173,10 @@ class CoreCpuTop extends Module {
 
   // Frontend
   //   inst fetch stage
-  frontend.io.iCacheAccessPort <> iCache.io.iCacheAccessPort
-  frontend.io.pc               := pc.io.pc
-  frontend.io.isFlush          := cu.io.flushes(PipelineStageIndex.frontend)
-  pc.io.isNext                 := frontend.io.isPcNext
+  frontend.io.accessPort <> iCache.io.accessPort
+  frontend.io.pc         := pc.io.pc
+  frontend.io.isFlush    := cu.io.flushes(PipelineStageIndex.frontend)
+  pc.io.isNext           := frontend.io.isPcNext
 
   // Instruction queue
   instQueue.io.enqueuePorts(0) <> frontend.io.instEnqueuePort

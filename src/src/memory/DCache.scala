@@ -6,7 +6,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import common.enums.ReadWriteSel
-import memory.bundles.{MemAccessPort, StatusTagBundle}
+import memory.bundles.{CacheMaintenanceHandshakePort, MemAccessPort, StatusTagBundle}
 import memory.enums.{DCacheState => State}
 import spec._
 
@@ -18,8 +18,9 @@ class DCache(
   debugSetNumSeq:    Seq[Int]  = Seq())
     extends Module {
   val io = IO(new Bundle {
-    val accessPort    = new MemAccessPort
-    val axiMasterPort = new AxiMasterInterface
+    val maintenancePort = new CacheMaintenanceHandshakePort
+    val accessPort      = new MemAccessPort
+    val axiMasterPort   = new AxiMasterInterface
   })
 
   // Read cache hit diagram:
@@ -116,6 +117,14 @@ class DCache(
       .map(VecInit(_).asUInt)
   )
 
+  def toStatusTagLine(line: UInt) = {
+    val bundle = Wire(new StatusTagBundle)
+    bundle.isValid := line(StatusTagBundle.width - 1)
+    bundle.isDirty := line(StatusTagBundle.width - 2)
+    bundle.tag     := line(StatusTagBundle.width - 3, 0)
+    bundle
+  }
+
   def writeWithMask(oldData: UInt, newData: UInt, mask: UInt) = (newData & mask) | (oldData & (~mask).asUInt)
 
   // Debug: Prepare cache
@@ -209,6 +218,8 @@ class DCache(
 
   io.accessPort.req.isReady := false.B // Fallback: Not ready
 
+  io.maintenancePort.isReady := false.B // Fallback: Not ready
+
   io.accessPort.res.isFailed := false.B // Fallback: Not failed
 
   val isReadValidReg  = RegNext(false.B, false.B) // Fallback: Not valid
@@ -256,13 +267,28 @@ class DCache(
   isWriteReqSentReg := isWriteReqSentReg // Fallback: Keep data
   isNeedWbReg       := isNeedWbReg
 
-  def handleWb(): Unit = {
+  // Maintenance write info regs
+  val isMaintenanceInitWrite = RegNext(false.B, false.B)
+  val isMaintenanceHit       = RegInit(false.B)
+  isMaintenanceHit := isMaintenanceHit
+
+  // Maintenance write-back info regs
+  val setCountDownReg            = RegInit(0.U(log2Ceil(Param.Count.DCache.setLen).W))
+  val isSetCountDownCompleteReg  = RegInit(false.B)
+  val dataCountDownReg           = RegInit(0.U(log2Ceil(Param.Count.DCache.dataPerLine).W))
+  val isDataCountDownCompleteReg = RegInit(false.B)
+  setCountDownReg            := setCountDownReg
+  isSetCountDownCompleteReg  := isSetCountDownCompleteReg
+  dataCountDownReg           := dataCountDownReg
+  isDataCountDownCompleteReg := isDataCountDownCompleteReg
+
+  def handleWb(addr: UInt, data: UInt): Unit = {
     when(!isWriteReqSentReg) {
       // Stage 2.b/c.3, 3.1: Send write request
 
       axiMaster.io.write.req.isValid := true.B
-      axiMaster.io.write.req.addr    := last.wbMemAddr
-      axiMaster.io.write.req.data    := lastReg.dataLine.asUInt
+      axiMaster.io.write.req.addr    := addr
+      axiMaster.io.write.req.data    := data
 
       when(axiMaster.io.write.req.isReady) {
         // Next Stage 2.b/c.4, 3.2
@@ -282,12 +308,19 @@ class DCache(
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
     is(State.ready, State.write) {
-      io.accessPort.req.isReady := true.B
+      io.accessPort.req.isReady  := !io.maintenancePort.client.isL1Valid // TODO: Adapt L2 cache
+      io.maintenancePort.isReady := true.B
 
       // Stage 1 and Stage 2.a: Cache query
 
       // Decode
-      val memAddr    = WireDefault(io.accessPort.req.client.addr)
+      val memAddr = WireDefault(
+        Mux(
+          io.maintenancePort.client.isL1Valid,
+          io.maintenancePort.client.addr,
+          io.accessPort.req.client.addr
+        )
+      )
       val tag        = WireDefault(tagFromMemAddr(memAddr))
       val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
       val dataIndex  = WireDefault(dataIndexFromMemAddr(memAddr))
@@ -296,13 +329,7 @@ class DCache(
       statusTagRams.foreach { ram =>
         ram.io.readPort.addr := queryIndex
       }
-      val statusTagLines = Wire(Vec(Param.Count.DCache.setLen, new StatusTagBundle))
-      statusTagLines.zip(statusTagRams.map(_.io.readPort.data)).foreach {
-        case (line, data) =>
-          line.isValid := data(StatusTagBundle.width - 1)
-          line.isDirty := data(StatusTagBundle.width - 2)
-          line.tag     := data(StatusTagBundle.width - 3, 0)
-      }
+      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.readPort.data))))
 
       // Read data (for read and write)
       dataLineRams.foreach { ram =>
@@ -406,37 +433,76 @@ class DCache(
         }
       }
 
+      // Maintenance
+      when(io.maintenancePort.client.isL1Valid) {
+        isMaintenanceHit           := isCacheHit
+        isSetCountDownCompleteReg  := false.B
+        isDataCountDownCompleteReg := false.B
+        setCountDownReg            := (Param.Count.DCache.setLen - 1).U
+        dataCountDownReg           := (Param.Count.DCache.dataPerLine - 1).U
+        isNeedWbReg                := true.B
+        isWriteReqSentReg          := false.B
+
+        when(io.maintenancePort.client.isInit) {
+          isMaintenanceInitWrite := true.B
+
+          // Next Stage 2.a*
+          nextState := State.write
+        }
+        when(io.maintenancePort.client.isCoherentByIndex) {
+          // Next Stage: Maintenance for all sets
+          nextState := State.maintenanceAll
+        }
+        when(io.maintenancePort.client.isCoherentByHit) {
+          // Next Stage: Maintenance only for hit
+          nextState := State.maintenanceHit
+        }
+      }
+
       when(stateReg === State.write) {
-        // Stage 2.a: Write to cache (previous hit)
+        when(isMaintenanceInitWrite) {
+          // Stage 2.a*: Write for maintenance init
 
-        // Substitute write data in data line, with mask
-        val dataIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
-        val oldData   = WireDefault(lastReg.dataLine(dataIndex))
-        writeDataLine(dataIndex) := writeWithMask(oldData, lastReg.writeData, lastReg.writeMask)
+          val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
 
-        val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
-
-        // Set dirty bit
-        writeStatusTag.isDirty := true.B
-
-        // Write status-tag (especially dirty bit) to RAM
-        statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
-          case (writePort, index) =>
-            writePort.en   := index.U === lastReg.setIndex
-            writePort.data := writeStatusTag.asUInt
+          // Maintenance: Init
+          statusTagRams.map(_.io.writePort).foreach { writePort =>
+            writePort.en   := true.B
+            writePort.data := 0.U
             writePort.addr := queryIndex
-        }
+          }
+        }.otherwise {
+          // Stage 2.a: Write to cache (previous hit)
 
-        // Write to data line RAM
-        dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
-          case (writePort, index) =>
-            writePort.en   := index.U === lastReg.setIndex
-            writePort.data := writeDataLine.asUInt
-            writePort.addr := queryIndex
-        }
+          // Substitute write data in data line, with mask
+          val dataIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
+          val oldData   = WireDefault(lastReg.dataLine(dataIndex))
+          writeDataLine(dataIndex) := writeWithMask(oldData, lastReg.writeData, lastReg.writeMask)
 
-        // Mark write as complete
-        isWriteComplete := true.B
+          val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+
+          // Set dirty bit
+          writeStatusTag.isDirty := true.B
+
+          // Write status-tag (especially dirty bit) to RAM
+          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := writeStatusTag.asUInt
+              writePort.addr := queryIndex
+          }
+
+          // Write to data line RAM
+          dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := writeDataLine.asUInt
+              writePort.addr := queryIndex
+          }
+
+          // Mark write as complete
+          isWriteComplete := true.B
+        }
       }
     }
 
@@ -499,7 +565,7 @@ class DCache(
 
       // Handle writing back
       when(isNeedWbReg) {
-        handleWb()
+        handleWb(last.wbMemAddr, lastReg.dataLine.asUInt)
       }
     }
 
@@ -565,18 +631,143 @@ class DCache(
 
       // Handle writing back
       when(isNeedWbReg) {
-        handleWb()
+        handleWb(last.wbMemAddr, lastReg.dataLine.asUInt)
       }
     }
 
     is(State.onlyWb) {
       // Stage 3: Wait for writing back complete
 
-      handleWb()
+      handleWb(last.wbMemAddr, lastReg.dataLine.asUInt)
 
       when(isWriteReqSentReg && axiMaster.io.write.res.isComplete) {
         // Next Stage 1
         nextState := State.ready
+      }
+    }
+
+    is(State.maintenanceHit) {
+      // Maintenance: Coherent by hit
+
+      val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+      val writeBackAddr = WireDefault(
+        Cat(
+          tagFromMemAddr(lastReg.memAddr),
+          queryIndex,
+          dataCountDownReg,
+          0.U(log2Ceil(wordLength / byteLength).W)
+        )
+      )
+      val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.readPort.data)))
+      val selectedDataLine = WireDefault(dataLines(lastReg.setIndex))
+
+      dataLineRams.map(_.io.readPort.addr).foreach(_ := queryIndex)
+
+      when(isMaintenanceHit) {
+        when(last.selectedStatusTag.isDirty) {
+          when(isNeedWbReg) {
+            when(dataCountDownReg === 0.U) {
+              isDataCountDownCompleteReg := true.B
+            }
+            handleWb(writeBackAddr, selectedDataLine(dataCountDownReg))
+          }.otherwise {
+            when(isDataCountDownCompleteReg) {
+              statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+                case (writePort, index) =>
+                  writePort.en   := index.U === lastReg.setIndex
+                  writePort.data := 0.U
+                  writePort.addr := queryIndex
+              }
+              // Next Stage 1
+              nextState := State.ready
+            }.otherwise {
+              dataCountDownReg := dataCountDownReg - 1.U
+              isNeedWbReg      := true.B
+            }
+          }
+        }.otherwise {
+          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === lastReg.setIndex
+              writePort.data := 0.U
+              writePort.addr := queryIndex
+          }
+
+          // Next Stage 1
+          nextState := State.ready
+        }
+      }.otherwise {
+        // Next Stage 1
+        nextState := State.ready
+      }
+    }
+
+    is(State.maintenanceAll) {
+      // Maintenance: Coherent by index
+
+      val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+      val writeBackAddr = WireDefault(
+        Cat(
+          tagFromMemAddr(lastReg.memAddr),
+          queryIndex,
+          dataCountDownReg,
+          0.U(log2Ceil(wordLength / byteLength).W)
+        )
+      )
+      val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.readPort.data)))
+      val selectedDataLine = WireDefault(dataLines(setCountDownReg))
+      val statusTagLines   = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.readPort.data))))
+
+      dataLineRams.map(_.io.readPort.addr).foreach(_ := queryIndex)
+      statusTagRams.map(_.io.readPort.addr).foreach(_ := queryIndex)
+
+      when(isSetCountDownCompleteReg) {
+        // Next Stage 1
+        nextState := State.ready
+      }.otherwise {
+        when(statusTagLines(setCountDownReg).isDirty) {
+          when(isNeedWbReg) {
+            when(dataCountDownReg === 0.U) {
+              isDataCountDownCompleteReg := true.B
+            }
+            handleWb(writeBackAddr, selectedDataLine(dataCountDownReg))
+          }.otherwise {
+            when(isDataCountDownCompleteReg) {
+              statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+                case (writePort, index) =>
+                  writePort.en   := index.U === setCountDownReg
+                  writePort.data := 0.U
+                  writePort.addr := queryIndex
+              }
+
+              when(setCountDownReg === 0.U) {
+                isSetCountDownCompleteReg := true.B
+              }.otherwise {
+                setCountDownReg := setCountDownReg - 1.U
+              }
+              dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
+              isNeedWbReg      := true.B
+            }.otherwise {
+              dataCountDownReg := dataCountDownReg - 1.U
+              isNeedWbReg      := true.B
+            }
+          }
+        }.otherwise {
+          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
+            case (writePort, index) =>
+              writePort.en   := index.U === setCountDownReg
+              writePort.data := 0.U
+              writePort.addr := queryIndex
+          }
+
+          when(setCountDownReg === 0.U) {
+            isSetCountDownCompleteReg := true.B
+          }.otherwise {
+            setCountDownReg := setCountDownReg - 1.U
+          }
+          dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
+          isNeedWbReg      := true.B
+        }
       }
     }
   }
