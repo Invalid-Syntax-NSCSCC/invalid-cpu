@@ -140,6 +140,21 @@ class Csr(
     }
   }
 
+  // TimeVal
+
+  when(tcfg.out.en) {
+    when(tval.out.timeVal === 0.U) {
+      tval.in.timeVal := Mux(
+        tcfg.out.periodic,
+        Cat(tcfg.out.initVal, 0.U(2.W)),
+        "hffffffff".U(32.W)
+      )
+      estat.in.is_timeInt := true.B
+    }.otherwise {
+      tval.in.timeVal := tval.out.timeVal - 1.U
+    }
+  }
+
   // 软件写csrRegs
   // 保留域断断续续的样子真是可爱捏
   io.writePorts.foreach { writePort =>
@@ -347,21 +362,6 @@ class Csr(
       llbctl.in.rollb := false.B
     }
     llbctl.in.klo := false.B
-  }
-
-  // TimeVal
-
-  when(tval.out.timeVal.orR) { // 定时器不为0
-    when(tcfg.out.en) {
-      when(tval.in.timeVal === 1.U) {
-        estat.in.is_timeInt := true.B
-      }
-      tval.in.timeVal := tval.out.timeVal - 1.U
-    }
-  }.otherwise { // 减到0
-    when(tcfg.out.periodic) {
-      tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
-    } // 为0时停止计数
   }
 
   // 中断

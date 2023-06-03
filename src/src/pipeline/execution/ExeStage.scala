@@ -151,7 +151,8 @@ class ExeStage
           case (write, mask, origin, target) =>
             target := Mux(mask, write, origin)
         }
-      csrWriteData := gprWriteDataVec.asUInt
+      csrWriteData                    := gprWriteDataVec.asUInt
+      resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
     is(ExeInst.Op.invtlb) {
       // lop : asid  rop : virtual addr
