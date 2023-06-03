@@ -104,10 +104,8 @@ class Cu(
   val selectLineNum          = PriorityEncoder(linesHasException)
   val selectInstInfo         = WireDefault(io.instInfoPorts(selectLineNum))
   val selectException        = PriorityEncoder(selectInstInfo.exceptionRecords)
-  val selectExceptionAsBools = selectException.asBools
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
-  val isTlbRefillException =
-    hasException && !selectExceptionAsBools.take(selectExceptionAsBools.length - 1).reduce(_ || _)
+  val isTlbRefillException = selectException === Csr.ExceptionIndex.tlbr
 
   // select era, ecodeBundle
   when(hasException) {
