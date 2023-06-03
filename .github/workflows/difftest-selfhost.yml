@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: Invalid-Syntax-NSCSCC/min-chiplab
+          lfs: true
           token: ${{ secrets.DIFFTEST_ACCESS_TOKEN }}
           path: chiplab
       
@@ -40,7 +41,7 @@ jobs:
         run: |
           export CHIPLAB_HOME=`pwd`/chiplab
           cd ./chiplab/sims/verilator/run_prog
-          ./configure.sh --run func/func_lab8 --tail-waveform --tail-simu-trace --waveform-tail-size 200 --trace-tail-size 200
+          ./configure.sh --run func/func_lab8 --threads `nproc` --tail-waveform --tail-simu-trace --waveform-tail-size 200 --trace-tail-size 200
           make -j`nproc` > make_log.txt 2>&1
           sed -i '/RUN simulation/,$!d' make_log.txt
           cat make_log.txt
