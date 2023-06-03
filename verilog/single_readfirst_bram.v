@@ -8,20 +8,20 @@
 
 module single_readfirst_bram #
 (
-    parameter RAM_WIDTH;                  // Specify RAM data width
-    parameter RAM_DEPTH;                  // Specify RAM depth (number of entries)
-    parameter RAM_PERFORMANCE = "HIGH_PERFORMANCE"; // Select "HIGH_PERFORMANCE" or "LOW_LATENCY"
-    parameter INIT_FILE = "";                       // Specify name/location of RAM initialization file if using one (leave blank if not)
+    parameter RAM_WIDTH,                  // Specify RAM data width
+    parameter RAM_DEPTH,                  // Specify RAM depth (number of entries)
+    parameter RAM_PERFORMANCE = "HIGH_PERFORMANCE", // Select "HIGH_PERFORMANCE" or "LOW_LATENCY"
+    parameter INIT_FILE = ""                        // Specify name/location of RAM initialization file if using one (leave blank if not)
 )
 (
-    input wire [clogb2(RAM_DEPTH-1)-1:0] addra;  // Address bus, width determined from RAM_DEPTH
-    input wire [RAM_WIDTH-1:0] dina;             // RAM input data
-    input wire clka;                             // Clock
-    input wire wea;                              // Write enable
-    input wire ena;                              // RAM Enable, for additional power savings, disable port when not in use
-    input wire rsta;                             // Output reset (does not affect memory contents)
-    input wire regcea;                           // Output register enable
-    output wire [RAM_WIDTH-1:0] douta;           // RAM output data
+    input wire [clogb2(RAM_DEPTH-1)-1:0] addra,  // Address bus, width determined from RAM_DEPTH
+    input wire [RAM_WIDTH-1:0] dina,             // RAM input data
+    input wire clka,                             // Clock
+    input wire wea,                              // Write enable
+    input wire ena,                              // RAM Enable, for additional power savings, disable port when not in use
+    input wire rsta,                             // Output reset (does not affect memory contents)
+    input wire regcea,                           // Output register enable
+    output wire [RAM_WIDTH-1:0] douta            // RAM output data
 );
 
   reg [RAM_WIDTH-1:0] ram_name [RAM_DEPTH-1:0];
