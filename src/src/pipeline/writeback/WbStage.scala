@@ -82,7 +82,7 @@ class WbStage extends Module {
   io.freePort.en   := io.gprWritePort.en && io.in.valid
   io.freePort.addr := io.gprWritePort.addr
 
-  io.csrFreePort.en   := io.in.valid && inBits.instInfo.needCsr // inBits.instInfo.csrWritePort.en && io.in.valid
+  io.csrFreePort.en   := io.in.valid && inBits.instInfo.needCsr
   io.csrFreePort.addr := inBits.instInfo.csrWritePort.addr
 
   // Diff test connection
