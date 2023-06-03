@@ -189,19 +189,6 @@ class Cu(
     }
   }
 
-  // io.csrMessage.badVAddrSet.en := VecInit(
-  //   Csr.ExceptionIndex.tlbr,
-  //   Csr.ExceptionIndex.adef,
-  //   Csr.ExceptionIndex.adem,
-  //   Csr.ExceptionIndex.ale,
-  //   Csr.ExceptionIndex.pil,
-  //   Csr.ExceptionIndex.pis,
-  //   Csr.ExceptionIndex.pif,
-  //   Csr.ExceptionIndex.pme,
-  //   Csr.ExceptionIndex.ppi
-  // ).contains(selectException) && hasException
-  // io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
-
   // llbit control
   val line0Is_ll = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.ll)
   val line0Is_sc = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.sc)
