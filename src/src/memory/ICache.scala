@@ -6,7 +6,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import common.enums.ReadWriteSel
-import memory.bundles.ICacheStatusTagBundle
+import memory.bundles.{CacheMaintenanceHandshakePort, ICacheStatusTagBundle, StatusTagBundle}
 import memory.enums.{ICacheState => State}
 import spec._
 import frontend.bundles.ICacheAccessPort
@@ -19,15 +19,10 @@ class ICache(
   debugSetNumSeq:    Seq[Int]  = Seq())
     extends Module {
   val io = IO(new Bundle {
-    val iCacheAccessPort = new ICacheAccessPort
-    val axiMasterPort    = new AxiMasterInterface
+    val maintenancePort = new CacheMaintenanceHandshakePort
+    val accessPort      = new ICacheAccessPort
+    val axiMasterPort   = new AxiMasterInterface
   })
-
-  // TODO: Remove DontCare
-  io <> DontCare
-
-  // TODO: Remove debug
-  val debugDataIndex = WireDefault(0.U(8.W))
 
   // Read cache hit diagram:
   // clock: ^_____________________________^___________________
@@ -84,6 +79,13 @@ class ICache(
       .map(VecInit(_).asUInt)
   )
 
+  def toStatusTagLine(line: UInt) = {
+    val bundle = Wire(new ICacheStatusTagBundle)
+    bundle.isValid := line(ICacheStatusTagBundle.width - 1)
+    bundle.tag     := line(ICacheStatusTagBundle.width - 2, 0)
+    bundle
+  }
+
   // Debug: Prepare cache
   assert(debugAddrSeq.length == debugDataLineSeq.length)
   assert(debugAddrSeq.length == debugStatusTagSeq.length)
@@ -93,11 +95,9 @@ class ICache(
   // RAMs for valid and tag
   val statusTagRams = Seq.fill(Param.Count.ICache.setLen)(
     Module(
-      new SimpleRam(
+      new BRam(
         Param.Count.ICache.sizePerRam,
-        ICacheStatusTagBundle.width,
-        isDebug,
-        debugWriteNum
+        ICacheStatusTagBundle.width
       )
     )
   )
@@ -105,18 +105,16 @@ class ICache(
   // RAMs for data line
   val dataLineRams = Seq.fill(Param.Count.ICache.setLen)(
     Module(
-      new SimpleRam(
+      new BRam(
         Param.Count.ICache.sizePerRam,
-        Param.Width.ICache._dataLine,
-        isDebug,
-        debugWriteNum
+        Param.Width.ICache._dataLine
       )
     )
   )
 
   (statusTagRams ++ dataLineRams).foreach { ram =>
-    ram.io              := DontCare
-    ram.io.writePort.en := false.B // Fallback: Not write
+    ram.io         := DontCare
+    ram.io.isWrite := false.B // Fallback: Not write
   }
 
   // AXI master
@@ -136,52 +134,30 @@ class ICache(
   assert(isPow2(Param.Count.ICache.setLen))
   val randomNum = LFSR(log2Ceil(Param.Count.ICache.setLen) + 1)
 
-  // Debug: Init cache
-  if (isDebug) {
-    val debugEnReg = RegNext(false.B, true.B)
-
-    statusTagRams.zip(dataLineRams).foreach {
-      case (tRam, dRam) =>
-        (tRam.io.debugPorts, dRam.io.debugPorts) match {
-          case (Some(tPorts), Some(dPorts)) =>
-            tPorts.zip(dPorts).foreach {
-              case (tPort, dPort) =>
-                tPort.en := false.B
-                dPort.en := false.B
-            }
-        }
-    }
-    debugAddrSeq.lazyZip(debugStatusTagSeq).lazyZip(debugDataLineSeq).lazyZip(debugSetNumSeq).zipWithIndex.foreach {
-      case ((addr, st, dl, num), i) =>
-        (statusTagRams(num).io.debugPorts, dataLineRams(num).io.debugPorts) match {
-          case (Some(tPorts), Some(dPorts)) =>
-            val tPort = tPorts(i)
-            val dPort = dPorts(i)
-            tPort.en   := debugEnReg
-            tPort.addr := addr
-            tPort.data := st
-            dPort.en   := debugEnReg
-            dPort.addr := addr
-            dPort.data := dl
-        }
-    }
-  }
-
   val stateReg  = RegInit(State.ready)
   val nextState = WireDefault(stateReg)
   stateReg := nextState // Fallback: Keep state
 
-  io.iCacheAccessPort.req.isReady := false.B // Fallback: Not ready
+  io.accessPort.req.isReady := false.B // Fallback: Not ready
 
-  io.iCacheAccessPort.res.isFailed := false.B // Fallback: Not failed
+  io.maintenancePort.isReady := false.B // Fallback: Not ready
 
-  val isReadValidReg  = RegNext(false.B, false.B) // Fallback: Not valid
-  val isReadFailedReg = RegNext(false.B, false.B) // Fallback: Not failed
-  io.iCacheAccessPort.res.isComplete := isReadValidReg
+  io.accessPort.res.isFailed := false.B // Fallback: Not failed
 
-  val readDataReg = RegInit(0.U(Width.Mem.data))
-  readDataReg                       := readDataReg // Fallback: Keep data
-  io.iCacheAccessPort.res.read.data := readDataReg
+  io.accessPort.res.isComplete := false.B // Falback: Not complete
+
+  io.accessPort.res.read.data := DontCare
+
+  val currentMemAddr = WireDefault(
+    Mux(
+      io.maintenancePort.client.isL1Valid,
+      io.maintenancePort.client.addr,
+      io.accessPort.req.client.addr
+    )
+  )
+
+  val isHasReqReg = RegNext(false.B, false.B) // Fallback: Not valid
+  val reqMemAddr  = RegNext(currentMemAddr) // Fallback: Current memory access address
 
   // Keep request and cache query information
   val lastReg = Reg(new Bundle {
@@ -200,59 +176,62 @@ class ICache(
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
     is(State.ready) {
-      io.iCacheAccessPort.req.isReady := true.B
+      // Stage 1 and Stage 2.a: Read BRAM and cache query in two cycles
 
-      // Stage 1 and Stage 2.a: Cache query
+      io.accessPort.req.isReady  := !io.maintenancePort.client.isL1Valid // Fallback: Ready for request
+      io.maintenancePort.isReady := true.B
 
-      // Decode
-      val memAddr    = WireDefault(io.iCacheAccessPort.req.client.addr)
-      val tag        = WireDefault(tagFromMemAddr(memAddr))
-      val queryIndex = WireDefault(queryIndexFromMemAddr(memAddr))
-      val dataIndex  = WireDefault(dataIndexFromMemAddr(memAddr))
-
-      // Read status-tag
+      // Step 1: BRAM read request
+      val currentQueryIndex = WireDefault(queryIndexFromMemAddr(currentMemAddr))
       statusTagRams.foreach { ram =>
-        ram.io.readPort.addr := queryIndex
+        ram.io.addr := currentQueryIndex
       }
-      val statusTagLines = Wire(Vec(Param.Count.ICache.setLen, new ICacheStatusTagBundle))
-      statusTagLines.zip(statusTagRams.map(_.io.readPort.data)).foreach {
-        case (line, data) =>
-          line.isValid := data(ICacheStatusTagBundle.width - 1)
-          line.tag     := data(ICacheStatusTagBundle.width - 2, 0)
-      }
-
-      // Read data (for read and write)
       dataLineRams.foreach { ram =>
-        ram.io.readPort.addr := queryIndex
+        ram.io.addr := currentQueryIndex
       }
-      val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.readPort.data)))
+      isHasReqReg := io.accessPort.req.client.isValid
 
-      // Calculate if hit and select
+      // Step 2: Read status-tag
+      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
+
+      // Step 2: Read data (for read and write)
+      val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.dataOut)))
+
+      // Step 2: Decode
+      val tag       = WireDefault(tagFromMemAddr(reqMemAddr))
+      val dataIndex = WireDefault(dataIndexFromMemAddr(reqMemAddr))
+
+      // Step 2: Calculate if hit and select
       val isSelectedVec    = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
       val setIndex         = WireDefault(OHToUInt(isSelectedVec))
       val selectedDataLine = WireDefault(toDataLine(dataLines(setIndex)))
       val isCacheHit       = WireDefault(isSelectedVec.reduce(_ || _))
 
-      // Save data for later use
-      lastReg.memAddr        := memAddr
+      // Step 2: Save data for later use
+      lastReg.memAddr        := reqMemAddr
       lastReg.statusTagLines := statusTagLines
       lastReg.setIndex       := setIndex
       lastReg.dataLine       := selectedDataLine
 
-      // Select data by data index from byte offset
+      // Step 2: Select data by data index from byte offset
       val selectedData = WireDefault(selectedDataLine(dataIndex))
 
-      when(io.iCacheAccessPort.req.client.isValid) {
+      // Step 2: Whether hit or not
+      when(isHasReqReg) {
         when(isCacheHit) {
           // Cache hit
-          // Remember to use regs
-          isReadValidReg := true.B
-          readDataReg    := selectedData
+
+          // Step 2: Read result in same cycle output
+          io.accessPort.res.isComplete := true.B
+          io.accessPort.res.read.data  := selectedData
 
           // Next Stage 1
           nextState := State.ready
         }.otherwise {
           // Cache miss
+          io.accessPort.req.isReady  := false.B
+          io.maintenancePort.isReady := false.B
+
           // Select a set to refill
 
           // First, select from invalid, if it can
@@ -275,6 +254,22 @@ class ICache(
 
           // Next Stage 2.b.1
           nextState := State.refillForRead
+        }
+      }
+
+      // Maintenance
+      when(io.maintenancePort.client.isL1Valid) {
+        when(io.maintenancePort.client.isInit) {
+          // Next Stage: Maintenance for all sets
+          nextState := State.maintenanceAll
+        }
+        when(io.maintenancePort.client.isCoherentByIndex) {
+          // Next Stage: Maintenance for all sets
+          nextState := State.maintenanceAll
+        }
+        when(io.maintenancePort.client.isCoherentByHit) {
+          // Next Stage: Maintenance only for hit
+          nextState := State.maintenanceHit
         }
       }
     }
@@ -305,34 +300,97 @@ class ICache(
           statusTag.tag     := tagFromMemAddr(lastReg.memAddr)
 
           // Write status-tag to RAM
-          statusTagRams.map(_.io.writePort).zipWithIndex.foreach {
-            case (writePort, index) =>
-              writePort.en   := index.U === lastReg.setIndex
-              writePort.data := statusTag.asUInt
-              writePort.addr := queryIndex
+          statusTagRams.zipWithIndex.foreach {
+            case (ram, index) =>
+              ram.io.isWrite := index.U === lastReg.setIndex
+              ram.io.dataIn  := statusTag.asUInt
+              ram.io.addr    := queryIndex
           }
 
           // Write to data line RAM
-          dataLineRams.map(_.io.writePort).zipWithIndex.foreach {
-            case (writePort, index) =>
-              writePort.en   := index.U === lastReg.setIndex
-              writePort.data := axiMaster.io.read.res.data
-              writePort.addr := queryIndex
+          dataLineRams.zipWithIndex.foreach {
+            case (ram, index) =>
+              ram.io.isWrite := index.U === lastReg.setIndex
+              ram.io.dataIn  := axiMaster.io.read.res.data
+              ram.io.addr    := queryIndex
           }
 
           // Return read data
-          debugDataIndex := dataIndexFromMemAddr(lastReg.memAddr)
           val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
-          val readData = WireDefault(dataLine(debugDataIndex))
+          val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
           // TODO: Add one more cycle for return read data
-          io.iCacheAccessPort.res.isComplete := true.B
-          io.iCacheAccessPort.res.isFailed   := axiMaster.io.read.res.isFailed
-          io.iCacheAccessPort.res.read.data  := readData
+          io.accessPort.res.isComplete := true.B
+          io.accessPort.res.isFailed   := axiMaster.io.read.res.isFailed
+          io.accessPort.res.read.data  := readData
 
           // Next Stage 1
           nextState := State.ready
         }
       }
+    }
+
+    is(State.maintenanceHit) {
+      val queryIndex = WireDefault(queryIndexFromMemAddr(reqMemAddr))
+
+      // Step 2: Read status-tag
+      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
+
+      // Step 2: Read data request (for write-back)
+      dataLineRams.foreach { ram =>
+        ram.io.addr := queryIndex
+      }
+
+      // Step 2: Decode
+      val tag = WireDefault(tagFromMemAddr(reqMemAddr))
+
+      // Step 2: Calculate if hit and select
+      val isSelectedVec = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
+      val setIndex      = WireDefault(OHToUInt(isSelectedVec))
+      val isCacheHit    = WireDefault(isSelectedVec.reduce(_ || _))
+
+      // Step 2: Save data for later use
+      lastReg.memAddr        := reqMemAddr
+      lastReg.statusTagLines := statusTagLines
+      lastReg.setIndex       := setIndex
+
+      when(isCacheHit) {
+        // Next Stage: Coherent by hit
+        nextState := State.maintenanceOne
+      }.otherwise {
+        // Next Stage 1
+        nextState := State.ready
+      }
+    }
+
+    is(State.maintenanceOne) {
+      // Maintenance: Coherent by hit
+
+      val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+
+      statusTagRams.zipWithIndex.foreach {
+        case (ram, index) =>
+          ram.io.isWrite := index.U === lastReg.setIndex
+          ram.io.dataIn  := 0.U
+          ram.io.addr    := queryIndex
+      }
+
+      // Next Stage 1
+      nextState := State.ready
+    }
+
+    is(State.maintenanceAll) {
+      // Maintenance: Coherent by index
+
+      val queryIndex = WireDefault(queryIndexFromMemAddr(reqMemAddr))
+
+      statusTagRams.foreach { ram =>
+        ram.io.isWrite := true.B
+        ram.io.dataIn  := 0.U
+        ram.io.addr    := queryIndex
+      }
+
+      // Next Stage 1
+      nextState := State.ready
     }
   }
 }

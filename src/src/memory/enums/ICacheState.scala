@@ -3,7 +3,5 @@ package memory.enums
 import chisel3.ChiselEnum
 
 object ICacheState extends ChiselEnum {
-  val ready, refillForRead, invalid = Value
+  val ready, refillForRead, maintenanceAll, maintenanceHit, maintenanceOne = Value
 }
-// ready: avaliable
-//refillForRead: refill instrution that missed

@@ -68,7 +68,7 @@ object ICacheSpec extends ChiselUtestTester {
         immutable.Seq(WriteVcdAnnotation)
       ) { cache =>
         // Wait for cache debug init
-        cache.io.iCacheAccessPort.req.client.isValid.poke(false.B)
+        cache.io.accessPort.req.client.isValid.poke(false.B)
         cache.clock.step(2)
 
         // Test read (cache hit)
@@ -78,20 +78,20 @@ object ICacheSpec extends ChiselUtestTester {
             val byteOffset = _byteOffset.U(Param.Width.ICache.byteOffset)
             val data       = dl(32 * (byteOffset.litValue / 4 + 1) - 1, 32 * (byteOffset.litValue / 4))
 
-            cache.io.iCacheAccessPort.req.client.isValid.poke(true.B)
-            // cache.io.iCacheAccessPort.req.client.rw.poke(ReadWriteSel.read)
-            cache.io.iCacheAccessPort.req.client.addr.poke(mAddr)
+            cache.io.accessPort.req.client.isValid.poke(true.B)
+            // cache.io.accessPort.req.client.rw.poke(ReadWriteSel.read)
+            cache.io.accessPort.req.client.addr.poke(mAddr)
 
             cache.clock.step()
 
             // Get data
-            cache.io.iCacheAccessPort.res.isComplete.expect(true.B)
-            println(f"Read data: 0x${cache.io.iCacheAccessPort.res.read.data.peekInt()}%08X")
-            cache.io.iCacheAccessPort.res.read.data.expect(data)
+            cache.io.accessPort.res.isComplete.expect(true.B)
+            println(f"Read data: 0x${cache.io.accessPort.res.read.data.peekInt()}%08X")
+            cache.io.accessPort.res.read.data.expect(data)
         }
         println("✅ All read operations completed.\n")
 
-        cache.io.iCacheAccessPort.req.client.isValid.poke(false.B)
+        cache.io.accessPort.req.client.isValid.poke(false.B)
         cache.clock.step()
 
 
@@ -106,13 +106,13 @@ object ICacheSpec extends ChiselUtestTester {
         cache.io.axiMasterPort.b.valid.poke(false.B)
 
 
-        cache.io.iCacheAccessPort.req.client.isValid.poke(true.B)
-        // cache.io.iCacheAccessPort.req.client.rw.poke(ReadWriteSel.read)
-        cache.io.iCacheAccessPort.req.client.addr.poke(readRefillMemAddr)
+        cache.io.accessPort.req.client.isValid.poke(true.B)
+        // cache.io.accessPort.req.client.rw.poke(ReadWriteSel.read)
+        cache.io.accessPort.req.client.addr.poke(readRefillMemAddr)
 
         cache.clock.step()
 
-        cache.io.iCacheAccessPort.res.isComplete.expect(false.B)
+        cache.io.accessPort.res.isComplete.expect(false.B)
 
         cache.clock.step()
 
@@ -123,7 +123,7 @@ object ICacheSpec extends ChiselUtestTester {
 
         cache.clock.step()
 
-        cache.io.iCacheAccessPort.req.client.isValid.poke(false.B)
+        cache.io.accessPort.req.client.isValid.poke(false.B)
         cache.io.axiMasterPort.ar.ready.poke(false.B)
         for (i <- 0 to burstMax.toInt) {
           cache.io.axiMasterPort.r.ready.expect(true.B)
@@ -140,9 +140,9 @@ object ICacheSpec extends ChiselUtestTester {
 
      cache.io.axiMasterPort.r.valid.poke(false.B)
         cache.io.axiMasterPort.r.bits.last.poke(false.B)
-        cache.io.iCacheAccessPort.res.isComplete.expect(true.B)
-        println(f"Read data: 0x${cache.io.iCacheAccessPort.res.read.data.peekInt()}%08X")
-        cache.io.iCacheAccessPort.res.read.data.expect(memReadDataSeq(1))
+        cache.io.accessPort.res.isComplete.expect(true.B)
+        println(f"Read data: 0x${cache.io.accessPort.res.read.data.peekInt()}%08X")
+        cache.io.accessPort.res.read.data.expect(memReadDataSeq(1))
 
         println("✅ Read (miss, no write back) operation completed.\n")
 
