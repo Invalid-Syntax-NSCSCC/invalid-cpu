@@ -15,7 +15,7 @@ class BRam(size: Int, dataWidth: Int) extends Module {
     val dataOut = Output(UInt(dataWidth.W))
   })
 
-  val data = RegInit(VecInit(Seq.fill(size)(0.U(dataWidth.W))))
+  val data = Reg(Vec(size, UInt(dataWidth.W)))
 
   // Read
   io.dataOut := RegNext(data(io.addr))
