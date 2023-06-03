@@ -45,15 +45,6 @@ class Csr(
 
   val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
-  // read
-  io.readPorts.foreach { readPort =>
-    readPort.data := Mux(
-      readPort.en,
-      csrRegs(readPort.addr),
-      zeroWord
-    )
-  }
-
   // CRMD 当前模式信息
 
   val crmd = viewUInt(csrRegs(spec.Csr.Index.crmd), new CrmdBundle)
@@ -134,6 +125,21 @@ class Csr(
   // TICLR 定时器中断清除
   val ticlr = viewUInt(csrRegs(spec.Csr.Index.ticlr), new TiclrBundle)
 
+  // read
+  io.readPorts.foreach { readPort =>
+    readPort.data := zeroWord
+    when(readPort.en) {
+      readPort.data := csrRegs(readPort.addr)
+      when(readPort.addr === spec.Csr.Index.pgd) {
+        readPort.data := Mux(
+          badv.out.vaddr(31),
+          csrRegs(spec.Csr.Index.pgdh),
+          csrRegs(spec.Csr.Index.pgdl)
+        )
+      }
+    }
+  }
+
   // 软件写csrRegs
   // 保留域断断续续的样子真是可爱捏
   io.writePorts.foreach { writePort =>
@@ -153,7 +159,7 @@ class Csr(
           ecfg.in := Cat(0.U(19.W), writePort.data(12, 0)).asTypeOf(ecfg.in)
         }
         is(spec.Csr.Index.estat) {
-          estat.in := Cat(false.B, writePort.data(30, 16), 0.U(14.W), writePort.data(1, 0)).asTypeOf(estat.in)
+          estat.in.is_softwareInt := writePort.data(1, 0)
         }
         is(
           spec.Csr.Index.era
@@ -194,19 +200,13 @@ class Csr(
           eentry.in := Cat(writePort.data(31, 6), 0.U(6.W)).asTypeOf(eentry.in)
         }
         is(spec.Csr.Index.cpuid) {
-          cpuid.in := Cat(0.U(23.W), writePort.data(8, 0)).asTypeOf(cpuid.in)
+          // no write
         }
         is(spec.Csr.Index.llbctl) {
-          llbctl.in := Cat(
-            0.U(29.W),
-            writePort.data(2),
-            false.B,
-            Mux( // 软件向wcllb写1时清零llbit，写0时忽略
-              writePort.data(1),
-              false.B,
-              csrRegs(spec.Csr.Index.llbctl(1))
-            )
-          ).asTypeOf(llbctl.in)
+          llbctl.in.klo := writePort.data(2)
+          when(writePort.data(1)) {
+            llbctl.in.rollb := false.B
+          }
         }
         is(spec.Csr.Index.tlbidx) {
           tlbidx.in := Cat(
@@ -235,15 +235,10 @@ class Csr(
           ).asTypeOf(tlbelo1.in)
         }
         is(spec.Csr.Index.asid) {
-          asid.in := Cat(
-            0.U(8.W),
-            writePort.data(23, 16),
-            0.U(6.W),
-            writePort.data(9, 0)
-          ).asTypeOf(asid.in)
+          asid.in.asid := writePort.data(9, 0)
         }
         is(spec.Csr.Index.pgd) {
-          pgd.in := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(pgd.in)
+          // no write
         }
         is(spec.Csr.Index.pgdl) {
           pgdl.in := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(pgdl.in)
@@ -277,19 +272,16 @@ class Csr(
           ).asTypeOf(dmw1.in)
         }
         is(spec.Csr.Index.tcfg) {
-          tcfg.in := Cat(
-            0.U((32 - spec.Csr.TimeVal.Width.timeVal).W),
-            writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 0)
-          ).asTypeOf(tcfg.in)
+          val initVal = WireDefault(writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 2))
+          tcfg.in.initVal  := initVal
+          tcfg.in.periodic := writePort.data(1)
+          tcfg.in.en       := writePort.data(0)
+          tval.in.timeVal  := Cat(initVal, 0.U(2.W))
         }
         is(spec.Csr.Index.tval) {
-          tval.in := Cat(
-            0.U((32 - spec.Csr.TimeVal.Width.timeVal).W),
-            writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 0)
-          ).asTypeOf(tval.in)
+          // no write
         }
         is(spec.Csr.Index.ticlr) {
-          ticlr.in := 0.U(32.W).asTypeOf(ticlr.in)
           when(writePort.data(0) === true.B) {
             estat.in.is_timeInt := false.B
           }
@@ -351,6 +343,9 @@ class Csr(
     llbctl.in.rollb := io.csrMessage.llbitSet.setValue
   }
   when(io.csrMessage.ertnFlush) {
+    when(!llbctl.out.klo) {
+      llbctl.in.rollb := false.B
+    }
     llbctl.in.klo := false.B
   }
 
