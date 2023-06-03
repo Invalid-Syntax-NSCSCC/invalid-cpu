@@ -101,9 +101,9 @@ class Cu(
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  val selectLineNum          = PriorityEncoder(linesHasException)
-  val selectInstInfo         = WireDefault(io.instInfoPorts(selectLineNum))
-  val selectException        = PriorityEncoder(selectInstInfo.exceptionRecords)
+  val selectLineNum   = PriorityEncoder(linesHasException)
+  val selectInstInfo  = WireDefault(io.instInfoPorts(selectLineNum))
+  val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
   val isTlbRefillException = selectException === Csr.ExceptionIndex.tlbr
 
