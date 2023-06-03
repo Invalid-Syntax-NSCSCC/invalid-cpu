@@ -23,8 +23,6 @@ class DCache(
     val axiMasterPort   = new AxiMasterInterface
   })
 
-  // TODO: Maintenance is not tailored for BRAM
-
   // Read cache hit diagram:
   // clock: ^_____________________________^___________________
   //        isReady = T                   isReady = T
@@ -183,39 +181,6 @@ class DCache(
   assert(isPow2(Param.Count.DCache.setLen))
   val randomNum = LFSR(log2Ceil(Param.Count.DCache.setLen) + 1)
 
-  // Debug: Init cache
-//  if (isDebug) {
-//    val debugEnReg = RegNext(false.B, true.B)
-//
-//    statusTagRams.zip(dataLineRams).foreach {
-//      case (tRam, dRam) =>
-//        (tRam.io.debugPorts, dRam.io.debugPorts) match {
-//          case (Some(tPorts), Some(dPorts)) =>
-//            tPorts.zip(dPorts).foreach {
-//              case (tPort, dPort) =>
-//                tPort.en := false.B
-//                dPort.en := false.B
-//            }
-//        }
-//      case (_, _) =>
-//    }
-//    debugAddrSeq.lazyZip(debugStatusTagSeq).lazyZip(debugDataLineSeq).lazyZip(debugSetNumSeq).zipWithIndex.foreach {
-//      case ((addr, st, dl, num), i) =>
-//        (statusTagRams(num).io.debugPorts, dataLineRams(num).io.debugPorts) match {
-//          case (Some(tPorts), Some(dPorts)) =>
-//            val tPort = tPorts(i)
-//            val dPort = dPorts(i)
-//            tPort.en   := debugEnReg
-//            tPort.addr := addr
-//            tPort.data := st
-//            dPort.en   := debugEnReg
-//            dPort.addr := addr
-//            dPort.data := dl
-//        }
-//      case (_, _) =>
-//    }
-//  }
-
   val stateReg  = RegInit(State.ready)
   val nextState = WireDefault(stateReg)
   stateReg := nextState // Fallback: Keep state
@@ -266,30 +231,24 @@ class DCache(
   }
 
   // Refill state regs
-  val isNeedWbReg       = RegInit(false.B)
-  val isReadReqSentReg  = RegInit(false.B)
-  val isWriteReqSentReg = RegInit(false.B)
-  isReadReqSentReg  := isReadReqSentReg // Fallback: Keep data
-  isWriteReqSentReg := isWriteReqSentReg // Fallback: Keep data
-  isNeedWbReg       := isNeedWbReg
-
-  // Maintenance write info regs
-  val isMaintenanceInitWrite = RegNext(false.B, false.B)
-  val isMaintenanceHit       = RegInit(false.B)
-  isMaintenanceHit := isMaintenanceHit
+  val isNeedWbReg           = RegInit(false.B)
+  val isReadReqSentReg      = RegInit(false.B)
+  val isWriteBackReqSentReg = RegInit(false.B)
+  isReadReqSentReg      := isReadReqSentReg // Fallback: Keep data
+  isWriteBackReqSentReg := isWriteBackReqSentReg // Fallback: Keep data
+  isNeedWbReg           := isNeedWbReg
 
   // Maintenance write-back info regs
-  val setCountDownReg            = RegInit(0.U(log2Ceil(Param.Count.DCache.setLen).W))
-  val isSetCountDownCompleteReg  = RegInit(false.B)
-  val dataCountDownReg           = RegInit(0.U(log2Ceil(Param.Count.DCache.dataPerLine).W))
-  val isDataCountDownCompleteReg = RegInit(false.B)
-  setCountDownReg            := setCountDownReg
-  isSetCountDownCompleteReg  := isSetCountDownCompleteReg
-  dataCountDownReg           := dataCountDownReg
-  isDataCountDownCompleteReg := isDataCountDownCompleteReg
+  val setCountDownReg  = RegInit(0.U(log2Ceil(Param.Count.DCache.setLen).W))
+  val dataCountDownReg = RegInit(0.U(log2Ceil(Param.Count.DCache.dataPerLine).W))
+  setCountDownReg  := setCountDownReg
+  dataCountDownReg := dataCountDownReg
+
+  val isSetCountDownZero      = WireDefault(setCountDownReg === 0.U)
+  val isDataCountDownComplete = WireDefault(dataCountDownReg === 0.U)
 
   def handleWb(addr: UInt, data: UInt): Unit = {
-    when(!isWriteReqSentReg) {
+    when(!isWriteBackReqSentReg) {
       // Stage 2.b/c.3, 3.1: Send write request
 
       axiMaster.io.write.req.isValid := true.B
@@ -298,7 +257,7 @@ class DCache(
 
       when(axiMaster.io.write.req.isReady) {
         // Next Stage 2.b/c.4, 3.2
-        isWriteReqSentReg := true.B
+        isWriteBackReqSentReg := true.B
       }
     }.otherwise {
       // Stage 2.b/c.4, 3.2: Wait for write complete
@@ -441,8 +400,8 @@ class DCache(
           lastReg.setIndex := refillSetIndex
 
           // Init refill state regs
-          isReadReqSentReg  := false.B
-          isWriteReqSentReg := false.B
+          isReadReqSentReg      := false.B
+          isWriteBackReqSentReg := false.B
 
           switch(io.accessPort.req.client.rw) {
             is(ReadWriteSel.read) {
@@ -458,20 +417,16 @@ class DCache(
       }
 
       // Maintenance
+      setCountDownReg  := (Param.Count.DCache.setLen - 1).U
+      dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
+
       when(io.maintenancePort.client.isL1Valid) {
-        isMaintenanceHit           := isCacheHit
-        isSetCountDownCompleteReg  := false.B
-        isDataCountDownCompleteReg := false.B
-        setCountDownReg            := (Param.Count.DCache.setLen - 1).U
-        dataCountDownReg           := (Param.Count.DCache.dataPerLine - 1).U
-        isNeedWbReg                := true.B
-        isWriteReqSentReg          := false.B
+        isNeedWbReg           := true.B
+        isWriteBackReqSentReg := false.B
 
         when(io.maintenancePort.client.isInit) {
-          isMaintenanceInitWrite := true.B
-
-          // Next Stage 2.a*
-          nextState := State.write // TODO: Refactor this
+          // Next Stage: Maintenance for all sets (no write-back)
+          nextState := State.maintenanceInit
         }
         when(io.maintenancePort.client.isCoherentByIndex) {
           // Next Stage: Maintenance for all sets
@@ -618,16 +573,66 @@ class DCache(
 
       handleWb(last.wbMemAddr, lastReg.dataLine.asUInt)
 
-      when(isWriteReqSentReg && axiMaster.io.write.res.isComplete) {
+      when(isWriteBackReqSentReg && axiMaster.io.write.res.isComplete) {
         // Next Stage 1
         nextState := State.ready
       }
     }
 
+    is(State.maintenanceInit) {
+      // Maintenance: Init cache line
+
+      val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+
+      statusTagRams.foreach { ram =>
+        ram.io.isWrite := true.B
+        ram.io.dataIn  := 0.U
+        ram.io.addr    := queryIndex
+      }
+    }
+
     is(State.maintenanceHit) {
+      val queryIndex = WireDefault(queryIndexFromMemAddr(reqMemAddr))
+
+      // Step 2: Read status-tag
+      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
+
+      // Step 2: Read data request (for write-back)
+      dataLineRams.foreach { ram =>
+        ram.io.addr := queryIndex
+      }
+
+      // Step 2: Decode
+      val tag = WireDefault(tagFromMemAddr(reqMemAddr))
+
+      // Step 2: Calculate if hit and select
+      val isSelectedVec = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
+      val setIndex      = WireDefault(OHToUInt(isSelectedVec))
+      val isCacheHit    = WireDefault(isSelectedVec.reduce(_ || _))
+
+      // Step 2: Save data for later use
+      lastReg.memAddr        := reqMemAddr
+      lastReg.statusTagLines := statusTagLines
+      lastReg.setIndex       := setIndex
+
+      when(isCacheHit) {
+        // Next Stage: Coherent by hit
+        nextState := State.maintenanceOne
+      }.otherwise {
+        // Next Stage 1
+        nextState := State.ready
+      }
+    }
+
+    is(State.maintenanceOne) {
       // Maintenance: Coherent by hit
 
       val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+
+      dataLineRams.foreach { ram =>
+        ram.io.addr := queryIndex
+      }
+
       val writeBackAddr = WireDefault(
         Cat(
           tagFromMemAddr(lastReg.memAddr),
@@ -636,45 +641,38 @@ class DCache(
           0.U(log2Ceil(wordLength / byteLength).W)
         )
       )
-      val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataIn)))
+      val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataIn))) // Delay for 1 cycle
       val selectedDataLine = WireDefault(dataLines(lastReg.setIndex))
 
       dataLineRams.map(_.io.addr).foreach(_ := queryIndex)
 
-      when(isMaintenanceHit) {
-        when(last.selectedStatusTag.isDirty) {
-          when(isNeedWbReg) {
-            when(dataCountDownReg === 0.U) {
-              isDataCountDownCompleteReg := true.B
-            }
-            handleWb(writeBackAddr, selectedDataLine(dataCountDownReg))
-          }.otherwise {
-            when(isDataCountDownCompleteReg) {
-              statusTagRams.zipWithIndex.foreach {
-                case (ram, index) =>
-                  ram.io.isWrite := index.U === lastReg.setIndex
-                  ram.io.dataIn  := 0.U
-                  ram.io.addr    := queryIndex
-              }
-              // Next Stage 1
-              nextState := State.ready
-            }.otherwise {
-              dataCountDownReg := dataCountDownReg - 1.U
-              isNeedWbReg      := true.B
-            }
-          }
+      when(last.selectedStatusTag.isDirty) {
+        when(isNeedWbReg) {
+          handleWb(writeBackAddr, selectedDataLine(dataCountDownReg))
         }.otherwise {
-          statusTagRams.zipWithIndex.foreach {
-            case (ram, index) =>
-              ram.io.isWrite := index.U === lastReg.setIndex
-              ram.io.dataIn  := 0.U
-              ram.io.addr    := queryIndex
-          }
+          when(isDataCountDownComplete) {
+            statusTagRams.zipWithIndex.foreach {
+              case (ram, index) =>
+                ram.io.isWrite := index.U === lastReg.setIndex
+                ram.io.dataIn  := 0.U
+                ram.io.addr    := queryIndex
+            }
 
-          // Next Stage 1
-          nextState := State.ready
+            // Next Stage 1
+            nextState := State.ready
+          }.otherwise {
+            dataCountDownReg := dataCountDownReg - 1.U
+            isNeedWbReg      := true.B
+          }
         }
       }.otherwise {
+        statusTagRams.zipWithIndex.foreach {
+          case (ram, index) =>
+            ram.io.isWrite := index.U === lastReg.setIndex
+            ram.io.dataIn  := 0.U
+            ram.io.addr    := queryIndex
+        }
+
         // Next Stage 1
         nextState := State.ready
       }
@@ -683,68 +681,68 @@ class DCache(
     is(State.maintenanceAll) {
       // Maintenance: Coherent by index
 
-      val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
+      reqMemAddr := reqMemAddr
+
+      val queryIndex = WireDefault(queryIndexFromMemAddr(reqMemAddr))
       val writeBackAddr = WireDefault(
         Cat(
-          tagFromMemAddr(lastReg.memAddr),
+          tagFromMemAddr(reqMemAddr),
           queryIndex,
           dataCountDownReg,
           0.U(log2Ceil(wordLength / byteLength).W)
         )
       )
-      val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataOut)))
+      val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataOut))) // Delay for 1 cycle
       val selectedDataLine = WireDefault(dataLines(setCountDownReg))
       val statusTagLines   = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
 
       dataLineRams.map(_.io.addr).foreach(_ := queryIndex)
-      statusTagRams.map(_.io.addr).foreach(_ := queryIndex)
 
-      when(isSetCountDownCompleteReg) {
-        // Next Stage 1
-        nextState := State.ready
-      }.otherwise {
-        when(statusTagLines(setCountDownReg).isDirty) {
-          when(isNeedWbReg) {
-            when(dataCountDownReg === 0.U) {
-              isDataCountDownCompleteReg := true.B
-            }
-            handleWb(writeBackAddr, selectedDataLine(dataCountDownReg))
-          }.otherwise {
-            when(isDataCountDownCompleteReg) {
-              statusTagRams.zipWithIndex.foreach {
-                case (ram, index) =>
-                  ram.io.isWrite := index.U === setCountDownReg
-                  ram.io.dataIn  := 0.U
-                  ram.io.addr    := queryIndex
-              }
-
-              when(setCountDownReg === 0.U) {
-                isSetCountDownCompleteReg := true.B
-              }.otherwise {
-                setCountDownReg := setCountDownReg - 1.U
-              }
-              dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
-              isNeedWbReg      := true.B
-            }.otherwise {
-              dataCountDownReg := dataCountDownReg - 1.U
-              isNeedWbReg      := true.B
-            }
-          }
+      when(statusTagLines(setCountDownReg).isDirty) {
+        when(isNeedWbReg) {
+          handleWb(writeBackAddr, selectedDataLine(dataCountDownReg))
         }.otherwise {
-          statusTagRams.zipWithIndex.foreach {
-            case (ram, index) =>
-              ram.io.isWrite := index.U === setCountDownReg
-              ram.io.dataIn  := 0.U
-              ram.io.addr    := queryIndex
-          }
+          when(isDataCountDownComplete) {
+            when(!isSetCountDownZero) {
+              setCountDownReg := setCountDownReg - 1.U
+            }
 
-          when(setCountDownReg === 0.U) {
-            isSetCountDownCompleteReg := true.B
+            statusTagRams.zipWithIndex.foreach {
+              case (ram, index) =>
+                ram.io.isWrite := index.U === setCountDownReg
+                ram.io.dataIn  := 0.U
+                ram.io.addr    := queryIndex
+            }
+
+            dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
+
+            when(isSetCountDownZero) {
+              // Next Stage 1
+              nextState := State.ready
+            }.otherwise {
+              isNeedWbReg := true.B
+            }
           }.otherwise {
-            setCountDownReg := setCountDownReg - 1.U
+            dataCountDownReg := dataCountDownReg - 1.U
+            isNeedWbReg      := true.B
           }
-          dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
-          isNeedWbReg      := true.B
+        }
+      }.otherwise {
+        statusTagRams.zipWithIndex.foreach {
+          case (ram, index) =>
+            ram.io.isWrite := index.U === setCountDownReg
+            ram.io.dataIn  := 0.U
+            ram.io.addr    := queryIndex
+        }
+
+        dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
+
+        when(isSetCountDownZero) {
+          // Next Stage 1
+          nextState := State.ready
+        }.otherwise {
+          setCountDownReg := setCountDownReg - 1.U
+          isNeedWbReg     := true.B
         }
       }
     }
