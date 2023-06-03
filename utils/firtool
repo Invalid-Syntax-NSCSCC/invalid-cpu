@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ARGS='-O=release --add-vivado-ram-address-conflict-synthesis-bug-workaround --preserve-aggregate=1d-vec --dedup --disable-annotation-unknown'
+ARGS='-O=release --dedup --disable-annotation-unknown --emission-options=disableMemRandomization,disableRegisterRandomization'
 
 # Workaround
 for arg do
@@ -12,7 +12,7 @@ for arg do
 done
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    firtool_darwin -O=release --add-vivado-ram-address-conflict-synthesis-bug-workaround --preserve-aggregate=1d-vec --dedup --disable-annotation-unknown "$@"
+    firtool_darwin -O=release --dedup --disable-annotation-unknown --emission-options=disableMemRandomization,disableRegisterRandomization "$@"
 else
-    firtool_ubuntu2004 -O=release --add-vivado-ram-address-conflict-synthesis-bug-workaround --preserve-aggregate=1d-vec --dedup --disable-annotation-unknown "$@"
+    firtool_ubuntu2004 -O=release --dedup --disable-annotation-unknown --emission-options=disableMemRandomization,disableRegisterRandomization "$@"
 fi
