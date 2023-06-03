@@ -8,8 +8,8 @@
 
 module single_readfirst_bram #
 (
-    parameter RAM_WIDTH,                  // Specify RAM data width
-    parameter RAM_DEPTH,                  // Specify RAM depth (number of entries)
+    parameter RAM_WIDTH = 1,                        // Specify RAM data width
+    parameter RAM_DEPTH = 1,                        // Specify RAM depth (number of entries)
     parameter RAM_PERFORMANCE = "HIGH_PERFORMANCE", // Select "HIGH_PERFORMANCE" or "LOW_LATENCY"
     parameter INIT_FILE = ""                        // Specify name/location of RAM initialization file if using one (leave blank if not)
 )
