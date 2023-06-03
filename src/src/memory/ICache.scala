@@ -299,7 +299,7 @@ class ICache(
         isMaintenanceHit := isCacheHit
 
         when(io.maintenancePort.client.isInit) {
-          // Next Stage: Write for maintenance init
+          // Next Stage: Maintenance for all sets
           nextState := State.maintenanceAll
         }
         when(io.maintenancePort.client.isCoherentByIndex) {
