@@ -67,6 +67,7 @@ class WbStage extends Module {
   }.elsewhen(hasInterruptReg && io.in.valid) {
     hasInterruptReg                                          := false.B
     inBits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+    inBits.instInfo.isExceptionValid                         := true.B
   }
 
   // Whether current instruction causes exception

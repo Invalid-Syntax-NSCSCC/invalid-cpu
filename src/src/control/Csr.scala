@@ -353,14 +353,14 @@ class Csr(
 
   when(tval.out.timeVal.orR) { // 定时器不为0
     when(tcfg.out.en) {
-      when (tval.in.timeVal === 1.U) {
+      when(tval.in.timeVal === 1.U) {
         estat.in.is_timeInt := true.B
       }
       tval.in.timeVal := tval.out.timeVal - 1.U
     }
   }.otherwise { // 减到0
     when(tcfg.out.periodic) {
-      tval.in.timeVal     := Cat(tcfg.out.initVal, 0.U(2.W))
+      tval.in.timeVal := Cat(tcfg.out.initVal, 0.U(2.W))
     } // 为0时停止计数
   }
 
