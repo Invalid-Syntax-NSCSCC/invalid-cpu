@@ -356,8 +356,8 @@ class Csr(
       tval.in.timeVal := tval.out.timeVal - 1.U
     }
   }.otherwise { // 减到0
+    estat.in.is_timeInt := true.B
     when(tcfg.out.periodic) {
-      estat.in.is_timeInt := true.B
       tval.in.timeVal     := Cat(tcfg.out.initVal, 0.U(2.W))
     } // 为0时停止计数
   }
