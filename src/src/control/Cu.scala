@@ -106,7 +106,7 @@ class Cu(
   val selectException        = PriorityEncoder(selectInstInfo.exceptionRecords)
   val selectExceptionAsBools = selectException.asBools
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
-  val isTlbRefillException = !selectExceptionAsBools.take(selectExceptionAsBools.length - 1).reduce(_ || _)
+  val isTlbRefillException = hasException && !selectExceptionAsBools.take(selectExceptionAsBools.length - 1).reduce(_ || _)
 
   // select era, ecodeBundle
   when(hasException) {

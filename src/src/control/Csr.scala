@@ -369,7 +369,7 @@ class Csr(
   estat.in.is_hardwareInt := Cat(false.B, io.csrMessage.hardWareInetrrupt)
 
   val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie).orR && crmd.out.ie
-  io.hasInterrupt := hasInterrupt
+  io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
 
   // output
   io.csrValues.crmd      := crmd.out
