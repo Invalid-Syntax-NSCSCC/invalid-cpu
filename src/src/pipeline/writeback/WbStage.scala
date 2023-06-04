@@ -63,7 +63,12 @@ class WbStage extends Module {
 
   val hasInterruptReg = RegInit(false.B)
   when(io.hasInterrupt) {
-    hasInterruptReg := true.B
+    when(io.in.valid) {
+      inBits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+      inBits.instInfo.isExceptionValid                         := true.B
+    }.otherwise {
+      hasInterruptReg := true.B
+    }
   }.elsewhen(hasInterruptReg && io.in.valid) {
     hasInterruptReg                                          := false.B
     inBits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
