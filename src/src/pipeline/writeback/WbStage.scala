@@ -91,7 +91,7 @@ class WbStage extends Module {
   io.difftest match {
     case Some(dt) =>
       dt       := DontCare
-      dt.valid := RegNext(inBits.instInfo.isValid && io.in.valid && !io.in.bits.instInfo.isExceptionValid)
+      dt.valid := RegNext(inBits.instInfo.isValid && io.in.valid)
       dt.pc    := RegNext(inBits.instInfo.pc)
       dt.instr := RegNext(inBits.instInfo.inst)
       dt.wen   := RegNext(inBits.gprWrite.en)
