@@ -147,7 +147,12 @@ class Csr(
       // 保留域
       switch(writePort.addr) {
         is(spec.Csr.Index.crmd) {
-          crmd.in := Cat(0.U(23.W), writePort.data(8, 0)).asTypeOf(crmd.in)
+          crmd.in.plv  := writePort.data(1, 0)
+          crmd.in.ie   := writePort.data(2)
+          crmd.in.da   := writePort.data(3)
+          crmd.in.pg   := writePort.data(4)
+          crmd.in.datf := writePort.data(6, 5)
+          crmd.in.datm := writePort.data(8, 7)
         }
         is(spec.Csr.Index.prmd) {
           prmd.in := Cat(0.U(29.W), writePort.data(2, 0)).asTypeOf(prmd.in)
