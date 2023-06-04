@@ -247,9 +247,7 @@ class Cu(
     case Some(dt) => {
       dt.cmt_ertn := RegNext(ertnFlush)
       dt.cmt_excp_flush := RegNext(
-        exceptionFlush && !(io.instInfoPorts
-          .map(_.exceptionRecords(Csr.ExceptionIndex.sys))
-          .reduce(_ || _)) && !(io.instInfoPorts.map(_.exceptionRecords(Csr.ExceptionIndex.brk)).reduce(_ || _))
+        exceptionFlush
       )
     }
     case _ =>
