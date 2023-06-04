@@ -9,6 +9,8 @@ import pipeline.dispatch.bundles.InstInfoBundle
 import spec.Param.{NaiiveFetchStageState => State}
 import spec._
 import frontend.bundles.ICacheAccessPort
+import memory.bundles.TlbTransPort
+import pipeline.mem.bundles.MemCsrNdPort
 
 class InstFetchStage extends Module {
   val io = IO(new Bundle {
@@ -21,9 +23,34 @@ class InstFetchStage extends Module {
     // <-> Frontend <-> Instrution queue
     val isFlush         = Input(Bool())
     val instEnqueuePort = Decoupled(new InstInfoBundle)
+
+    // <-> Frontend <-> Tlb
+    val tlbTrans = Flipped(new TlbTransPort)
+    // <-> Frontend <-> csr
+    val csr = Input(new MemCsrNdPort)
+
   })
 
-  io.instEnqueuePort.bits.pcAddr := io.pc
+  // InstAddr translate and mem stages
+  val addrTransStage = Module(new InstAddrTransStage)
+  addrTransStage.io.in.valid                   := true.B // todo change to fetchTargetQueue.entryBlock.valid
+  addrTransStage.io.out.ready                  := true.B
+  addrTransStage.io.in.bits.memRequest.isValid := (io.pc =/= 0.U(Width.Reg.data))
+  addrTransStage.io.in.bits.memRequest.addr    := io.pc
+  addrTransStage.io.isFlush                    := io.isFlush
+  addrTransStage.io.peer.foreach { p =>
+    p.tlbTrans <> io.tlbTrans
+    p.csr      := io.csr
+  }
+  val pcBeforeTrans = RegNext(io.pc, spec.zeroWord)
+  val pcTrans       = WireDefault(io.pc)
+  pcTrans := Mux(
+    addrTransStage.io.out.bits.translatedMemReq.isValid,
+    addrTransStage.io.out.bits.translatedMemReq.addr,
+    pcBeforeTrans
+  )
+
+  io.instEnqueuePort.bits.pcAddr := pcBeforeTrans
   io.instEnqueuePort.bits.inst   := io.accessPort.res.read.data
 
   val stateReg = RegInit(State.idle)
@@ -40,7 +67,7 @@ class InstFetchStage extends Module {
   // Fallbacks
   io.isPcNext                      := false.B
   io.accessPort.req.client.isValid := false.B
-  io.accessPort.req.client.addr    := io.pc
+  io.accessPort.req.client.addr    := pcTrans
   io.instEnqueuePort.valid         := false.B
 
   switch(stateReg) {
@@ -48,10 +75,15 @@ class InstFetchStage extends Module {
       stateReg := State.request
     }
     is(State.request) { // State Value: 1
-      when(io.accessPort.req.isReady) {
-        stateReg                         := State.waitQueue
-        io.accessPort.req.client.isValid := true.B
-        isCompleteReg                    := false.B
+      when(io.accessPort.req.isReady && addrTransStage.io.out.valid) {
+        when(addrTransStage.io.out.bits.translatedMemReq.isValid) {
+          stateReg                         := State.waitQueue
+          io.accessPort.req.client.isValid := true.B
+          isCompleteReg                    := false.B
+        }.otherwise {
+          stateReg := State.request
+        }
+
       }
     }
 
@@ -77,9 +109,10 @@ class InstFetchStage extends Module {
 
           when(io.accessPort.req.isReady) {
             stateReg                         := State.waitQueue
-            io.accessPort.req.client.addr    := Mux(shouldDiscard, io.pc, io.pc + 4.U)
+            io.accessPort.req.client.addr    := Mux(shouldDiscard, pcTrans, pcTrans + 4.U)
             io.accessPort.req.client.isValid := true.B
             isCompleteReg                    := false.B
+
           }.otherwise {
             stateReg := State.request
           }

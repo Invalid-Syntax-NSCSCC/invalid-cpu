@@ -177,6 +177,10 @@ class CoreCpuTop extends Module {
   frontend.io.pc         := pc.io.pc
   frontend.io.isFlush    := cu.io.flushes(PipelineStageIndex.frontend)
   pc.io.isNext           := frontend.io.isPcNext
+  frontend.io.tlbTrans   <> tlb.io.tlbTransPorts(1)
+  frontend.io.csr.crmd   := csr.io.csrValues.crmd
+  frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0
+  frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // Instruction queue
   instQueue.io.enqueuePorts(0) <> frontend.io.instEnqueuePort

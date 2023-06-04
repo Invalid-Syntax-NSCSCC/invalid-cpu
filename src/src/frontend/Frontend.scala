@@ -9,6 +9,8 @@ import pipeline.dispatch.bundles.InstInfoBundle
 import spec._
 import frontend.InstFetchStage
 import frontend.bundles.ICacheAccessPort
+import memory.bundles.TlbTransPort
+import pipeline.mem.bundles.MemCsrNdPort
 
 class Frontend extends Module {
   val io = IO(new Bundle {
@@ -23,11 +25,19 @@ class Frontend extends Module {
 
     // TODO mul FetchNum
     //     // val instEnqueuePorts = Vec(Param.Count.frontend.instFetchNum, Flipped(Decoupled(new InstInfoBundle)))
+
+    // instFetchStage <-> Tlb
+    val tlbTrans = Flipped(new TlbTransPort)
+    //  InstFetchStage <-> csr
+    val csr = Input(new MemCsrNdPort)
   })
+
   val instFetchStage = Module(new InstFetchStage)
   instFetchStage.io.accessPort      <> io.accessPort
   instFetchStage.io.instEnqueuePort <> io.instEnqueuePort
   instFetchStage.io.isFlush         := io.isFlush
   instFetchStage.io.pc              := io.pc
   io.isPcNext                       := instFetchStage.io.isPcNext
+  instFetchStage.io.csr             := io.csr
+  instFetchStage.io.tlbTrans        <> io.tlbTrans
 }
