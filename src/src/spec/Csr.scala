@@ -118,7 +118,7 @@ object Csr {
   object TimeVal {
     object Width {
       // 待修改
-      val timeVal = 16
+      val timeVal = 32
     }
   }
 

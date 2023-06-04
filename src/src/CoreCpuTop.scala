@@ -294,7 +294,7 @@ class CoreCpuTop extends Module {
   // TODO: Some ports
   (io.diffTest, wbStage.io.difftest) match {
     case (Some(t), Some(w)) =>
-      t.cmt_valid        := w.valid
+      t.cmt_valid        := w.valid && !t.cmt_excp_flush
       t.cmt_pc           := w.pc
       t.cmt_inst         := w.instr
       t.cmt_tlbfill_en   := w.is_TLBFILL
