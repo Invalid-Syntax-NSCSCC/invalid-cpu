@@ -8,6 +8,7 @@ import pipeline.mem.MemResNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec._
+import control.bundles.CsrValuePort
 
 class WbNdPort extends Bundle {
   val gprWrite = new RfWriteNdPort
@@ -33,6 +34,8 @@ class WbStage extends Module {
 
     // `Csr` -> `WbStage`
     val hasInterrupt = Input(Bool())
+
+    val csrValues = Input(new CsrValuePort)
 
     val difftest =
       if (isDiffTest)
@@ -71,6 +74,20 @@ class WbStage extends Module {
     }
   }.elsewhen(hasInterruptReg && io.in.valid) {
     hasInterruptReg                                          := false.B
+    inBits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+    inBits.instInfo.isExceptionValid                         := true.B
+  }
+
+  val softIntReq = io.in.valid && io.in.bits.instInfo.isValid &&
+    io.in.bits.instInfo.csrWritePort.en &&
+    (io.in.bits.instInfo.csrWritePort.addr === Csr.Index.estat)
+  // &&
+  // io.in.bits.instInfo.csrWritePort.data(1,0).orR
+
+  val isSoftInt = softIntReq && (io.in.bits.instInfo.csrWritePort
+    .data(1, 0) & io.csrValues.ecfg.lie(1, 0)).orR && io.csrValues.crmd.ie
+
+  when(isSoftInt) {
     inBits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
     inBits.instInfo.isExceptionValid                         := true.B
   }

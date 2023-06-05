@@ -252,7 +252,7 @@ class Cu(
     case Some(dt) => {
       dt.cmt_ertn := RegNext(ertnFlush)
       dt.cmt_excp_flush := RegNext(
-        exceptionFlush || is_softwareInt
+        exceptionFlush
       )
     }
     case _ =>
