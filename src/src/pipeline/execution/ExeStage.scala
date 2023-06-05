@@ -151,13 +151,19 @@ class ExeStage
           case (write, mask, origin, target) =>
             target := Mux(mask, write, origin)
         }
-      csrWriteData := gprWriteDataVec.asUInt
+      csrWriteData                    := gprWriteDataVec.asUInt
+      resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
     is(ExeInst.Op.invtlb) {
       // lop : asid  rop : virtual addr
       resultOutReg.bits.instInfo.tlbInfo.registerAsid := selectedIn.leftOperand(9, 0)
       resultOutReg.bits.instInfo.tlbInfo.virtAddr     := selectedIn.rightOperand
     }
+  }
+
+  when(selectedIn.instInfo.pc(1, 0).orR) {
+    resultOutReg.bits.instInfo.isExceptionValid                          := true.B
+    resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
   }
 
   /** MemAccess

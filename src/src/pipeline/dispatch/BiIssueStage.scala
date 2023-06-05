@@ -102,6 +102,10 @@ class BiIssueStage(
           }.reduce(_ || _)
         ) &&
         !(
+          in.decode.info.gprWritePort.en &&
+            (io.peer.get.regScores(in.decode.info.gprWritePort.addr) =/= ScoreboardState.free)
+        ) &&
+        !(
           // only issue in one pipeline
           if (idx == csrIssuePipelineIndex) {
             in.instInfo.needCsr && (io.peer.get.csrRegScore =/= ScoreboardState.free)
