@@ -260,6 +260,7 @@ class CoreCpuTop extends Module {
   // Write-back stage
   wbStage.io.in           <> memResStage.io.out
   wbStage.io.hasInterrupt := csr.io.hasInterrupt
+  wbStage.io.csrValues    := csr.io.csrValues
   regFile.io.writePort    := cu.io.gprWritePassThroughPorts.out(0)
 
   // Ctrl unit
@@ -294,7 +295,7 @@ class CoreCpuTop extends Module {
   // TODO: Some ports
   (io.diffTest, wbStage.io.difftest) match {
     case (Some(t), Some(w)) =>
-      t.cmt_valid        := w.valid && !t.cmt_excp_flush
+      t.cmt_valid        := w.valid && (!t.cmt_excp_flush || w.isSoftInt)
       t.cmt_pc           := w.pc
       t.cmt_inst         := w.instr
       t.cmt_tlbfill_en   := w.is_TLBFILL
@@ -359,7 +360,7 @@ class CoreCpuTop extends Module {
       t.csr_pgdh_diff_0      := c.pgdh.asUInt
 
       t.cmt_csr_ecode := c.estat.ecode
-      t.cmt_csr_data  := c.estat.asUInt
+      t.cmt_csr_data  := RegNext(c.estat.asUInt)
     case _ =>
   }
 }
