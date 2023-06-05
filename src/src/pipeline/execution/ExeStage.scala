@@ -161,6 +161,11 @@ class ExeStage
     }
   }
 
+  when(selectedIn.instInfo.pc(1, 0).orR) {
+    resultOutReg.bits.instInfo.isExceptionValid                          := true.B
+    resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
+  }
+
   /** MemAccess
     */
 
