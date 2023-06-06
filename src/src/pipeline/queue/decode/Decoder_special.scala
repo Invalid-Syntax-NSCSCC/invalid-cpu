@@ -79,7 +79,7 @@ class Decoder_special extends Decoder {
     is(Inst.dbar) {
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.dbar
-      outInfo.exeSel   := ExeInst.Sel.loadStore
+      // outInfo.exeSel   := ExeInst.Sel.loadStore
       outInfo.isHasImm := true.B
       immZext          := hint
       outInfo.imm      := immZext
@@ -87,7 +87,7 @@ class Decoder_special extends Decoder {
     is(Inst.ibar) {
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.ibar
-      outInfo.exeSel   := ExeInst.Sel.loadStore
+      // outInfo.exeSel   := ExeInst.Sel.loadStore
       outInfo.isHasImm := true.B
       immZext          := hint
       outInfo.imm      := immZext
