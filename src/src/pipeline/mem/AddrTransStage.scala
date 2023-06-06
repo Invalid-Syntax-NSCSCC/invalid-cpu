@@ -118,7 +118,8 @@ class AddrTransStage
   // Can use cache
   switch(peer.csr.crmd.datm) {
     is(Csr.Crmd.Datm.suc) {
-      out.isCached := false.B
+      // TODO: Change to false.B
+      out.isCached := true.B
     }
     is(Csr.Crmd.Datm.cc) {
       out.isCached := true.B
