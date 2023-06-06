@@ -67,12 +67,12 @@ class MultiInstQueue(
 
   io.enqueuePorts.zipWithIndex.foreach {
     case (enq, idx) =>
-      enq.ready := isFullBy.take(idx + 1).reduce(_ || _)
+      enq.ready := !isFullBy.take(idx + 1).reduce(_ || _)
   }
 
   io.dequeuePorts.zipWithIndex.foreach {
     case (deq, idx) =>
-      deq.valid := isEmptyBy.take(idx + 1).reduce(_ || _)
+      deq.valid := !isEmptyBy.take(idx + 1).reduce(_ || _)
   }
 
   // enqueue
