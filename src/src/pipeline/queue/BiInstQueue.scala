@@ -9,6 +9,7 @@ import pipeline.queue.decode.{Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec._
 import utils.BiCounter
+import utils.MultiCounter
 
 // assert: enqueuePorts总是最低的几位有效
 class BiInstQueue(
@@ -32,8 +33,8 @@ class BiInstQueue(
   require(issueNum == 2)
 
   val ram     = RegInit(VecInit(Seq.fill(queueLength)(InstInfoBundle.default)))
-  val enq_ptr = Module(new BiCounter(queueLength))
-  val deq_ptr = Module(new BiCounter(queueLength))
+  val enq_ptr = Module(new MultiCounter(queueLength, 2))
+  val deq_ptr = Module(new MultiCounter(queueLength, 2))
 
   enq_ptr.io.inc   := 0.U
   enq_ptr.io.flush := io.isFlush
