@@ -231,6 +231,7 @@ class CoreCpuTop extends Module {
   exeStage.io.isFlush := cu.io.flushes(PipelineStageIndex.exeStage)
   exeStage.io.peer.foreach { p =>
     p.csr.llbctl := csr.io.csrValues.llbctl
+    p.csr.era    := csr.io.csrValues.era
   }
 
   // Mem stages

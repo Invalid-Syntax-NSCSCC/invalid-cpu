@@ -22,6 +22,7 @@ import pipeline.common.BaseStage
 import pipeline.mem.AddrTransNdPort
 
 import scala.collection.immutable
+import control.csrRegsBundles.EraBundle
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -61,6 +62,7 @@ class ExePeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
+    val era    = new EraBundle
   })
 }
 
@@ -269,4 +271,10 @@ class ExeStage
   io.peer.get.scoreboardChangePort.addr    := selectedIn.gprWritePort.addr
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.csrWritePort.en
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
+
+  val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
+  when(isErtn) {
+    io.peer.get.branchSetPort.en     := true.B
+    io.peer.get.branchSetPort.pcAddr := io.peer.get.csr.era.pc
+  }
 }
