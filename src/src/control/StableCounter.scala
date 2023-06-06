@@ -14,15 +14,9 @@ class StableCounter extends Module {
   val timer64 = RegInit(0.U(doubleWordLength.W))
   timer64 := timer64 + 1.U
 
-  val timerId = RegInit(zeroWord)
-
   io.output  := zeroWord
   io.isMatch := false.B
   switch(io.exeOp) {
-    is(ExeInst.Op.rdcntid) {
-      io.isMatch := true.B
-      io.output  := timerId
-    }
 
     is(ExeInst.Op.rdcntvl_w) {
       io.isMatch := true.B
