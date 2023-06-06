@@ -26,7 +26,7 @@ class WbStage extends Module {
     val freePort    = Output(new ScoreboardChangeNdPort)
     val csrFreePort = Output(new ScoreboardChangeNdPort)
 
-    // `AddrTransStage` -> `WbStage` -> `Cu`  NO delay
+    // `AddrTransStage` -> `WbStage` -> `Cu` NO delay
     val cuInstInfoPort = Output(new InstInfoNdPort)
 
     // `WbStage` -> `Cu` NO delay
@@ -79,21 +79,6 @@ class WbStage extends Module {
     inBits.instInfo.isExceptionValid                         := true.B
   }
 
-  val softIntReq = io.in.valid && io.in.bits.instInfo.isValid &&
-    io.in.bits.instInfo.csrWritePort.en &&
-    (io.in.bits.instInfo.csrWritePort.addr === Csr.Index.estat)
-  // &&
-  // io.in.bits.instInfo.csrWritePort.data(1,0).orR
-
-//  val isSoftInt = softIntReq && (io.in.bits.instInfo.csrWritePort
-//    .data(1, 0) & io.csrValues.ecfg.lie(1, 0)).orR && io.csrValues.crmd.ie
-//
-//  when(isSoftInt) {
-//    inBits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-//    inBits.instInfo.isExceptionValid                         := true.B
-//
-//  }
-
   // Whether current instruction causes exception
   io.isExceptionValid := inBits.instInfo.isValid && inBits.instInfo.isExceptionValid
 
@@ -109,16 +94,6 @@ class WbStage extends Module {
 
   io.csrFreePort.en   := io.in.valid && inBits.instInfo.needCsr
   io.csrFreePort.addr := inBits.instInfo.csrWritePort.addr
-
-//  val lastIsSoftInt = RegInit(false.B)
-//  when(isSoftInt) {
-//    lastIsSoftInt := true.B
-//  }
-//  val nextCommit = WireDefault(true.B)
-//  when(lastIsSoftInt && io.in.valid){
-//    lastIsSoftInt := false.B
-//    nextCommit := false.B
-//  }
 
   // Diff test connection
   val exceptionVec = inBits.instInfo.exceptionRecords

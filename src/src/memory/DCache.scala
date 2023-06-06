@@ -334,6 +334,7 @@ class DCache(
               // Step 2: Write to cache (now hit)
               io.accessPort.req.isReady  := false.B
               io.maintenancePort.isReady := false.B
+              isHasReqReg                := false.B
 
               val writeDataLine  = WireDefault(selectedDataLine)
               val writeStatusTag = WireDefault(selectedStatusTagLine)
