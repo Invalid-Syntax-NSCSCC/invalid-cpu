@@ -115,7 +115,7 @@ class BiIssueStage(
         !(
           // load store only issue in one pipeline
           if (idx == loadStoreIssuePipelineIndex) {
-            true.B
+            false.B
           } else {
             in.instInfo.exeSel === ExeInst.Sel.loadStore
           }
