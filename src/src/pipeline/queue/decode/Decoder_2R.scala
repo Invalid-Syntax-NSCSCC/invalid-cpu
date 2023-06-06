@@ -16,7 +16,7 @@ class Decoder_2R extends Decoder {
 
   io.out.info.isHasImm := false.B
 
-  switch(io.instInfoPort.inst) {
+  switch(opcode) {
     is(Inst.rdcnt_id_vl) {
       io.out.isMatched            := true.B
       io.out.info.gprWritePort.en := rdIsNotZero
