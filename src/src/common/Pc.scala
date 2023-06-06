@@ -12,20 +12,27 @@ class Pc(
   val issueNum: Int = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new Bundle {
-    val pc     = Output(UInt(Width.Reg.data))
-    val isNext = Input(Bool())
+    val pc       = Output(UInt(Width.Reg.data))
+    val pcUpdate = Output(Bool())
+    val isNext   = Input(Bool())
     // 异常处理 + 分支跳转
     val newPc = Input(new PcSetPort)
   })
 
-  val pcReg = RegInit(spec.Pc.init)
-  io.pc := pcReg
+  val pcReg       = RegInit(spec.Pc.init)
+  val pcUpdateReg = RegInit(false.B)
+  io.pc       := pcReg
+  io.pcUpdate := pcUpdateReg
 
-  pcReg := pcReg
   when(io.newPc.en) {
-    pcReg := io.newPc.pcAddr
+    pcReg       := io.newPc.pcAddr
+    pcUpdateReg := true.B
   }.elsewhen(io.isNext) {
     // pcReg := pcReg + (4 * issueNum).U
-    pcReg := pcReg + 4.U
+    pcReg       := pcReg + 4.U
+    pcUpdateReg := true.B
+  }.otherwise {
+    pcReg       := pcReg
+    pcUpdateReg := false.B
   }
 }

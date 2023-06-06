@@ -1,4 +1,4 @@
-package frontend
+package frontend.instFetch
 
 import chisel3._
 import chisel3.util._
@@ -9,47 +9,44 @@ import memory.enums.TlbMemType
 import pipeline.common.BaseStage
 import pipeline.mem.bundles.MemCsrNdPort
 import pipeline.mem.enums.AddrTransType
+import pipeline.mem.AddrTransPeerPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Value.Csr
 import spec.Width
 
 import scala.collection.immutable
+import pipeline.mem.AddrTransPeerPort
 
-class AddrTransNdPort extends Bundle {
+class InstAddrTransNdPort extends Bundle {
   val memRequest = new Bundle {
     val isValid = Bool()
     val addr    = UInt(Width.Mem.addr)
   }
 }
 
-object AddrTransNdPort {
-  def default: AddrTransNdPort = 0.U.asTypeOf(new AddrTransNdPort)
+object InstAddrTransNdPort {
+  def default: InstAddrTransNdPort = 0.U.asTypeOf(new InstAddrTransNdPort)
 }
 
-class MemReqNdPort extends Bundle {
-  val translatedMemReq = new Bundle {
-    val isValid = Bool()
-    val addr    = UInt(Width.Mem.addr)
-  }
-}
-
-class AddrTransPeerPort extends Bundle {
-  val csr      = Input(new MemCsrNdPort)
-  val tlbTrans = Flipped(new TlbTransPort)
-}
+// class AddrTransPeerPort extends Bundle {
+//   val csr      = Input(new MemCsrNdPort)
+//   val tlbTrans = Flipped(new TlbTransPort)
+// }
 
 class InstAddrTransStage
     extends BaseStage(
-      new AddrTransNdPort,
-      new MemReqNdPort,
-      AddrTransNdPort.default,
+      new InstAddrTransNdPort,
+      new InstReqNdPort,
+      InstAddrTransNdPort.default,
       Some(new AddrTransPeerPort)
     ) {
   val peer = io.peer.get
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.translatedMemReq := selectedIn.memRequest
+  out.translatedMemReq.isCached := false.B
+  out.translatedMemReq.isValid  := selectedIn.memRequest.isValid
+  out.translatedMemReq.addr     := selectedIn.memRequest.addr
 
   // DMW mapping
   val directMapVec = Wire(
@@ -61,6 +58,7 @@ class InstAddrTransStage
       }
     )
   )
+
   directMapVec.zip(peer.csr.dmw).foreach {
     case (target, window) =>
       target.isHit := ((peer.csr.crmd.plv === Csr.Crmd.Plv.high && window.plv0) ||
@@ -105,6 +103,17 @@ class InstAddrTransStage
 
   // TODO: CSR write for TLB maintenance
 
+  // Can use cache
+  switch(peer.csr.crmd.datm) {
+    is(Csr.Crmd.Datm.suc) {
+      out.translatedMemReq.isCached := false.B
+    }
+    is(Csr.Crmd.Datm.cc) {
+      out.translatedMemReq.isCached := true.B
+    }
+  }
+
   // Submit result
-  resultOutReg.valid := peer.tlbTrans.exception.valid
+  resultOutReg.valid     := peer.tlbTrans.exception.valid
+  resultOutReg.bits.addr := selectedIn.memRequest.addr
 }

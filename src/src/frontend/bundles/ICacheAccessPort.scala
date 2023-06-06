@@ -4,22 +4,10 @@ import chisel3._
 import chisel3.util._
 import spec._
 import pipeline.mem.enums.MemSizeType
+import memory.bundles.MemResponseNdPort
 
 class ICacheAccessPort extends Bundle {
-  val req = new Bundle {
-    val client = Input(new Bundle {
-      val isValid = Bool()
-      val addr    = UInt(Width.Mem.addr)
-    })
-    val isReady = Output(Bool())
-  }
-
-  val res = Output(new Bundle {
-    val isComplete = Bool()
-    val isFailed   = Bool()
-    val read = new Bundle {
-      val data = UInt(Width.Mem.data)
-    }
-  })
+  val req = new ICacheRequestHandshakePort
+  val res = Output(new MemResponseNdPort)
 
 }

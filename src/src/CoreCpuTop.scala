@@ -3,7 +3,9 @@ import axi.Axi3x1Crossbar
 import chisel3._
 import common.{Pc, RegFile}
 import control.{Csr, Cu, StableCounter}
-import frontend.{Frontend, InstFetchStage, NaiiveFetchStage, SimpleFetchStage}
+import frontend.{Frontend, NaiiveFetchStage, SimpleFetchStage}
+import frontend.InstFetch
+
 import memory.{DCache, Tlb, UncachedAgent}
 import pipeline.dispatch.{RegReadNdPort, RegReadStage}
 import pipeline.dispatch.Scoreboard
@@ -175,6 +177,7 @@ class CoreCpuTop extends Module {
   //   inst fetch stage
   frontend.io.accessPort <> iCache.io.accessPort
   frontend.io.pc         := pc.io.pc
+  frontend.io.pcUpdate   := pc.io.pcUpdate
   frontend.io.isFlush    := cu.io.flushes(PipelineStageIndex.frontend)
   pc.io.isNext           := frontend.io.isPcNext
   frontend.io.tlbTrans   <> tlb.io.tlbTransPorts(1)

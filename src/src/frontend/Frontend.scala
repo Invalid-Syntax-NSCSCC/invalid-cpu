@@ -7,7 +7,7 @@ import chisel3.util._
 import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
 import spec._
-import frontend.InstFetchStage
+import frontend.InstFetch
 import frontend.bundles.ICacheAccessPort
 import memory.bundles.TlbTransPort
 import pipeline.mem.bundles.MemCsrNdPort
@@ -19,6 +19,7 @@ class Frontend extends Module {
 
     // <-> Frontend <-> Instrution queue
     val pc              = Input(UInt(Width.Reg.data))
+    val pcUpdate        = Input(Bool())
     val isPcNext        = Output(Bool())
     val isFlush         = Input(Bool())
     val instEnqueuePort = Decoupled(new InstInfoBundle)
@@ -26,18 +27,18 @@ class Frontend extends Module {
     // TODO mul FetchNum
     //     // val instEnqueuePorts = Vec(Param.Count.frontend.instFetchNum, Flipped(Decoupled(new InstInfoBundle)))
 
-    // instFetchStage <-> Tlb
+    // instFetch <-> Tlb
     val tlbTrans = Flipped(new TlbTransPort)
-    //  InstFetchStage <-> csr
+    //  InstFetch <-> csr
     val csr = Input(new MemCsrNdPort)
   })
 
-  val instFetchStage = Module(new InstFetchStage)
-  instFetchStage.io.accessPort      <> io.accessPort
-  instFetchStage.io.instEnqueuePort <> io.instEnqueuePort
-  instFetchStage.io.isFlush         := io.isFlush
-  instFetchStage.io.pc              := io.pc
-  io.isPcNext                       := instFetchStage.io.isPcNext
-  instFetchStage.io.csr             := io.csr
-  instFetchStage.io.tlbTrans        <> io.tlbTrans
+  val instFetch = Module(new InstFetch)
+  instFetch.io.accessPort      <> io.accessPort
+  instFetch.io.instEnqueuePort <> io.instEnqueuePort
+  instFetch.io.isFlush         := io.isFlush
+  instFetch.io.pc              := io.pc
+  io.isPcNext                  := instFetch.io.isPcNext
+  instFetch.io.csr             := io.csr
+  instFetch.io.tlbTrans        <> io.tlbTrans
 }
