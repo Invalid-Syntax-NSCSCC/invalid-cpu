@@ -12,7 +12,7 @@ for arg do
 done
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    firtool_darwin -O=release --dedup --disable-annotation-unknown "$@"
+    firtool_darwin -O=debug --dedup --disable-annotation-unknown "$@"
 else
-    firtool_ubuntu2004 -O=release --dedup --disable-annotation-unknown "$@"
+    firtool_ubuntu2004 -O=debug --dedup --disable-annotation-unknown "$@"
 fi
