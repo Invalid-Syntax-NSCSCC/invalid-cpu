@@ -15,7 +15,7 @@ import pipeline.dispatch.bundles.RegReadPortWithValidBundle
 import pipeline.dispatch.enums.ScoreboardState
 import pipeline.common.MultiBaseStage
 import chisel3.experimental.BundleLiterals._
-import spec.Param.csrIssuePipelineIndex
+import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
 
 class FetchInstDecodeNdPort extends Bundle {
   val decode   = new DecodeOutNdPort
@@ -44,8 +44,6 @@ class BiIssueStagePeerPort(
   val regScores    = Input(Vec(Count.reg, ScoreboardState()))
 
   // `IssueStage` <-> `Scoreboard(csr)`
-  // val csrOccupyPortss = Vec(issueNum, Output(Vec(scoreChangeNum, new ScoreboardChangeNdPort)))
-  // val csrRegScores    = Input(Vec(Count.csrReg, ScoreboardState()))
   val csrOccupyPort = Output(new ScoreboardChangeNdPort)
   val csrRegScore   = Input(ScoreboardState())
 }
@@ -74,12 +72,11 @@ class BiIssueStage(
   // TODO: Parameterize issue number and remove the following
   validToOuts(1) := false.B
 
+  // DBAR
+  val dbarCanIssue = WireDefault(!VecInit(io.peer.get.regScores.map(_ === ScoreboardState.free)).reduceTree(_ || _))
+
   val canIssueMaxNumFromPipeline = WireDefault(validToOuts.map(_.asUInt).reduce(_ +& _))
   val canIssueMaxNumFromRob      = WireDefault(io.peer.get.robEmptyNum)
-  // val canIssueMaxNumFromRob      = WireDefault(io.peer.get.robEmptyNum +& selectedIns.map{
-  //   in =>
-  //     (!in.decode.info.gprWritePort.en).asUInt
-  // }.reduce(_ +& _) )
 
   val canIssueMaxNum = Mux(
     canIssueMaxNumFromRob < canIssueMaxNumFromPipeline,
@@ -97,16 +94,30 @@ class BiIssueStage(
     case ((fetchValid, in), idx) =>
       fetchValid := in.instInfo.isValid &&
         !(
+          // RAW
           in.decode.info.gprReadPorts.map { readPort =>
             readPort.en && (io.peer.get.regScores(readPort.addr) =/= ScoreboardState.free)
           }.reduce(_ || _)
         ) &&
         !(
-          // only issue in one pipeline
+          // WAW
+          in.decode.info.gprWritePort.en &&
+            (io.peer.get.regScores(in.decode.info.gprWritePort.addr) =/= ScoreboardState.free)
+        ) &&
+        !(
+          // csr only issue in one pipeline
           if (idx == csrIssuePipelineIndex) {
             in.instInfo.needCsr && (io.peer.get.csrRegScore =/= ScoreboardState.free)
           } else {
             in.instInfo.needCsr
+          }
+        ) &&
+        !(
+          // load store only issue in one pipeline
+          if (idx == loadStoreIssuePipelineIndex) {
+            false.B
+          } else {
+            in.instInfo.exeSel === ExeInst.Sel.loadStore
           }
         ) &&
         !selectedIns
@@ -114,7 +125,11 @@ class BiIssueStage(
           .map { prevIn =>
             in.decode.info.gprReadPorts.map { inOneRead =>
               prevIn.decode.info.gprWritePort.en && inOneRead.en && (prevIn.decode.info.gprWritePort.addr === inOneRead.addr) && (prevIn.decode.info.gprWritePort.addr =/= 0.U)
-            }.reduce(_ || _)
+            }.reduce(_ || _) || (
+              in.decode.info.gprWritePort.en &&
+                prevIn.decode.info.gprWritePort.en &&
+                (in.decode.info.gprWritePort.addr === prevIn.decode.info.gprWritePort.addr)
+            )
           }
           .foldLeft(false.B)(_ || _)
   }

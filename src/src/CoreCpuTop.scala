@@ -238,6 +238,7 @@ class CoreCpuTop extends Module {
   exeStage.io.isFlush := cu.io.flushes(PipelineStageIndex.exeStage)
   exeStage.io.peer.foreach { p =>
     p.csr.llbctl := csr.io.csrValues.llbctl
+    p.csr.era    := csr.io.csrValues.era
   }
 
   // Mem stages
@@ -265,8 +266,10 @@ class CoreCpuTop extends Module {
   }
 
   // Write-back stage
-  wbStage.io.in        <> memResStage.io.out
-  regFile.io.writePort := cu.io.gprWritePassThroughPorts.out(0)
+  wbStage.io.in           <> memResStage.io.out
+  wbStage.io.hasInterrupt := csr.io.hasInterrupt
+  wbStage.io.csrValues    := csr.io.csrValues
+  regFile.io.writePort    := cu.io.gprWritePassThroughPorts.out(0)
 
   // Ctrl unit
   cu.io.instInfoPorts(0)               := wbStage.io.cuInstInfoPort
@@ -274,6 +277,7 @@ class CoreCpuTop extends Module {
   cu.io.csrValues                      := csr.io.csrValues
   cu.io.stableCounterReadPort          <> stableCounter.io
   cu.io.jumpPc                         := exeStage.io.peer.get.branchSetPort
+  cu.io.hardWareInetrrupt              := io.intrpt
 
   // After memory request flush connection
   memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
@@ -299,13 +303,11 @@ class CoreCpuTop extends Module {
   // TODO: Some ports
   (io.diffTest, wbStage.io.difftest) match {
     case (Some(t), Some(w)) =>
-      t.cmt_valid        := w.valid
+      t.cmt_valid        := w.valid && !t.cmt_excp_flush
       t.cmt_pc           := w.pc
       t.cmt_inst         := w.instr
       t.cmt_tlbfill_en   := w.is_TLBFILL
       t.cmt_rand_index   := w.TLBFILL_index
-      t.cmt_cnt_inst     := w.is_CNTinst
-      t.cmt_timer_64     := w.timer_64_value
       t.cmt_wen          := w.wen
       t.cmt_wdest        := w.wdest
       t.cmt_wdata        := w.wdata
@@ -323,6 +325,12 @@ class CoreCpuTop extends Module {
     case (Some(t), Some(c)) =>
       t.cmt_ertn       := c.cmt_ertn
       t.cmt_excp_flush := c.cmt_excp_flush
+    case _ =>
+  }
+  (io.diffTest, stableCounter.io.difftest) match {
+    case (Some(t), Some(c)) =>
+      t.cmt_cnt_inst := c.isCnt
+      t.cmt_timer_64 := c.value
     case _ =>
   }
   (io.diffTest, regFile.io.difftest) match {
@@ -360,7 +368,7 @@ class CoreCpuTop extends Module {
       t.csr_pgdh_diff_0      := c.pgdh.asUInt
 
       t.cmt_csr_ecode := c.estat.ecode
-      t.cmt_csr_data  := c.estat.asUInt
+      t.cmt_csr_data  := RegNext(c.estat.asUInt)
     case _ =>
   }
 }

@@ -49,6 +49,9 @@ class Cu(
     // -> `MemReqStage`
     val isAfterMemReqFlush = Output(Bool())
 
+    // <- Out
+    val hardWareInetrrupt = Input(UInt(8.W))
+
     val difftest = if (isDiffTest) {
       Some(Output(new Bundle {
         val cmt_ertn       = Output(Bool())
@@ -84,6 +87,8 @@ class Cu(
   /** CSR
     */
 
+  io.csrMessage.hardWareInetrrupt := io.hardWareInetrrupt
+
   // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
     case (dst, src) =>
@@ -96,12 +101,11 @@ class Cu(
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  val selectLineNum          = PriorityEncoder(linesHasException)
-  val selectInstInfo         = WireDefault(io.instInfoPorts(selectLineNum))
-  val selectException        = PriorityEncoder(selectInstInfo.exceptionRecords)
-  val selectExceptionAsBools = selectException.asBools
+  val selectLineNum   = PriorityEncoder(linesHasException)
+  val selectInstInfo  = WireDefault(io.instInfoPorts(selectLineNum))
+  val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
-  val isTlbRefillException = !selectExceptionAsBools.take(selectExceptionAsBools.length - 1).reduce(_ || _)
+  val isTlbRefillException = selectException === Csr.ExceptionIndex.tlbr
 
   // select era, ecodeBundle
   when(hasException) {
@@ -162,19 +166,27 @@ class Cu(
   io.csrMessage.tlbRefillException := isTlbRefillException
 
   // badv
-  // TODO: 记录出错的虚地址，多数情况不是pc，待补
-  io.csrMessage.badVAddrSet.en := VecInit(
-    Csr.ExceptionIndex.tlbr,
-    Csr.ExceptionIndex.adef,
-    Csr.ExceptionIndex.adem,
-    Csr.ExceptionIndex.ale,
-    Csr.ExceptionIndex.pil,
-    Csr.ExceptionIndex.pis,
-    Csr.ExceptionIndex.pif,
-    Csr.ExceptionIndex.pme,
-    Csr.ExceptionIndex.ppi
-  ).contains(selectException) && hasException
-  io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
+  when(hasException) {
+    when(selectException === Csr.ExceptionIndex.adef) {
+      io.csrMessage.badVAddrSet.en   := true.B
+      io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
+    }.elsewhen(
+      VecInit(
+        Csr.ExceptionIndex.tlbr,
+        Csr.ExceptionIndex.adef,
+        Csr.ExceptionIndex.adem,
+        Csr.ExceptionIndex.ale,
+        Csr.ExceptionIndex.pil,
+        Csr.ExceptionIndex.pis,
+        Csr.ExceptionIndex.pif,
+        Csr.ExceptionIndex.pme,
+        Csr.ExceptionIndex.ppi
+      ).contains(selectException)
+    ) {
+      io.csrMessage.badVAddrSet.en   := true.B
+      io.csrMessage.badVAddrSet.addr := selectInstInfo.load.vaddr
+    }
+  }
 
   // llbit control
   val line0Is_ll = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.ll)
@@ -200,7 +212,7 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  when(exceptionFlush || ertnFlush) {
+  when(exceptionFlush) { // || ertnFlush) {
     flushes.foreach(_ := true.B)
   }
   io.csrMessage.ertnFlush := ertnFlush
@@ -217,10 +229,11 @@ class Cu(
   }
 
   // select new pc
-  when(ertnFlush) {
-    io.newPc.en     := true.B
-    io.newPc.pcAddr := io.csrValues.era.asUInt
-  }.elsewhen(exceptionFlush) {
+  // when(ertnFlush) {
+  //   io.newPc.en     := true.B
+  //   io.newPc.pcAddr := io.csrValues.era.asUInt
+  // }.else
+  when(exceptionFlush) {
     io.newPc.en := true.B
     when(isTlbRefillException) {
       io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
@@ -231,13 +244,16 @@ class Cu(
     io.newPc := io.jumpPc
   }
 
+  val is_softwareInt = io.instInfoPorts(0).isValid &&
+    io.instInfoPorts(0).csrWritePort.en &&
+    (io.instInfoPorts(0).csrWritePort.addr === Csr.Index.estat) &&
+    io.instInfoPorts(0).csrWritePort.data(1, 0).orR
+
   io.difftest match {
     case Some(dt) => {
       dt.cmt_ertn := RegNext(ertnFlush)
       dt.cmt_excp_flush := RegNext(
-        exceptionFlush && !(io.instInfoPorts
-          .map(_.exceptionRecords(Csr.ExceptionIndex.sys))
-          .reduce(_ || _)) && !(io.instInfoPorts.map(_.exceptionRecords(Csr.ExceptionIndex.brk)).reduce(_ || _))
+        exceptionFlush
       )
     }
     case _ =>

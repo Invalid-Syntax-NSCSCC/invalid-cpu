@@ -22,6 +22,7 @@ import pipeline.common.BaseStage
 import pipeline.mem.AddrTransNdPort
 
 import scala.collection.immutable
+import control.csrRegsBundles.EraBundle
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -61,6 +62,7 @@ class ExePeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
+    val era    = new EraBundle
   })
 }
 
@@ -151,13 +153,19 @@ class ExeStage
           case (write, mask, origin, target) =>
             target := Mux(mask, write, origin)
         }
-      csrWriteData := gprWriteDataVec.asUInt
+      csrWriteData                    := gprWriteDataVec.asUInt
+      resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
     is(ExeInst.Op.invtlb) {
       // lop : asid  rop : virtual addr
       resultOutReg.bits.instInfo.tlbInfo.registerAsid := selectedIn.leftOperand(9, 0)
       resultOutReg.bits.instInfo.tlbInfo.virtAddr     := selectedIn.rightOperand
     }
+  }
+
+  when(selectedIn.instInfo.pc(1, 0).orR) {
+    resultOutReg.bits.instInfo.isExceptionValid                          := true.B
+    resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
   }
 
   /** MemAccess
@@ -261,6 +269,12 @@ class ExeStage
   io.peer.get.branchSetPort                := alu.io.result.jumpBranchInfo
   io.peer.get.scoreboardChangePort.en      := selectedIn.gprWritePort.en
   io.peer.get.scoreboardChangePort.addr    := selectedIn.gprWritePort.addr
-  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.csrWritePort.en
+  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
+
+  val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
+  when(isErtn) {
+    io.peer.get.branchSetPort.en     := true.B
+    io.peer.get.branchSetPort.pcAddr := io.peer.get.csr.era.pc
+  }
 }

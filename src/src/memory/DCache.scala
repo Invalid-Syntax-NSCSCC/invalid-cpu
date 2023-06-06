@@ -159,7 +159,12 @@ class DCache(
     )
   )
 
-  (statusTagRams ++ dataLineRams).foreach { ram =>
+  statusTagRams.foreach { ram =>
+    ram.io         := DontCare
+    ram.io.isWrite := false.B // Fallback: Not write
+  }
+
+  dataLineRams.foreach { ram =>
     ram.io         := DontCare
     ram.io.isWrite := false.B // Fallback: Not write
   }
@@ -334,13 +339,17 @@ class DCache(
               // Step 2: Write to cache (now hit)
               io.accessPort.req.isReady  := false.B
               io.maintenancePort.isReady := false.B
+              isHasReqReg                := false.B
 
-              val writeDataLine  = WireDefault(selectedDataLine)
               val writeStatusTag = WireDefault(selectedStatusTagLine)
 
               // Substitute write data in data line, with mask
               val oldData = WireDefault(selectedDataLine(dataIndex))
-              writeDataLine(dataIndex) := writeWithMask(oldData, reqWriteData, reqWriteMask)
+              val newData = WireDefault(writeWithMask(oldData, reqWriteData, reqWriteMask))
+              val writeDataLine = WireDefault(VecInit(selectedDataLine.zipWithIndex.map {
+                case (data, index) =>
+                  Mux(index.U === dataIndex, newData, data)
+              }))
 
               // Set dirty bit
               writeStatusTag.isDirty := true.B
@@ -403,7 +412,7 @@ class DCache(
           isReadReqSentReg      := false.B
           isWriteBackReqSentReg := false.B
 
-          switch(io.accessPort.req.client.rw) {
+          switch(readWriteReqReg) {
             is(ReadWriteSel.read) {
               // Next Stage 2.b.1
               nextState := State.refillForRead
@@ -539,12 +548,16 @@ class DCache(
           // Write to data line RAM
           val dataIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
           val dataLine  = WireDefault(toDataLine(axiMaster.io.read.res.data))
-          val oldData   = WireDefault(toDataLine(axiMaster.io.read.res.data)(dataIndex))
-          dataLine(dataIndex) := writeWithMask(oldData, lastReg.writeData, lastReg.writeMask)
+          val oldData   = WireDefault(dataLine(dataIndex))
+          val newData   = WireDefault(writeWithMask(oldData, lastReg.writeData, lastReg.writeMask))
+          val writeDataLine = WireDefault(VecInit(dataLine.zipWithIndex.map {
+            case (data, index) =>
+              Mux(index.U === dataIndex, newData, data)
+          }))
           dataLineRams.zipWithIndex.foreach {
             case (ram, index) =>
               ram.io.isWrite := index.U === lastReg.setIndex
-              ram.io.dataIn  := dataLine.asUInt
+              ram.io.dataIn  := writeDataLine.asUInt
               ram.io.addr    := queryIndex
           }
 
@@ -641,7 +654,7 @@ class DCache(
           0.U(log2Ceil(wordLength / byteLength).W)
         )
       )
-      val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataIn))) // Delay for 1 cycle
+      val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataOut))) // Delay for 1 cycle
       val selectedDataLine = WireDefault(dataLines(lastReg.setIndex))
 
       dataLineRams.map(_.io.addr).foreach(_ := queryIndex)
