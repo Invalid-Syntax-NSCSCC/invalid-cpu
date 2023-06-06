@@ -17,8 +17,9 @@ class InstInfoNdPort extends Bundle {
   val needCsr          = Bool()
   val csrWritePort     = new CsrWriteNdPort
 
-  val exeOp = UInt(Param.Width.exeOp)
-  val robId = UInt(Param.robIdLength.W)
+  val exeOp  = UInt(Param.Width.exeOp)
+  val exeSel = UInt(Param.Width.exeSel)
+  val robId  = UInt(Param.robIdLength.W)
 
   val load  = new DifftestLoadNdPort
   val store = new DifftestStoreNdPort
@@ -36,6 +37,7 @@ object InstInfoNdPort {
     ),
     _.csrWritePort -> CsrWriteNdPort.default,
     _.exeOp -> ExeInst.Op.nop,
+    _.exeSel -> ExeInst.Sel.none,
     _.robId -> zeroWord,
     _.tlbInfo -> TlbMaintenanceNdPort.default,
     _.needCsr -> false.B
@@ -46,6 +48,7 @@ object InstInfoNdPort {
     instInfo.needCsr := false.B
     instInfo.exceptionRecords.foreach(_ := false.B)
     instInfo.exeOp           := ExeInst.Op.nop
+    instInfo.exeSel          := ExeInst.Sel.none
     instInfo.csrWritePort.en := false.B
     instInfo.load.en         := false.B
     instInfo.store.en        := false.B
