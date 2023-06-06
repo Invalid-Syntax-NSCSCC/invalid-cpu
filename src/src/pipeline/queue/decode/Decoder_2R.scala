@@ -18,13 +18,15 @@ class Decoder_2R extends Decoder {
 
   switch(opcode) {
     is(Inst.rdcnt_id_vl) {
-      io.out.isMatched            := true.B
-      io.out.info.gprWritePort.en := rdIsNotZero
+      io.out.isMatched := true.B
+
       when(rj.orR) {
         io.out.info.gprWritePort.addr := rj
+        io.out.info.gprWritePort.en   := rj.orR
         io.out.info.exeOp             := ExeInst.Op.rdcntid
       }.otherwise {
         io.out.info.gprWritePort.addr := rd
+        io.out.info.gprWritePort.en   := rdIsNotZero
         io.out.info.exeOp             := ExeInst.Op.rdcntvl_w
       }
     }
