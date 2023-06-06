@@ -269,7 +269,7 @@ class ExeStage
   io.peer.get.branchSetPort                := alu.io.result.jumpBranchInfo
   io.peer.get.scoreboardChangePort.en      := selectedIn.gprWritePort.en
   io.peer.get.scoreboardChangePort.addr    := selectedIn.gprWritePort.addr
-  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.csrWritePort.en
+  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
 
   val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
