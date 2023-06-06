@@ -212,7 +212,7 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  when(exceptionFlush || ertnFlush) {
+  when(exceptionFlush) { // || ertnFlush) {
     flushes.foreach(_ := true.B)
   }
   io.csrMessage.ertnFlush := ertnFlush
@@ -229,10 +229,11 @@ class Cu(
   }
 
   // select new pc
-  when(ertnFlush) {
-    io.newPc.en     := true.B
-    io.newPc.pcAddr := io.csrValues.era.asUInt
-  }.elsewhen(exceptionFlush) {
+  // when(ertnFlush) {
+  //   io.newPc.en     := true.B
+  //   io.newPc.pcAddr := io.csrValues.era.asUInt
+  // }.else
+  when(exceptionFlush) {
     io.newPc.en := true.B
     when(isTlbRefillException) {
       io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt

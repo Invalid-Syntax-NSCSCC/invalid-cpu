@@ -56,7 +56,6 @@ class WbStage extends Module {
           val st_vaddr      = UInt(32.W)
           val st_paddr      = UInt(32.W)
           val st_data       = UInt(32.W)
-          val isSoftInt     = Bool()
         }))
       else None
   })
@@ -117,8 +116,6 @@ class WbStage extends Module {
       dt.st_vaddr := RegNext(inBits.instInfo.store.vaddr)
       dt.st_paddr := RegNext(inBits.instInfo.store.paddr)
       dt.st_data  := RegNext(inBits.instInfo.store.data)
-
-      dt.isSoftInt := false.B // RegNext(isSoftInt)
     case _ =>
   }
 }
