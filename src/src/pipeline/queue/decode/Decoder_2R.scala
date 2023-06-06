@@ -21,9 +21,12 @@ class Decoder_2R extends Decoder {
       io.out.isMatched := true.B
 
       when(rj.orR) {
+        io.out.info.needCsr           := true.B
+        io.out.info.csrReadEn         := true.B
+        io.out.info.csrAddr           := Csr.Index.tid
+        io.out.info.exeOp             := ExeInst.Op.csrrd
+        io.out.info.gprWritePort.en   := true.B
         io.out.info.gprWritePort.addr := rj
-        io.out.info.gprWritePort.en   := rj.orR
-        io.out.info.exeOp             := ExeInst.Op.rdcntid
       }.otherwise {
         io.out.info.gprWritePort.addr := rd
         io.out.info.gprWritePort.en   := rdIsNotZero
