@@ -26,7 +26,7 @@ class WbStage extends Module {
     val freePort    = Output(new ScoreboardChangeNdPort)
     val csrFreePort = Output(new ScoreboardChangeNdPort)
 
-    // `AddrTransStage` -> `WbStage` -> `Cu`  NO delay
+    // `AddrTransStage` -> `WbStage` -> `Cu` NO delay
     val cuInstInfoPort = Output(new InstInfoNdPort)
 
     // `WbStage` -> `Cu` NO delay

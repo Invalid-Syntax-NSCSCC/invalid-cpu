@@ -244,6 +244,11 @@ class Cu(
     io.newPc := io.jumpPc
   }
 
+  val is_softwareInt = io.instInfoPorts(0).isValid &&
+    io.instInfoPorts(0).csrWritePort.en &&
+    (io.instInfoPorts(0).csrWritePort.addr === Csr.Index.estat) &&
+    io.instInfoPorts(0).csrWritePort.data(1, 0).orR
+
   io.difftest match {
     case Some(dt) => {
       dt.cmt_ertn := RegNext(ertnFlush)
