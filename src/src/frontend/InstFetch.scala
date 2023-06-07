@@ -34,11 +34,7 @@ class InstFetch extends Module {
   })
 
   val isFirstSentReg = RegInit(false.B)
-  isFirstSentReg := isFirstSentReg
-
-  when(!isFirstSentReg && io.pcUpdate) {
-    isFirstSentReg := true.B
-  }
+  isFirstSentReg := true.B
 
   // InstAddr translate and mem stages
   val addrTransStage = Module(new InstAddrTransStage)
@@ -47,7 +43,7 @@ class InstFetch extends Module {
 
   // addrTransStage
   addrTransStage.io.isFlush       := io.isFlush
-  addrTransStage.io.isPcUpdate    := io.pcUpdate
+  addrTransStage.io.isPcUpdate    := io.pcUpdate || !isFirstSentReg
   addrTransStage.io.pc            := io.pc
   addrTransStage.io.peer.csr      := io.csr
   addrTransStage.io.peer.tlbTrans <> io.tlbTrans
