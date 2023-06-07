@@ -19,7 +19,7 @@ import pipeline.writeback.WbStage
 import spec.Param.isDiffTest
 import spec.{Count, Param, PipelineStageIndex}
 import spec.zeroWord
-import pipeline.queue.BiInstQueue
+import pipeline.queue.MultiInstQueue
 import control.bundles.PipelineControlNdPort
 import chisel3.util.is
 import pipeline.rob.bundles.RobIdDistributePort
@@ -109,7 +109,7 @@ class CoreCpuTop extends Module {
   io <> DontCare
   val iCache     = Module(new ICache)
   val frontend   = Module(new Frontend)
-  val instQueue  = Module(new BiInstQueue)
+  val instQueue  = Module(new MultiInstQueue)
   val issueStage = Module(new BiIssueStage)
   io.issuedInfoPort   := issueStage.io.outs(0).bits
   io.issueOutputValid := issueStage.io.outs(0).valid

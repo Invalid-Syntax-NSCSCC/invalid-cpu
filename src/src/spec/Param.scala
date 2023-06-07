@@ -15,6 +15,7 @@ object Param {
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
   val ctrlControlNum         = PipelineStageIndex.count + 1
+  val fetchInstMaxNum        = 2 // 单词取指
   val issueInstInfoMaxNum    = 2 // 发射数量
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
