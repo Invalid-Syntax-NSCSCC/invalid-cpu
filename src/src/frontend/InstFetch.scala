@@ -9,7 +9,7 @@ import pipeline.dispatch.bundles.InstInfoBundle
 import spec.Param.{NaiiveFetchStageState => State}
 import spec._
 import frontend.bundles.ICacheAccessPort
-import frontend.instFetchStages._
+import frontend.fetch._
 import memory.bundles.TlbTransPort
 import pipeline.mem.bundles.MemCsrNdPort
 

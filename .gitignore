@@ -198,6 +198,7 @@ Session.vim
 .idea/bsp.xml
 .idea/scala_compiler.xml
 .idea/misc.xml
+.vscode/*
 
 # Sensitive or high-churn files:
 .idea/dataSources.ids
