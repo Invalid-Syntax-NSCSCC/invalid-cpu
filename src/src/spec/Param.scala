@@ -15,8 +15,10 @@ object Param {
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
   val ctrlControlNum         = PipelineStageIndex.count + 1
-  val fetchInstMaxNum        = 2 // 单词取指
+  val fetchInstMaxNum        = 2 // 单次取指
   val issueInstInfoMaxNum    = 2 // 发射数量
+  val pipelineNum            = 2 // number of pipeline
+  val reservationStationDeep = 3 // 保留站深度
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
   val robIdLength            = 32 // rob给出的id

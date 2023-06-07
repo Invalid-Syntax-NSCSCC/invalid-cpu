@@ -12,7 +12,7 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   blankIn:      => InT,
   peerFactory:  => Option[PT] = None,
   inNum:        Int           = Param.issueInstInfoMaxNum,
-  outNum:       Int           = Param.issueInstInfoMaxNum)
+  outNum:       Int           = Param.pipelineNum)
     extends Module {
   val io = IO(new MultiBaseStageIo(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
 

@@ -10,6 +10,7 @@ import pipeline.writeback.bundles.InstInfoNdPort
 import spec._
 import utils.BiCounter
 import utils.MultiCounter
+import pipeline.common.MultiQueue
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
@@ -35,72 +36,23 @@ class MultiInstQueue(
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
 
-  val ram     = RegInit(VecInit(Seq.fill(queueLength)(InstInfoBundle.default)))
-  val enq_ptr = Module(new MultiCounter(queueLength, fetchNum))
-  val deq_ptr = Module(new MultiCounter(queueLength, issueNum))
+  val instQueue = Module(new MultiQueue(queueLength, fetchNum, issueNum, new InstInfoBundle, InstInfoBundle.default))
 
-  enq_ptr.io.inc   := 0.U
-  enq_ptr.io.flush := io.isFlush
-  deq_ptr.io.inc   := 0.U
-  deq_ptr.io.flush := io.isFlush
-
-  val maybeFull = RegInit(false.B)
-  val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
-  val isEmpty   = WireDefault(ptrMatch && !maybeFull)
-  val isFull    = WireDefault(ptrMatch && maybeFull)
-
-  val storeNum = WireDefault(
-    Mux(
-      enq_ptr.io.value === deq_ptr.io.value,
-      Mux(isEmpty, 0.U, queueLength.U),
-      Mux(
-        enq_ptr.io.value > deq_ptr.io.value,
-        enq_ptr.io.value - deq_ptr.io.value,
-        (queueLength.U - deq_ptr.io.value) + enq_ptr.io.value
-      )
-    )
-  )
-  val emptyNum = WireDefault(queueLength.U - storeNum)
-
-  val isEmptyBy = WireDefault(VecInit(Seq.range(0, issueNum).map(_.U === storeNum)))
-  val isFullBy  = WireDefault(VecInit(Seq.range(0, fetchNum).map(_.U === emptyNum)))
-
-  io.enqueuePorts.zipWithIndex.foreach {
-    case (enq, idx) =>
-      enq.ready := !isFullBy.take(idx + 1).reduce(_ || _)
+  // fall back
+  instQueue.io.enqueuePorts <> io.enqueuePorts
+  instQueue.io.isFlush      := io.isFlush
+  instQueue.io.setPorts.foreach { set =>
+    set.valid := false.B
+    set.bits  := DontCare
   }
-
-  io.dequeuePorts.zipWithIndex.foreach {
-    case (deq, idx) =>
-      deq.valid := !isEmptyBy.take(idx + 1).reduce(_ || _)
+  instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
+    case (q, out) =>
+      q.ready   := out.ready
+      out.valid := q.valid
   }
-
-  // enqueue
-  val enqEn      = io.enqueuePorts.map(port => (port.ready && port.valid))
-  val enqueueNum = enqEn.map(_.asUInt).reduce(_ +& _)
-
-  // dequeue
-  val deqEn      = io.dequeuePorts.map(port => (port.ready && port.valid))
-  val dequeueNum = deqEn.map(_.asUInt).reduce(_ +& _)
-
-  when(enqueueNum > dequeueNum) {
-    maybeFull := true.B
-  }.elsewhen(enqueueNum < dequeueNum) {
-    maybeFull := false.B
-  }
-
-  enq_ptr.io.inc := enqueueNum
-  io.enqueuePorts.lazyZip(enqEn).zipWithIndex.foreach {
-    case ((enqPort, en), idx) =>
-      when(idx.U < enqueueNum) {
-        ram(enq_ptr.io.incResults(idx)) := enqPort.bits
-      }
-  }
-
-  deq_ptr.io.inc := dequeueNum
 
   // Decode
-  val decodeInstInfos = WireDefault(VecInit(Seq.range(0, issueNum).map(idx => ram(deq_ptr.io.incResults(idx)))))
+  val decodeInstInfos = WireDefault(VecInit(instQueue.io.dequeuePorts.map(_.bits)))
 
   // Select a decoder
 
@@ -155,14 +107,5 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.exeSel            := selectedDecoder.info.exeSel
       dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
       dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
-  }
-
-  when(io.isFlush) {
-    ram.foreach(_ := InstInfoBundle.default)
-    maybeFull := false.B
-    io.dequeuePorts.foreach(_.valid := false.B)
-    storeNum := 0.U
-    isEmpty  := true.B
-    isFull   := false.B
   }
 }
