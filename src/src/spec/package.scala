@@ -52,6 +52,10 @@ package object spec {
       val asid           = 10.W
     }
 
+    object Rob {
+      val id = 8.W
+    }
+
     object Op {
       val _2RI12 = 10.W
       val _2RI14 = 8.W
