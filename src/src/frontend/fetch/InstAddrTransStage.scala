@@ -22,7 +22,7 @@ class InstAddrTransStage extends Module {
     val isFlush    = Input(Bool())
     val isPcUpdate = Input(Bool())
     val pc         = Input(UInt(Width.Mem.addr))
-    val out        = Flipped(Decoupled(new InstReqNdPort))
+    val out        = Decoupled(new InstReqNdPort)
     val peer       = new AddrTransPeerPort
   })
 
