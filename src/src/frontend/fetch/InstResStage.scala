@@ -42,6 +42,8 @@ class InstResStage
   val peer = io.peer.get
   val out  = resultOutReg.bits
 
+  val isLastHasReq = RegNext(false.B, false.B)
+
   // Fallback output
   out.pcAddr := selectedIn.pc
   out.inst   := peer.memRes.read.data
@@ -49,5 +51,22 @@ class InstResStage
   when(selectedIn.isValid) {
     isComputed         := peer.memRes.isComplete
     resultOutReg.valid := isComputed
+    isLastHasReq       := true.B
+  }
+
+  val shouldDiscardReg = RegInit(false.B)
+  shouldDiscardReg := shouldDiscardReg
+
+  when(io.isFlush && isLastHasReq && !peer.memRes.isComplete) {
+    shouldDiscardReg := true.B
+  }
+
+  when(shouldDiscardReg) {
+    when(peer.memRes.isComplete) {
+      shouldDiscardReg := false.B
+      isComputed       := true.B
+    }.otherwise {
+      isComputed := false.B
+    }
   }
 }

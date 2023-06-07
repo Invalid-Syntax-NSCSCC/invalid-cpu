@@ -85,8 +85,10 @@ class InstAddrTransStage extends Module {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      translatedAddr                  := peer.tlbTrans.physAddr
-      outReg.translatedMemReq.isValid := io.isPcUpdate && !peer.tlbTrans.exception.valid
+      translatedAddr := peer.tlbTrans.physAddr
+      outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
+        !peer.tlbTrans.exception.valid &&
+        !io.pc(1, 0).orR
     }
   }
 
@@ -101,7 +103,7 @@ class InstAddrTransStage extends Module {
   }
 
   // If next stage not ready, then wait until ready
-  when(!io.out.ready) {
+  when(!io.out.ready && !io.isFlush) {
     outReg     := outReg
     isLastSent := false.B
   }
@@ -109,7 +111,6 @@ class InstAddrTransStage extends Module {
   // Handle flush
   when(io.isFlush) {
     io.out.bits.translatedMemReq.isValid := false.B
-    outReg.translatedMemReq.isValid      := false.B
     isLastSent                           := true.B
   }
 }

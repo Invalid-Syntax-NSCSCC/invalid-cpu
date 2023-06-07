@@ -63,6 +63,5 @@ class InstFetch extends Module {
     p.memRes <> io.accessPort.res
   }
 
-  // Fallbacks
   io.isNextPc := instReqStage.io.in.ready && isFirstSentReg
 }

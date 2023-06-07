@@ -38,12 +38,16 @@ class InstReqStage
   peer.memReq.client := selectedIn.translatedMemReq
 
   when(selectedIn.translatedMemReq.isValid) {
-    // Whether memory request is submitted
-    isComputed := peer.memReq.isReady
+    when(io.out.ready) {
+      // Whether memory request is submitted
+      isComputed := peer.memReq.isReady
 
-    peer.memReq.client.isValid  := true.B
-    peer.memReq.client.addr     := selectedIn.translatedMemReq.addr
-    peer.memReq.client.isCached := selectedIn.translatedMemReq.isCached
+      peer.memReq.client.isValid  := true.B
+      peer.memReq.client.addr     := selectedIn.translatedMemReq.addr
+      peer.memReq.client.isCached := selectedIn.translatedMemReq.isCached
+    }.otherwise {
+      isComputed := false.B
+    }
 
     // Submit result
     resultOutReg.valid := isComputed
