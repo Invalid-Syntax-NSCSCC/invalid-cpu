@@ -1,15 +1,14 @@
 package memory
 
-import axi.BetterAxiMaster
 import axi.bundles.AxiMasterInterface
+import axi.{AxiMaster, BetterAxiMaster}
 import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
-import common.enums.ReadWriteSel
-import memory.bundles.{CacheMaintenanceHandshakePort, ICacheStatusTagBundle, StatusTagBundle}
+import frontend.bundles.ICacheAccessPort
+import memory.bundles.{CacheMaintenanceHandshakePort, ICacheStatusTagBundle}
 import memory.enums.{ICacheState => State}
 import spec._
-import frontend.bundles.ICacheAccessPort
 
 class ICache(
   isDebug:           Boolean   = false,
@@ -117,6 +116,9 @@ class ICache(
     ram.io.isWrite := false.B // Fallback: Not write
   }
 
+  // Uncache mode
+  val isCached = io.accessPort.req.client.isCached
+
   // AXI master
   val axiMaster = Module(
     new BetterAxiMaster(
@@ -125,10 +127,20 @@ class ICache(
       id        = Param.Axi.Id.iCache
     )
   )
-  axiMaster.io                   <> DontCare
-  io.axiMasterPort               <> axiMaster.io.axi
+  val naiveAxiMaster = Module(new AxiMaster(Id = Param.Axi.Id.iCache))
+  axiMaster.io      <> DontCare
+  naiveAxiMaster.io <> DontCare
+  when(isCached) {
+    io.axiMasterPort <> axiMaster.io.axi
+  }.otherwise {
+    io.axiMasterPort <> naiveAxiMaster.io.axi
+  }
   axiMaster.io.read.req.isValid  := false.B // Fallback: No request
   axiMaster.io.write.req.isValid := false.B // Fallback: No request
+  naiveAxiMaster.io.newRequest   := false.B // Fallback: No request
+  naiveAxiMaster.io.uncached     := true.B
+  naiveAxiMaster.io.size         := Value.Axi.Size._4_B
+  naiveAxiMaster.io.we           := false.B
 
   // Random set index
   assert(isPow2(Param.Count.ICache.setLen))
@@ -176,87 +188,93 @@ class ICache(
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
     is(State.ready) {
-      // Stage 1 and Stage 2.a: Read BRAM and cache query in two cycles
+      when(isCached) { // TODO: 如果在State.ready的第二拍，isCached变了怎么办？
+        // Stage 1 and Stage 2.a: Read BRAM and cache query in two cycles
 
-      io.accessPort.req.isReady  := !io.maintenancePort.client.isL1Valid // Fallback: Ready for request
-      io.maintenancePort.isReady := true.B
+        io.accessPort.req.isReady  := !io.maintenancePort.client.isL1Valid // Fallback: Ready for request
+        io.maintenancePort.isReady := true.B
 
-      // Step 1: BRAM read request
-      val currentQueryIndex = WireDefault(queryIndexFromMemAddr(currentMemAddr))
-      statusTagRams.foreach { ram =>
-        ram.io.addr := currentQueryIndex
-      }
-      dataLineRams.foreach { ram =>
-        ram.io.addr := currentQueryIndex
-      }
-      isHasReqReg := io.accessPort.req.client.isValid
+        // Step 1: BRAM read request
+        val currentQueryIndex = WireDefault(queryIndexFromMemAddr(currentMemAddr))
+        statusTagRams.foreach { ram =>
+          ram.io.addr := currentQueryIndex
+        }
+        dataLineRams.foreach { ram =>
+          ram.io.addr := currentQueryIndex
+        }
+        isHasReqReg := io.accessPort.req.client.isValid
 
-      // Step 2: Read status-tag
-      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
+        // Step 2: Read status-tag
+        val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
 
-      // Step 2: Read data (for read and write)
-      val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.dataOut)))
+        // Step 2: Read data (for read and write)
+        val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.dataOut)))
 
-      // Step 2: Decode
-      val tag       = WireDefault(tagFromMemAddr(reqMemAddr))
-      val dataIndex = WireDefault(dataIndexFromMemAddr(reqMemAddr))
+        // Step 2: Decode
+        val tag       = WireDefault(tagFromMemAddr(reqMemAddr))
+        val dataIndex = WireDefault(dataIndexFromMemAddr(reqMemAddr))
 
-      // Step 2: Calculate if hit and select
-      val isSelectedVec    = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
-      val setIndex         = WireDefault(OHToUInt(isSelectedVec))
-      val selectedDataLine = WireDefault(toDataLine(dataLines(setIndex)))
-      val isCacheHit       = WireDefault(isSelectedVec.reduce(_ || _))
+        // Step 2: Calculate if hit and select
+        val isSelectedVec    = WireDefault(VecInit(statusTagLines.map(line => line.isValid && (line.tag === tag))))
+        val setIndex         = WireDefault(OHToUInt(isSelectedVec))
+        val selectedDataLine = WireDefault(toDataLine(dataLines(setIndex)))
+        val isCacheHit       = WireDefault(isSelectedVec.reduce(_ || _))
 
-      // Step 2: Save data for later use
-      lastReg.memAddr        := reqMemAddr
-      lastReg.statusTagLines := statusTagLines
-      lastReg.setIndex       := setIndex
-      lastReg.dataLine       := selectedDataLine
+        // Step 2: Save data for later use
+        lastReg.memAddr        := reqMemAddr
+        lastReg.statusTagLines := statusTagLines
+        lastReg.setIndex       := setIndex
+        lastReg.dataLine       := selectedDataLine
 
-      // Step 2: Select data by data index from byte offset
-      val selectedData = WireDefault(selectedDataLine(dataIndex))
+        // Step 2: Select data by data index from byte offset
+        val selectedData = WireDefault(selectedDataLine(dataIndex))
 
-      // Step 2: Whether hit or not
-      when(isHasReqReg) {
-        when(isCacheHit) {
-          // Cache hit
+        // Step 2: Whether hit or not
+        when(isHasReqReg) {
+          when(isCacheHit) {
+            // Cache hit
 
-          // Step 2: Read result in same cycle output
-          io.accessPort.res.isComplete := true.B
-          io.accessPort.res.read.data  := selectedData
+            // Step 2: Read result in same cycle output
+            io.accessPort.res.isComplete := true.B
+            io.accessPort.res.read.data  := selectedData
 
-          // Next Stage 1
-          nextState := State.ready
-        }.otherwise {
-          // Cache miss
-          io.accessPort.req.isReady  := false.B
-          io.maintenancePort.isReady := false.B
+            // Next Stage 1
+            nextState := State.ready
+          }.otherwise {
+            // Cache miss
+            io.accessPort.req.isReady  := false.B
+            io.maintenancePort.isReady := false.B
 
-          // Select a set to refill
+            // Select a set to refill
 
-          // First, select from invalid, if it can
-          val isInvalidVec   = statusTagLines.map(!_.isValid)
-          val isInvalidHit   = WireDefault(isInvalidVec.reduce(_ || _))
-          val refillSetIndex = WireDefault(PriorityEncoder(isInvalidVec))
-          when(!isInvalidHit) {
-            // Finally, select randomly (using LFSR)
-            refillSetIndex := randomNum(log2Ceil(Param.Count.ICache.setLen) - 1, 0)
+            // First, select from invalid, if it can
+            val isInvalidVec   = statusTagLines.map(!_.isValid)
+            val isInvalidHit   = WireDefault(isInvalidVec.reduce(_ || _))
+            val refillSetIndex = WireDefault(PriorityEncoder(isInvalidVec))
+            when(!isInvalidHit) {
+              // Finally, select randomly (using LFSR)
+              refillSetIndex := randomNum(log2Ceil(Param.Count.ICache.setLen) - 1, 0)
+
+              // Save data for later use
+              lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
+            }
 
             // Save data for later use
-            lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
+            lastReg.setIndex := refillSetIndex
+
+            // Init refill state regs
+            isReadReqSentReg := false.B
+
+            // Next Stage 2.b.1
+            nextState := State.refillForRead
           }
-
-          // Save data for later use
-          lastReg.setIndex := refillSetIndex
-
-          // Init refill state regs
-          isReadReqSentReg := false.B
-
-          // Next Stage 2.b.1
-          nextState := State.refillForRead
+        }
+      }.otherwise {
+        when(naiveAxiMaster.io.readyOut) {
+          naiveAxiMaster.io.newRequest := true.B
+          nextState                    := State.waitUncachedReady
         }
       }
-
       // Maintenance
       when(io.maintenancePort.client.isL1Valid) {
         when(io.maintenancePort.client.isInit) {
@@ -271,6 +289,18 @@ class ICache(
           // Next Stage: Maintenance only for hit
           nextState := State.maintenanceHit
         }
+      }
+    }
+
+    is(State.waitUncachedReady) {
+      naiveAxiMaster.io.newRequest := false.B
+      when(naiveAxiMaster.io.validOut) {
+        nextState := State.ready
+
+        // TODO: Add one more cycle for return read data
+        io.accessPort.res.isComplete := true.B
+        io.accessPort.res.isFailed   := false.B
+        io.accessPort.res.read.data  := naiveAxiMaster.io.dataOut
       }
     }
 
