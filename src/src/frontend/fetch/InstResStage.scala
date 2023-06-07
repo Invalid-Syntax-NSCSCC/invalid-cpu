@@ -17,8 +17,7 @@ import pipeline.dispatch.bundles.InstInfoBundle
 
 class InstResNdPort extends Bundle {
   val isValid = Bool()
-  val addr     = UInt(Width.Mem.addr)
-  val isCached = Bool()
+  val pc      = UInt(Width.Mem.addr)
 }
 
 object InstResNdPort {
@@ -26,7 +25,7 @@ object InstResNdPort {
 }
 
 class InstResPeerPort extends Bundle {
-  val res = Input(new MemResponseNdPort)
+  val memRes = Input(new MemResponseNdPort)
 }
 
 class InstEnqueuePort extends Bundle {
@@ -43,21 +42,31 @@ class InstResStage
   val peer = io.peer.get
   val out  = resultOutReg.bits
 
-  // Fallback output
-  out.pcAddr := selectedIn.addr
-  out.inst   := 0.U(Width.inst)
+  val isLastHasReq = RegNext(false.B, false.B)
 
-  // Get read data
-  val readData = WireDefault(peer.res.read.data)
+  // Fallback output
+  out.pcAddr := selectedIn.pc
+  out.inst   := peer.memRes.read.data
 
   when(selectedIn.isValid) {
-    out.inst := readData
+    isComputed         := peer.memRes.isComplete
+    resultOutReg.valid := isComputed
+    isLastHasReq       := true.B
   }
 
-  // Whether memory access complete
-  isComputed := peer.res.isComplete
+  val shouldDiscardReg = RegInit(false.B)
+  shouldDiscardReg := shouldDiscardReg
 
+  when(io.isFlush && isLastHasReq && !peer.memRes.isComplete) {
+    shouldDiscardReg := true.B
+  }
 
-  // Submit result
-  resultOutReg.valid := isComputed
+  when(shouldDiscardReg) {
+    when(peer.memRes.isComplete) {
+      shouldDiscardReg := false.B
+      isComputed       := true.B
+    }.otherwise {
+      isComputed := false.B
+    }
+  }
 }

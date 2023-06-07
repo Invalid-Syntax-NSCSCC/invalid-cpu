@@ -101,18 +101,12 @@ class CoreCpuTop extends Module {
           val regs = Vec(32, UInt(32.W))
         }))
       else None
-
-    val issuedInfoPort   = Output(new RegReadNdPort)
-    val issueOutputValid = Output(Bool())
   })
 
-  io <> DontCare
-  val iCache     = Module(new ICache)
-  val frontend   = Module(new Frontend)
-  val instQueue  = Module(new MultiInstQueue)
-  val issueStage = Module(new BiIssueStage)
-  io.issuedInfoPort   := issueStage.io.outs(0).bits
-  io.issueOutputValid := issueStage.io.outs(0).valid
+  val iCache        = Module(new ICache)
+  val frontend      = Module(new Frontend)
+  val instQueue     = Module(new MultiInstQueue)
+  val issueStage    = Module(new BiIssueStage)
   val regReadStage  = Module(new RegReadStage)
   val exeStage      = Module(new ExeStage)
   val wbStage       = Module(new WbStage)
@@ -139,7 +133,8 @@ class CoreCpuTop extends Module {
   csr.io <> DontCare
 
   // PC
-  pc.io.newPc := cu.io.newPc
+  pc.io.newPc  := cu.io.newPc
+  pc.io.isNext := frontend.io.isNextPc
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
@@ -175,11 +170,10 @@ class CoreCpuTop extends Module {
 
   // Frontend
   //   inst fetch stage
+  frontend.io.isFlush    := cu.io.flushes(PipelineStageIndex.frontend)
   frontend.io.accessPort <> iCache.io.accessPort
   frontend.io.pc         := pc.io.pc
   frontend.io.pcUpdate   := pc.io.pcUpdate
-  frontend.io.isFlush    := cu.io.flushes(PipelineStageIndex.frontend)
-  pc.io.isNext           := frontend.io.isPcNext
   frontend.io.tlbTrans   <> tlb.io.tlbTransPorts(1)
   frontend.io.csr.crmd   := csr.io.csrValues.crmd
   frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0

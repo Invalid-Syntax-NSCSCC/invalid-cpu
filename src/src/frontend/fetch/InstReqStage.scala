@@ -9,7 +9,7 @@ import frontend.bundles.{ICacheRequestHandshakePort, ICacheRequestNdPort}
 
 class InstReqNdPort extends Bundle {
   val translatedMemReq = new ICacheRequestNdPort
-  val addr             = UInt(Width.Mem.addr)
+  val pc               = UInt(Width.Mem.addr)
 }
 
 object InstReqNdPort {
@@ -17,7 +17,7 @@ object InstReqNdPort {
 }
 
 class InstReqPeerPort extends Bundle {
-  val iCacheReq          = Flipped(new ICacheRequestHandshakePort)
+  val memReq = Flipped(new ICacheRequestHandshakePort)
 }
 
 class InstReqStage
@@ -31,24 +31,24 @@ class InstReqStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.addr     := selectedIn.addr
+  out.pc      := selectedIn.pc
   out.isValid := selectedIn.translatedMemReq.isValid
-  out.isCached := selectedIn.translatedMemReq.isCached
 
   // Fallback peer
-  peer.iCacheReq.client := selectedIn.translatedMemReq
+  peer.memReq.client := selectedIn.translatedMemReq
 
   when(selectedIn.translatedMemReq.isValid) {
-    // Whether memory request is submitted
-    isComputed := peer.iCacheReq.isReady
+    when(io.out.ready) {
+      // Whether memory request is submitted
+      isComputed := peer.memReq.isReady
 
-    // Pending when this memory request might be flushed in the future
-
-    when(selectedIn.translatedMemReq.isValid && peer.iCacheReq.isReady) {
-      peer.iCacheReq.client.isValid  := true.B
-      peer.iCacheReq.client.addr     := selectedIn.translatedMemReq.addr
-      peer.iCacheReq.client.isCached := selectedIn.translatedMemReq.isCached
+      peer.memReq.client.isValid  := true.B
+      peer.memReq.client.addr     := selectedIn.translatedMemReq.addr
+      peer.memReq.client.isCached := selectedIn.translatedMemReq.isCached
+    }.otherwise {
+      isComputed := false.B
     }
+
     // Submit result
     resultOutReg.valid := isComputed
   }

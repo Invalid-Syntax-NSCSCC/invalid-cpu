@@ -79,6 +79,8 @@ class MemResStage
     out.gprWrite.data := Mux(selectedIn.isUnsigned, unsignedReadData, signedReadData.asUInt)
   }
 
+  val isLastHasReq = RegNext(false.B, false.B)
+
   when(selectedIn.instInfo.isValid) {
     // Whether memory access complete
     when(selectedIn.isHasReq) {
@@ -87,9 +89,26 @@ class MemResStage
       }.otherwise {
         isComputed := peer.uncachedRes.isComplete
       }
+      isLastHasReq := true.B
     }
 
     // Submit result
     resultOutReg.valid := isComputed
+  }
+
+  val shouldDiscardReg = RegInit(false.B)
+  shouldDiscardReg := shouldDiscardReg
+
+  when(io.isFlush && isLastHasReq && !(peer.dCacheRes.isComplete || peer.uncachedRes.isComplete)) {
+    shouldDiscardReg := true.B
+  }
+
+  when(shouldDiscardReg) {
+    when(peer.dCacheRes.isComplete || peer.uncachedRes.isComplete) {
+      shouldDiscardReg := false.B
+      isComputed       := true.B
+    }.otherwise {
+      isComputed := false.B
+    }
   }
 }

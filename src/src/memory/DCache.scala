@@ -190,15 +190,20 @@ class DCache(
   val nextState = WireDefault(stateReg)
   stateReg := nextState // Fallback: Keep state
 
+  val isCompleteReg = RegInit(false.B)
+  isCompleteReg := isCompleteReg
+  val readDataReg = Reg(UInt(Width.Mem.data))
+  readDataReg := readDataReg
+
   io.accessPort.req.isReady := false.B // Fallback: Not ready
 
   io.maintenancePort.isReady := false.B // Fallback: Not ready
 
   io.accessPort.res.isFailed := false.B // Fallback: Not failed
 
-  io.accessPort.res.isComplete := false.B // Falback: Not complete
+  io.accessPort.res.isComplete := isCompleteReg // Fallback: Keep status
 
-  io.accessPort.res.read.data := DontCare
+  io.accessPort.res.read.data := readDataReg // Fallback: Keep data
 
   val currentMemAddr = WireDefault(
     Mux(
@@ -331,6 +336,8 @@ class DCache(
               // Step 2: Read result in same cycle output
               io.accessPort.res.isComplete := true.B
               io.accessPort.res.read.data  := selectedData
+              isCompleteReg                := true.B
+              readDataReg                  := selectedData
 
               // Next Stage 1
               nextState := State.ready
@@ -372,6 +379,7 @@ class DCache(
 
               // Mark write as complete
               io.accessPort.res.isComplete := true.B
+              isCompleteReg                := true.B
 
               // Next Stage 1
               nextState := State.ready
@@ -379,9 +387,12 @@ class DCache(
           }
         }.otherwise {
           // Cache miss
-          io.accessPort.req.isReady  := false.B
-          io.maintenancePort.isReady := false.B
-          isNeedWbReg                := false.B // Fallback: No write back
+
+          io.accessPort.req.isReady    := false.B
+          io.maintenancePort.isReady   := false.B
+          io.accessPort.res.isComplete := false.B
+          isCompleteReg                := false.B
+          isNeedWbReg                  := false.B // Fallback: No write back
 
           // Select a set to refill
 
@@ -493,6 +504,9 @@ class DCache(
           io.accessPort.res.isComplete := true.B
           io.accessPort.res.isFailed   := axiMaster.io.read.res.isFailed
           io.accessPort.res.read.data  := readData
+          isCompleteReg                := true.B
+          readDataReg                  := readData
+          // TODO: `isFailedReg`
 
           when(isNeedWbReg) {
             // Next Stage 3
@@ -564,6 +578,7 @@ class DCache(
           // Mark write complete (in the same cycle)
           io.accessPort.res.isComplete := true.B
           io.accessPort.res.isFailed   := axiMaster.io.read.res.isFailed
+          isCompleteReg                := true.B
 
           when(isNeedWbReg) {
             // Next Stage 3

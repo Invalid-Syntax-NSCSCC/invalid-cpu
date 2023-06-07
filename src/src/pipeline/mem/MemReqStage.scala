@@ -61,10 +61,16 @@ class MemReqStage
 
   when(selectedIn.instInfo.isValid) {
     // Whether memory request is submitted
-    when(selectedIn.isCached) {
-      isComputed := peer.dCacheReq.isReady
+    when(io.out.ready) {
+      when(selectedIn.isCached) {
+        isComputed := peer.dCacheReq.isReady
+      }.otherwise {
+        isComputed := peer.uncachedReq.isReady
+      }
     }.otherwise {
-      isComputed := peer.uncachedReq.isReady
+      isComputed                      := false.B
+      peer.dCacheReq.client.isValid   := false.B
+      peer.uncachedReq.client.isValid := false.B
     }
 
     // Pending when this memory request might be flushed in the future

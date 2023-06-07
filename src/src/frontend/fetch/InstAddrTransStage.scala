@@ -17,32 +17,26 @@ import spec.Width
 import scala.collection.immutable
 import pipeline.mem.AddrTransPeerPort
 
-class InstAddrTransNdPort extends Bundle {
-  val memRequest = new Bundle {
-    val isValid = Bool()
-    val addr    = UInt(Width.Mem.addr)
-  }
-}
+class InstAddrTransStage extends Module {
+  val io = IO(new Bundle {
+    val isFlush    = Input(Bool())
+    val isPcUpdate = Input(Bool())
+    val pc         = Input(UInt(Width.Mem.addr))
+    val out        = Decoupled(new InstReqNdPort)
+    val peer       = new AddrTransPeerPort
+  })
 
-object InstAddrTransNdPort {
-  def default: InstAddrTransNdPort = 0.U.asTypeOf(new InstAddrTransNdPort)
-}
+  val peer = io.peer
 
-class InstAddrTransStage
-    extends BaseStage(
-      new InstAddrTransNdPort,
-      new InstReqNdPort,
-      InstAddrTransNdPort.default,
-      Some(new AddrTransPeerPort)
-    ) {
-  val peer = io.peer.get
-  val out  = resultOutReg.bits
+  val outReg = RegInit(InstReqNdPort.default)
+  io.out.bits  := outReg
+  io.out.valid := outReg.translatedMemReq.isValid
+
+  val isLastSent = RegNext(true.B, true.B)
 
   // Fallback output
-  out.translatedMemReq.isCached := false.B
-  out.translatedMemReq.isValid  := selectedIn.memRequest.isValid
-  val vertualAddr = WireDefault(selectedIn.memRequest.addr)
-  out.translatedMemReq.addr := vertualAddr
+  outReg.pc                       := io.pc
+  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !io.pc(1, 0).orR
 
   // DMW mapping
   val directMapVec = Wire(
@@ -59,11 +53,10 @@ class InstAddrTransStage
     case (target, window) =>
       target.isHit := ((peer.csr.crmd.plv === Csr.Crmd.Plv.high && window.plv0) ||
         (peer.csr.crmd.plv === Csr.Crmd.Plv.low && window.plv3)) &&
-        window.vseg === selectedIn.memRequest
-          .addr(selectedIn.memRequest.addr.getWidth - 1, selectedIn.memRequest.addr.getWidth - 3)
+        window.vseg === io.pc(io.pc.getWidth - 1, io.pc.getWidth - 3)
       target.mappedAddr := Cat(
         window.pseg,
-        selectedIn.memRequest.addr(selectedIn.memRequest.addr.getWidth - 4, 0)
+        io.pc(io.pc.getWidth - 4, 0)
       )
   }
 
@@ -79,37 +72,45 @@ class InstAddrTransStage
   }
 
   // Translate address
-  val translatedAddr = WireDefault(selectedIn.memRequest.addr)
-  out.translatedMemReq.addr := translatedAddr
-  peer.tlbTrans.memType     := TlbMemType.load
+  val translatedAddr = WireDefault(io.pc)
+  outReg.translatedMemReq.addr := translatedAddr
+  peer.tlbTrans.memType        := TlbMemType.fetch
 
-  peer.tlbTrans.virtAddr := selectedIn.memRequest.addr
+  peer.tlbTrans.virtAddr := io.pc
   switch(transMode) {
     is(AddrTransType.direct) {
-      translatedAddr := selectedIn.memRequest.addr
+      translatedAddr := io.pc
     }
     is(AddrTransType.directMapping) {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      translatedAddr               := peer.tlbTrans.physAddr
-      out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
+      translatedAddr := peer.tlbTrans.physAddr
+      outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
+        !peer.tlbTrans.exception.valid &&
+        !io.pc(1, 0).orR
     }
   }
-  vertualAddr := selectedIn.memRequest.addr
-
-  // TODO: CSR write for TLB maintenance
 
   // Can use cache
   switch(peer.csr.crmd.datm) {
     is(Csr.Crmd.Datm.suc) {
-      out.translatedMemReq.isCached := false.B
+      outReg.translatedMemReq.isCached := false.B
     }
     is(Csr.Crmd.Datm.cc) {
-      out.translatedMemReq.isCached := true.B
+      outReg.translatedMemReq.isCached := true.B
     }
   }
 
-  // Submit result
-  resultOutReg.valid := peer.tlbTrans.exception.valid
+  // If next stage not ready, then wait until ready
+  when(!io.out.ready && !io.isFlush) {
+    outReg     := outReg
+    isLastSent := false.B
+  }
+
+  // Handle flush
+  when(io.isFlush) {
+    io.out.bits.translatedMemReq.isValid := false.B
+    isLastSent                           := true.B
+  }
 }
