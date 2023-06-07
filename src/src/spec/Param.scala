@@ -69,7 +69,6 @@ object Param {
       val tag        = _tag.W
       val dataLine   = _dataLine.W
     }
-
   }
   object Count {
     object Axi { // crossbar
