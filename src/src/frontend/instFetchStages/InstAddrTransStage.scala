@@ -28,11 +28,6 @@ object InstAddrTransNdPort {
   def default: InstAddrTransNdPort = 0.U.asTypeOf(new InstAddrTransNdPort)
 }
 
-// class AddrTransPeerPort extends Bundle {
-//   val csr      = Input(new MemCsrNdPort)
-//   val tlbTrans = Flipped(new TlbTransPort)
-// }
-
 class InstAddrTransStage
     extends BaseStage(
       new InstAddrTransNdPort,
@@ -46,7 +41,8 @@ class InstAddrTransStage
   // Fallback output
   out.translatedMemReq.isCached := false.B
   out.translatedMemReq.isValid  := selectedIn.memRequest.isValid
-  out.translatedMemReq.addr     := selectedIn.memRequest.addr
+  val vertualAddr = WireDefault(selectedIn.memRequest.addr)
+  out.translatedMemReq.addr     := vertualAddr
 
   // DMW mapping
   val directMapVec = Wire(
@@ -100,6 +96,7 @@ class InstAddrTransStage
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
     }
   }
+  vertualAddr := selectedIn.memRequest.addr
 
   // TODO: CSR write for TLB maintenance
 

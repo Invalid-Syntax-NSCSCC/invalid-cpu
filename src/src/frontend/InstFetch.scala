@@ -40,7 +40,7 @@ class InstFetch extends Module {
 
   // addrTransStage
   addrTransStage.io.in.valid                   := io.pcUpdate
-  addrTransStage.io.in.bits.memRequest.isValid := (io.pc =/= 0.U(Width.Reg.data)) || (~(io.pc(1, 0).xorR))
+  addrTransStage.io.in.bits.memRequest.isValid := (io.pc =/= 0.U(Width.Reg.data)) || (!(io.pc(1, 0).xorR))
   addrTransStage.io.in.bits.memRequest.addr    := io.pc
   addrTransStage.io.isFlush                    := io.isFlush
   addrTransStage.io.out                        <> instReqStage.io.in
@@ -79,7 +79,7 @@ class InstFetch extends Module {
   // Fallbacks
   io.isPcNext              := false.B
   io.instEnqueuePort.valid := false.B
-  when(io.accessPort.req.isReady) {
+  when(addrTransStage.io.in.ready) {
     io.isPcNext := true.B
   }
 }
