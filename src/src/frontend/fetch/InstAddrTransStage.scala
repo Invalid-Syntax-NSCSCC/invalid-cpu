@@ -1,4 +1,4 @@
-package frontend.instFetchStages
+package frontend.fetch
 
 import chisel3._
 import chisel3.util._
@@ -42,7 +42,7 @@ class InstAddrTransStage
   out.translatedMemReq.isCached := false.B
   out.translatedMemReq.isValid  := selectedIn.memRequest.isValid
   val vertualAddr = WireDefault(selectedIn.memRequest.addr)
-  out.translatedMemReq.addr     := vertualAddr
+  out.translatedMemReq.addr := vertualAddr
 
   // DMW mapping
   val directMapVec = Wire(

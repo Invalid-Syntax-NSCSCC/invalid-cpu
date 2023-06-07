@@ -1,4 +1,4 @@
-package frontend.instFetchStages
+package frontend.fetch
 
 import pipeline.common.BaseStage
 import chisel3.Bundle

@@ -1,4 +1,4 @@
-package frontend.instFetchStages
+package frontend.fetch
 
 import chisel3._
 import chisel3.util._
@@ -63,5 +63,4 @@ class InstResStage
 
   // Submit result
   resultOutReg.valid := isComputed
-
 }
