@@ -100,15 +100,16 @@ class InstAddrTransStage extends Module {
     }
   }
 
-  // Handle flush
-  when(io.isFlush) {
-    io.out.bits.translatedMemReq.isValid := false.B
-    outReg.translatedMemReq.isValid      := false.B
-  }
-
   // If next stage not ready, then wait until ready
   when(!io.out.ready) {
     outReg     := outReg
     isLastSent := false.B
+  }
+
+  // Handle flush
+  when(io.isFlush) {
+    io.out.bits.translatedMemReq.isValid := false.B
+    outReg.translatedMemReq.isValid      := false.B
+    isLastSent                           := true.B
   }
 }
