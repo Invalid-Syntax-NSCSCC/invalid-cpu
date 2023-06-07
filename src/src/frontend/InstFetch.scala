@@ -9,7 +9,7 @@ import pipeline.dispatch.bundles.InstInfoBundle
 import spec.Param.{NaiiveFetchStageState => State}
 import spec._
 import frontend.bundles.ICacheAccessPort
-import frontend.instFetch._
+import frontend.instFetchStages._
 import memory.bundles.TlbTransPort
 import pipeline.mem.bundles.MemCsrNdPort
 
@@ -58,8 +58,9 @@ class InstFetch extends Module {
   }
 
   // instResStage
-  instResStage.io.in <> instReqStage.io.out
-  io.instEnqueuePort <> instResStage.io.out
+  instResStage.io.in      <> instReqStage.io.out
+  instResStage.io.isFlush := io.isFlush
+  io.instEnqueuePort      <> instResStage.io.out
   instResStage.io.peer.foreach { p =>
     p.res <> io.accessPort.res
   }

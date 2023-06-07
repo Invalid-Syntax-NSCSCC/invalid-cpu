@@ -5,11 +5,11 @@ import chisel3.Bundle
 import chisel3._
 import chisel3.util._
 import spec.Width
-import frontend.bundles.{ICacheRequestHandshakePort,ICacheRequestNdPort}
+import frontend.bundles.{ICacheRequestHandshakePort, ICacheRequestNdPort}
 
 class InstReqNdPort extends Bundle {
-  val translatedMemReq = new ICacheRequestNdPort 
-  val addr     = UInt(Width.Mem.addr)
+  val translatedMemReq = new ICacheRequestNdPort
+  val addr             = UInt(Width.Mem.addr)
 }
 
 object InstReqNdPort {
@@ -37,8 +37,7 @@ class InstReqStage
   out.isCached := selectedIn.translatedMemReq.isCached
 
   // Fallback peer
-  peer.iCacheReq.client      := selectedIn.translatedMemReq
-
+  peer.iCacheReq.client := selectedIn.translatedMemReq
 
   when(selectedIn.translatedMemReq.isValid) {
     // Whether memory request is submitted

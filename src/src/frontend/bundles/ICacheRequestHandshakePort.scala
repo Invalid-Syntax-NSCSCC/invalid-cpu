@@ -5,7 +5,6 @@ import frontend.bundles.ICacheRequestNdPort
 import spec._
 
 class ICacheRequestHandshakePort extends Bundle {
-  val client   = Input(new ICacheRequestNdPort)
-  val isReady  = Output(Bool())
-  val isCached = Bool()
+  val client  = Input(new ICacheRequestNdPort)
+  val isReady = Output(Bool())
 }

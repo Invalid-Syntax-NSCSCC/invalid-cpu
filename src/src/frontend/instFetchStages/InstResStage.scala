@@ -36,7 +36,7 @@ class InstEnqueuePort extends Bundle {
 class InstResStage
     extends BaseStage(
       new InstResNdPort,
-      new InstEnqueuePort,
+      new InstInfoBundle,
       InstResNdPort.default,
       Some(new InstResPeerPort)
     ) {
@@ -44,19 +44,21 @@ class InstResStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.instInfo.pcAddr := selectedIn.addr
-  out.instInfo.inst   := 0.U(Width.inst)
+  out.pcAddr := selectedIn.addr
+  out.inst   := 0.U(Width.inst)
 
   // Get read data
   val readData = WireDefault(peer.res.read.data)
 
   when(selectedIn.isHasReq) {
-    out.instInfo.inst := readData
+    out.inst := readData
   }
 
   // Whether memory access complete
   when(selectedIn.isHasReq) {
     isComputed := peer.res.isComplete
+  }.otherwise {
+    isComputed := false.B
   }
 
   // Submit result

@@ -1,4 +1,4 @@
-package frontend.instFetch
+package frontend.instFetchStages
 
 import chisel3._
 import chisel3.util._
@@ -114,6 +114,5 @@ class InstAddrTransStage
   }
 
   // Submit result
-  resultOutReg.valid     := peer.tlbTrans.exception.valid
-  resultOutReg.bits.addr := selectedIn.memRequest.addr
+  resultOutReg.valid := peer.tlbTrans.exception.valid
 }

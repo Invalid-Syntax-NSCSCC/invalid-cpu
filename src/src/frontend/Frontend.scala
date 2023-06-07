@@ -38,6 +38,7 @@ class Frontend extends Module {
   instFetch.io.instEnqueuePort <> io.instEnqueuePort
   instFetch.io.isFlush         := io.isFlush
   instFetch.io.pc              := io.pc
+  instFetch.io.pcUpdate        := io.pcUpdate
   io.isPcNext                  := instFetch.io.isPcNext
   instFetch.io.csr             := io.csr
   instFetch.io.tlbTrans        <> io.tlbTrans
