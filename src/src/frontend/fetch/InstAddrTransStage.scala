@@ -29,13 +29,14 @@ class InstAddrTransStage extends Module {
   val peer = io.peer
 
   val outReg = RegInit(InstReqNdPort.default)
-  outReg       := outReg
   io.out.bits  := outReg
   io.out.valid := outReg.translatedMemReq.isValid
 
+  val isLastSent = RegNext(true.B, true.B)
+
   // Fallback output
   outReg.pc                       := io.pc
-  outReg.translatedMemReq.isValid := io.isPcUpdate && io.pc.orR && !io.pc(1, 0).orR
+  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !io.pc(1, 0).orR
 
   // DMW mapping
   val directMapVec = Wire(
@@ -103,5 +104,11 @@ class InstAddrTransStage extends Module {
   when(io.isFlush) {
     io.out.bits.translatedMemReq.isValid := false.B
     outReg.translatedMemReq.isValid      := false.B
+  }
+
+  // If next stage not ready, then wait until ready
+  when(!io.out.ready) {
+    outReg     := outReg
+    isLastSent := false.B
   }
 }
