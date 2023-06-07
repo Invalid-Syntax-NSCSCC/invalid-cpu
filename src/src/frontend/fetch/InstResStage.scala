@@ -17,8 +17,7 @@ import pipeline.dispatch.bundles.InstInfoBundle
 
 class InstResNdPort extends Bundle {
   val isValid = Bool()
-  val addr     = UInt(Width.Mem.addr)
-  val isCached = Bool()
+  val pc      = UInt(Width.Mem.addr)
 }
 
 object InstResNdPort {
@@ -26,7 +25,7 @@ object InstResNdPort {
 }
 
 class InstResPeerPort extends Bundle {
-  val res = Input(new MemResponseNdPort)
+  val memRes = Input(new MemResponseNdPort)
 }
 
 class InstEnqueuePort extends Bundle {
@@ -44,20 +43,11 @@ class InstResStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.pcAddr := selectedIn.addr
-  out.inst   := 0.U(Width.inst)
-
-  // Get read data
-  val readData = WireDefault(peer.res.read.data)
+  out.pcAddr := selectedIn.pc
+  out.inst   := peer.memRes.read.data
 
   when(selectedIn.isValid) {
-    out.inst := readData
+    isComputed         := peer.memRes.isComplete
+    resultOutReg.valid := isComputed
   }
-
-  // Whether memory access complete
-  isComputed := peer.res.isComplete
-
-
-  // Submit result
-  resultOutReg.valid := isComputed
 }

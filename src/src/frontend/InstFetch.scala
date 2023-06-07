@@ -9,7 +9,7 @@ import pipeline.dispatch.bundles.InstInfoBundle
 import spec.Param.{NaiiveFetchStageState => State}
 import spec._
 import frontend.bundles.ICacheAccessPort
-import frontend.instFetchStages._
+import frontend.fetch._
 import memory.bundles.TlbTransPort
 import pipeline.mem.bundles.MemCsrNdPort
 
@@ -39,35 +39,28 @@ class InstFetch extends Module {
   val instResStage   = Module(new InstResStage)
 
   // addrTransStage
-  addrTransStage.io.in.valid                   := io.pcUpdate
-  addrTransStage.io.in.bits.memRequest.isValid := (io.pc =/= 0.U(Width.Reg.data)) || (!(io.pc(1, 0).xorR))
-  addrTransStage.io.in.bits.memRequest.addr    := io.pc
-  addrTransStage.io.isFlush                    := io.isFlush
-  addrTransStage.io.out                        <> instReqStage.io.in
-  addrTransStage.io.peer.foreach { p =>
-    p.tlbTrans <> io.tlbTrans
-    p.csr      := io.csr
-  }
+  addrTransStage.io.isFlush       := io.isFlush
+  addrTransStage.io.isPcUpdate    := io.pcUpdate
+  addrTransStage.io.pc            := io.pc
+  addrTransStage.io.out           <> instReqStage.io.in
+  addrTransStage.io.peer.csr      := io.csr
+  addrTransStage.io.peer.tlbTrans <> io.tlbTrans
 
   // instReqStage
-  instReqStage.io.in      <> addrTransStage.io.out
   instReqStage.io.isFlush := io.isFlush
+  instReqStage.io.in      <> addrTransStage.io.out
   instReqStage.io.peer.foreach { p =>
-    p.iCacheReq          <> io.accessPort.req
+    p.memReq <> io.accessPort.req
   }
 
   // instResStage
-  instResStage.io.in      <> instReqStage.io.out
   instResStage.io.isFlush := io.isFlush
+  instResStage.io.in      <> instReqStage.io.out
   io.instEnqueuePort      <> instResStage.io.out
   instResStage.io.peer.foreach { p =>
-    p.res <> io.accessPort.res
+    p.memRes <> io.accessPort.res
   }
 
   // Fallbacks
-  io.isPcNext              := false.B
-  io.instEnqueuePort.valid := false.B
-  when(addrTransStage.io.in.ready) {
-    io.isPcNext := true.B
-  }
+  io.isPcNext := instReqStage.io.in.ready
 }
