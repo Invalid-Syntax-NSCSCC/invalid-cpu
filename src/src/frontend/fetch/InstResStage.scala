@@ -60,5 +60,4 @@ class InstResStage
 
   // Submit result
   resultOutReg.valid := isComputed
-
 }
