@@ -54,7 +54,6 @@ class InstFetch extends Module {
   instReqStage.io.isFlush := io.isFlush
   instReqStage.io.peer.foreach { p =>
     p.iCacheReq          <> io.accessPort.req
-    p.isAfterMemReqFlush := io.isFlush
   }
 
   // instResStage
@@ -64,17 +63,6 @@ class InstFetch extends Module {
   instResStage.io.peer.foreach { p =>
     p.res <> io.accessPort.res
   }
-
-  val stateReg = RegInit(State.idle)
-  stateReg := stateReg
-
-  val shouldDiscardReg = RegInit(false.B) // Fallback: Follow
-  val shouldDiscard    = WireInit(io.isFlush || shouldDiscardReg)
-
-  val isCompleteReg = RegInit(false.B)
-  isCompleteReg := isCompleteReg
-  val lastInstReg = RegInit(0.U(Width.inst))
-  lastInstReg := lastInstReg
 
   // Fallbacks
   io.isPcNext              := false.B

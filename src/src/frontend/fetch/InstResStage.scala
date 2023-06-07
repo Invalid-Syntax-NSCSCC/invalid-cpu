@@ -1,4 +1,4 @@
-package frontend.instFetchStages
+package frontend.fetch
 
 import chisel3._
 import chisel3.util._
@@ -16,7 +16,7 @@ import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.InstInfoBundle
 
 class InstResNdPort extends Bundle {
-  val isHasReq = Bool()
+  val isValid = Bool()
   val addr     = UInt(Width.Mem.addr)
   val isCached = Bool()
 }
@@ -50,16 +50,13 @@ class InstResStage
   // Get read data
   val readData = WireDefault(peer.res.read.data)
 
-  when(selectedIn.isHasReq) {
+  when(selectedIn.isValid) {
     out.inst := readData
   }
 
   // Whether memory access complete
-  when(selectedIn.isHasReq) {
-    isComputed := peer.res.isComplete
-  }.otherwise {
-    isComputed := false.B
-  }
+  isComputed := peer.res.isComplete
+
 
   // Submit result
   resultOutReg.valid := isComputed

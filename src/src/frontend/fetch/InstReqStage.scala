@@ -1,4 +1,4 @@
-package frontend.instFetchStages
+package frontend.fetch
 
 import pipeline.common.BaseStage
 import chisel3.Bundle
@@ -18,7 +18,6 @@ object InstReqNdPort {
 
 class InstReqPeerPort extends Bundle {
   val iCacheReq          = Flipped(new ICacheRequestHandshakePort)
-  val isAfterMemReqFlush = Input(Bool())
 }
 
 class InstReqStage
@@ -33,7 +32,7 @@ class InstReqStage
 
   // Fallback output
   out.addr     := selectedIn.addr
-  out.isHasReq := selectedIn.translatedMemReq.isValid
+  out.isValid := selectedIn.translatedMemReq.isValid
   out.isCached := selectedIn.translatedMemReq.isCached
 
   // Fallback peer
@@ -44,10 +43,6 @@ class InstReqStage
     isComputed := peer.iCacheReq.isReady
 
     // Pending when this memory request might be flushed in the future
-    when(peer.isAfterMemReqFlush) {
-      peer.iCacheReq.client.isValid := false.B
-      isComputed                    := false.B
-    }
 
     when(selectedIn.translatedMemReq.isValid && peer.iCacheReq.isReady) {
       peer.iCacheReq.client.isValid  := true.B
