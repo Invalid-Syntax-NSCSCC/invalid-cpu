@@ -17,7 +17,7 @@ class InstFetch extends Module {
   val io = IO(new Bundle {
     val pc       = Input(UInt(Width.Reg.data))
     val pcUpdate = Input(Bool())
-    val isPcNext = Output(Bool())
+    val isNextPc = Output(Bool())
 
     // <-> Frontend  <->ICache
     val accessPort = Flipped(new ICacheAccessPort)
@@ -32,6 +32,13 @@ class InstFetch extends Module {
     val csr = Input(new MemCsrNdPort)
 
   })
+
+  val isFirstSentReg = RegInit(false.B)
+  isFirstSentReg := isFirstSentReg
+
+  when(!isFirstSentReg && io.pcUpdate) {
+    isFirstSentReg := true.B
+  }
 
   // InstAddr translate and mem stages
   val addrTransStage = Module(new InstAddrTransStage)
@@ -61,5 +68,5 @@ class InstFetch extends Module {
   }
 
   // Fallbacks
-  io.isPcNext := instReqStage.io.in.ready
+  io.isNextPc := instReqStage.io.in.ready && isFirstSentReg
 }

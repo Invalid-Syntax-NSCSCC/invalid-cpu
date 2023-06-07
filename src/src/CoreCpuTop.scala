@@ -134,7 +134,7 @@ class CoreCpuTop extends Module {
 
   // PC
   pc.io.newPc  := cu.io.newPc
-  pc.io.isNext := frontend.io.isPcNext
+  pc.io.isNext := frontend.io.isNextPc
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
