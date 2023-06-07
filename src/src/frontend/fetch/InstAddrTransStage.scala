@@ -22,15 +22,16 @@ class InstAddrTransStage extends Module {
     val isFlush    = Input(Bool())
     val isPcUpdate = Input(Bool())
     val pc         = Input(UInt(Width.Mem.addr))
-    val out        = Output(new InstReqNdPort)
+    val out        = Flipped(Decoupled(new InstReqNdPort))
     val peer       = new AddrTransPeerPort
   })
 
   val peer = io.peer
 
   val outReg = RegInit(InstReqNdPort.default)
-  outReg := outReg
-  io.out := outReg
+  outReg       := outReg
+  io.out.bits  := outReg
+  io.out.valid := outReg.translatedMemReq.isValid
 
   // Fallback output
   outReg.pc                       := io.pc
@@ -100,7 +101,7 @@ class InstAddrTransStage extends Module {
 
   // Handle flush
   when(io.isFlush) {
-    io.out.translatedMemReq.isValid := false.B
-    outReg.translatedMemReq.isValid := false.B
+    io.out.bits.translatedMemReq.isValid := false.B
+    outReg.translatedMemReq.isValid      := false.B
   }
 }

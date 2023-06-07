@@ -42,7 +42,6 @@ class InstFetch extends Module {
   addrTransStage.io.isFlush       := io.isFlush
   addrTransStage.io.isPcUpdate    := io.pcUpdate
   addrTransStage.io.pc            := io.pc
-  addrTransStage.io.out           <> instReqStage.io.in
   addrTransStage.io.peer.csr      := io.csr
   addrTransStage.io.peer.tlbTrans <> io.tlbTrans
 
