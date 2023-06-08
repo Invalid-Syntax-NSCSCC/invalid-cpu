@@ -61,7 +61,7 @@ object ExeInst {
     val ld_b  = next
     val ld_h  = next
     val ld_w  = next
-    val st_b  = next // 2F
+    val st_b  = next // 1F
     val st_h  = next
     val st_w  = next
     val ld_bu = next
@@ -80,7 +80,8 @@ object ExeInst {
     // exception
     val break_  = next
     val syscall = next
-    val ertn    = next // 3E
+    val ertn    = next // 2E
+    val idle    = next
 
     // stable counter
     val rdcntvl_w = next

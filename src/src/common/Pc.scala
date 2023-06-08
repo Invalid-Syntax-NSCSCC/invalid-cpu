@@ -21,10 +21,13 @@ class Pc(
   val pcReg = RegInit(spec.Pc.init)
   io.pc := pcReg
 
+  val canIncReg = RegInit(true.B)
+
   pcReg := pcReg
   when(io.newPc.en) {
-    pcReg := io.newPc.pcAddr
-  }.elsewhen(io.isNext) {
+    pcReg     := io.newPc.pcAddr
+    canIncReg := !io.newPc.isIdle
+  }.elsewhen(io.isNext && canIncReg) {
     // pcReg := pcReg + (4 * issueNum).U
     pcReg := pcReg + 4.U
   }
