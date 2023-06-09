@@ -18,6 +18,7 @@ import pipeline.rob.bundles.InstWbNdPort
 import pipeline.common.MultiQueue
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
+import control.bundles.CsrReadPort
 
 // class FetchInstDecodeNdPort extends Bundle {
 //   val decode   = new DecodeOutNdPort
@@ -47,6 +48,7 @@ class IssueStagePeerPort(
   // `IssueStage` <-> `Scoreboard(csr)`
   val csrOccupyPort = Output(new ScoreboardChangeNdPort)
   val csrRegScore   = Input(ScoreboardState())
+  val csrReadPort   = Flipped(new CsrReadPort)
 }
 
 // dispatch & Reservation Stations
@@ -67,6 +69,8 @@ class IssueStage(
   resultOutsReg.foreach(_.bits := 0.U.asTypeOf(resultOutsReg(0).bits))
   io.peer.get.csrOccupyPort := ScoreboardChangeNdPort.default
   io.peer.get.requests.foreach(_ := RobReadRequestNdPort.default)
+  io.peer.get.csrReadPort.en   := false.B
+  io.peer.get.csrReadPort.addr := false.B
 
   val reservationStations = Seq.fill(pipelineNum)(
     Module(new MultiQueue(reservationLength, 1, 1, new ReservationStationBundle, ReservationStationBundle.default))
@@ -164,7 +168,9 @@ class IssueStage(
             .foreach {
               case (readPort, robResult, rs) =>
                 // may be error
-                when(writeback.en && readPort.en && writeback.robId === robResult.result) {
+                when(
+                  writeback.en && readPort.en && robResult.sel === RobDistributeSel.robId && writeback.robId === robResult.result
+                ) {
                   rs.sel    := RobDistributeSel.realData
                   rs.result := writeback.data
                 }
@@ -190,10 +196,50 @@ class IssueStage(
     */
 
   reservationStations.foreach { reservationStation =>
-    reservationStation.io.elems.zip(reservationStation.io.elemValids)
+    reservationStation.io.elems
+      .lazyZip(reservationStation.io.elemValids.get)
+      .lazyZip(reservationStation.io.setPorts)
+      .foreach {
+        case (elem, elemValid, set) =>
+          when(elemValid) {
+            io.peer.get.writebacks.foreach { wb =>
+              elem.robResult.readResults.zip(set.bits.robResult.readResults).foreach {
+                case (readResult, setReadResult) =>
+                  when(readResult.sel === RobDistributeSel.robId && wb.en && readResult.result === wb.robId) {
+                    setReadResult.sel    := RobDistributeSel.realData
+                    setReadResult.result := wb.data
+                  }
+              }
+            }
+          }
+      }
   }
 
   /** output
     */
+  reservationStations.lazyZip(resultOutsReg).lazyZip(validToOuts).zipWithIndex.foreach {
+    case ((reservationStation, out, outEnable), idx) =>
+      val deqPort = reservationStation.io.dequeuePorts(0)
+      out.valid := outEnable && deqPort.valid && deqPort.bits.robResult.readResults
+        .map(_.sel === RobDistributeSel.realData)
+        .reduce(_ && _)
+      deqPort.ready := out.valid
 
+      io.peer.get.csrReadPort.en   := deqPort.bits.regReadPort.preExeInstInfo.csrReadEn
+      io.peer.get.csrReadPort.addr := DontCare
+
+      out.bits.leftOperand  := deqPort.bits.robResult.readResults(0).result
+      out.bits.rightOperand := deqPort.bits.robResult.readResults(1).result
+      out.bits.exeSel       := deqPort.bits.regReadPort.preExeInstInfo.exeSel
+      out.bits.exeOp        := deqPort.bits.regReadPort.preExeInstInfo.exeOp
+      out.bits.gprWritePort := deqPort.bits.regReadPort.preExeInstInfo.gprWritePort
+      // jumbBranch / memLoadStort / csr
+      out.bits.jumpBranchAddr := deqPort.bits.regReadPort.preExeInstInfo.jumpBranchAddr
+      when(deqPort.bits.regReadPort.preExeInstInfo.csrReadEn) {
+        out.bits.csrData := io.peer.get.csrReadPort.data
+      }
+
+      out.bits.instInfo := deqPort.bits.regReadPort.instInfo
+
+  }
 }
