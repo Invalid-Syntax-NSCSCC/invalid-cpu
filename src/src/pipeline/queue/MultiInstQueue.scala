@@ -101,11 +101,16 @@ class MultiInstQueue(
         .exceptionRecords(Csr.ExceptionIndex.ine) := !isMatched
       dequeuePort.bits.instInfo.isExceptionValid  := !isMatched
       dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
-      dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
-      dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
-      dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
-      dequeuePort.bits.instInfo.exeSel            := selectedDecoder.info.exeSel
-      dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
-      dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
+      dequeuePort.bits.instInfo.csrWritePort.en                           := selectedDecoder.info.csrWriteEn
+      dequeuePort.bits.instInfo.csrWritePort.addr                         := selectedDecoder.info.csrAddr
+      dequeuePort.bits.instInfo.exeOp                                     := selectedDecoder.info.exeOp
+      dequeuePort.bits.instInfo.exeSel                                    := selectedDecoder.info.exeSel
+      dequeuePort.bits.instInfo.tlbInfo                                   := selectedDecoder.info.tlbInfo
+      dequeuePort.bits.instInfo.needCsr                                   := selectedDecoder.info.needCsr
+      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := decodeInstInfo.isAdef
+      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.pif)  := decodeInstInfo.isPif
+      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ppi)  := decodeInstInfo.isPpi
+      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.tlbr) := decodeInstInfo.isTlbr
+      dequeuePort.bits.instInfo.isExceptionValid := decodeInstInfo.isAdef && decodeInstInfo.isPif && decodeInstInfo.isPpi && decodeInstInfo.isTlbr
   }
 }

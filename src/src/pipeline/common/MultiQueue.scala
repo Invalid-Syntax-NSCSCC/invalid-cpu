@@ -6,12 +6,14 @@ import spec._
 import utils.MultiCounter
 
 class MultiQueue[ElemT <: Data](
-  queueLength:   Int,
-  enqMaxNum:     Int,
-  deqMaxNum:     Int,
-  elemNdFactory: => ElemT,
-  blankElem:     => ElemT,
-  writeFirst:    Boolean = true)
+  queueLength:        Int,
+  enqMaxNum:          Int,
+  deqMaxNum:          Int,
+  elemNdFactory:      => ElemT,
+  blankElem:          => ElemT,
+  needValidPorts:     Boolean = false,
+  isRelativePosition: Boolean = false,
+  writeFirst:         Boolean = true)
     extends Module {
 
   val io = IO(new Bundle {
@@ -19,18 +21,18 @@ class MultiQueue[ElemT <: Data](
     val enqueuePorts = Vec(enqMaxNum, Flipped(Decoupled(elemNdFactory)))
     val dequeuePorts = Vec(deqMaxNum, Decoupled(elemNdFactory))
 
-    val setPorts = Input(Vec(queueLength, ValidIO(elemNdFactory)))
-    val elems    = Output(Vec(queueLength, elemNdFactory))
+    // deq_ptr -> enq_ptr
+    val setPorts   = Input(Vec(queueLength, ValidIO(elemNdFactory)))
+    val elems      = Output(Vec(queueLength, elemNdFactory))
+    val elemValids = if (needValidPorts) Some(Output(Vec(queueLength, Bool()))) else None
   })
 
   require(queueLength > enqMaxNum)
   require(queueLength > deqMaxNum)
 
-  val ram = RegInit(VecInit(Seq.fill(queueLength)(blankElem)))
-  io.elems.zip(ram).foreach {
-    case (dst, src) =>
-      dst := src
-  }
+  val ram       = RegInit(VecInit(Seq.fill(queueLength)(blankElem)))
+  val ramValids = RegInit(VecInit(Seq.fill(queueLength)(false.B)))
+
   val enq_ptr = Module(new MultiCounter(queueLength, enqMaxNum))
   val deq_ptr = Module(new MultiCounter(queueLength, deqMaxNum))
 
@@ -79,10 +81,14 @@ class MultiQueue[ElemT <: Data](
   val dequeueNum = deqEn.map(_.asUInt).reduce(_ +& _)
 
   if (!writeFirst) {
-    ram.zip(io.setPorts).foreach {
-      case (r, s) =>
+    io.setPorts.zipWithIndex.foreach {
+      case (s, idx) =>
         when(s.valid) {
-          r := s.bits
+          if (isRelativePosition) {
+            ram(deq_ptr.io.incResults(idx)) := s.bits
+          } else {
+            ram(idx) := s.bits
+          }
         }
     }
   }
@@ -97,23 +103,52 @@ class MultiQueue[ElemT <: Data](
   io.enqueuePorts.lazyZip(enqEn).zipWithIndex.foreach {
     case ((enqPort, en), idx) =>
       when(idx.U < enqueueNum) {
-        ram(enq_ptr.io.incResults(idx)) := enqPort.bits
+        ram(enq_ptr.io.incResults(idx))       := enqPort.bits
+        ramValids(enq_ptr.io.incResults(idx)) := true.B
       }
   }
 
   deq_ptr.io.inc := dequeueNum
   io.dequeuePorts.zipWithIndex.foreach {
     case (deq, idx) =>
-      deq.bits := ram(deq_ptr.io.incResults(idx))
+      deq.bits                              := ram(deq_ptr.io.incResults(idx))
+      ramValids(deq_ptr.io.incResults(idx)) := false.B
   }
 
   if (writeFirst) {
-    ram.zip(io.setPorts).foreach {
-      case (r, s) =>
+    io.setPorts.zipWithIndex.foreach {
+      case (s, idx) =>
         when(s.valid) {
-          r := s.bits
+          if (isRelativePosition) {
+            ram(deq_ptr.io.incResults(idx)) := s.bits
+          } else {
+            ram(idx) := s.bits
+          }
         }
     }
+  }
+
+  io.elems.zipWithIndex.foreach {
+    case (dst, idx) =>
+      if (isRelativePosition) {
+        dst := ram(deq_ptr.io.incResults(idx))
+      } else {
+        dst := ram(idx)
+      }
+
+  }
+
+  io.elemValids match {
+    case Some(elemValids) =>
+      io.elemValids.zipWithIndex.foreach {
+        case (dst, idx) =>
+          if (isRelativePosition) {
+            dst := ramValids(deq_ptr.io.incResults(idx))
+          } else {
+            dst := ramValids(idx)
+          }
+      }
+    case None =>
   }
 
   when(io.isFlush) {

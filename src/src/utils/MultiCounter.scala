@@ -18,11 +18,11 @@ class MultiCounter(
     // one clock delay
     val value = Output(UInt(value_w.W))
     // no delay
-    val incResults = Output(Vec(maxIncNum + 1, UInt(value_w.W)))
+    val incResults = Output(Vec(maxCount + 1, UInt(value_w.W)))
   })
 
   val counter    = RegInit(init.U(value_w.W))
-  val incResults = Wire(Vec(maxIncNum + 1, UInt(value_w.W)))
+  val incResults = Wire(Vec(maxCount + 1, UInt(value_w.W)))
   io.value := counter
   io.incResults.zip(incResults).foreach {
     case (dst, src) =>

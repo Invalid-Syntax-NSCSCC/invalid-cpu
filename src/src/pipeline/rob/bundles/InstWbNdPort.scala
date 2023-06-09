@@ -8,7 +8,7 @@ import common.bundles.RfAccessInfoNdPort
 
 class InstWbNdPort extends Bundle {
   val en    = Bool()
-  val robId = UInt(Width.Rob.id)
+  val robId = UInt(Param.Width.Rob.id)
   val data  = UInt(Width.Reg.data)
 }
 

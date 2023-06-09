@@ -23,6 +23,8 @@ class InstFetchStage extends Module {
     val instEnqueuePort = Decoupled(new InstInfoBundle)
   })
 
+  io.instEnqueuePort.bits := InstInfoBundle.default
+
   io.instEnqueuePort.bits.pcAddr := io.pc
   io.instEnqueuePort.bits.inst   := io.accessPort.res.read.data
 
