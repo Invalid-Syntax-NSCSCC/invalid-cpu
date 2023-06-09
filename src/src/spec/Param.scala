@@ -32,6 +32,12 @@ object Param {
     val exeSel = log2Ceil(ExeInst.Sel.count + 1).W
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
+    object Rob {
+      val id      = 8.W
+      val _length = 15
+      val addr    = log2Ceil(_length).W
+    }
+
     object Axi {
       private val _data = 32
 
