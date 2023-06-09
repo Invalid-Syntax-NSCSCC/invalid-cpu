@@ -2,6 +2,7 @@ package pipeline.rob.bundles
 
 import chisel3._
 import chisel3.experimental.BundleLiterals._
+import chisel3.experimental.VecLiterals._
 import chisel3.util._
 import spec._
 import common.bundles.RfAccessInfoNdPort
@@ -12,5 +13,8 @@ class RobReadResultNdPort extends Bundle {
 }
 
 object RobReadResultNdPort {
-  val default = 0.U.asTypeOf(new RobReadResultNdPort)
+  val default = (new RobReadResultNdPort).Lit(
+    _.writeResult -> 0.U,
+    _.readResults -> Vec.Lit(Seq.fill(Param.regFileReadNum)(RobDistributeBundle.default): _*)
+  )
 }

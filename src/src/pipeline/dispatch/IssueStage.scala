@@ -73,7 +73,16 @@ class IssueStage(
   io.peer.get.csrReadPort.addr := false.B
 
   val reservationStations = Seq.fill(pipelineNum)(
-    Module(new MultiQueue(reservationLength, 1, 1, new ReservationStationBundle, ReservationStationBundle.default))
+    Module(
+      new MultiQueue(
+        reservationLength,
+        1,
+        1,
+        new ReservationStationBundle,
+        ReservationStationBundle.default,
+        needValidPorts = true
+      )
+    )
   )
 
   // fall back
@@ -143,7 +152,7 @@ class IssueStage(
 
   // -> reservation stations
   for (src_idx <- Seq.range(issueNum - 1, -1, -1)) {
-    for (dst_idx <- 0 to pipelineNum) {
+    for (dst_idx <- 0 until pipelineNum) {
       when(dispatchMap(src_idx)(dst_idx)) {
         // decode info
         reservationStations(dst_idx).io.enqueuePorts(0).valid := true.B

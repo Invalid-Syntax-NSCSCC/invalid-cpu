@@ -140,7 +140,7 @@ class MultiQueue[ElemT <: Data](
 
   io.elemValids match {
     case Some(elemValids) =>
-      io.elemValids.zipWithIndex.foreach {
+      io.elemValids.get.zipWithIndex.foreach {
         case (dst, idx) =>
           if (isRelativePosition) {
             dst := ramValids(deq_ptr.io.incResults(idx))
