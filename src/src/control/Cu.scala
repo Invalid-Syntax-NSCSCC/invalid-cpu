@@ -41,8 +41,8 @@ class Cu(
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`, `Scoreboard`
-    val flushes               = Output(Vec(ctrlControlNum, Bool()))
-    val branchScoreboardFlush = Output(Bool())
+    val exceptionFlush = Output(Bool())
+    val branchFlush    = Output(Bool())
 
     // <- `MemResStage`, `WbStage`
     val isExceptionValidVec = Input(Vec(3, Bool()))
@@ -197,11 +197,6 @@ class Cu(
 
   /** Flush & jump
     */
-  val flushes = WireDefault(VecInit(Seq.fill(ctrlControlNum)(false.B)))
-  io.flushes := RegNext(flushes)
-
-  val branchScoreboardFlush = WireDefault(false.B)
-  io.branchScoreboardFlush := RegNext(branchScoreboardFlush)
 
   val exceptionFlush = WireDefault(hasException)
 
@@ -212,21 +207,9 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  when(exceptionFlush) { // || ertnFlush) {
-    flushes.foreach(_ := true.B)
-  }
+  io.exceptionFlush       := RegNext(exceptionFlush, false.B)
+  io.branchFlush          := RegNext(io.jumpPc.en)
   io.csrMessage.ertnFlush := ertnFlush
-
-  when(io.jumpPc.en) {
-    Seq(
-      PipelineStageIndex.issueStage,
-      PipelineStageIndex.regReadStage,
-      PipelineStageIndex.frontend
-    ).map(flushes(_))
-      .foreach(_ := true.B)
-
-    branchScoreboardFlush := true.B
-  }
 
   // select new pc
   when(exceptionFlush) {
