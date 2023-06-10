@@ -19,6 +19,7 @@ import pipeline.rob.enums.RegDataLocateSel
 import common.bundles.RfReadPort
 import pipeline.rob.bundles.RobDistributeBundle
 import pipeline.rob.enums.RobDistributeSel
+import common.bundles.PcSetPort
 
 class Rob(
   robLength:   Int = Param.Width.Rob._length,
@@ -39,6 +40,10 @@ class Rob(
 
     // `Rob` -> `WbStage`
     val commits = Output(Vec(issueNum, ValidIO(new WbNdPort)))
+
+    // `Cu` -> `Rob`
+    val exceptionFlush  = Input(Bool())
+    val branchFlushInfo = Input(new PcSetPort)
   })
 
   io <> DontCare
@@ -55,10 +60,10 @@ class Rob(
       needValidPorts = true
     )
   )
-  io.emptyNum := queue.io.emptyNum
+  queue.io.isFlush := io.exceptionFlush
+  io.emptyNum      := queue.io.emptyNum
 
-  /**
-    * Distribute for issue stage
+  /** Distribute for issue stage
     */
 
   queue.io.enqueuePorts
@@ -105,13 +110,15 @@ class Rob(
                 resRead.result  := rfReadPort.data
               }
               // if RAW in the same time request
-              val raw = VecInit(io.requests.take(idx).map(_.writeRequest).map{prevWrite => prevWrite.en && prevWrite.addr === reqRead.addr})
+              val raw = VecInit(io.requests.take(idx).map(_.writeRequest).map { prevWrite =>
+                prevWrite.en && prevWrite.addr === reqRead.addr
+              })
               val selectWrite = PriorityEncoderOH(raw.reverse).reverse
               when(raw.foldLeft(false.B)(_ || _)) {
-                io.distributeResults.take(idx).zip(selectWrite).foreach{
+                io.distributeResults.take(idx).zip(selectWrite).foreach {
                   case (prevRes, prevEn) =>
                     when(prevEn) {
-                      resRead.sel := RobDistributeSel.robId
+                      resRead.sel    := RobDistributeSel.robId
                       resRead.result := prevRes.robId
                     }
                 }
@@ -121,49 +128,91 @@ class Rob(
 
     }
 
-    /**
-      * deal with finished insts
-      */
+  /** deal with finished insts
+    */
 
-    io.finishInsts.foreach{
-      finishInst =>
-        finishInst.ready := true.B
-        when(finishInst.valid) {
-          queue.io.elemValids.get.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach{
-            case ((elemValid, elem, set), idx) =>
-              when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
-                set.valid := true.B
-                set.bits := elem
-                set.bits.state := State.ready
-                set.bits.wbPort := finishInst
-              }
+  io.finishInsts.foreach { finishInst =>
+    finishInst.ready := true.B
+    when(finishInst.valid) {
+      queue.io.elemValids.get.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
+        case ((elemValid, elem, set), idx) =>
+          when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
+            set.valid       := true.B
+            set.bits        := elem
+            set.bits.state  := State.ready
+            set.bits.wbPort := finishInst
           }
-        }
+      }
     }
+  }
 
-    /**
-      * Commit
-      */
+  /** Commit
+    */
 
-    io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach{
-      case ((commit, deqPort), idx) =>
-        when(deqPort.valid && deqPort.bits.state === State.ready && io.commits.take(idx).map(_.valid).foldLeft(true.B)(_ && _)) {
-          
-          // commit
-          commit.valid := true.B
-          deqPort.ready := true.B
-          commit.bits := deqPort.bits.wbPort
+  io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
+    case ((commit, deqPort), idx) =>
+      when(
+        deqPort.valid && deqPort.bits.state === State.ready && io.commits
+          .take(idx)
+          .map(_.valid)
+          .foldLeft(true.B)(_ && _)
+      ) {
 
-          // change match table
-          when(
-            deqPort.bits.wbPort.gprWrite.en && 
+        // commit
+        commit.valid  := deqPort.bits.isValid
+        deqPort.ready := true.B
+        commit.bits   := deqPort.bits.wbPort
+
+        // change match table
+        when(
+          deqPort.bits.wbPort.gprWrite.en &&
             deqPort.bits.wbPort.gprWrite.addr =/= 0.U &&
             matchTable(deqPort.bits.wbPort.gprWrite.addr).locate === RegDataLocateSel.rob &&
             matchTable(deqPort.bits.wbPort.gprWrite.addr).robId === deqPort.bits.wbPort.instInfo.robId
-          ) {
-            matchTable(deqPort.bits.wbPort.gprWrite.addr).locate := RegDataLocateSel.regfile
-          }
+        ) {
+          matchTable(deqPort.bits.wbPort.gprWrite.addr).locate := RegDataLocateSel.regfile
         }
-    }
+      }
+  }
 
+  /** branch
+    *
+    * insts between branch inst and enq
+    */
+  when(io.branchFlushInfo.en) {
+
+    queue.io.enqueuePorts.foreach(_.valid := false.B)
+    when(io.branchFlushInfo.robId > queue.io.deq_ptr) {
+      // ----- deq_ptr --*-- branch_ptr(robId) -----
+      queue.io.setPorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
+        case ((set, elem), id) =>
+          when(queue.io.deq_ptr <= id.U && id.U < io.branchFlushInfo.robId) {
+            set.valid        := true.B
+            set.bits.state   := elem.state
+            set.bits.wbPort  := elem.wbPort
+            set.bits.isValid := false.B
+          }
+      }
+    }.otherwise {
+      // --*-- branch_ptr(robId) ----- deq_ptr --*--
+      queue.io.setPorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
+        case ((set, elem), id) =>
+          when(queue.io.deq_ptr <= id.U || id.U < io.branchFlushInfo.robId) {
+            set.valid        := true.B
+            set.bits.state   := elem.state
+            set.bits.wbPort  := elem.wbPort
+            set.bits.isValid := false.B
+          }
+      }
+    }
+  }
+
+  /** flush
+    */
+
+  when(io.exceptionFlush) {
+    queue.io.enqueuePorts.foreach(_.valid := false.B)
+    io.commits.foreach(_.valid := false.B)
+    matchTable.foreach(_.locate := RegDataLocateSel.regfile)
+  }
 }

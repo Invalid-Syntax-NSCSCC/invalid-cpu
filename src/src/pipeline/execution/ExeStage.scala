@@ -269,6 +269,7 @@ class ExeStage
   io.peer.get.branchSetPort                := PcSetPort.default
   io.peer.get.branchSetPort.en             := alu.io.result.jumpBranchInfo.en
   io.peer.get.branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
+  io.peer.get.branchSetPort.robId          := selectedIn.instInfo.robId
   io.peer.get.scoreboardChangePort.en      := selectedIn.gprWritePort.en
   io.peer.get.scoreboardChangePort.addr    := selectedIn.gprWritePort.addr
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr

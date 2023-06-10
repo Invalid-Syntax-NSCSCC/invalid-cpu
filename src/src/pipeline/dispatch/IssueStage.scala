@@ -38,7 +38,7 @@ class IssueStagePeerPort(
     extends Bundle {
 
   // `IssueStage` <-> `Rob`
-  val robEmptyNum = Input(UInt(Param.Width.Rob.addr))
+  val robEmptyNum = Input(UInt(Param.Width.Rob.id))
   val requests    = Output(Vec(issueNum, new RobReadRequestNdPort))
   val results     = Input(Vec(issueNum, new RobReadResultNdPort))
 
@@ -49,6 +49,9 @@ class IssueStagePeerPort(
   val csrOccupyPort = Output(new ScoreboardChangeNdPort)
   val csrRegScore   = Input(ScoreboardState())
   val csrReadPort   = Flipped(new CsrReadPort)
+
+  // branch flush
+  val branchFlush = Input(Bool())
 }
 
 // dispatch & Reservation Stations
@@ -248,8 +251,20 @@ class IssueStage(
         out.bits.csrData := io.peer.get.csrReadPort.data
       }
 
-      out.bits.instInfo := deqPort.bits.regReadPort.instInfo
+      out.bits.instInfo       := deqPort.bits.regReadPort.instInfo
       out.bits.instInfo.robId := deqPort.bits.robResult.robId
 
+  }
+
+  when(io.peer.get.branchFlush) {
+    isComputeds.foreach(_ := true.B)
+    io.peer.get.requests.foreach(_.en := false.B)
+    io.ins.foreach(_.ready := false.B)
+  }
+
+  when(io.isFlush) {
+    isComputeds.foreach(_ := true.B)
+    io.peer.get.requests.foreach(_.en := false.B)
+    io.ins.foreach(_.ready := false.B)
   }
 }

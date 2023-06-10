@@ -26,6 +26,8 @@ class MultiQueue[ElemT <: Data](
     val elems         = Output(Vec(queueLength, elemNdFactory))
     val emptyNum      = Output(UInt(log2Ceil(queueLength).W))
     val enqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength + 1).W)))
+    val enq_ptr       = Output(UInt(log2Ceil(queueLength + 1).W))
+    val deq_ptr       = Output(UInt(log2Ceil(queueLength + 1).W))
     val elemValids    = if (needValidPorts) Some(Output(Vec(queueLength, Bool()))) else None
   })
 
@@ -46,6 +48,8 @@ class MultiQueue[ElemT <: Data](
     case (dst, src) =>
       dst := src
   }
+  io.enq_ptr := enq_ptr.io.value
+  io.deq_ptr := deq_ptr.io.value
 
   val maybeFull = RegInit(false.B)
   val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
