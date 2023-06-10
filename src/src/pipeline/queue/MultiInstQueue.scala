@@ -104,11 +104,11 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.exeSel                                    := selectedDecoder.info.exeSel
       dequeuePort.bits.instInfo.tlbInfo                                   := selectedDecoder.info.tlbInfo
       dequeuePort.bits.instInfo.needCsr                                   := selectedDecoder.info.needCsr
-      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := decodeInstInfo.isAdef
-      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.pif)  := decodeInstInfo.isPif
-      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ppi)  := decodeInstInfo.isPpi
-      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.tlbr) := decodeInstInfo.isTlbr
+      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := decodeInstInfo.exceptionValid && decodeInstInfo.exception === Csr.ExceptionIndex.adef
+      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.pif)  := decodeInstInfo.exceptionValid && decodeInstInfo.exception === Csr.ExceptionIndex.pif
+      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ppi)  := decodeInstInfo.exceptionValid && decodeInstInfo.exception === Csr.ExceptionIndex.ppi
+      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.tlbr) := decodeInstInfo.exceptionValid && decodeInstInfo.exception === Csr.ExceptionIndex.tlbr
       dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ine)  := !isMatched
-      dequeuePort.bits.instInfo.isExceptionValid := !isMatched || decodeInstInfo.isAdef || decodeInstInfo.isPif || decodeInstInfo.isPpi || decodeInstInfo.isTlbr
+      dequeuePort.bits.instInfo.isExceptionValid := !isMatched || decodeInstInfo.exceptionValid
   }
 }
