@@ -4,7 +4,7 @@ import pipeline.common.BaseStage
 import chisel3.Bundle
 import chisel3._
 import chisel3.util._
-import spec.Width
+import spec.{Csr, Width}
 import frontend.bundles.{ICacheRequestHandshakePort, ICacheRequestNdPort}
 
 class InstReqNdPort extends Bundle {
@@ -41,7 +41,7 @@ class InstReqStage
   // Fallback peer
   peer.memReq.client := selectedIn.translatedMemReq
 
-  when(selectedIn.translatedMemReq.isValid !&& out.exception.valid) {
+  when(selectedIn.translatedMemReq.isValid && (!out.exception.valid)) {
     when(io.out.ready) {
       // Whether memory request is submitted
       isComputed := peer.memReq.isReady

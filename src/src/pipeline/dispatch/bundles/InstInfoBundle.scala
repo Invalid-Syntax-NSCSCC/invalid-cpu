@@ -6,10 +6,10 @@ import chisel3.util._
 import spec._
 
 class InstInfoBundle extends Bundle {
-  val pcAddr = UInt(Width.Reg.data)
-  val inst   = UInt(Width.inst)
+  val pcAddr         = UInt(Width.Reg.data)
+  val inst           = UInt(Width.inst)
   val exceptionValid = Bool()
-  val exception = UInt(Width.Csr.exceptionIndex)
+  val exception      = UInt(Width.Csr.exceptionIndex)
 }
 
 object InstInfoBundle {

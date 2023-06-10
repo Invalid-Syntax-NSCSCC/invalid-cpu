@@ -50,7 +50,8 @@ class InstResStage
   out.inst           := peer.memRes.read.data
   out.exceptionValid := selectedIn.exception.valid
   out.exception      := selectedIn.exception.bits
-  out.when(selectedIn.isValid) {
+
+  when(selectedIn.isValid) {
     isComputed         := peer.memRes.isComplete
     resultOutReg.valid := isComputed
     isLastHasReq       := true.B

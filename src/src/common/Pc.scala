@@ -24,12 +24,6 @@ class Pc(
   io.pc       := pcReg
   io.pcUpdate := pcUpdateReg
 
-<<<<<<< HEAD
-  when(io.newPc.en) {
-    pcReg       := io.newPc.pcAddr
-    pcUpdateReg := true.B
-  }.elsewhen(io.isNext) {
-=======
   val canIncReg = RegInit(true.B)
 
   pcReg := pcReg
@@ -37,7 +31,6 @@ class Pc(
     pcReg     := io.newPc.pcAddr
     canIncReg := !io.newPc.isIdle
   }.elsewhen(io.isNext && canIncReg) {
->>>>>>> 73d549c4939ae035e6c3d7c949eb694231593705
     // pcReg := pcReg + (4 * issueNum).U
     pcReg       := pcReg + 4.U
     pcUpdateReg := true.B
