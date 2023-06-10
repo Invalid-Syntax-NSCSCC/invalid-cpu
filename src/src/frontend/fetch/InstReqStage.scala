@@ -33,7 +33,7 @@ class InstReqStage
 
   // Fallback output
   out.pc := selectedIn.pc
-  val isAdef = WireDefault(!out.pc(1, 0).orR) //  pc is not aline
+  val isAdef = WireDefault(out.pc(1, 0).orR) //  pc is not aline
   out.isValid         := selectedIn.translatedMemReq.isValid | isAdef
   out.exception.valid := isAdef | peer.exception.valid
   out.exception.bits  := Mux(isAdef, Csr.ExceptionIndex.adef, peer.exception.bits)
@@ -57,7 +57,8 @@ class InstReqStage
     resultOutReg.valid := isComputed
   }.elsewhen(out.exception.valid) {
     // when pc is not aline,still submit to backend to solve
-    isComputed         := true.B
-    resultOutReg.valid := isComputed
+    peer.memReq.client.isValid := false.B
+    isComputed                 := true.B
+    resultOutReg.valid         := isComputed
   }
 }

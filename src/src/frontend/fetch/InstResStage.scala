@@ -52,7 +52,7 @@ class InstResStage
   out.exception      := selectedIn.exception.bits
 
   when(selectedIn.isValid) {
-    isComputed         := peer.memRes.isComplete
+    isComputed         := peer.memRes.isComplete | selectedIn.exception.valid
     resultOutReg.valid := isComputed
     isLastHasReq       := true.B
   }
@@ -65,7 +65,7 @@ class InstResStage
   }
 
   when(shouldDiscardReg) {
-    when(peer.memRes.isComplete | out.exceptionValid) {
+    when(peer.memRes.isComplete) {
       shouldDiscardReg := false.B
       isComputed       := true.B
     }.otherwise {
