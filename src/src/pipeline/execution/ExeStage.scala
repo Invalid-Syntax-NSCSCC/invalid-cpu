@@ -266,15 +266,23 @@ class ExeStage
   )
 
   // branch set
-  io.peer.get.branchSetPort                := alu.io.result.jumpBranchInfo
+  io.peer.get.branchSetPort                := PcSetPort.default
+  io.peer.get.branchSetPort.en             := alu.io.result.jumpBranchInfo.en
+  io.peer.get.branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
   io.peer.get.scoreboardChangePort.en      := selectedIn.gprWritePort.en
   io.peer.get.scoreboardChangePort.addr    := selectedIn.gprWritePort.addr
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
 
   val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
-  when(isErtn) {
+  val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
+  when(isIdle) {
+    io.peer.get.branchSetPort.isIdle := true.B
+    io.peer.get.branchSetPort.en     := true.B
+    io.peer.get.branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
+  }.elsewhen(isErtn) {
     io.peer.get.branchSetPort.en     := true.B
     io.peer.get.branchSetPort.pcAddr := io.peer.get.csr.era.pc
   }
+
 }
