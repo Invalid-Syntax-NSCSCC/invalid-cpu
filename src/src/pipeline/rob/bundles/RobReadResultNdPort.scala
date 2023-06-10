@@ -8,13 +8,13 @@ import spec._
 import common.bundles.RfAccessInfoNdPort
 
 class RobReadResultNdPort extends Bundle {
-  val writeResult = UInt(Param.Width.Rob.id)
+  val robId       = UInt(Param.Width.Rob.id)
   val readResults = Vec(Param.regFileReadNum, new RobDistributeBundle)
 }
 
 object RobReadResultNdPort {
   val default = (new RobReadResultNdPort).Lit(
-    _.writeResult -> 0.U,
+    _.robId -> 0.U,
     _.readResults -> Vec.Lit(Seq.fill(Param.regFileReadNum)(RobDistributeBundle.default): _*)
   )
 }

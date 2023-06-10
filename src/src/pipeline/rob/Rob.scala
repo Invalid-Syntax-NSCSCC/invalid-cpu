@@ -1,0 +1,169 @@
+package pipeline.rob
+
+import chisel3._
+import chisel3.util._
+import common.bundles.RfWriteNdPort
+import pipeline.rob.bundles.RobIdDistributePort
+import pipeline.rob.bundles.RobInstStoreBundle
+import pipeline.rob.enums.{RobInstState => State}
+import utils._
+import spec._
+import utils.BiCounter
+import pipeline.dataforward.bundles.ReadPortWithValid
+import pipeline.writeback.WbNdPort
+import pipeline.common.MultiQueue
+import pipeline.rob.bundles.RobReadRequestNdPort
+import pipeline.rob.bundles.RobReadResultNdPort
+import pipeline.rob.bundles.RobMatchBundle
+import pipeline.rob.enums.RegDataLocateSel
+import common.bundles.RfReadPort
+import pipeline.rob.bundles.RobDistributeBundle
+import pipeline.rob.enums.RobDistributeSel
+
+class Rob(
+  robLength:   Int = Param.Width.Rob._length,
+  pipelineNum: Int = Param.pipelineNum,
+  issueNum:    Int = Param.issueInstInfoMaxNum)
+    extends Module {
+  val io = IO(new Bundle {
+    // `Rob` <-> `IssueStage`
+    val emptyNum          = UInt(log2Ceil(robLength).W)
+    val requests          = Input(Vec(issueNum, new RobReadRequestNdPort))
+    val distributeResults = Output(Vec(issueNum, new RobReadResultNdPort))
+
+    // `Rob` <-> `Regfile`
+    val regReadPortss = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
+
+    // `ExeStage / LSU` -> `Rob`
+    val finishInsts = Input(Vec(pipelineNum, Flipped(Decoupled(new WbNdPort))))
+
+    // `Rob` -> `WbStage`
+    val commits = Output(Vec(issueNum, ValidIO(new WbNdPort)))
+  })
+
+  io <> DontCare
+
+  val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
+
+  val queue = Module(
+    new MultiQueue(
+      robLength,
+      issueNum,
+      issueNum,
+      new RobInstStoreBundle,
+      RobInstStoreBundle.default,
+      needValidPorts = true
+    )
+  )
+  io.emptyNum := queue.io.emptyNum
+
+  /**
+    * Distribute for issue stage
+    */
+
+  queue.io.enqueuePorts
+    .lazyZip(io.requests)
+    .lazyZip(io.distributeResults)
+    .lazyZip(io.regReadPortss)
+    .zipWithIndex
+    .foreach {
+      case ((enq, req, res, rfReadPorts), idx) =>
+        // enqueue
+        enq.valid        := req.en
+        enq.bits         := RobInstStoreBundle.default
+        enq.bits.isValid := true.B
+        enq.bits.state   := State.busy
+
+        // distribute rob id
+        res       := RobReadResultNdPort.default
+        res.robId := queue.io.enqIncResults(idx)
+        when(req.writeRequest.en && req.writeRequest.addr =/= 0.U) {
+          matchTable(req.writeRequest.addr).locate := RegDataLocateSel.rob
+          matchTable(req.writeRequest.addr).robId  := res.robId
+        }
+
+        // request read data
+        req.readRequests.lazyZip(res.readResults).lazyZip(rfReadPorts).zipWithIndex.foreach {
+          case ((reqRead, resRead, rfReadPort), idx) =>
+            resRead := RobDistributeBundle.default
+            when(reqRead.en) {
+              when(matchTable(reqRead.addr).locate === RegDataLocateSel.rob) {
+                // in rob
+                when(queue.io.elems(matchTable(reqRead.addr).robId).state === State.ready) {
+                  resRead.sel    := RobDistributeSel.realData
+                  resRead.result := queue.io.elems(matchTable(reqRead.addr).robId).wbPort.gprWrite.data
+                }.otherwise {
+                  // busy
+                  resRead.sel    := RobDistributeSel.robId
+                  resRead.result := matchTable(reqRead.addr).robId
+                }
+              }.otherwise {
+                // in regfile
+                rfReadPort.en   := true.B
+                rfReadPort.addr := reqRead.addr
+                resRead.sel     := RobDistributeSel.realData
+                resRead.result  := rfReadPort.data
+              }
+              // if RAW in the same time request
+              val raw = VecInit(io.requests.take(idx).map(_.writeRequest).map{prevWrite => prevWrite.en && prevWrite.addr === reqRead.addr})
+              val selectWrite = PriorityEncoderOH(raw.reverse).reverse
+              when(raw.foldLeft(false.B)(_ || _)) {
+                io.distributeResults.take(idx).zip(selectWrite).foreach{
+                  case (prevRes, prevEn) =>
+                    when(prevEn) {
+                      resRead.sel := RobDistributeSel.robId
+                      resRead.result := prevRes.robId
+                    }
+                }
+              }
+            }
+        }
+
+    }
+
+    /**
+      * deal with finished insts
+      */
+
+    io.finishInsts.foreach{
+      finishInst =>
+        finishInst.ready := true.B
+        when(finishInst.valid) {
+          queue.io.elemValids.get.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach{
+            case ((elemValid, elem, set), idx) =>
+              when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
+                set.valid := true.B
+                set.bits := elem
+                set.bits.state := State.ready
+                set.bits.wbPort := finishInst
+              }
+          }
+        }
+    }
+
+    /**
+      * Commit
+      */
+
+    io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach{
+      case ((commit, deqPort), idx) =>
+        when(deqPort.valid && deqPort.bits.state === State.ready && io.commits.take(idx).map(_.valid).foldLeft(true.B)(_ && _)) {
+          
+          // commit
+          commit.valid := true.B
+          deqPort.ready := true.B
+          commit.bits := deqPort.bits.wbPort
+
+          // change match table
+          when(
+            deqPort.bits.wbPort.gprWrite.en && 
+            deqPort.bits.wbPort.gprWrite.addr =/= 0.U &&
+            matchTable(deqPort.bits.wbPort.gprWrite.addr).locate === RegDataLocateSel.rob &&
+            matchTable(deqPort.bits.wbPort.gprWrite.addr).robId === deqPort.bits.wbPort.instInfo.robId
+          ) {
+            matchTable(deqPort.bits.wbPort.gprWrite.addr).locate := RegDataLocateSel.regfile
+          }
+        }
+    }
+
+}

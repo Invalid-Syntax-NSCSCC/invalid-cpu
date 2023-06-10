@@ -22,9 +22,11 @@ class MultiQueue[ElemT <: Data](
     val dequeuePorts = Vec(deqMaxNum, Decoupled(elemNdFactory))
 
     // deq_ptr -> enq_ptr
-    val setPorts   = Input(Vec(queueLength, ValidIO(elemNdFactory)))
-    val elems      = Output(Vec(queueLength, elemNdFactory))
-    val elemValids = if (needValidPorts) Some(Output(Vec(queueLength, Bool()))) else None
+    val setPorts      = Input(Vec(queueLength, ValidIO(elemNdFactory)))
+    val elems         = Output(Vec(queueLength, elemNdFactory))
+    val emptyNum      = Output(UInt(log2Ceil(queueLength).W))
+    val enqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength + 1).W)))
+    val elemValids    = if (needValidPorts) Some(Output(Vec(queueLength, Bool()))) else None
   })
 
   require(queueLength > enqMaxNum)
@@ -40,6 +42,10 @@ class MultiQueue[ElemT <: Data](
   enq_ptr.io.flush := io.isFlush
   deq_ptr.io.inc   := 0.U
   deq_ptr.io.flush := io.isFlush
+  io.enqIncResults.zip(enq_ptr.io.incResults).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   val maybeFull = RegInit(false.B)
   val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
@@ -58,6 +64,7 @@ class MultiQueue[ElemT <: Data](
     )
   )
   val emptyNum = WireDefault(queueLength.U - storeNum)
+  io.emptyNum := emptyNum
 
   val isEmptyBy = WireDefault(VecInit(Seq.range(0, deqMaxNum).map(_.U === storeNum)))
   val isFullBy  = WireDefault(VecInit(Seq.range(0, enqMaxNum).map(_.U === emptyNum)))

@@ -19,7 +19,7 @@ class InstInfoNdPort extends Bundle {
 
   val exeOp  = UInt(Param.Width.exeOp)
   val exeSel = UInt(Param.Width.exeSel)
-  val robId  = UInt(Param.robIdLength.W)
+  val robId  = UInt(Param.Width.Rob.addr)
 
   val load  = new DifftestLoadNdPort
   val store = new DifftestStoreNdPort

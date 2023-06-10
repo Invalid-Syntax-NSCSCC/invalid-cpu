@@ -91,7 +91,6 @@ class IssueStage(
     port.io.enqueuePorts(0).bits  := DontCare
   }
   reservationStations.foreach(_.io.dequeuePorts(0).ready := false.B)
-  // TODO: BRANCH CONDITION
   reservationStations.foreach(_.io.isFlush := io.isFlush)
   reservationStations.foreach(_.io.setPorts.foreach { port =>
     port.valid := false.B
@@ -105,6 +104,7 @@ class IssueStage(
 
   val dispatchMap  = WireDefault(VecInit(Seq.fill(issueNum)(VecInit(Seq.fill(pipelineNum)(false.B)))))
   val canDispatchs = WireDefault(VecInit(dispatchMap.map(_.reduceTree(_ || _))))
+
   isComputeds.lazyZip(canDispatchs).lazyZip(selectedIns).foreach {
     case (isComputed, canDispatch, in) =>
       isComputed := canDispatch || !in.instInfo.isValid
@@ -130,7 +130,7 @@ class IssueStage(
             dispatchEn := ready &&
               !dispatchMap.take(src_idx).map(_(dst_idx)).foldLeft(false.B)(_ || _) &&
               canDispatchs.take(src_idx).foldLeft(true.B)(_ && _) &&
-              src_idx.U < io.peer.get.robEmptyNum
+              (src_idx.U < io.peer.get.robEmptyNum)
             if (dst_idx != loadStoreIssuePipelineIndex) {
               when(in.decode.info.exeSel === ExeInst.Sel.loadStore) {
                 dispatchEn := false.B
@@ -162,6 +162,7 @@ class IssueStage(
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.instInfo := selectedIns(src_idx).instInfo
 
         // rob result
+        io.peer.get.requests(src_idx).en := true.B
         io.peer.get.requests(src_idx).readRequests.zip(selectedIns(src_idx).decode.info.gprReadPorts).foreach {
           case (req, decodeRead) =>
             req := decodeRead
@@ -249,6 +250,7 @@ class IssueStage(
       }
 
       out.bits.instInfo := deqPort.bits.regReadPort.instInfo
+      out.bits.instInfo.robId := deqPort.bits.robResult.robId
 
   }
 }

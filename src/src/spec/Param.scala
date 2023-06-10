@@ -21,7 +21,6 @@ object Param {
   val reservationStationDeep = 3 // 保留站深度
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
-  val robIdLength            = 32 // rob给出的id
 
   val csrIssuePipelineIndex       = 0 // csr 相关指令在第0条流水线
   val loadStoreIssuePipelineIndex = 0 // load & store相关指令在第0条流水线

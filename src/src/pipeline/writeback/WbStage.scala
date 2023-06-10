@@ -8,11 +8,19 @@ import pipeline.mem.MemResNdPort
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec._
+import chisel3.experimental.BundleLiterals._
 import control.bundles.CsrValuePort
 
 class WbNdPort extends Bundle {
   val gprWrite = new RfWriteNdPort
   val instInfo = new InstInfoNdPort
+}
+
+object WbNdPort {
+  val default = (new WbNdPort).Lit(
+    _.gprWrite -> RfWriteNdPort.default,
+    _.instInfo -> InstInfoNdPort.default
+  )
 }
 
 class WbStage extends Module {
