@@ -28,8 +28,9 @@ class Pc(
 
   pcReg := pcReg
   when(io.newPc.en) {
-    pcReg     := io.newPc.pcAddr
-    canIncReg := !io.newPc.isIdle
+    pcReg       := io.newPc.pcAddr
+    canIncReg   := !io.newPc.isIdle
+    pcUpdateReg := true.B
   }.elsewhen(io.isNext && canIncReg) {
     // pcReg := pcReg + (4 * issueNum).U
     pcReg       := pcReg + 4.U
