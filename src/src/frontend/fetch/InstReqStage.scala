@@ -17,7 +17,8 @@ object InstReqNdPort {
 }
 
 class InstReqPeerPort extends Bundle {
-  val memReq = Flipped(new ICacheRequestHandshakePort)
+  val memReq    = Flipped(new ICacheRequestHandshakePort)
+  val exception = Flipped(Valid(UInt(Width.Csr.exceptionIndex)))
 }
 
 class InstReqStage
@@ -31,13 +32,16 @@ class InstReqStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.pc      := selectedIn.pc
-  out.isValid := selectedIn.translatedMemReq.isValid
+  out.pc := selectedIn.pc
+  val isAdef = WireDefault(!out.pc(1, 0).orR) //  pc is not aline
+  out.isValid         := selectedIn.translatedMemReq.isValid | isAdef
+  out.exception.valid := isAdef | peer.exception.valid
+  out.exception.bits  := Mux(isAdef, Csr.ExceptionIndex.adef, peer.exception.bits)
 
   // Fallback peer
   peer.memReq.client := selectedIn.translatedMemReq
 
-  when(selectedIn.translatedMemReq.isValid) {
+  when(selectedIn.translatedMemReq.isValid !&& out.exception.valid) {
     when(io.out.ready) {
       // Whether memory request is submitted
       isComputed := peer.memReq.isReady
@@ -50,6 +54,10 @@ class InstReqStage
     }
 
     // Submit result
+    resultOutReg.valid := isComputed
+  }.elsewhen(out.exception.valid) {
+    // when pc is not aline,still submit to backend to solve
+    isComputed         := true.B
     resultOutReg.valid := isComputed
   }
 }

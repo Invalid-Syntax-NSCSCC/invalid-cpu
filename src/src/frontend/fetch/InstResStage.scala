@@ -16,8 +16,9 @@ import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.InstInfoBundle
 
 class InstResNdPort extends Bundle {
-  val isValid = Bool()
-  val pc      = UInt(Width.Mem.addr)
+  val isValid   = Bool()
+  val pc        = UInt(Width.Mem.addr)
+  val exception = Valid(UInt(Width.Csr.exceptionIndex))
 }
 
 object InstResNdPort {
@@ -45,10 +46,11 @@ class InstResStage
   val isLastHasReq = RegNext(false.B, false.B)
 
   // Fallback output
-  out.pcAddr := selectedIn.pc
-  out.inst   := peer.memRes.read.data
-
-  when(selectedIn.isValid) {
+  out.pcAddr         := selectedIn.pc
+  out.inst           := peer.memRes.read.data
+  out.exceptionValid := selectedIn.exception.valid
+  out.exception      := selectedIn.exception.bits
+  out.when(selectedIn.isValid) {
     isComputed         := peer.memRes.isComplete
     resultOutReg.valid := isComputed
     isLastHasReq       := true.B
@@ -62,7 +64,7 @@ class InstResStage
   }
 
   when(shouldDiscardReg) {
-    when(peer.memRes.isComplete) {
+    when(peer.memRes.isComplete | out.exceptionValid) {
       shouldDiscardReg := false.B
       isComputed       := true.B
     }.otherwise {
