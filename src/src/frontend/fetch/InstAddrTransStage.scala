@@ -29,14 +29,15 @@ class InstAddrTransStage extends Module {
   val peer = io.peer
 
   val outReg = RegInit(InstReqNdPort.default)
+  val isAdef = WireDefault(io.pc(1, 0).orR) // pc not aline
   io.out.bits  := outReg
-  io.out.valid := outReg.translatedMemReq.isValid
+  io.out.valid := outReg.translatedMemReq.isValid || isAdef // still send to backend
 
   val isLastSent = RegNext(true.B, true.B)
 
   // Fallback output
   outReg.pc                       := io.pc
-  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !io.pc(1, 0).orR
+  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !isAdef
 
   // DMW mapping
   val directMapVec = Wire(
@@ -88,7 +89,7 @@ class InstAddrTransStage extends Module {
       translatedAddr := peer.tlbTrans.physAddr
       outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
         !peer.tlbTrans.exception.valid &&
-        !io.pc(1, 0).orR
+        !isAdef
     }
   }
 

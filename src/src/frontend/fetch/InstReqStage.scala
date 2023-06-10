@@ -31,17 +31,20 @@ class InstReqStage
   val peer = io.peer.get
   val out  = resultOutReg.bits
 
+  val isAdef    = WireDefault(selectedIn.pc(1, 0).orR) //  pc is not aline
+  val tlbExcp   = WireDefault(peer.exception.valid)
+  val excpValid = WireDefault(isAdef || tlbExcp)
+
   // Fallback output
-  out.pc := selectedIn.pc
-  val isAdef = WireDefault(out.pc(1, 0).orR) //  pc is not aline
-  out.isValid         := selectedIn.translatedMemReq.isValid | isAdef
-  out.exception.valid := isAdef | peer.exception.valid
+  out.pc              := selectedIn.pc
+  out.isValid         := selectedIn.translatedMemReq.isValid || isAdef
+  out.exception.valid := excpValid
   out.exception.bits  := Mux(isAdef, Csr.ExceptionIndex.adef, peer.exception.bits)
 
   // Fallback peer
   peer.memReq.client := selectedIn.translatedMemReq
 
-  when(selectedIn.translatedMemReq.isValid && (!out.exception.valid)) {
+  when(selectedIn.translatedMemReq.isValid && (!excpValid)) {
     when(io.out.ready) {
       // Whether memory request is submitted
       isComputed := peer.memReq.isReady
@@ -55,8 +58,8 @@ class InstReqStage
 
     // Submit result
     resultOutReg.valid := isComputed
-  }.elsewhen(out.exception.valid) {
-    // when pc is not aline,still submit to backend to solve
+  }.elsewhen(excpValid) {
+    // when pc is not aline or has a tlb excption, do not send mem request but still submit to backend to solve
     peer.memReq.client.isValid := false.B
     isComputed                 := true.B
     resultOutReg.valid         := isComputed
