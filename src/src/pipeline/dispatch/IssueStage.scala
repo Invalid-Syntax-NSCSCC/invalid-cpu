@@ -63,9 +63,6 @@ class IssueStage(
       Some(new IssueStagePeerPort),
       issueNum,
       pipelineNum
-      Some(new IssueStagePeerPort),
-      issueNum,
-      pipelineNum
     ) {
 
   // Fallback
