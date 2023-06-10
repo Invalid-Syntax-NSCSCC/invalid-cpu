@@ -90,6 +90,8 @@ class MultiQueue[ElemT <: Data](
   if (!writeFirst) {
     io.setPorts.zipWithIndex.foreach {
       case (s, idx) =>
+    io.setPorts.zipWithIndex.foreach {
+      case (s, idx) =>
         when(s.valid) {
           if (isRelativePosition) {
             ram(deq_ptr.io.incResults(idx)) := s.bits

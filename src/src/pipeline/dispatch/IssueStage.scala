@@ -63,6 +63,9 @@ class IssueStage(
       Some(new IssueStagePeerPort),
       issueNum,
       pipelineNum
+      Some(new IssueStagePeerPort),
+      issueNum,
+      pipelineNum
     ) {
 
   // Fallback
@@ -104,7 +107,6 @@ class IssueStage(
 
   val dispatchMap  = WireDefault(VecInit(Seq.fill(issueNum)(VecInit(Seq.fill(pipelineNum)(false.B)))))
   val canDispatchs = WireDefault(VecInit(dispatchMap.map(_.reduceTree(_ || _))))
-
   isComputeds.lazyZip(canDispatchs).lazyZip(selectedIns).foreach {
     case (isComputed, canDispatch, in) =>
       isComputed := canDispatch || !in.instInfo.isValid
