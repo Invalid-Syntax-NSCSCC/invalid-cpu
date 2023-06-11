@@ -23,56 +23,13 @@ import pipeline.mem.AddrTransNdPort
 
 import scala.collection.immutable
 import control.csrRegsBundles.EraBundle
-
-class ExeNdPort extends Bundle {
-  // Micro-instruction for execution stage
-  val exeSel = UInt(Param.Width.exeSel)
-  val exeOp  = UInt(Param.Width.exeOp)
-  // Operands
-  val leftOperand  = UInt(Width.Reg.data)
-  val rightOperand = UInt(Width.Reg.data)
-
-  // Branch jump addr
-  val jumpBranchAddr = UInt(Width.Reg.data)
-  def loadStoreImm   = jumpBranchAddr
-  def csrData        = jumpBranchAddr
-
-  // GPR write (writeback)
-  val gprWritePort = new RfAccessInfoNdPort
-
-  val instInfo = new InstInfoNdPort
-}
-
-object ExeNdPort {
-  def default = (new ExeNdPort).Lit(
-    _.exeSel -> ExeInst.Sel.none,
-    _.exeOp -> ExeInst.Op.nop,
-    _.leftOperand -> 0.U,
-    _.rightOperand -> 0.U,
-    _.gprWritePort -> RfAccessInfoNdPort.default,
-    _.jumpBranchAddr -> zeroWord,
-    _.instInfo -> InstInfoNdPort.default
-  )
-}
-
-class ExePeerPort extends Bundle {
-  // `ExeStage` -> `Cu` (no delay)
-  val branchSetPort           = Output(new PcSetPort)
-  val scoreboardChangePort    = Output(new ScoreboardChangeNdPort)
-  val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
-  val csr = Input(new Bundle {
-    val llbctl = new LlbctlBundle
-    val era    = new EraBundle
-  })
-
-  // val wbPort = ValidIO(new )
-}
+import pipeline.writeback.WbNdPort
 
 // throw exception: 地址未对齐 ale
-class ExeStage
+class ExePassWbStage
     extends BaseStage(
       new ExeNdPort,
-      new AddrTransNdPort,
+      new WbNdPort,
       ExeNdPort.default,
       Some(new ExePeerPort)
     ) {
@@ -170,57 +127,6 @@ class ExeStage
     resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
   }
 
-  /** MemAccess
-    */
-
-  val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
-  val memReadEn = WireDefault(
-    VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
-      .contains(selectedIn.exeOp)
-  )
-  val memWriteEn = WireDefault(
-    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w, ExeInst.Op.sc)
-      .contains(selectedIn.exeOp)
-  )
-  val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp))
-
-  resultOutReg.bits.memRequest.isValid         := (memReadEn || memWriteEn) && !isAle
-  resultOutReg.bits.memRequest.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
-  resultOutReg.bits.memRequest.write.data      := selectedIn.rightOperand
-  resultOutReg.bits.memRequest.read.isUnsigned := memLoadUnsigned
-  resultOutReg.bits.memRequest.rw              := Mux(memWriteEn, ReadWriteSel.write, ReadWriteSel.read)
-  // mask
-  val maskEncode = loadStoreAddr(1, 0)
-  switch(selectedIn.exeOp) {
-    is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-      resultOutReg.bits.memRequest.mask := Mux(
-        maskEncode(1),
-        Mux(maskEncode(0), "b1000".U, "b0100".U),
-        Mux(maskEncode(0), "b0010".U, "b0001".U)
-      )
-    }
-    is(ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.st_h) {
-      when(maskEncode(0)) {
-        isAle := true.B // 未对齐
-      }
-      resultOutReg.bits.memRequest.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
-    }
-    is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-      isAle                             := maskEncode.orR
-      resultOutReg.bits.memRequest.mask := "b1111".U
-    }
-  }
-  switch(selectedIn.exeOp) {
-    is(ExeInst.Op.st_b) {
-      resultOutReg.bits.memRequest.write.data := Cat(
-        Seq.fill(wordLength / byteLength)(selectedIn.rightOperand(byteLength - 1, 0))
-      )
-    }
-    is(ExeInst.Op.st_h) {
-      resultOutReg.bits.memRequest.write.data := Cat(Seq.fill(2)(selectedIn.rightOperand(wordLength / 2 - 1, 0)))
-    }
-  }
-
   resultOutReg.bits.instInfo.load.en := Mux(
     isAle,
     0.U,
@@ -244,26 +150,6 @@ class ExeStage
       selectedIn.exeOp === ExeInst.Op.st_w,
       selectedIn.exeOp === ExeInst.Op.st_h,
       selectedIn.exeOp === ExeInst.Op.st_b
-    )
-  )
-  resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
-  resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
-  resultOutReg.bits.instInfo.store.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
-    immutable.Seq(
-      ExeInst.Op.st_b -> Mux(
-        maskEncode(1),
-        Mux(
-          maskEncode(0),
-          Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
-          Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
-        ),
-        Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
-      ),
-      ExeInst.Op.st_h -> Mux(
-        maskEncode(1),
-        Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
-        selectedIn.rightOperand(15, 0)
-      )
     )
   )
 
