@@ -155,10 +155,10 @@ class Rob(
       queue.io.elemValids.get.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
         case ((elemValid, elem, set), idx) =>
           when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
-            set.valid       := true.B
-            set.bits        := elem
-            set.bits.state  := State.ready
-            set.bits.wbPort := finishInst.bits
+            set.valid        := true.B
+            set.bits.isValid := elem.isValid
+            set.bits.state   := State.ready
+            set.bits.wbPort  := finishInst.bits
           }
       }
     }
