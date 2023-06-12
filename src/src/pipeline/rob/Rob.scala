@@ -37,7 +37,7 @@ class Rob(
     val regReadPortss = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
 
     // `ExeStage / LSU` -> `Rob`
-    val finishInsts = Input(Vec(pipelineNum, Flipped(Decoupled(new WbNdPort))))
+    val finishInsts = Vec(pipelineNum, Flipped(Decoupled(new WbNdPort)))
 
     // `Rob` -> `WbStage`
     val commits = Output(Vec(commitNum, ValidIO(new WbNdPort)))
@@ -61,6 +61,15 @@ class Rob(
       needValidPorts = true
     )
   )
+  queue.io.enqueuePorts.foreach { port =>
+    port.valid := false.B
+    port.bits  := DontCare
+  }
+  queue.io.setPorts.foreach { port =>
+    port.valid := false.B
+    port.bits  := DontCare
+  }
+  queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.exceptionFlush
   io.emptyNum      := queue.io.emptyNum
 
@@ -111,9 +120,9 @@ class Rob(
                 resRead.result  := rfReadPort.data
               }
               // if RAW in the same time request
-              val raw = VecInit(io.requests.take(idx).map(_.writeRequest).map { prevWrite =>
+              val raw = io.requests.take(idx).map(_.writeRequest).map { prevWrite =>
                 prevWrite.en && prevWrite.addr === reqRead.addr
-              })
+              }
               val selectWrite = PriorityEncoderOH(raw.reverse).reverse
               when(raw.foldLeft(false.B)(_ || _)) {
                 io.distributeResults.take(idx).zip(selectWrite).foreach {
@@ -141,7 +150,7 @@ class Rob(
             set.valid       := true.B
             set.bits        := elem
             set.bits.state  := State.ready
-            set.bits.wbPort := finishInst
+            set.bits.wbPort := finishInst.bits
           }
       }
     }

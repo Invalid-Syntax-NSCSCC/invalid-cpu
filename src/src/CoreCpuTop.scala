@@ -9,9 +9,6 @@ import memory.{DCache, Tlb, UncachedAgent}
 import pipeline.dispatch.{RegReadNdPort, RegReadStage}
 import pipeline.dispatch.Scoreboard
 import pipeline.dispatch.CsrScoreboard
-
-import pipeline.dispatch.BiIssueStage
-
 import pipeline.execution.ExeStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.writeback.WbStage
@@ -199,13 +196,16 @@ class CoreCpuTop extends Module {
   instQueue.io.isFlush               := cu.io.exceptionFlush || cu.io.branchFlush
 
   // Issue stage
-  issueStage.io.ins(0)               <> instQueue.io.dequeuePorts(0)
-  issueStage.io.ins(1)               := DontCare // TODO: Connect Second Fetch Inst
+  issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
+    case (dst, src) =>
+      dst <> src
+  }
   issueStage.io.ins(1).valid         := false.B // TODO: Connect Second Fetch Inst
   issueStage.io.isFlush              := cu.io.exceptionFlush || cu.io.branchFlush
   issueStage.io.peer.get.robEmptyNum := rob.io.emptyNum
   issueStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
-    case (dst, src) => dst := src
+    case (dst, src) =>
+      dst := src
   }
 
   def connect_wb(dst: InstWbNdPort, src: DecoupledIO[WbNdPort]): Unit = {
@@ -222,8 +222,9 @@ class CoreCpuTop extends Module {
         connect_wb(dst, exePassWbStages(idx - 1).io.out)
       }
   }
+  issueStage.io.peer.get.csrRegScore := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
-  issueStage.io.peer.get.branchFlush := cu.io.newPc
+  issueStage.io.peer.get.branchFlush := cu.io.branchFlush
 
   // Scoreboards
   csrScoreBoard.io.freePort    := wbStage.io.csrFreePort
@@ -240,7 +241,7 @@ class CoreCpuTop extends Module {
   assert(Param.loadStoreIssuePipelineIndex == 0)
   exePassWbStages.zipWithIndex.foreach {
     case (exe, idx) =>
-      exe.io.in                  := issueStage.io.outs(idx + 1)
+      exe.io.in                  <> issueStage.io.outs(idx + 1)
       exe.io.isFlush             := cu.io.exceptionFlush
       exe.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
       exe.io.peer.get.csr.era    := csr.io.csrValues.era
@@ -283,8 +284,9 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  rob.io.exceptionFlush  := cu.io.exceptionFlush
-  rob.io.branchFlushInfo := cu.io.newPc
+  rob.io.exceptionFlush     := cu.io.exceptionFlush
+  rob.io.branchFlushInfo    := cu.io.newPc
+  rob.io.branchFlushInfo.en := cu.io.branchFlush
 
   // Write-back stage
   wbStage.io.ins.zip(rob.io.commits).foreach {
