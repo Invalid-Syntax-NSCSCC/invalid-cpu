@@ -47,7 +47,15 @@ class Rob(
     val branchFlushInfo = Input(new PcSetPort)
   })
 
-  io <> DontCare
+  // fall back
+  io.regReadPortss.foreach(_.foreach { port =>
+    port.en   := false.B
+    port.addr := DontCare
+  })
+  io.commits.foreach { commit =>
+    commit.valid := false.B
+    commit.bits  := DontCare
+  }
 
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
 
