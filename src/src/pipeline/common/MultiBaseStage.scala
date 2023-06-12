@@ -74,7 +74,7 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
       v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
   }
 
-  validToOuts(1) := false.B
+  // validToOuts(1) := false.B
 
   io.ins.zip(savedIns).foreach {
     case (in, saveIn) =>

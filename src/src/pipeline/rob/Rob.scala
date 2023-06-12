@@ -24,11 +24,12 @@ import common.bundles.PcSetPort
 class Rob(
   robLength:   Int = Param.Width.Rob._length,
   pipelineNum: Int = Param.pipelineNum,
-  issueNum:    Int = Param.issueInstInfoMaxNum)
+  issueNum:    Int = Param.issueInstInfoMaxNum,
+  commitNum:   Int = Param.commitNum)
     extends Module {
   val io = IO(new Bundle {
     // `Rob` <-> `IssueStage`
-    val emptyNum          = UInt(log2Ceil(robLength).W)
+    val emptyNum          = Output(UInt(Param.Width.Rob.id))
     val requests          = Input(Vec(issueNum, new RobReadRequestNdPort))
     val distributeResults = Output(Vec(issueNum, new RobReadResultNdPort))
 
@@ -39,7 +40,7 @@ class Rob(
     val finishInsts = Input(Vec(pipelineNum, Flipped(Decoupled(new WbNdPort))))
 
     // `Rob` -> `WbStage`
-    val commits = Output(Vec(issueNum, ValidIO(new WbNdPort)))
+    val commits = Output(Vec(commitNum, ValidIO(new WbNdPort)))
 
     // `Cu` -> `Rob`
     val exceptionFlush  = Input(Bool())
@@ -54,7 +55,7 @@ class Rob(
     new MultiQueue(
       robLength,
       issueNum,
-      issueNum,
+      commitNum,
       new RobInstStoreBundle,
       RobInstStoreBundle.default,
       needValidPorts = true

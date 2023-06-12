@@ -17,15 +17,15 @@ import spec.Param.isDiffTest
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
-  dispatchNum:    Int = 1 // Param.issueInstInfoMaxNum
-) extends Module {
+  commitNum:      Int = Param.commitNum)
+    extends Module {
   val io = IO(new Bundle {
 
     /** 回写与异常处理
       */
     // `WbStage` -> `Cu` -> `Regfile`
-    val gprWritePassThroughPorts = new PassThroughPort(Vec(dispatchNum, new RfWriteNdPort))
-    val instInfoPorts            = Input(Vec(dispatchNum, new InstInfoNdPort))
+    val gprWritePassThroughPorts = new PassThroughPort(Vec(commitNum, new RfWriteNdPort))
+    val instInfoPorts            = Input(Vec(commitNum, new InstInfoNdPort))
     // `Cu` -> `Csr`, 软件写
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写

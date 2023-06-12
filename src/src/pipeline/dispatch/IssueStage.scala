@@ -58,7 +58,7 @@ class IssueStagePeerPort(
 class IssueStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
-  reservationLength: Int = spec.Param.reservationStationDeep)
+  reservationLength: Int = Param.reservationStationDeep)
     extends MultiBaseStage(
       new FetchInstDecodeNdPort,
       new ExeNdPort,
@@ -140,6 +140,11 @@ class IssueStage(
             }
             if (dst_idx != csrIssuePipelineIndex) {
               when(in.instInfo.needCsr) {
+                dispatchEn := false.B
+              }
+            }
+            if (dst_idx != Param.jumpBranchPipelineIndex) {
+              when(in.decode.info.exeSel === ExeInst.Sel.jumpBranch) {
                 dispatchEn := false.B
               }
             }

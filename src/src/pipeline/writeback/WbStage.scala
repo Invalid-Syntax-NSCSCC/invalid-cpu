@@ -23,19 +23,19 @@ object WbNdPort {
   )
 }
 
-class WbStage extends Module {
+class WbStage(
+  commitNum: Int = Param.commitNum)
+    extends Module {
   val io = IO(new Bundle {
-    val in = Flipped(Decoupled(new WbNdPort))
+    val ins = Input(Vec(commitNum, Valid(new WbNdPort)))
 
     // `WbStage` -> `Cu` NO delay
-    val gprWritePort = Output(new RfWriteNdPort)
+    val gprWritePorts = Output(Vec(commitNum, new RfWriteNdPort))
 
-    // Scoreboard
-    val freePort    = Output(new ScoreboardChangeNdPort)
     val csrFreePort = Output(new ScoreboardChangeNdPort)
 
     // `AddrTransStage` -> `WbStage` -> `Cu` NO delay
-    val cuInstInfoPort = Output(new InstInfoNdPort)
+    val cuInstInfoPorts = Output(Vec(commitNum, new InstInfoNdPort))
 
     // `WbStage` -> `Cu` NO delay
     val isExceptionValid = Output(Bool())
@@ -67,63 +67,67 @@ class WbStage extends Module {
         }))
       else None
   })
-  // Always assert ready for last stage
-  io.in.ready := true.B
 
-  val inBits = WireDefault(io.in.bits)
+  val inBits = WireDefault(VecInit(io.ins.map(_.bits)))
 
   val hasInterruptReg = RegInit(false.B)
   when(io.hasInterrupt) {
-    when(io.in.valid) {
-      inBits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-      inBits.instInfo.isExceptionValid                         := true.B
+    when(io.ins(0).valid) {
+      inBits(0).instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+      inBits(0).instInfo.isExceptionValid                         := true.B
     }.otherwise {
       hasInterruptReg := true.B
     }
-  }.elsewhen(hasInterruptReg && io.in.valid) {
-    hasInterruptReg                                          := false.B
-    inBits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-    inBits.instInfo.isExceptionValid                         := true.B
+  }.elsewhen(hasInterruptReg && io.ins(0).valid) {
+    hasInterruptReg                                             := false.B
+    inBits(0).instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+    inBits(0).instInfo.isExceptionValid                         := true.B
   }
 
   // Whether current instruction causes exception
-  io.isExceptionValid := inBits.instInfo.isValid && inBits.instInfo.isExceptionValid
+  io.isExceptionValid := inBits.map { inBit => inBit.instInfo.isValid && inBit.instInfo.isExceptionValid }
+    .reduce(_ || _) // inBits.instInfo.isValid && inBits.instInfo.isExceptionValid
 
   // Output connection
-  io.cuInstInfoPort         := inBits.instInfo
-  io.gprWritePort           := inBits.gprWrite
-  io.cuInstInfoPort.isValid := io.in.valid && inBits.instInfo.isValid
-  io.gprWritePort.en        := io.in.valid && inBits.gprWrite.en
+  io.cuInstInfoPorts.lazyZip(io.gprWritePorts).lazyZip(io.ins).lazyZip(inBits).foreach {
+    case (dstInstInfo, dstGprWrite, in, inBit) =>
+      dstInstInfo         := inBit.instInfo
+      dstInstInfo.isValid := in.valid && inBit.instInfo.isValid
+      dstGprWrite         := inBit.gprWrite
+      dstGprWrite.en      := in.valid && inBit.gprWrite.en
+  }
 
   // Indicate the availability in scoreboard
-  io.freePort.en   := io.gprWritePort.en && io.in.valid
-  io.freePort.addr := io.gprWritePort.addr
 
-  io.csrFreePort.en   := io.in.valid && inBits.instInfo.needCsr
-  io.csrFreePort.addr := inBits.instInfo.csrWritePort.addr
+  io.csrFreePort.en := io.ins
+    .zip(inBits)
+    .map {
+      case (in, inBit) => in.valid && inBit.instInfo.needCsr
+    }
+    .reduce(_ || _)
+  io.csrFreePort.addr := DontCare
 
   // Diff test connection
-  val exceptionVec = inBits.instInfo.exceptionRecords
   io.difftest match {
     case Some(dt) =>
       dt       := DontCare
-      dt.valid := RegNext(inBits.instInfo.isValid && io.in.valid) // && nextCommit)
-      dt.pc    := RegNext(inBits.instInfo.pc)
-      dt.instr := RegNext(inBits.instInfo.inst)
-      dt.wen   := RegNext(inBits.gprWrite.en)
-      dt.wdest := RegNext(inBits.gprWrite.addr)
-      dt.wdata := RegNext(inBits.gprWrite.data)
+      dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid) // && nextCommit)
+      dt.pc    := RegNext(inBits(0).instInfo.pc)
+      dt.instr := RegNext(inBits(0).instInfo.inst)
+      dt.wen   := RegNext(inBits(0).gprWrite.en)
+      dt.wdest := RegNext(inBits(0).gprWrite.addr)
+      dt.wdata := RegNext(inBits(0).gprWrite.data)
       dt.csr_rstat := RegNext(
-        inBits.instInfo.inst(31, 24) === Inst._2RI14.csr_ &&
-          inBits.instInfo.inst(23, 10) === "h5".U
+        inBits(0).instInfo.inst(31, 24) === Inst._2RI14.csr_ &&
+          inBits(0).instInfo.inst(23, 10) === "h5".U
       )
-      dt.ld_en    := RegNext(inBits.instInfo.load.en)
-      dt.ld_vaddr := RegNext(inBits.instInfo.load.vaddr)
-      dt.ld_paddr := RegNext(inBits.instInfo.load.paddr)
-      dt.st_en    := RegNext(inBits.instInfo.store.en)
-      dt.st_vaddr := RegNext(inBits.instInfo.store.vaddr)
-      dt.st_paddr := RegNext(inBits.instInfo.store.paddr)
-      dt.st_data  := RegNext(inBits.instInfo.store.data)
+      dt.ld_en    := RegNext(inBits(0).instInfo.load.en)
+      dt.ld_vaddr := RegNext(inBits(0).instInfo.load.vaddr)
+      dt.ld_paddr := RegNext(inBits(0).instInfo.load.paddr)
+      dt.st_en    := RegNext(inBits(0).instInfo.store.en)
+      dt.st_vaddr := RegNext(inBits(0).instInfo.store.vaddr)
+      dt.st_paddr := RegNext(inBits(0).instInfo.store.paddr)
+      dt.st_data  := RegNext(inBits(0).instInfo.store.data)
     case _ =>
   }
 }
