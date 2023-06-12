@@ -138,15 +138,20 @@ class ICache(
   val nextState = WireDefault(stateReg)
   stateReg := nextState // Fallback: Keep state
 
+  val isCompleteReg = RegInit(false.B)
+  isCompleteReg := isCompleteReg
+  val readDataReg = Reg(UInt(Width.Mem.data))
+  readDataReg := readDataReg
+
   io.accessPort.req.isReady := false.B // Fallback: Not ready
 
   io.maintenancePort.isReady := false.B // Fallback: Not ready
 
   io.accessPort.res.isFailed := false.B // Fallback: Not failed
 
-  io.accessPort.res.isComplete := false.B // Falback: Not complete
+  io.accessPort.res.isComplete := isCompleteReg // Fallback: Keep status
 
-  io.accessPort.res.read.data := DontCare
+  io.accessPort.res.read.data := readDataReg // Fallback: Keep data
 
   val currentMemAddr = WireDefault(
     Mux(
@@ -224,13 +229,18 @@ class ICache(
           // Step 2: Read result in same cycle output
           io.accessPort.res.isComplete := true.B
           io.accessPort.res.read.data  := selectedData
+          isCompleteReg                := true.B
+          readDataReg                  := selectedData
 
           // Next Stage 1
           nextState := State.ready
         }.otherwise {
           // Cache miss
-          io.accessPort.req.isReady  := false.B
-          io.maintenancePort.isReady := false.B
+
+          io.accessPort.req.isReady    := false.B
+          io.maintenancePort.isReady   := false.B
+          io.accessPort.res.isComplete := false.B
+          isCompleteReg                := false.B
 
           // Select a set to refill
 
@@ -322,6 +332,9 @@ class ICache(
           io.accessPort.res.isComplete := true.B
           io.accessPort.res.isFailed   := axiMaster.io.read.res.isFailed
           io.accessPort.res.read.data  := readData
+          isCompleteReg                := true.B
+          readDataReg                  := readData
+          // TODO: `isFailedReg`
 
           // Next Stage 1
           nextState := State.ready
