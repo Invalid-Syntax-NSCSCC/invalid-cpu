@@ -111,9 +111,9 @@ class IssueStage(
     case (isComputed, canDispatch, in) =>
       isComputed := canDispatch || !in.instInfo.isValid
   }
-  io.ins.zip(isLastComputeds).foreach {
-    case (in, isLastComputed) =>
-      in.ready := isLastComputed
+  io.ins.lazyZip(isLastComputeds).lazyZip(canDispatchs).foreach {
+    case (in, isLastComputed, canDispatch) =>
+      in.ready := isLastComputed && canDispatch
   }
 
   selectedIns.lazyZip(dispatchMap).zipWithIndex.foreach {

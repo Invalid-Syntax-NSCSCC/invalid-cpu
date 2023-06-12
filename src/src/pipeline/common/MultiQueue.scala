@@ -122,8 +122,11 @@ class MultiQueue[ElemT <: Data](
   deq_ptr.io.inc := dequeueNum
   io.dequeuePorts.zipWithIndex.foreach {
     case (deq, idx) =>
-      deq.bits                              := ram(deq_ptr.io.incResults(idx))
-      ramValids(deq_ptr.io.incResults(idx)) := false.B
+      when(idx.U < dequeueNum) {
+        deq.bits                              := ram(deq_ptr.io.incResults(idx))
+        ramValids(deq_ptr.io.incResults(idx)) := false.B
+      }
+
   }
 
   if (writeFirst) {
