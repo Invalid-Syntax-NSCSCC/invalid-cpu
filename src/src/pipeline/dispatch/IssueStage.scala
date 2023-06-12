@@ -19,6 +19,7 @@ import pipeline.common.MultiQueue
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
 import control.bundles.CsrReadPort
+import pipeline.common.MultiBaseStageWOSaveIn
 
 // class FetchInstDecodeNdPort extends Bundle {
 //   val decode   = new DecodeOutNdPort
@@ -59,7 +60,7 @@ class IssueStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
   reservationLength: Int = Param.reservationStationDeep)
-    extends MultiBaseStage(
+    extends MultiBaseStageWOSaveIn(
       new FetchInstDecodeNdPort,
       new ExeNdPort,
       FetchInstDecodeNdPort.default,
@@ -107,13 +108,10 @@ class IssueStage(
 
   val dispatchMap  = WireDefault(VecInit(Seq.fill(issueNum)(VecInit(Seq.fill(pipelineNum)(false.B)))))
   val canDispatchs = WireDefault(VecInit(dispatchMap.map(_.reduceTree(_ || _))))
-  isComputeds.lazyZip(canDispatchs).lazyZip(selectedIns).foreach {
-    case (isComputed, canDispatch, in) =>
-      isComputed := canDispatch || !in.instInfo.isValid
-  }
-  io.ins.lazyZip(isLastComputeds).lazyZip(canDispatchs).foreach {
-    case (in, isLastComputed, canDispatch) =>
-      in.ready := isLastComputed && canDispatch
+
+  io.ins.lazyZip(canDispatchs).foreach {
+    case (in, canDispatch) =>
+      in.ready := canDispatch
   }
 
   selectedIns.lazyZip(dispatchMap).zipWithIndex.foreach {
@@ -262,13 +260,11 @@ class IssueStage(
   }
 
   when(io.peer.get.branchFlush) {
-    isComputeds.foreach(_ := true.B)
     io.peer.get.requests.foreach(_.en := false.B)
     io.ins.foreach(_.ready := false.B)
   }
 
   when(io.isFlush) {
-    isComputeds.foreach(_ := true.B)
     io.peer.get.requests.foreach(_.en := false.B)
     io.ins.foreach(_.ready := false.B)
   }

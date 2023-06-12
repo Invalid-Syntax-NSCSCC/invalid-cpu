@@ -113,17 +113,17 @@ class MultiQueue[ElemT <: Data](
   enq_ptr.io.inc := enqueueNum
   io.enqueuePorts.lazyZip(enqEn).zipWithIndex.foreach {
     case ((enqPort, en), idx) =>
-      when(idx.U < enqueueNum) {
+      when(en) {
         ram(enq_ptr.io.incResults(idx))       := enqPort.bits
         ramValids(enq_ptr.io.incResults(idx)) := true.B
       }
   }
 
   deq_ptr.io.inc := dequeueNum
-  io.dequeuePorts.zipWithIndex.foreach {
-    case (deq, idx) =>
-      when(idx.U < dequeueNum) {
-        deq.bits                              := ram(deq_ptr.io.incResults(idx))
+  io.dequeuePorts.lazyZip(deqEn).zipWithIndex.foreach {
+    case ((deq, en), idx) =>
+      deq.bits := ram(deq_ptr.io.incResults(idx))
+      when(en) {
         ramValids(deq_ptr.io.incResults(idx)) := false.B
       }
 
