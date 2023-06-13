@@ -64,8 +64,6 @@ class ExePeerPort extends Bundle {
     val llbctl = new LlbctlBundle
     val era    = new EraBundle
   })
-
-  // val wbPort = ValidIO(new )
 }
 
 // throw exception: 地址未对齐 ale

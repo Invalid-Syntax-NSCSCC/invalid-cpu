@@ -43,9 +43,11 @@ class Rob(
     // `Rob` -> `WbStage`
     val commits = Output(Vec(commitNum, ValidIO(new WbNdPort)))
 
-    // `Cu` -> `Rob`
+    // `Cu` <-> `Rob`
     val exceptionFlush  = Input(Bool())
     val branchFlushInfo = Input(new BranchFlushInfo)
+
+    val robInstValids = Output(Vec(robLength, Bool()))
   })
 
   // fall back
@@ -81,6 +83,10 @@ class Rob(
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.exceptionFlush
   io.emptyNum      := queue.io.emptyNum
+  io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).foreach {
+    case (dst, elem, elemValid) =>
+      dst := elemValid && elem.isValid
+  }
 
   /** Distribute for issue stage
     */

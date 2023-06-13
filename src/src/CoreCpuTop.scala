@@ -310,6 +310,10 @@ class CoreCpuTop extends Module {
   }
   cu.io.csrValues             := csr.io.csrValues
   cu.io.stableCounterReadPort <> stableCounter.io
+  cu.io.robInstValids.zip(rob.io.robInstValids).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   require(Param.loadStoreIssuePipelineIndex == 0)
   if (Param.jumpBranchPipelineIndex == 0) {

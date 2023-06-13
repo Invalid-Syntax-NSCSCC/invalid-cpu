@@ -50,6 +50,9 @@ class Cu(
     // -> `MemReqStage`
     val isAfterMemReqFlush = Output(Bool())
 
+    // <- `Rob`
+    val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
+
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
 
@@ -223,7 +226,10 @@ class Cu(
       io.newPc.pcAddr := io.csrValues.eentry.asUInt
     }
   }.elsewhen(io.jumpPc.en) {
-    io.newPc := io.jumpPc
+    io.newPc.en     := io.jumpPc.en && io.robInstValids(io.jumpPc.robId)
+    io.newPc.isIdle := io.jumpPc.isIdle
+    io.newPc.pcAddr := io.jumpPc.pcAddr
+    io.newPc.robId  := io.jumpPc.robId
   }
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&

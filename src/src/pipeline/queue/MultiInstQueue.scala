@@ -32,7 +32,6 @@ class MultiInstQueue(
       })
     )
   })
-  require(issueNum == 2)
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
 
