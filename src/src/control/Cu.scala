@@ -211,8 +211,9 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  io.exceptionFlush        := RegNext(exceptionFlush, false.B)
-  io.branchFlushInfo.en    := RegNext(io.jumpPc.en)
+  io.exceptionFlush := RegNext(exceptionFlush, false.B)
+  val branchSetEnable = WireDefault(io.jumpPc.en && io.robInstValids(io.jumpPc.robId))
+  io.branchFlushInfo.en    := RegNext(branchSetEnable)
   io.branchFlushInfo.robId := RegNext(io.jumpPc.robId)
   io.csrMessage.ertnFlush  := ertnFlush
 
@@ -225,11 +226,8 @@ class Cu(
     }.otherwise {
       io.newPc.pcAddr := io.csrValues.eentry.asUInt
     }
-  }.elsewhen(io.jumpPc.en) {
-    io.newPc.en     := io.jumpPc.en && io.robInstValids(io.jumpPc.robId)
-    io.newPc.isIdle := io.jumpPc.isIdle
-    io.newPc.pcAddr := io.jumpPc.pcAddr
-    io.newPc.robId  := io.jumpPc.robId
+  }.elsewhen(branchSetEnable) {
+    io.newPc := io.jumpPc
   }
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&
