@@ -73,9 +73,10 @@ class Rob(
     port.valid := false.B
     port.bits  := DontCare
   }
-  queue.io.setPorts.foreach { port =>
-    port.valid := false.B
-    port.bits  := DontCare
+  queue.io.setPorts.zip(queue.io.elems).foreach {
+    case (dst, src) =>
+      dst.valid := false.B
+      dst.bits  := src
   }
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.exceptionFlush

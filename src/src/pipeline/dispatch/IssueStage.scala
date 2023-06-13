@@ -95,10 +95,17 @@ class IssueStage(
   }
   reservationStations.foreach(_.io.dequeuePorts(0).ready := false.B)
   reservationStations.foreach(_.io.isFlush := io.isFlush)
-  reservationStations.foreach(_.io.setPorts.foreach { port =>
-    port.valid := false.B
-    port.bits  := DontCare
-  })
+  reservationStations.foreach { rs =>
+    rs.io.setPorts.zip(rs.io.elems).foreach {
+      case (dst, src) =>
+        dst.valid := false.B
+        dst.bits  := src
+    }
+  }
+  // reservationStations.foreach(_.io.setPorts.foreach { port =>
+  //   port.valid := false.B
+  //   port.bits  := DontCare
+  // })
 
   /** fetch -> reservation stations
     */
@@ -217,7 +224,7 @@ class IssueStage(
         case (elem, elemValid, set) =>
           when(elemValid) {
             io.peer.get.writebacks.foreach { wb =>
-              set.bits := elemValid
+              set.bits := elem
               elem.robResult.readResults.zip(set.bits.robResult.readResults).foreach {
                 case (readResult, setReadResult) =>
                   when(readResult.sel === RobDistributeSel.robId && wb.en && readResult.result === wb.robId) {

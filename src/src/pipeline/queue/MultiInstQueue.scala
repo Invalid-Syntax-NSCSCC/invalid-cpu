@@ -41,9 +41,10 @@ class MultiInstQueue(
   // fall back
   instQueue.io.enqueuePorts <> io.enqueuePorts
   instQueue.io.isFlush      := io.isFlush
-  instQueue.io.setPorts.foreach { set =>
-    set.valid := false.B
-    set.bits  := DontCare
+  instQueue.io.setPorts.zip(instQueue.io.elems).foreach {
+    case (dst, src) =>
+      dst.valid := false.B
+      dst.bits  := src
   }
   instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
     case (q, out) =>
