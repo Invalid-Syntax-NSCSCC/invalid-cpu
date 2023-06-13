@@ -202,10 +202,10 @@ class Rob(
 
     queue.io.enqueuePorts.foreach(_.valid := false.B)
     when(io.branchFlushInfo.robId > queue.io.deq_ptr) {
-      // ----- deq_ptr --*-- branch_ptr(robId) -----
+      // ----- deq_ptr --*(stay)*-- branch_ptr(robId) -----
       queue.io.setPorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
         case ((set, elem), id) =>
-          when(queue.io.deq_ptr <= id.U && id.U < io.branchFlushInfo.robId) {
+          when(id.U < queue.io.deq_ptr || io.branchFlushInfo.robId < id.U) {
             set.valid        := true.B
             set.bits.state   := elem.state
             set.bits.wbPort  := elem.wbPort
@@ -213,10 +213,10 @@ class Rob(
           }
       }
     }.otherwise {
-      // --*-- branch_ptr(robId) ----- deq_ptr --*--
+      // --*(stay)*-- branch_ptr(robId) ----- deq_ptr --*(stay)*--
       queue.io.setPorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
         case ((set, elem), id) =>
-          when(queue.io.deq_ptr <= id.U || id.U < io.branchFlushInfo.robId) {
+          when(io.branchFlushInfo.robId < id.U && id.U < queue.io.deq_ptr) {
             set.valid        := true.B
             set.bits.state   := elem.state
             set.bits.wbPort  := elem.wbPort
