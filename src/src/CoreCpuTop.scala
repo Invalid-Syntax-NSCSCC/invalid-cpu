@@ -197,7 +197,7 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  issueStage.io.isFlush              := cu.io.exceptionFlush || cu.io.branchFlush
+  issueStage.io.isFlush              := cu.io.exceptionFlush
   issueStage.io.peer.get.robEmptyNum := rob.io.emptyNum
   issueStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
     case (dst, src) =>
