@@ -7,6 +7,7 @@ import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCount
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.{Csr, ExeInst, Param, PipelineStageIndex}
 import spec.Param.isDiffTest
+import control.bundles.BranchFlushInfo
 
 // TODO: Add stall to frontend ?
 // TODO: Add deal exceptions
@@ -41,8 +42,8 @@ class Cu(
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
     // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`, `Scoreboard`
-    val exceptionFlush = Output(Bool())
-    val branchFlush    = Output(Bool())
+    val exceptionFlush  = Output(Bool())
+    val branchFlushInfo = Output(new BranchFlushInfo)
 
     // <- `MemResStage`, `WbStage`
     val isExceptionValidVec = Input(Vec(3, Bool()))
@@ -207,9 +208,10 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  io.exceptionFlush       := RegNext(exceptionFlush, false.B)
-  io.branchFlush          := RegNext(io.jumpPc.en)
-  io.csrMessage.ertnFlush := ertnFlush
+  io.exceptionFlush        := RegNext(exceptionFlush, false.B)
+  io.branchFlushInfo.en    := RegNext(io.jumpPc.en)
+  io.branchFlushInfo.robId := RegNext(io.jumpPc.robId)
+  io.csrMessage.ertnFlush  := ertnFlush
 
   // select new pc
   when(exceptionFlush) {

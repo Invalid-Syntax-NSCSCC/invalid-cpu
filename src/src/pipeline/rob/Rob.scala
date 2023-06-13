@@ -20,6 +20,7 @@ import common.bundles.RfReadPort
 import pipeline.rob.bundles.RobDistributeBundle
 import pipeline.rob.enums.RobDistributeSel
 import common.bundles.PcSetPort
+import control.bundles.BranchFlushInfo
 
 class Rob(
   robLength:   Int = Param.Width.Rob._length,
@@ -44,7 +45,7 @@ class Rob(
 
     // `Cu` -> `Rob`
     val exceptionFlush  = Input(Bool())
-    val branchFlushInfo = Input(new PcSetPort)
+    val branchFlushInfo = Input(new BranchFlushInfo)
   })
 
   // fall back

@@ -175,7 +175,7 @@ class CoreCpuTop extends Module {
 
   // Frontend
   //   inst fetch stage
-  frontend.io.isFlush    := cu.io.exceptionFlush || cu.io.branchFlush
+  frontend.io.isFlush    := cu.io.exceptionFlush || cu.io.branchFlushInfo.en
   frontend.io.accessPort <> iCache.io.accessPort
   frontend.io.pc         := pc.io.pc
   frontend.io.pcUpdate   := pc.io.pcUpdate
@@ -190,7 +190,7 @@ class CoreCpuTop extends Module {
   // TODO: CONNECT
   instQueue.io.enqueuePorts(1)       <> DontCare // TODO: Connect Second Fetch Inst
   instQueue.io.enqueuePorts(1).valid := false.B // TODO: Connect Second Fetch Inst
-  instQueue.io.isFlush               := cu.io.exceptionFlush || cu.io.branchFlush
+  instQueue.io.isFlush               := cu.io.exceptionFlush || cu.io.branchFlushInfo.en
 
   // Issue stage
   issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
@@ -220,14 +220,14 @@ class CoreCpuTop extends Module {
   }
   issueStage.io.peer.get.csrRegScore := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
-  issueStage.io.peer.get.branchFlush := cu.io.branchFlush
+  issueStage.io.peer.get.branchFlush := cu.io.branchFlushInfo.en
 
   // Scoreboards
   csrScoreBoard.io.freePort    := wbStage.io.csrFreePort
   csrScoreBoard.io.toMemPort   := exeForMemStage.io.peer.get.csrScoreboardChangePort // TODO: check this
   csrScoreBoard.io.occupyPort  := issueStage.io.peer.get.csrOccupyPort
   csrScoreBoard.io.isFlush     := cu.io.exceptionFlush
-  csrScoreBoard.io.branchFlush := cu.io.branchFlush
+  csrScoreBoard.io.branchFlush := cu.io.branchFlushInfo.en
 
   // Execution stage
   exeForMemStage.io.in                  <> issueStage.io.outs(Param.loadStoreIssuePipelineIndex)
@@ -280,9 +280,8 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  rob.io.exceptionFlush     := cu.io.exceptionFlush
-  rob.io.branchFlushInfo    := cu.io.newPc
-  rob.io.branchFlushInfo.en := cu.io.branchFlush
+  rob.io.exceptionFlush  := cu.io.exceptionFlush
+  rob.io.branchFlushInfo := cu.io.branchFlushInfo
 
   // Write-back stage
   wbStage.io.ins.zip(rob.io.commits).foreach {
