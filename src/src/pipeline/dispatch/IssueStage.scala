@@ -83,8 +83,7 @@ class IssueStage(
         1,
         1,
         new ReservationStationBundle,
-        ReservationStationBundle.default,
-        needValidPorts = true
+        ReservationStationBundle.default
       )
     )
   )
@@ -212,7 +211,7 @@ class IssueStage(
 
   reservationStations.foreach { reservationStation =>
     reservationStation.io.elems
-      .lazyZip(reservationStation.io.elemValids.get)
+      .lazyZip(reservationStation.io.elemValids)
       .lazyZip(reservationStation.io.setPorts)
       .foreach {
         case (elem, elemValid, set) =>

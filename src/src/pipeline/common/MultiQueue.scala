@@ -11,7 +11,6 @@ class MultiQueue[ElemT <: Data](
   deqMaxNum:          Int,
   elemNdFactory:      => ElemT,
   blankElem:          => ElemT,
-  needValidPorts:     Boolean = false,
   isRelativePosition: Boolean = false,
   writeFirst:         Boolean = true)
     extends Module {
@@ -28,7 +27,7 @@ class MultiQueue[ElemT <: Data](
     val enqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength + 1).W)))
     val enq_ptr       = Output(UInt(log2Ceil(queueLength + 1).W))
     val deq_ptr       = Output(UInt(log2Ceil(queueLength + 1).W))
-    val elemValids    = if (needValidPorts) Some(Output(Vec(queueLength, Bool()))) else None
+    val elemValids    = Output(Vec(queueLength, Bool()))
   })
 
   require(queueLength > enqMaxNum)
@@ -152,17 +151,13 @@ class MultiQueue[ElemT <: Data](
 
   }
 
-  io.elemValids match {
-    case Some(elemValids) =>
-      io.elemValids.get.zipWithIndex.foreach {
-        case (dst, idx) =>
-          if (isRelativePosition) {
-            dst := ramValids(deq_ptr.io.incResults(idx))
-          } else {
-            dst := ramValids(idx)
-          }
+  io.elemValids.zipWithIndex.foreach {
+    case (dst, idx) =>
+      if (isRelativePosition) {
+        dst := ramValids(deq_ptr.io.incResults(idx))
+      } else {
+        dst := ramValids(idx)
       }
-    case None =>
   }
 
   when(io.isFlush) {

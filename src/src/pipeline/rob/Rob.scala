@@ -66,8 +66,7 @@ class Rob(
       issueNum,
       commitNum,
       new RobInstStoreBundle,
-      RobInstStoreBundle.default,
-      needValidPorts = true
+      RobInstStoreBundle.default
     )
   )
   queue.io.enqueuePorts.foreach { port =>
@@ -153,7 +152,7 @@ class Rob(
   io.finishInsts.foreach { finishInst =>
     finishInst.ready := true.B
     when(finishInst.valid) {
-      queue.io.elemValids.get.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
+      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
         case ((elemValid, elem, set), idx) =>
           when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
             set.valid        := true.B
