@@ -217,9 +217,11 @@ class IssueStage(
         case (elem, elemValid, set) =>
           when(elemValid) {
             io.peer.get.writebacks.foreach { wb =>
+              set.bits := elemValid
               elem.robResult.readResults.zip(set.bits.robResult.readResults).foreach {
                 case (readResult, setReadResult) =>
                   when(readResult.sel === RobDistributeSel.robId && wb.en && readResult.result === wb.robId) {
+                    set.valid            := true.B
                     setReadResult.sel    := RobDistributeSel.realData
                     setReadResult.result := wb.data
                   }
