@@ -137,9 +137,6 @@ class CoreCpuTop extends Module {
   val regFile = Module(new RegFile)
   val pc      = Module(new Pc)
 
-  // Default DontCare
-  csr.io <> DontCare
-
   // PC
   pc.io.newPc  := cu.io.newPc
   pc.io.isNext := frontend.io.isNextPc
@@ -200,7 +197,6 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  issueStage.io.ins(1).valid         := false.B // TODO: Connect Second Fetch Inst
   issueStage.io.isFlush              := cu.io.exceptionFlush || cu.io.branchFlush
   issueStage.io.peer.get.robEmptyNum := rob.io.emptyNum
   issueStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
