@@ -235,10 +235,11 @@ class IssueStage(
   reservationStations.lazyZip(resultOutsReg).lazyZip(validToOuts).zipWithIndex.foreach {
     case ((reservationStation, out, outEnable), idx) =>
       val deqPort = reservationStation.io.dequeuePorts(0)
-      out.valid := outEnable && deqPort.valid && deqPort.bits.robResult.readResults
+      val deqEn = outEnable && deqPort.valid && deqPort.bits.robResult.readResults
         .map(_.sel === RobDistributeSel.realData)
         .reduce(_ && _)
-      deqPort.ready := out.valid
+      out.valid     := deqEn
+      deqPort.ready := deqEn
 
       io.peer.get.csrReadPort.en   := deqPort.bits.regReadPort.preExeInstInfo.csrReadEn
       io.peer.get.csrReadPort.addr := DontCare
