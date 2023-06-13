@@ -63,7 +63,7 @@ class MultiQueue[ElemT <: Data](
       Mux(
         enq_ptr.io.value > deq_ptr.io.value,
         enq_ptr.io.value - deq_ptr.io.value,
-        (queueLength.U - deq_ptr.io.value) + enq_ptr.io.value
+        (queueLength.U -& deq_ptr.io.value) +& enq_ptr.io.value
       )
     )
   )
