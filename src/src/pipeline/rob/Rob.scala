@@ -109,7 +109,7 @@ class Rob(
   queue.io.setPorts.lazyZip(finishInstSetQueuePorts).lazyZip(branchSetQueuePorts).foreach {
     case (dst, src_finishInst, src_branch) =>
       dst.valid        := src_branch.valid || src_finishInst.valid
-      dst.bits.isValid := Mux(src_branch.valid, src_branch.bits.isValid, src_finishInst.valid)
+      dst.bits.isValid := Mux(src_branch.valid, src_branch.bits.isValid, src_finishInst.bits.isValid)
       dst.bits.state   := Mux(src_finishInst.valid, src_finishInst.bits.state, src_branch.bits.state)
       dst.bits.wbPort  := Mux(src_finishInst.valid, src_finishInst.bits.wbPort, src_branch.bits.wbPort)
   }
