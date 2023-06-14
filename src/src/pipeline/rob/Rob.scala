@@ -106,6 +106,35 @@ class Rob(
     }
   }
 
+  /** Commit
+    */
+
+  io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
+    case ((commit, deqPort), idx) =>
+      when(
+        deqPort.valid && deqPort.bits.state === State.ready && io.commits
+          .take(idx)
+          .map(_.valid)
+          .foldLeft(true.B)(_ && _)
+      ) {
+
+        // commit
+        commit.valid  := deqPort.bits.isValid
+        deqPort.ready := true.B
+        commit.bits   := deqPort.bits.wbPort
+
+        // change match table
+        when(
+          deqPort.bits.wbPort.gprWrite.en &&
+            deqPort.bits.wbPort.gprWrite.addr =/= 0.U &&
+            matchTable(deqPort.bits.wbPort.gprWrite.addr).locate === RegDataLocateSel.rob &&
+            matchTable(deqPort.bits.wbPort.gprWrite.addr).robId === deqPort.bits.wbPort.instInfo.robId
+        ) {
+          matchTable(deqPort.bits.wbPort.gprWrite.addr).locate := RegDataLocateSel.regfile
+        }
+      }
+  }
+
   /** Distribute for issue stage
     */
 
@@ -170,35 +199,6 @@ class Rob(
         }
 
     }
-
-  /** Commit
-    */
-
-  io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
-    case ((commit, deqPort), idx) =>
-      when(
-        deqPort.valid && deqPort.bits.state === State.ready && io.commits
-          .take(idx)
-          .map(_.valid)
-          .foldLeft(true.B)(_ && _)
-      ) {
-
-        // commit
-        commit.valid  := deqPort.bits.isValid
-        deqPort.ready := true.B
-        commit.bits   := deqPort.bits.wbPort
-
-        // change match table
-        when(
-          deqPort.bits.wbPort.gprWrite.en &&
-            deqPort.bits.wbPort.gprWrite.addr =/= 0.U &&
-            matchTable(deqPort.bits.wbPort.gprWrite.addr).locate === RegDataLocateSel.rob &&
-            matchTable(deqPort.bits.wbPort.gprWrite.addr).robId === deqPort.bits.wbPort.instInfo.robId
-        ) {
-          matchTable(deqPort.bits.wbPort.gprWrite.addr).locate := RegDataLocateSel.regfile
-        }
-      }
-  }
 
   /** branch
     *
