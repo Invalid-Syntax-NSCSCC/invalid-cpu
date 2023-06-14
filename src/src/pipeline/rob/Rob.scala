@@ -21,6 +21,8 @@ import pipeline.rob.bundles.RobDistributeBundle
 import pipeline.rob.enums.RobDistributeSel
 import common.bundles.PcSetPort
 import control.bundles.BranchFlushInfo
+import chisel3.experimental.BundleLiterals._
+import chisel3.internal.firrtl.DefReg
 
 class Rob(
   robLength:   Int = Param.Width.Rob._length,
@@ -62,6 +64,28 @@ class Rob(
 
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
 
+  val finishInstSetQueuePorts = WireDefault(
+    VecInit(
+      Seq.fill(robLength)(
+        ValidIO(new RobInstStoreBundle).Lit(
+          _.valid -> false.B,
+          _.bits -> RobInstStoreBundle.default
+        )
+      )
+    )
+  )
+
+  val branchSetQueuePorts = WireDefault(
+    VecInit(
+      Seq.fill(robLength)(
+        ValidIO(new RobInstStoreBundle).Lit(
+          _.valid -> false.B,
+          _.bits -> RobInstStoreBundle.default
+        )
+      )
+    )
+  )
+
   val queue = Module(
     new MultiQueue(
       robLength,
@@ -82,7 +106,14 @@ class Rob(
   }
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.exceptionFlush
-  io.emptyNum      := queue.io.emptyNum
+  queue.io.setPorts.lazyZip(finishInstSetQueuePorts).lazyZip(branchSetQueuePorts).foreach {
+    case (dst, src_finishInst, src_branch) =>
+      dst.valid        := src_branch.valid || src_finishInst.valid
+      dst.bits.isValid := Mux(src_branch.valid, src_branch.bits.isValid, src_finishInst.valid)
+      dst.bits.state   := Mux(src_finishInst.valid, src_finishInst.bits.state, src_branch.bits.state)
+      dst.bits.wbPort  := Mux(src_finishInst.valid, src_finishInst.bits.wbPort, src_branch.bits.wbPort)
+  }
+  io.emptyNum := queue.io.emptyNum
   io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).lazyZip(queue.io.setPorts).foreach {
     case (dst, elem, elemValid, set) =>
       dst := elemValid && elem.isValid && (!set.valid || set.bits.isValid)
@@ -94,7 +125,7 @@ class Rob(
   io.finishInsts.foreach { finishInst =>
     finishInst.ready := true.B
     when(finishInst.valid) {
-      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
+      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(finishInstSetQueuePorts).zipWithIndex.foreach {
         case ((elemValid, elem, set), idx) =>
           when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
             set.valid        := true.B
@@ -208,7 +239,7 @@ class Rob(
     queue.io.enqueuePorts.foreach(_.bits.isValid := false.B)
     when(io.branchFlushInfo.robId >= queue.io.deq_ptr) {
       // ----- deq_ptr --*(stay)*-- branch_ptr(robId) -----
-      queue.io.setPorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
+      branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
         case ((set, elem), id) =>
           when(id.U < queue.io.deq_ptr || io.branchFlushInfo.robId < id.U) {
             set.valid        := true.B
@@ -219,7 +250,7 @@ class Rob(
       }
     }.otherwise {
       // --*(stay)*-- branch_ptr(robId) ----- deq_ptr --*(stay)*--
-      queue.io.setPorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
+      branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
         case ((set, elem), id) =>
           when(io.branchFlushInfo.robId < id.U && id.U < queue.io.deq_ptr) {
             set.valid        := true.B
