@@ -204,19 +204,23 @@ class CoreCpuTop extends Module {
       dst := src
   }
 
-  def connect_wb(dst: InstWbNdPort, src: DecoupledIO[WbNdPort]): Unit = {
-    dst.en    := src.valid
-    dst.data  := src.bits.gprWrite.data
-    dst.robId := src.bits.instInfo.robId
-  }
-  issueStage.io.peer.get.writebacks.zipWithIndex.foreach {
-    case (dst, idx) =>
-      assert(Param.loadStoreIssuePipelineIndex == 0, "if load store no issue in line 0, please change if-else below")
-      if (idx == Param.loadStoreIssuePipelineIndex) {
-        connect_wb(dst, memResStage.io.out)
-      } else {
-        connect_wb(dst, exePassWbStages(idx - 1).io.out)
-      }
+  // def connect_wb(dst: InstWbNdPort, src: DecoupledIO[WbNdPort]): Unit = {
+  //   dst.en    := src.valid
+  //   dst.data  := src.bits.gprWrite.data
+  //   dst.robId := src.bits.instInfo.robId
+  // }
+  // issueStage.io.peer.get.writebacks.zipWithIndex.foreach {
+  //   case (dst, idx) =>
+  //     assert(Param.loadStoreIssuePipelineIndex == 0, "if load store no issue in line 0, please change if-else below")
+  //     if (idx == Param.loadStoreIssuePipelineIndex) {
+  //       connect_wb(dst, memResStage.io.out)
+  //     } else {
+  //       connect_wb(dst, exePassWbStages(idx - 1).io.out)
+  //     }
+  // }
+  issueStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
+    case (dst, src) =>
+      dst := src
   }
   issueStage.io.peer.get.csrRegScore := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)

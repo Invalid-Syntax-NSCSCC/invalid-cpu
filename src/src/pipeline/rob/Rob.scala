@@ -23,6 +23,7 @@ import common.bundles.PcSetPort
 import control.bundles.BranchFlushInfo
 import chisel3.experimental.BundleLiterals._
 import chisel3.internal.firrtl.DefReg
+import pipeline.rob.bundles.InstWbNdPort
 
 class Rob(
   robLength:   Int = Param.Width.Rob._length,
@@ -37,7 +38,8 @@ class Rob(
     val distributeResults = Output(Vec(issueNum, new RobReadResultNdPort))
 
     // `Rob` <-> `Regfile`
-    val regReadPortss = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
+    val regReadPortss    = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
+    val instWbBroadCasts = Output(Vec(pipelineNum, new InstWbNdPort))
 
     // `ExeStage / LSU` -> `Rob`
     val finishInsts = Vec(pipelineNum, Flipped(Decoupled(new WbNdPort)))
@@ -117,6 +119,12 @@ class Rob(
   io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).lazyZip(queue.io.setPorts).foreach {
     case (dst, elem, elemValid, set) =>
       dst := elemValid && elem.isValid && (!set.valid || set.bits.isValid)
+  }
+  io.instWbBroadCasts.zip(io.finishInsts).foreach {
+    case (dst, src) =>
+      dst.en    := src.valid && io.robInstValids(src.bits.instInfo.robId)
+      dst.robId := src.bits.instInfo.robId
+      dst.data  := src.bits.gprWrite.data
   }
 
   /** deal with finished insts
