@@ -205,7 +205,8 @@ class Rob(
     * insts between branch inst and enq
     */
   when(io.branchFlushInfo.en) {
-    when(io.branchFlushInfo.robId > queue.io.deq_ptr) {
+    queue.io.enqueuePorts.foreach(_.bits.isValid := false.B)
+    when(io.branchFlushInfo.robId >= queue.io.deq_ptr) {
       // ----- deq_ptr --*(stay)*-- branch_ptr(robId) -----
       queue.io.setPorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
         case ((set, elem), id) =>
