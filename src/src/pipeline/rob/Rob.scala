@@ -83,9 +83,9 @@ class Rob(
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.exceptionFlush
   io.emptyNum      := queue.io.emptyNum
-  io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).foreach {
-    case (dst, elem, elemValid) =>
-      dst := elemValid && elem.isValid
+  io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).lazyZip(queue.io.setPorts).foreach {
+    case (dst, elem, elemValid, set) =>
+      dst := elemValid && elem.isValid && (!set.valid || set.bits.isValid)
   }
 
   /** Distribute for issue stage
