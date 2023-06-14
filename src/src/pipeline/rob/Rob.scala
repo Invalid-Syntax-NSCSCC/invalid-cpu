@@ -88,6 +88,24 @@ class Rob(
       dst := elemValid && elem.isValid && (!set.valid || set.bits.isValid)
   }
 
+  /** deal with finished insts
+    */
+
+  io.finishInsts.foreach { finishInst =>
+    finishInst.ready := true.B
+    when(finishInst.valid) {
+      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
+        case ((elemValid, elem, set), idx) =>
+          when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
+            set.valid        := true.B
+            set.bits.isValid := elem.isValid
+            set.bits.state   := State.ready
+            set.bits.wbPort  := finishInst.bits
+          }
+      }
+    }
+  }
+
   /** Distribute for issue stage
     */
 
@@ -153,24 +171,6 @@ class Rob(
 
     }
 
-  /** deal with finished insts
-    */
-
-  io.finishInsts.foreach { finishInst =>
-    finishInst.ready := true.B
-    when(finishInst.valid) {
-      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
-        case ((elemValid, elem, set), idx) =>
-          when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
-            set.valid        := true.B
-            set.bits.isValid := elem.isValid
-            set.bits.state   := State.ready
-            set.bits.wbPort  := finishInst.bits
-          }
-      }
-    }
-  }
-
   /** Commit
     */
 
@@ -205,8 +205,6 @@ class Rob(
     * insts between branch inst and enq
     */
   when(io.branchFlushInfo.en) {
-
-    queue.io.enqueuePorts.foreach(_.valid := false.B)
     when(io.branchFlushInfo.robId > queue.io.deq_ptr) {
       // ----- deq_ptr --*(stay)*-- branch_ptr(robId) -----
       queue.io.setPorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
