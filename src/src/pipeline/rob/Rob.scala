@@ -160,8 +160,8 @@ class Rob(
         }
 
         // request read data
-        req.readRequests.lazyZip(res.readResults).lazyZip(rfReadPorts).zipWithIndex.foreach {
-          case ((reqRead, resRead, rfReadPort), idx) =>
+        req.readRequests.lazyZip(res.readResults).lazyZip(rfReadPorts).foreach {
+          case (reqRead, resRead, rfReadPort) =>
             resRead := RobDistributeBundle.default
             when(reqRead.en) {
               when(matchTable(reqRead.addr).locate === RegDataLocateSel.rob) {
@@ -183,7 +183,7 @@ class Rob(
               }
               // if RAW in the same time request
               val raw = io.requests.take(idx).map(_.writeRequest).map { prevWrite =>
-                prevWrite.en && prevWrite.addr === reqRead.addr
+                prevWrite.en && (prevWrite.addr === reqRead.addr)
               }
               val selectWrite = PriorityEncoderOH(raw.reverse).reverse
               when(raw.foldLeft(false.B)(_ || _)) {
