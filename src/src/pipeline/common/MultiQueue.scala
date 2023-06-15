@@ -25,6 +25,7 @@ class MultiQueue[ElemT <: Data](
     val elems         = Output(Vec(queueLength, elemNdFactory))
     val emptyNum      = Output(UInt(log2Ceil(queueLength).W))
     val enqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength + 1).W)))
+    val deqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength + 1).W)))
     val enq_ptr       = Output(UInt(log2Ceil(queueLength + 1).W))
     val deq_ptr       = Output(UInt(log2Ceil(queueLength + 1).W))
     val elemValids    = Output(Vec(queueLength, Bool()))
@@ -44,6 +45,10 @@ class MultiQueue[ElemT <: Data](
   deq_ptr.io.inc   := 0.U
   deq_ptr.io.flush := io.isFlush
   io.enqIncResults.zip(enq_ptr.io.incResults).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+  io.deqIncResults.zip(deq_ptr.io.incResults).foreach {
     case (dst, src) =>
       dst := src
   }

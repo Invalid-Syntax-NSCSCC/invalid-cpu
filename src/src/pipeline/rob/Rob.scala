@@ -167,7 +167,7 @@ class Rob(
           deqPort.bits.wbPort.gprWrite.en &&
             deqPort.bits.wbPort.gprWrite.addr =/= 0.U &&
             matchTable(deqPort.bits.wbPort.gprWrite.addr).locate === RegDataLocateSel.rob &&
-            matchTable(deqPort.bits.wbPort.gprWrite.addr).robId === deqPort.bits.wbPort.instInfo.robId
+            matchTable(deqPort.bits.wbPort.gprWrite.addr).robId === queue.io.deqIncResults(idx)
         ) {
           matchTable(deqPort.bits.wbPort.gprWrite.addr).locate := RegDataLocateSel.regfile
         }
