@@ -259,7 +259,7 @@ class IssueStage(
       deqPort.ready := deqEn
 
       io.peer.get.csrReadPort.en   := deqPort.bits.regReadPort.preExeInstInfo.csrReadEn
-      io.peer.get.csrReadPort.addr := DontCare
+      io.peer.get.csrReadPort.addr := deqPort.bits.regReadPort.preExeInstInfo.csrAddr
 
       out.bits.leftOperand  := deqPort.bits.robResult.readResults(0).result
       out.bits.rightOperand := deqPort.bits.robResult.readResults(1).result
