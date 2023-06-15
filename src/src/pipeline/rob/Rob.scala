@@ -185,10 +185,12 @@ class Rob(
     .foreach {
       case ((enq, req, res, rfReadPorts), idx) =>
         // enqueue
-        enq.valid        := req.en
-        enq.bits         := RobInstStoreBundle.default
-        enq.bits.isValid := true.B
-        enq.bits.state   := State.busy
+        enq.valid                     := req.en
+        enq.bits                      := RobInstStoreBundle.default
+        enq.bits.isValid              := true.B
+        enq.bits.state                := State.busy
+        enq.bits.wbPort.gprWrite.en   := req.writeRequest.en
+        enq.bits.wbPort.gprWrite.addr := req.writeRequest.addr
 
         // distribute rob id
         res       := RobReadResultNdPort.default
