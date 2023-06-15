@@ -139,7 +139,11 @@ class IssueStage(
               !dispatchMap.take(src_idx).map(_(dst_idx)).foldLeft(false.B)(_ || _) &&
               canDispatchs.take(src_idx).foldLeft(true.B)(_ && _) &&
               (src_idx.U < io.peer.get.robEmptyNum)
-            if (dst_idx != loadStoreIssuePipelineIndex) {
+            if (dst_idx == loadStoreIssuePipelineIndex) {
+              when(in.decode.info.exeSel =/= ExeInst.Sel.loadStore) {
+                dispatchEn := false.B
+              }
+            } else {
               when(in.decode.info.exeSel === ExeInst.Sel.loadStore) {
                 dispatchEn := false.B
               }

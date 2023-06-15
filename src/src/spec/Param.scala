@@ -23,9 +23,9 @@ object Param {
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
 
-  val csrIssuePipelineIndex       = 0 // csr 相关指令在第0条流水线
+  val csrIssuePipelineIndex       = 1 // csr 相关指令在第1条流水线
   val loadStoreIssuePipelineIndex = 0 // load & store相关指令在第0条流水线
-  val jumpBranchPipelineIndex     = 0
+  val jumpBranchPipelineIndex     = 1
   val exePassWbNum                = pipelineNum - 1
 
   val dataForwardInputNum = 2
