@@ -148,7 +148,11 @@ class IssueStage(
                 dispatchEn := false.B
               }
             }
-            if (dst_idx != csrIssuePipelineIndex) {
+            if (dst_idx == csrIssuePipelineIndex) {
+              when(in.instInfo.needCsr && (io.peer.get.csrRegScore =/= ScoreboardState.free)) {
+                dispatchEn := false.B
+              }
+            } else {
               when(in.instInfo.needCsr) {
                 dispatchEn := false.B
               }
