@@ -103,7 +103,7 @@ class WbStage(
     .zip(inBits)
     .map {
       case (in, inBit) =>
-        inBit.instInfo.needCsr // free csr scoreboard even when no valid // in.valid && inBit.instInfo.needCsr
+        in.valid && inBit.instInfo.needCsr
     }
     .reduce(_ || _)
   io.csrFreePort.addr := DontCare

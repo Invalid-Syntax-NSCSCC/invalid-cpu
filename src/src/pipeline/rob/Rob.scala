@@ -132,7 +132,7 @@ class Rob(
 
   io.finishInsts.foreach { finishInst =>
     finishInst.ready := true.B
-    when(finishInst.valid) {
+    when(finishInst.valid && finishInst.bits.instInfo.isValid) {
       queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(finishInstSetQueuePorts).zipWithIndex.foreach {
         case ((elemValid, elem, set), idx) =>
           when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
@@ -242,6 +242,8 @@ class Rob(
   /** branch
     *
     * insts between branch inst and enq
+    *
+    * TODO: clean csr score board
     */
   when(io.branchFlushInfo.en) {
     queue.io.enqueuePorts.foreach(_.bits.isValid := false.B)
@@ -251,7 +253,7 @@ class Rob(
         case ((set, elem), id) =>
           when(id.U < queue.io.deq_ptr || io.branchFlushInfo.robId < id.U) {
             set.valid        := true.B
-            set.bits.state   := elem.state
+            set.bits.state   := State.ready // elem.state
             set.bits.wbPort  := elem.wbPort
             set.bits.isValid := false.B
           }
@@ -262,7 +264,7 @@ class Rob(
         case ((set, elem), id) =>
           when(io.branchFlushInfo.robId < id.U && id.U < queue.io.deq_ptr) {
             set.valid        := true.B
-            set.bits.state   := elem.state
+            set.bits.state   := State.ready // elem.state
             set.bits.wbPort  := elem.wbPort
             set.bits.isValid := false.B
           }
