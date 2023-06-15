@@ -33,9 +33,10 @@ class Rob(
     extends Module {
   val io = IO(new Bundle {
     // `Rob` <-> `IssueStage`
-    val emptyNum          = Output(UInt(Param.Width.Rob.id))
-    val requests          = Input(Vec(issueNum, new RobReadRequestNdPort))
-    val distributeResults = Output(Vec(issueNum, new RobReadResultNdPort))
+    val emptyNum               = Output(UInt(Param.Width.Rob.id))
+    val requests               = Input(Vec(issueNum, new RobReadRequestNdPort))
+    val distributeResultsValid = Output(Bool())
+    val distributeResults      = Output(Vec(issueNum, new RobReadResultNdPort))
 
     // `Rob` <-> `Regfile`
     val regReadPortss    = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
@@ -63,6 +64,7 @@ class Rob(
     commit.valid := false.B
     commit.bits  := DontCare
   }
+  io.distributeResultsValid := true.B
 
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
 
@@ -176,7 +178,7 @@ class Rob(
 
   /** Distribute for issue stage
     */
-
+  val enqEnable = WireDefault(true.B)
   queue.io.enqueuePorts
     .lazyZip(io.requests)
     .lazyZip(io.distributeResults)
@@ -185,7 +187,7 @@ class Rob(
     .foreach {
       case ((enq, req, res, rfReadPorts), idx) =>
         // enqueue
-        enq.valid                     := req.en
+        enq.valid                     := req.en && enqEnable
         enq.bits                      := RobInstStoreBundle.default
         enq.bits.isValid              := true.B
         enq.bits.state                := State.busy
@@ -214,6 +216,12 @@ class Rob(
                   // busy
                   resRead.sel    := RobDistributeSel.robId
                   resRead.result := matchTable(reqRead.addr).robId
+                }
+
+                // when inst of robId is not valid
+                when(!io.robInstValids(matchTable(reqRead.addr).robId)) {
+                  enqEnable                 := false.B
+                  io.distributeResultsValid := false.B
                 }
               }.otherwise {
                 // in regfile

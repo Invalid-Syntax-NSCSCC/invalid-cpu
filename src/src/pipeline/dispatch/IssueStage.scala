@@ -42,6 +42,7 @@ class IssueStagePeerPort(
   val robEmptyNum   = Input(UInt(Param.Width.Rob.id))
   val requests      = Output(Vec(issueNum, new RobReadRequestNdPort))
   val results       = Input(Vec(issueNum, new RobReadResultNdPort))
+  val resultsValid  = Input(Bool())
   val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
 
   // `LSU / ALU` -> `IssueStage
@@ -118,7 +119,7 @@ class IssueStage(
 
   io.ins.lazyZip(canDispatchs).foreach {
     case (in, canDispatch) =>
-      in.ready := canDispatch
+      in.ready := canDispatch && io.peer.get.resultsValid // * rob distribute failed
   }
 
   selectedIns.lazyZip(dispatchMap).zipWithIndex.foreach {
@@ -167,7 +168,7 @@ class IssueStage(
     for (dst_idx <- 0 until pipelineNum) {
       when(dispatchMap(src_idx)(dst_idx)) {
         // decode info
-        reservationStations(dst_idx).io.enqueuePorts(0).valid := true.B
+        reservationStations(dst_idx).io.enqueuePorts(0).valid := io.peer.get.resultsValid // * rob distribute failed
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.preExeInstInfo := selectedIns(
           src_idx
         ).decode.info

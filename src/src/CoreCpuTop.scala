@@ -203,6 +203,7 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
+  issueStage.io.peer.get.resultsValid := rob.io.distributeResultsValid
   issueStage.io.peer.get.robInstValids.zip(rob.io.robInstValids).foreach {
     case (dst, src) =>
       dst := src
