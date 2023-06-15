@@ -39,9 +39,10 @@ class IssueStagePeerPort(
     extends Bundle {
 
   // `IssueStage` <-> `Rob`
-  val robEmptyNum = Input(UInt(Param.Width.Rob.id))
-  val requests    = Output(Vec(issueNum, new RobReadRequestNdPort))
-  val results     = Input(Vec(issueNum, new RobReadResultNdPort))
+  val robEmptyNum   = Input(UInt(Param.Width.Rob.id))
+  val requests      = Output(Vec(issueNum, new RobReadRequestNdPort))
+  val results       = Input(Vec(issueNum, new RobReadResultNdPort))
+  val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
 
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
@@ -242,9 +243,9 @@ class IssueStage(
   reservationStations.lazyZip(resultOutsReg).lazyZip(validToOuts).zipWithIndex.foreach {
     case ((reservationStation, out, outEnable), idx) =>
       val deqPort = reservationStation.io.dequeuePorts(0)
-      val deqEn = outEnable && deqPort.valid && deqPort.bits.robResult.readResults
+      val deqEn = outEnable && deqPort.valid && (deqPort.bits.robResult.readResults
         .map(_.sel === RobDistributeSel.realData)
-        .reduce(_ && _)
+        .reduce(_ && _) || !io.peer.get.robInstValids(deqPort.bits.robResult.robId))
       out.valid     := deqEn
       deqPort.ready := deqEn
 
@@ -262,8 +263,9 @@ class IssueStage(
         out.bits.csrData := io.peer.get.csrReadPort.data
       }
 
-      out.bits.instInfo       := deqPort.bits.regReadPort.instInfo
-      out.bits.instInfo.robId := deqPort.bits.robResult.robId
+      out.bits.instInfo         := deqPort.bits.regReadPort.instInfo
+      out.bits.instInfo.robId   := deqPort.bits.robResult.robId
+      out.bits.instInfo.isValid := io.peer.get.robInstValids(deqPort.bits.robResult.robId)
 
   }
 

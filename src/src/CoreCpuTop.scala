@@ -203,6 +203,10 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
+  issueStage.io.peer.get.robInstValids.zip(rob.io.robInstValids).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   // def connect_wb(dst: InstWbNdPort, src: DecoupledIO[WbNdPort]): Unit = {
   //   dst.en    := src.valid
