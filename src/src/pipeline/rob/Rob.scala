@@ -53,6 +53,12 @@ class Rob(
     val exceptionFlush  = Input(Bool())
     val branchFlushInfo = Input(new BranchFlushInfo)
 
+    // `MemReqStage` <-> `Rob`
+    val commitStore = Decoupled()
+
+    // `Csr` -> `Rob`
+    val hasInterrupt = Input(Bool())
+
     val robInstValids = Output(Vec(robLength, Bool()))
   })
 
@@ -161,13 +167,22 @@ class Rob(
       ) {
 
         // commit
-        commit.valid  := deqPort.bits.isValid
-        deqPort.ready := commit.ready // true.B
-        commit.bits   := deqPort.bits.wbPort
+        commit.valid := deqPort.bits.isValid
+        // deqPort.ready := commit.ready // true.B
+        require(Param.loadStoreIssuePipelineIndex == 0)
+        if (idx == Param.loadStoreIssuePipelineIndex) {
+          io.commitStore.valid := deqPort.bits.wbPort.instInfo.store.en(0)
+          deqPort.ready        := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
+
+        } else {
+          deqPort.ready := commit.ready && queue.io.dequeuePorts(idx - 1).ready // promise commit in order
+        }
+
+        commit.bits := deqPort.bits.wbPort
 
         // change match table
         when(
-          commit.ready &&
+          deqPort.ready &&
             deqPort.bits.wbPort.gprWrite.en &&
             deqPort.bits.wbPort.gprWrite.addr =/= 0.U &&
             matchTable(deqPort.bits.wbPort.gprWrite.addr).locate === RegDataLocateSel.rob &&
@@ -176,6 +191,20 @@ class Rob(
           matchTable(deqPort.bits.wbPort.gprWrite.addr).locate := RegDataLocateSel.regfile
         }
       }
+  }
+
+  val hasInterruptReg = RegInit(false.B)
+  when(io.hasInterrupt) {
+    when(io.commits(0).valid && io.commits(0).ready) {
+      io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+      io.commits(0).bits.instInfo.isExceptionValid                         := true.B
+    }.otherwise {
+      hasInterruptReg := true.B
+    }
+  }.elsewhen(hasInterruptReg && io.commits(0).valid && io.commits(0).ready) {
+    hasInterruptReg                                                      := false.B
+    io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+    io.commits(0).bits.instInfo.isExceptionValid                         := true.B
   }
 
   /** Distribute for issue stage
@@ -189,12 +218,13 @@ class Rob(
     .foreach {
       case ((enq, req, res, rfReadPorts), idx) =>
         // enqueue
-        enq.valid                     := req.en && enqEnable
-        enq.bits                      := RobInstStoreBundle.default
-        enq.bits.isValid              := true.B
-        enq.bits.state                := State.busy
-        enq.bits.wbPort.gprWrite.en   := req.writeRequest.en
-        enq.bits.wbPort.gprWrite.addr := req.writeRequest.addr
+        enq.valid                         := req.en && enqEnable
+        enq.bits                          := RobInstStoreBundle.default
+        enq.bits.isValid                  := true.B
+        enq.bits.state                    := State.busy
+        enq.bits.wbPort.gprWrite.en       := req.writeRequest.en
+        enq.bits.wbPort.gprWrite.addr     := req.writeRequest.addr
+        enq.bits.wbPort.instInfo.store.en := req.isStore.asUInt
 
         // distribute rob id
         res       := RobReadResultNdPort.default

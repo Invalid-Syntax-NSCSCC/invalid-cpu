@@ -124,6 +124,7 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+      io.out.info.isStore              := true.B
     }
     is(Inst.st_h) {
       io.out.isMatched                 := true.B
@@ -135,6 +136,7 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+      io.out.info.isStore              := true.B
     }
     is(Inst.st_w) {
       io.out.isMatched                 := true.B
@@ -146,6 +148,7 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+      io.out.info.isStore              := true.B
     }
     is(Inst.preld) {
       io.out.isMatched              := true.B

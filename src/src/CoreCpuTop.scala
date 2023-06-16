@@ -291,15 +291,14 @@ class CoreCpuTop extends Module {
   }
   rob.io.exceptionFlush  := cu.io.exceptionFlush
   rob.io.branchFlushInfo := cu.io.branchFlushInfo
+  rob.io.hasInterrupt    := csr.io.hasInterrupt
 
   // commit stage
   commitStage.io.ins.zip(rob.io.commits).foreach {
     case (dst, src) =>
       dst <> src
   }
-  commitStage.io.hasInterrupt := csr.io.hasInterrupt
-  commitStage.io.csrValues    := csr.io.csrValues
-  commitStage.io.commitStore  <> memReqStage.io.peer.get.commitStore
+  commitStage.io.csrValues := csr.io.csrValues
 
   // regfile
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out

@@ -29,21 +29,16 @@ class CommitStage(
   val io = IO(new Bundle {
     val ins = Vec(commitNum, Flipped(Decoupled(new WbNdPort)))
 
-    val commitStore = Decoupled()
-
-    // `WbStage` -> `Cu` NO delay
+    // `CommitStage` -> `Cu` NO delay
     val gprWritePorts = Output(Vec(commitNum, new RfWriteNdPort))
 
     val csrFreePort = Output(new ScoreboardChangeNdPort)
 
-    // `AddrTransStage` -> `WbStage` -> `Cu` NO delay
+    // `AddrTransStage` -> `CommitStage` -> `Cu` NO delay
     val cuInstInfoPorts = Output(Vec(commitNum, new InstInfoNdPort))
 
-    // `WbStage` -> `Cu` NO delay
+    // `CommitStage` -> `Cu` NO delay
     val isExceptionValid = Output(Bool())
-
-    // `Csr` -> `WbStage`
-    val hasInterrupt = Input(Bool())
 
     val csrValues = Input(new CsrValuePort)
 
@@ -70,33 +65,9 @@ class CommitStage(
       else None
   })
 
-  io.commitStore.valid := io.ins(0).valid && io.ins(0).bits.instInfo.store.en.orR
-
-  require(Param.loadStoreIssuePipelineIndex == 0)
-  io.ins.zipWithIndex.foreach {
-    case (in, idx) =>
-      if (idx == Param.loadStoreIssuePipelineIndex) {
-        in.ready := io.commitStore.ready
-      } else {
-        in.ready := !(in.valid && in.bits.instInfo.store.en.orR) && io.ins(idx - 1).ready // promise commit in order
-      }
-  }
+  io.ins.foreach(_.ready := true.B)
 
   val inBits = WireDefault(VecInit(io.ins.map(_.bits)))
-
-  val hasInterruptReg = RegInit(false.B)
-  when(io.hasInterrupt) {
-    when(io.ins(0).valid && io.ins(0).ready) {
-      inBits(0).instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-      inBits(0).instInfo.isExceptionValid                         := true.B
-    }.otherwise {
-      hasInterruptReg := true.B
-    }
-  }.elsewhen(hasInterruptReg && io.ins(0).valid && io.ins(0).ready) {
-    hasInterruptReg                                             := false.B
-    inBits(0).instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-    inBits(0).instInfo.isExceptionValid                         := true.B
-  }
 
   // Whether current instruction causes exception
   io.isExceptionValid := inBits.map { inBit => inBit.instInfo.isValid && inBit.instInfo.isExceptionValid }

@@ -183,7 +183,8 @@ class IssueStage(
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.instInfo := selectedIns(src_idx).instInfo
 
         // rob result
-        io.peer.get.requests(src_idx).en := true.B
+        io.peer.get.requests(src_idx).en      := true.B
+        io.peer.get.requests(src_idx).isStore := selectedIns(src_idx).decode.info.isStore
         io.peer.get.requests(src_idx).readRequests.zip(selectedIns(src_idx).decode.info.gprReadPorts).foreach {
           case (req, decodeRead) =>
             req := decodeRead
@@ -275,7 +276,6 @@ class IssueStage(
       out.bits.instInfo         := deqPort.bits.regReadPort.instInfo
       out.bits.instInfo.robId   := deqPort.bits.robResult.robId
       out.bits.instInfo.isValid := io.peer.get.robInstValids(deqPort.bits.robResult.robId)
-
   }
 
   when(io.peer.get.branchFlush) {
