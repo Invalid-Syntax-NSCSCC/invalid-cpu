@@ -18,7 +18,7 @@ import scala.collection.immutable
 
 class AddrTransNdPort extends Bundle {
   val memRequest = new MemRequestNdPort
-  val gprWrite   = new RfWriteNdPort
+  val gprAddr    = UInt(Width.Reg.addr)
   val instInfo   = new InstInfoNdPort
 }
 
@@ -42,8 +42,8 @@ class AddrTransStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.gprWrite         := selectedIn.gprWrite
   out.instInfo         := selectedIn.instInfo
+  out.gprAddr          := selectedIn.gprAddr
   out.translatedMemReq := selectedIn.memRequest
   out.isCached         := false.B // Fallback: Uncached
 

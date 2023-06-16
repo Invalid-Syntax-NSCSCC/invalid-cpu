@@ -101,6 +101,10 @@ object Param {
       val num      = 32
       val transNum = 2
     }
+
+    object Mem {
+      val storeQueueLen = 8
+    }
   }
 
   object Axi {
