@@ -27,7 +27,9 @@ class WbStage(
   commitNum: Int = Param.commitNum)
     extends Module {
   val io = IO(new Bundle {
-    val ins = Input(Vec(commitNum, Valid(new WbNdPort)))
+    val ins = Vec(commitNum, Flipped(Decoupled(new WbNdPort)))
+
+    val commitStore = Decoupled()
 
     // `WbStage` -> `Cu` NO delay
     val gprWritePorts = Output(Vec(commitNum, new RfWriteNdPort))

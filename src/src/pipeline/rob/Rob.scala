@@ -25,6 +25,7 @@ import chisel3.experimental.BundleLiterals._
 import chisel3.internal.firrtl.DefReg
 import pipeline.rob.bundles.InstWbNdPort
 
+// assert: commits cannot ready 1 but not 0
 class Rob(
   robLength:   Int = Param.Width.Rob._length,
   pipelineNum: Int = Param.pipelineNum,
@@ -46,7 +47,7 @@ class Rob(
     val finishInsts = Vec(pipelineNum, Flipped(Decoupled(new WbNdPort)))
 
     // `Rob` -> `WbStage`
-    val commits = Output(Vec(commitNum, ValidIO(new WbNdPort)))
+    val commits = Vec(commitNum, Decoupled(new WbNdPort))
 
     // `Cu` <-> `Rob`
     val exceptionFlush  = Input(Bool())
@@ -161,7 +162,7 @@ class Rob(
 
         // commit
         commit.valid  := deqPort.bits.isValid
-        deqPort.ready := true.B
+        deqPort.ready := commit.ready // true.B
         commit.bits   := deqPort.bits.wbPort
 
         // change match table

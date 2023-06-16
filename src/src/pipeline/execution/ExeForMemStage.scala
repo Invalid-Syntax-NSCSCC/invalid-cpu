@@ -38,13 +38,14 @@ class ExeForMemStage
   resultOutReg.bits.instInfo := selectedIn.instInfo
 
   // write-back information fallback
-  resultOutReg.bits.gprWrite.en   := false.B
-  resultOutReg.bits.gprWrite.addr := zeroWord
-  resultOutReg.bits.gprWrite.data := zeroWord
+  // resultOutReg.bits.gprWrite.en   := false.B
+  // resultOutReg.bits.gprWrite.addr := zeroWord
+  // resultOutReg.bits.gprWrite.data := zeroWord
+  resultOutReg.bits.gprAddr := selectedIn.gprWritePort.addr
 
-  // write-back information selection
-  resultOutReg.bits.gprWrite.en   := selectedIn.gprWritePort.en
-  resultOutReg.bits.gprWrite.addr := selectedIn.gprWritePort.addr
+  // // write-back information selection
+  // resultOutReg.bits.gprWrite.en   := selectedIn.gprWritePort.en
+  // resultOutReg.bits.gprWrite.addr := selectedIn.gprWritePort.addr
 
   // 指令未对齐
   val isAle = WireDefault(false.B)
