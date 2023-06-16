@@ -11,7 +11,7 @@ import pipeline.dispatch.Scoreboard
 import pipeline.dispatch.CsrScoreboard
 import pipeline.execution.ExeForMemStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
-import pipeline.writeback.WbStage
+import pipeline.writeback.CommitStage
 import spec.Param.isDiffTest
 import spec.{Count, Param, PipelineStageIndex}
 import spec.zeroWord
@@ -113,7 +113,7 @@ class CoreCpuTop extends Module {
   val issueStage      = Module(new IssueStage)
   val exeForMemStage  = Module(new ExeForMemStage)
   val exePassWbStages = Seq.fill(Param.exePassWbNum)(Module(new ExePassWbStage))
-  val wbStage         = Module(new WbStage)
+  val commitStage     = Module(new CommitStage)
   val rob             = Module(new Rob)
   val cu              = Module(new Cu)
   val csr             = Module(new Csr)
@@ -232,7 +232,7 @@ class CoreCpuTop extends Module {
   issueStage.io.peer.get.branchFlush := cu.io.branchFlushInfo.en
 
   // Scoreboards
-  csrScoreBoard.io.freePort    := wbStage.io.csrFreePort
+  csrScoreBoard.io.freePort    := commitStage.io.csrFreePort
   csrScoreBoard.io.toMemPort   := exeForMemStage.io.peer.get.csrScoreboardChangePort // TODO: check this
   csrScoreBoard.io.occupyPort  := issueStage.io.peer.get.csrOccupyPort
   csrScoreBoard.io.isFlush     := cu.io.exceptionFlush
@@ -292,13 +292,14 @@ class CoreCpuTop extends Module {
   rob.io.exceptionFlush  := cu.io.exceptionFlush
   rob.io.branchFlushInfo := cu.io.branchFlushInfo
 
-  // Write-back stage
-  wbStage.io.ins.zip(rob.io.commits).foreach {
+  // commit stage
+  commitStage.io.ins.zip(rob.io.commits).foreach {
     case (dst, src) =>
-      dst := src
+      dst <> src
   }
-  wbStage.io.hasInterrupt := csr.io.hasInterrupt
-  wbStage.io.csrValues    := csr.io.csrValues
+  commitStage.io.hasInterrupt := csr.io.hasInterrupt
+  commitStage.io.csrValues    := csr.io.csrValues
+  commitStage.io.commitStore  <> memReqStage.io.peer.get.commitStore
 
   // regfile
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out
@@ -311,10 +312,10 @@ class CoreCpuTop extends Module {
   }
 
   // Ctrl unit
-  cu.io.instInfoPorts.zip(wbStage.io.cuInstInfoPorts).foreach {
+  cu.io.instInfoPorts.zip(commitStage.io.cuInstInfoPorts).foreach {
     case (dst, src) => dst := src
   }
-  cu.io.gprWritePassThroughPorts.in.zip(wbStage.io.gprWritePorts).foreach {
+  cu.io.gprWritePassThroughPorts.in.zip(commitStage.io.gprWritePorts).foreach {
     case (dst, src) => dst := src
   }
   cu.io.csrValues             := csr.io.csrValues
@@ -336,7 +337,7 @@ class CoreCpuTop extends Module {
   memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
   cu.io.isExceptionValidVec(0)               := memReqStage.io.peer.get.isExceptionValid
   cu.io.isExceptionValidVec(1)               := memResStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(2)               := wbStage.io.isExceptionValid
+  cu.io.isExceptionValidVec(2)               := commitStage.io.isExceptionValid
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -346,15 +347,15 @@ class CoreCpuTop extends Module {
   csr.io.csrMessage := cu.io.csrMessage
 
   // Debug ports
-  io.debug0_wb.pc       := wbStage.io.ins(0).bits.instInfo.pc
-  io.debug0_wb.inst     := wbStage.io.ins(0).bits.instInfo.inst
-  io.debug0_wb.rf.wen   := wbStage.io.gprWritePorts(0).en
-  io.debug0_wb.rf.wnum  := wbStage.io.gprWritePorts(0).addr
-  io.debug0_wb.rf.wdata := wbStage.io.gprWritePorts(0).data
+  io.debug0_wb.pc       := commitStage.io.ins(0).bits.instInfo.pc
+  io.debug0_wb.inst     := commitStage.io.ins(0).bits.instInfo.inst
+  io.debug0_wb.rf.wen   := commitStage.io.gprWritePorts(0).en
+  io.debug0_wb.rf.wnum  := commitStage.io.gprWritePorts(0).addr
+  io.debug0_wb.rf.wdata := commitStage.io.gprWritePorts(0).data
 
   // Difftest
   // TODO: Some ports
-  (io.diffTest, wbStage.io.difftest) match {
+  (io.diffTest, commitStage.io.difftest) match {
     case (Some(t), Some(w)) =>
       t.cmt_valid        := w.valid && !t.cmt_excp_flush
       t.cmt_pc           := w.pc

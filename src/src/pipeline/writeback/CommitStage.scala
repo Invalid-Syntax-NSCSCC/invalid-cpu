@@ -23,7 +23,7 @@ object WbNdPort {
   )
 }
 
-class WbStage(
+class CommitStage(
   commitNum: Int = Param.commitNum)
     extends Module {
   val io = IO(new Bundle {
@@ -70,17 +70,29 @@ class WbStage(
       else None
   })
 
+  io.commitStore.valid := io.ins(0).valid && io.ins(0).bits.instInfo.store.en.orR
+
+  require(Param.loadStoreIssuePipelineIndex == 0)
+  io.ins.zipWithIndex.foreach {
+    case (in, idx) =>
+      if (idx == Param.loadStoreIssuePipelineIndex) {
+        in.ready := io.commitStore.ready
+      } else {
+        in.ready := !(in.valid && in.bits.instInfo.store.en.orR) && io.ins(idx - 1).ready // promise commit in order
+      }
+  }
+
   val inBits = WireDefault(VecInit(io.ins.map(_.bits)))
 
   val hasInterruptReg = RegInit(false.B)
   when(io.hasInterrupt) {
-    when(io.ins(0).valid) {
+    when(io.ins(0).valid && io.ins(0).ready) {
       inBits(0).instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
       inBits(0).instInfo.isExceptionValid                         := true.B
     }.otherwise {
       hasInterruptReg := true.B
     }
-  }.elsewhen(hasInterruptReg && io.ins(0).valid) {
+  }.elsewhen(hasInterruptReg && io.ins(0).valid && io.ins(0).ready) {
     hasInterruptReg                                             := false.B
     inBits(0).instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
     inBits(0).instInfo.isExceptionValid                         := true.B
@@ -94,9 +106,9 @@ class WbStage(
   io.cuInstInfoPorts.lazyZip(io.gprWritePorts).lazyZip(io.ins).lazyZip(inBits).foreach {
     case (dstInstInfo, dstGprWrite, in, inBit) =>
       dstInstInfo         := inBit.instInfo
-      dstInstInfo.isValid := in.valid && inBit.instInfo.isValid
+      dstInstInfo.isValid := in.valid && in.ready && inBit.instInfo.isValid
       dstGprWrite         := inBit.gprWrite
-      dstGprWrite.en      := in.valid && inBit.gprWrite.en
+      dstGprWrite.en      := in.valid && in.ready && inBit.gprWrite.en
   }
 
   // Indicate the availability in scoreboard
@@ -105,7 +117,7 @@ class WbStage(
     .zip(inBits)
     .map {
       case (in, inBit) =>
-        in.valid && inBit.instInfo.needCsr
+        in.valid && in.ready && inBit.instInfo.needCsr
     }
     .reduce(_ || _)
   io.csrFreePort.addr := DontCare
@@ -114,7 +126,7 @@ class WbStage(
   io.difftest match {
     case Some(dt) =>
       dt       := DontCare
-      dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid) // && nextCommit)
+      dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready) // && nextCommit)
       dt.pc    := RegNext(inBits(0).instInfo.pc)
       dt.instr := RegNext(inBits(0).instInfo.inst)
       dt.wen   := RegNext(inBits(0).gprWrite.en)
