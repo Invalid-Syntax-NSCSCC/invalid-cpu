@@ -25,6 +25,48 @@ import scala.collection.immutable
 import control.csrRegsBundles.EraBundle
 import pipeline.writeback.WbNdPort
 
+class ExeNdPort extends Bundle {
+  // Micro-instruction for execution stage
+  val exeSel = UInt(Param.Width.exeSel)
+  val exeOp  = UInt(Param.Width.exeOp)
+  // Operands
+  val leftOperand  = UInt(Width.Reg.data)
+  val rightOperand = UInt(Width.Reg.data)
+
+  // Branch jump addr
+  val jumpBranchAddr = UInt(Width.Reg.data)
+  def loadStoreImm   = jumpBranchAddr
+  def csrData        = jumpBranchAddr
+
+  // GPR write (writeback)
+  val gprWritePort = new RfAccessInfoNdPort
+
+  val instInfo = new InstInfoNdPort
+}
+
+object ExeNdPort {
+  def default = (new ExeNdPort).Lit(
+    _.exeSel -> ExeInst.Sel.none,
+    _.exeOp -> ExeInst.Op.nop,
+    _.leftOperand -> 0.U,
+    _.rightOperand -> 0.U,
+    _.gprWritePort -> RfAccessInfoNdPort.default,
+    _.jumpBranchAddr -> zeroWord,
+    _.instInfo -> InstInfoNdPort.default
+  )
+}
+
+class ExePeerPort extends Bundle {
+  // `ExeStage` -> `Cu` (no delay)
+  val branchSetPort           = Output(new PcSetPort)
+  val scoreboardChangePort    = Output(new ScoreboardChangeNdPort)
+  val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
+  val csr = Input(new Bundle {
+    val llbctl = new LlbctlBundle
+    val era    = new EraBundle
+  })
+}
+
 // throw exception: 地址未对齐 ale
 class ExePassWbStage
     extends BaseStage(
@@ -127,31 +169,31 @@ class ExePassWbStage
     resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
   }
 
-  resultOutReg.bits.instInfo.load.en := Mux(
-    isAle,
-    0.U,
-    Cat(
-      0.U(2.W),
-      selectedIn.exeOp === ExeInst.Op.ll,
-      selectedIn.exeOp === ExeInst.Op.ld_w,
-      selectedIn.exeOp === ExeInst.Op.ld_hu,
-      selectedIn.exeOp === ExeInst.Op.ld_h,
-      selectedIn.exeOp === ExeInst.Op.ld_bu,
-      selectedIn.exeOp === ExeInst.Op.ld_b
-    )
-  )
-  resultOutReg.bits.instInfo.store.en := Mux(
-    isAle,
-    0.U,
-    Cat(
-      0.U(4.W),
-      io.peer.get.csr.llbctl.wcllb &&
-        selectedIn.exeOp === ExeInst.Op.sc,
-      selectedIn.exeOp === ExeInst.Op.st_w,
-      selectedIn.exeOp === ExeInst.Op.st_h,
-      selectedIn.exeOp === ExeInst.Op.st_b
-    )
-  )
+  // resultOutReg.bits.instInfo.load.en := Mux(
+  //   isAle,
+  //   0.U,
+  //   Cat(
+  //     0.U(2.W),
+  //     selectedIn.exeOp === ExeInst.Op.ll,
+  //     selectedIn.exeOp === ExeInst.Op.ld_w,
+  //     selectedIn.exeOp === ExeInst.Op.ld_hu,
+  //     selectedIn.exeOp === ExeInst.Op.ld_h,
+  //     selectedIn.exeOp === ExeInst.Op.ld_bu,
+  //     selectedIn.exeOp === ExeInst.Op.ld_b
+  //   )
+  // )
+  // resultOutReg.bits.instInfo.store.en := Mux(
+  //   isAle,
+  //   0.U,
+  //   Cat(
+  //     0.U(4.W),
+  //     io.peer.get.csr.llbctl.wcllb &&
+  //       selectedIn.exeOp === ExeInst.Op.sc,
+  //     selectedIn.exeOp === ExeInst.Op.st_w,
+  //     selectedIn.exeOp === ExeInst.Op.st_h,
+  //     selectedIn.exeOp === ExeInst.Op.st_b
+  //   )
+  // )
 
   // branch set
   io.peer.get.branchSetPort                := PcSetPort.default

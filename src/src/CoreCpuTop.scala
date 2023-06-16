@@ -9,7 +9,7 @@ import memory.{DCache, Tlb, UncachedAgent}
 import pipeline.dispatch.{RegReadNdPort, RegReadStage}
 import pipeline.dispatch.Scoreboard
 import pipeline.dispatch.CsrScoreboard
-import pipeline.execution.ExeStage
+import pipeline.execution.ExeForMemStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.writeback.WbStage
 import spec.Param.isDiffTest
@@ -111,7 +111,7 @@ class CoreCpuTop extends Module {
   val frontend        = Module(new Frontend)
   val instQueue       = Module(new MultiInstQueue)
   val issueStage      = Module(new IssueStage)
-  val exeForMemStage  = Module(new ExeStage)
+  val exeForMemStage  = Module(new ExeForMemStage)
   val exePassWbStages = Seq.fill(Param.exePassWbNum)(Module(new ExePassWbStage))
   val wbStage         = Module(new WbStage)
   val rob             = Module(new Rob)
