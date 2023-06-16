@@ -23,7 +23,7 @@ object MemReqNdPort {
 class MemReqPeerPort extends Bundle {
   val dCacheReq   = Flipped(new MemRequestHandshakePort)
   val uncachedReq = Flipped(new MemRequestHandshakePort)
-  val commitStore = Decoupled()
+  val commitStore = Flipped(Decoupled())
 }
 
 class MemReqStage
@@ -74,7 +74,7 @@ class MemReqStage
     switch(selectedIn.translatedMemReq.rw) {
       is(ReadWriteSel.read) {
         // Whether last memory request is submitted and no stores in queue and not committing store
-        when(io.out.ready && !storeOut.valid && peer.commitStore.valid) {
+        when(io.out.ready && !storeOut.valid && !peer.commitStore.valid) {
           when(selectedIn.isCached) {
             peer.dCacheReq.client.isValid := true.B
             isComputed                    := peer.dCacheReq.isReady
@@ -91,7 +91,7 @@ class MemReqStage
         out.isInstantReq := false.B
 
         // Whether last memory request is submitted and not committing store
-        when(io.out.ready && peer.commitStore.valid) {
+        when(io.out.ready && !peer.commitStore.valid) {
           storeIn.valid := true.B
           isComputed    := storeIn.ready
         }.otherwise {
