@@ -49,17 +49,16 @@ class Rob(
     // `Rob` -> `WbStage`
     val commits = Vec(commitNum, Decoupled(new WbNdPort))
 
-    // `Cu` <-> `Rob`
-    val exceptionFlush  = Input(Bool())
-    val branchFlushInfo = Input(new BranchFlushInfo)
-
     // `MemReqStage` <-> `Rob`
     val commitStore = Decoupled()
 
     // `Csr` -> `Rob`
     val hasInterrupt = Input(Bool())
 
-    val robInstValids = Output(Vec(robLength, Bool()))
+    // val robInstValids = Output(Vec(robLength, Bool()))
+
+    // `Cu` <-> `Rob`
+    val isFlush = Input(Bool())
   })
 
   // fall back
@@ -74,28 +73,6 @@ class Rob(
   io.distributeResultsValid := true.B
 
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
-
-  val finishInstSetQueuePorts = WireDefault(
-    VecInit(
-      Seq.fill(robLength)(
-        ValidIO(new RobInstStoreBundle).Lit(
-          _.valid -> false.B,
-          _.bits -> RobInstStoreBundle.default
-        )
-      )
-    )
-  )
-
-  val branchSetQueuePorts = WireDefault(
-    VecInit(
-      Seq.fill(robLength)(
-        ValidIO(new RobInstStoreBundle).Lit(
-          _.valid -> false.B,
-          _.bits -> RobInstStoreBundle.default
-        )
-      )
-    )
-  )
 
   val queue = Module(
     new MultiQueue(
@@ -116,22 +93,15 @@ class Rob(
       dst.bits  := src
   }
   queue.io.dequeuePorts.foreach(_.ready := false.B)
-  queue.io.isFlush := io.exceptionFlush
-  queue.io.setPorts.lazyZip(finishInstSetQueuePorts).lazyZip(branchSetQueuePorts).foreach {
-    case (dst, src_finishInst, src_branch) =>
-      dst.valid        := src_branch.valid || src_finishInst.valid
-      dst.bits.isValid := Mux(src_branch.valid, src_branch.bits.isValid, src_finishInst.bits.isValid)
-      dst.bits.state   := Mux(src_finishInst.valid, src_finishInst.bits.state, src_branch.bits.state)
-      dst.bits.wbPort  := Mux(src_finishInst.valid, src_finishInst.bits.wbPort, src_branch.bits.wbPort)
-  }
-  io.emptyNum := queue.io.emptyNum
-  io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).lazyZip(queue.io.setPorts).foreach {
-    case (dst, elem, elemValid, set) =>
-      dst := elemValid && elem.isValid && (!set.valid || set.bits.isValid)
-  }
+  queue.io.isFlush := io.isFlush
+  io.emptyNum      := queue.io.emptyNum
+  // io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).lazyZip(queue.io.setPorts).foreach {
+  //   case (dst, elem, elemValid, set) =>
+  //     dst := elemValid && elem.isValid && (!set.valid || set.bits.isValid)
+  // }
   io.instWbBroadCasts.zip(io.finishInsts).foreach {
     case (dst, src) =>
-      dst.en    := src.valid && io.robInstValids(src.bits.instInfo.robId)
+      dst.en    := src.valid // && io.robInstValids(src.bits.instInfo.robId)
       dst.robId := src.bits.instInfo.robId
       dst.data  := src.bits.gprWrite.data
   }
@@ -142,7 +112,7 @@ class Rob(
   io.finishInsts.foreach { finishInst =>
     finishInst.ready := true.B
     when(finishInst.valid && finishInst.bits.instInfo.isValid) {
-      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(finishInstSetQueuePorts).zipWithIndex.foreach {
+      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
         case ((elemValid, elem, set), idx) =>
           when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
             set.valid        := true.B
@@ -167,15 +137,16 @@ class Rob(
       ) {
 
         // commit
-        commit.valid := deqPort.bits.isValid
-        // deqPort.ready := commit.ready // true.B
-        require(Param.loadStoreIssuePipelineIndex == 0)
-        if (idx == Param.loadStoreIssuePipelineIndex) {
-          io.commitStore.valid := deqPort.bits.wbPort.instInfo.store.en(0)
+        if (idx == 0) {
+          commit.valid         := true.B
+          io.commitStore.valid := deqPort.bits.wbPort.instInfo.store.en.orR
           deqPort.ready        := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
-
         } else {
-          deqPort.ready := commit.ready && queue.io.dequeuePorts(idx - 1).ready // promise commit in order
+          deqPort.ready := commit.ready &&
+            deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
+            !deqPort.bits.wbPort.instInfo.store.en.orR &&
+            queue.io.dequeuePorts(idx - 1).valid &&
+            queue.io.dequeuePorts(idx - 1).ready // promise commit in order
         }
 
         commit.bits := deqPort.bits.wbPort
@@ -250,10 +221,10 @@ class Rob(
                 }
 
                 // when inst of robId is not valid
-                when(!io.robInstValids(matchTable(reqRead.addr).robId)) {
-                  enqEnable                 := false.B
-                  io.distributeResultsValid := false.B
-                }
+                // when(!io.robInstValids(matchTable(reqRead.addr).robId)) {
+                //   enqEnable                 := false.B
+                //   io.distributeResultsValid := false.B
+                // }
               }.otherwise {
                 // in regfile
                 rfReadPort.en   := true.B
@@ -280,43 +251,43 @@ class Rob(
 
     }
 
-  /** branch
-    *
-    * insts between branch inst and enq
-    *
-    * TODO: clean csr score board
-    */
-  when(io.branchFlushInfo.en) {
-    queue.io.enqueuePorts.foreach(_.bits.isValid := false.B)
-    when(io.branchFlushInfo.robId >= queue.io.deq_ptr) {
-      // ----- deq_ptr --*(stay)*-- branch_ptr(robId) -----
-      branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
-        case ((set, elem), id) =>
-          when(id.U < queue.io.deq_ptr || io.branchFlushInfo.robId < id.U) {
-            set.valid        := true.B
-            set.bits.state   := State.ready // elem.state
-            set.bits.wbPort  := elem.wbPort
-            set.bits.isValid := false.B
-          }
-      }
-    }.otherwise {
-      // --*(stay)*-- branch_ptr(robId) ----- deq_ptr --*(stay)*--
-      branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
-        case ((set, elem), id) =>
-          when(io.branchFlushInfo.robId < id.U && id.U < queue.io.deq_ptr) {
-            set.valid        := true.B
-            set.bits.state   := State.ready // elem.state
-            set.bits.wbPort  := elem.wbPort
-            set.bits.isValid := false.B
-          }
-      }
-    }
-  }
+  // /** branch
+  //   *
+  //   * insts between branch inst and enq
+  //   *
+  //   * TODO: clean csr score board
+  //   */
+  // when(io.branchFlushInfo.en) {
+  //   queue.io.enqueuePorts.foreach(_.bits.isValid := false.B)
+  //   when(io.branchFlushInfo.robId >= queue.io.deq_ptr) {
+  //     // ----- deq_ptr --*(stay)*-- branch_ptr(robId) -----
+  //     branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
+  //       case ((set, elem), id) =>
+  //         when(id.U < queue.io.deq_ptr || io.branchFlushInfo.robId < id.U) {
+  //           set.valid        := true.B
+  //           set.bits.state   := State.ready // elem.state
+  //           set.bits.wbPort  := elem.wbPort
+  //           set.bits.isValid := false.B
+  //         }
+  //     }
+  //   }.otherwise {
+  //     // --*(stay)*-- branch_ptr(robId) ----- deq_ptr --*(stay)*--
+  //     branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
+  //       case ((set, elem), id) =>
+  //         when(io.branchFlushInfo.robId < id.U && id.U < queue.io.deq_ptr) {
+  //           set.valid        := true.B
+  //           set.bits.state   := State.ready // elem.state
+  //           set.bits.wbPort  := elem.wbPort
+  //           set.bits.isValid := false.B
+  //         }
+  //     }
+  //   }
+  // }
 
   /** flush
     */
 
-  when(io.exceptionFlush) {
+  when(io.isFlush) {
     queue.io.enqueuePorts.foreach(_.valid := false.B)
     io.commits.foreach(_.valid := false.B)
     matchTable.foreach(_.locate := RegDataLocateSel.regfile)

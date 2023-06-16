@@ -41,7 +41,7 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
   // Handle output
   io.outs <> outQueues
 
-  protected val selectedIns: Vec[InT] = WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
+  protected val selectedIns: Vec[InT] = Wire(Vec(inNum, inNdFactory)) // WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
   selectedIns.lazyZip(io.ins).foreach {
     case (selectIn, in) => {
       selectIn := Mux(

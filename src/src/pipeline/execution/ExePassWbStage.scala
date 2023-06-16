@@ -194,9 +194,14 @@ class ExePassWbStage
   //   )
   // )
 
+  val branchEnableFlag = RegInit(true.B)
+
   // branch set
-  io.peer.get.branchSetPort                := PcSetPort.default
-  io.peer.get.branchSetPort.en             := alu.io.result.jumpBranchInfo.en
+  io.peer.get.branchSetPort    := PcSetPort.default
+  io.peer.get.branchSetPort.en := alu.io.result.jumpBranchInfo.en && branchEnableFlag
+  when(alu.io.result.jumpBranchInfo.en) {
+    branchEnableFlag := false.B
+  }
   io.peer.get.branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
@@ -212,4 +217,9 @@ class ExePassWbStage
     io.peer.get.branchSetPort.pcAddr := io.peer.get.csr.era.pc
   }
 
+  resultOutReg.bits.instInfo.branchSetPort := io.peer.get.branchSetPort
+
+  when(io.isFlush) {
+    branchEnableFlag := true.B
+  }
 }

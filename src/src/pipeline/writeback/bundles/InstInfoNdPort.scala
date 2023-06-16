@@ -35,6 +35,7 @@ object InstInfoNdPort {
     _.isValid -> false.B,
     _.pc -> zeroWord,
     _.inst -> zeroWord,
+    _.isExceptionValid -> false.B,
     _.exceptionRecords -> Vec.Lit(
       Seq.fill(Csr.ExceptionIndex.width)(false.B): _*
     ),
@@ -44,13 +45,16 @@ object InstInfoNdPort {
     _.robId -> zeroWord,
     _.tlbInfo -> TlbMaintenanceNdPort.default,
     _.needCsr -> false.B,
-    _.branchSetPort -> PcSetPort.default
+    _.branchSetPort -> PcSetPort.default,
+    _.load -> DifftestLoadNdPort.default,
+    _.store -> DifftestStoreNdPort.default
   )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
     instInfo.isValid := false.B
     instInfo.needCsr := false.B
     instInfo.exceptionRecords.foreach(_ := false.B)
+    instInfo.isExceptionValid := false.B
     instInfo.exeOp            := ExeInst.Op.nop
     instInfo.exeSel           := ExeInst.Sel.none
     instInfo.csrWritePort.en  := false.B

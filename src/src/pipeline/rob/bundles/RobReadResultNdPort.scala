@@ -6,6 +6,7 @@ import chisel3.experimental.VecLiterals._
 import chisel3.util._
 import spec._
 import common.bundles.RfAccessInfoNdPort
+import pipeline.rob.enums.RobDistributeSel
 
 class RobReadResultNdPort extends Bundle {
   val robId       = UInt(Param.Width.Rob.id)

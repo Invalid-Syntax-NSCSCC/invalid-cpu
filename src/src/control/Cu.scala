@@ -54,7 +54,7 @@ class Cu(
     val isAfterMemReqFlush = Output(Bool())
 
     // <- `Rob`
-    val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
+    // val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
