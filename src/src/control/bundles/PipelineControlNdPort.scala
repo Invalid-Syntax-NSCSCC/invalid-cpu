@@ -11,7 +11,7 @@ class PipelineControlNdPort extends Bundle {
 }
 
 object PipelineControlNdPort {
-  val default = (new PipelineControlNdPort).Lit(
+  def default = (new PipelineControlNdPort).Lit(
     _.flush -> false.B,
     _.clear -> false.B,
     _.stall -> false.B

@@ -12,5 +12,5 @@ class AsidBundle extends Bundle {
 }
 
 object AsidBundle {
-  val default = 0.U.asTypeOf(new AsidBundle)
+  def default = 0.U.asTypeOf(new AsidBundle)
 }

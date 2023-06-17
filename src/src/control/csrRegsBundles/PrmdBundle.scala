@@ -11,5 +11,5 @@ class PrmdBundle extends Bundle {
 }
 
 object PrmdBundle {
-  val default = 0.U.asTypeOf(new PrmdBundle)
+  def default = 0.U.asTypeOf(new PrmdBundle)
 }

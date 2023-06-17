@@ -23,7 +23,7 @@ class MemRequestNdPort extends Bundle {
 }
 
 object MemRequestNdPort {
-  val default = (new MemRequestNdPort).Lit(
+  def default = (new MemRequestNdPort).Lit(
     _.isValid -> false.B,
     _.rw -> ReadWriteSel.read,
     _.addr -> zeroWord,

@@ -14,7 +14,7 @@ class DifftestStoreNdPort extends Bundle {
 
 object DifftestStoreNdPort {
   def default = (new DifftestStoreNdPort).Lit(
-    _.en -> false.B,
+    _.en -> 0.U,
     _.vaddr -> 0.U,
     _.paddr -> 0.U,
     _.data -> 0.U

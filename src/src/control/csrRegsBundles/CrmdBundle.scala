@@ -16,7 +16,7 @@ class CrmdBundle extends Bundle {
 }
 
 object CrmdBundle {
-  val default = (new CrmdBundle).Lit(
+  def default = (new CrmdBundle).Lit(
     _.zero -> 0.U,
     _.datm -> 0.U,
     _.datf -> 0.U,

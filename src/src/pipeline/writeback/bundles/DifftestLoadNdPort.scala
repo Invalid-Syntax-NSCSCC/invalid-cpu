@@ -13,7 +13,7 @@ class DifftestLoadNdPort extends Bundle {
 
 object DifftestLoadNdPort {
   def default = (new DifftestLoadNdPort).Lit(
-    _.en -> false.B,
+    _.en -> 0.U,
     _.vaddr -> 0.U,
     _.paddr -> 0.U
   )

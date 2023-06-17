@@ -9,5 +9,5 @@ class TidBundle extends Bundle {
 }
 
 object TidBundle {
-  val default = 0.U.asTypeOf(new TidBundle)
+  def default = 0.U.asTypeOf(new TidBundle)
 }

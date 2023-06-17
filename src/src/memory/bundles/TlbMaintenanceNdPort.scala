@@ -18,7 +18,7 @@ class TlbMaintenanceNdPort extends Bundle {
 }
 
 object TlbMaintenanceNdPort {
-  val default = (new TlbMaintenanceNdPort).Lit(
+  def default = (new TlbMaintenanceNdPort).Lit(
     _.isInvalidate -> false.B,
     _.isSearch -> false.B,
     _.isRead -> false.B,

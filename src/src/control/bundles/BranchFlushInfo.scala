@@ -10,5 +10,5 @@ class BranchFlushInfo extends Bundle {
 }
 
 object BranchFlushInfo {
-  val default = 0.U.asTypeOf(new BranchFlushInfo)
+  def default = 0.U.asTypeOf(new BranchFlushInfo)
 }

@@ -12,7 +12,7 @@ class ICacheRequestNdPort extends Bundle {
 }
 
 object ICacheRequestNdPort {
-  val default = (new ICacheRequestNdPort).Lit(
+  def default = (new ICacheRequestNdPort).Lit(
     _.isValid -> false.B,
     _.addr -> zeroWord,
     _.isCached -> false.B

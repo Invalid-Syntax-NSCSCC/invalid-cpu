@@ -10,5 +10,5 @@ class EcfgBundle extends Bundle {
 }
 
 object EcfgBundle {
-  val default = 0.U.asTypeOf(new EcfgBundle)
+  def default = 0.U.asTypeOf(new EcfgBundle)
 }

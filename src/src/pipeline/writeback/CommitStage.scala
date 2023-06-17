@@ -17,7 +17,7 @@ class WbNdPort extends Bundle {
 }
 
 object WbNdPort {
-  val default = (new WbNdPort).Lit(
+  def default = (new WbNdPort).Lit(
     _.gprWrite -> RfWriteNdPort.default,
     _.instInfo -> InstInfoNdPort.default
   )

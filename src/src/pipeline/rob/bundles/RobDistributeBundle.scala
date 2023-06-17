@@ -14,7 +14,7 @@ class RobDistributeBundle extends Bundle {
 }
 
 object RobDistributeBundle {
-  val default = (new RobDistributeBundle).Lit(
+  def default = (new RobDistributeBundle).Lit(
     _.sel -> RobDistributeSel.realData,
     _.result -> 0.U
   )

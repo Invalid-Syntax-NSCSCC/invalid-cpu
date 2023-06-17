@@ -16,5 +16,5 @@ class DmwBundle extends Bundle {
 }
 
 object DmwBundle {
-  val default = 0.U.asTypeOf(new DmwBundle)
+  def default = 0.U.asTypeOf(new DmwBundle)
 }

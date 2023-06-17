@@ -14,9 +14,5 @@ class RobInstStoreBundle extends Bundle {
 }
 
 object RobInstStoreBundle {
-  val default = (new RobInstStoreBundle).Lit(
-    _.state -> RobInstState.empty,
-    _.isValid -> false.B,
-    _.wbPort -> WbNdPort.default
-  )
+  def default = 0.U.asTypeOf(new RobInstStoreBundle)
 }

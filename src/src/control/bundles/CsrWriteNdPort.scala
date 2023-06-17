@@ -11,7 +11,7 @@ class CsrWriteNdPort extends Bundle {
 }
 
 object CsrWriteNdPort {
-  val default = (new CsrWriteNdPort).Lit(
+  def default = (new CsrWriteNdPort).Lit(
     _.en -> false.B,
     _.addr -> zeroWord,
     _.data -> zeroWord

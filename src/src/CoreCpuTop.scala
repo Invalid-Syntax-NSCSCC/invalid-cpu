@@ -175,7 +175,7 @@ class CoreCpuTop extends Module {
 
   // Frontend
   //   inst fetch stage
-  frontend.io.isFlush    := cu.io.exceptionFlush || cu.io.branchFlushInfo.en
+  frontend.io.isFlush    := cu.io.frontendFlush
   frontend.io.accessPort <> iCache.io.accessPort
   frontend.io.pc         := pc.io.pc
   frontend.io.pcUpdate   := pc.io.pcUpdate
@@ -190,24 +190,25 @@ class CoreCpuTop extends Module {
   // TODO: CONNECT
   instQueue.io.enqueuePorts(1)       <> DontCare // TODO: Connect Second Fetch Inst
   instQueue.io.enqueuePorts(1).valid := false.B // TODO: Connect Second Fetch Inst
-  instQueue.io.isFlush               := cu.io.exceptionFlush || cu.io.branchFlushInfo.en
+  instQueue.io.isFlush               := cu.io.frontendFlush
 
   // Issue stage
   issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
     case (dst, src) =>
       dst <> src
   }
-  issueStage.io.isFlush              := cu.io.exceptionFlush
+  issueStage.io.isFlush              := cu.io.backendFlush
+  issueStage.io.peer.get.branchFlush := cu.io.frontendFlush
   issueStage.io.peer.get.robEmptyNum := rob.io.emptyNum
   issueStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
     case (dst, src) =>
       dst := src
   }
   issueStage.io.peer.get.resultsValid := rob.io.distributeResultsValid
-  issueStage.io.peer.get.robInstValids.zip(rob.io.robInstValids).foreach {
-    case (dst, src) =>
-      dst := src
-  }
+  // issueStage.io.peer.get.robInstValids.zip(rob.io.robInstValids).foreach {
+  //   case (dst, src) =>
+  //     dst := src
+  // }
 
   // def connect_wb(dst: InstWbNdPort, src: DecoupledIO[WbNdPort]): Unit = {
   //   dst.en    := src.valid
@@ -229,31 +230,30 @@ class CoreCpuTop extends Module {
   }
   issueStage.io.peer.get.csrRegScore := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
-  issueStage.io.peer.get.branchFlush := cu.io.branchFlushInfo.en
 
   // Scoreboards
   csrScoreBoard.io.freePort    := commitStage.io.csrFreePort
   csrScoreBoard.io.toMemPort   := exeForMemStage.io.peer.get.csrScoreboardChangePort // TODO: check this
   csrScoreBoard.io.occupyPort  := issueStage.io.peer.get.csrOccupyPort
-  csrScoreBoard.io.isFlush     := cu.io.exceptionFlush
-  csrScoreBoard.io.branchFlush := cu.io.branchFlushInfo.en
+  csrScoreBoard.io.isFlush     := cu.io.backendFlush
+  csrScoreBoard.io.branchFlush := cu.io.frontendFlush
 
   // Execution stage
   exeForMemStage.io.in                  <> issueStage.io.outs(Param.loadStoreIssuePipelineIndex)
-  exeForMemStage.io.isFlush             := cu.io.exceptionFlush
+  exeForMemStage.io.isFlush             := cu.io.backendFlush
   exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
   exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
   assert(Param.loadStoreIssuePipelineIndex == 0)
   exePassWbStages.zipWithIndex.foreach {
     case (exe, idx) =>
       exe.io.in                  <> issueStage.io.outs(idx + 1)
-      exe.io.isFlush             := cu.io.exceptionFlush
+      exe.io.isFlush             := cu.io.backendFlush
       exe.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
       exe.io.peer.get.csr.era    := csr.io.csrValues.era
   }
   // Mem stages
   addrTransStage.io.in      <> exeForMemStage.io.out
-  addrTransStage.io.isFlush := cu.io.exceptionFlush
+  addrTransStage.io.isFlush := cu.io.backendFlush
   addrTransStage.io.peer.foreach { p =>
     p.tlbTrans   <> tlb.io.tlbTransPorts(0)
     p.csr.dmw(0) := csr.io.csrValues.dmw0
@@ -261,14 +261,14 @@ class CoreCpuTop extends Module {
     p.csr.crmd   := csr.io.csrValues.crmd
   }
 
-  memReqStage.io.isFlush := cu.io.exceptionFlush
+  memReqStage.io.isFlush := cu.io.backendFlush
   memReqStage.io.in      <> addrTransStage.io.out
   memReqStage.io.peer.foreach { p =>
     p.dCacheReq   <> dCache.io.accessPort.req
     p.uncachedReq <> uncachedAgent.io.accessPort.req
   }
 
-  memResStage.io.isFlush := cu.io.exceptionFlush
+  memResStage.io.isFlush := cu.io.backendFlush
   memResStage.io.in      <> memReqStage.io.out
   memResStage.io.peer.foreach { p =>
     p.dCacheRes   := dCache.io.accessPort.res
@@ -289,9 +289,8 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  rob.io.exceptionFlush  := cu.io.exceptionFlush
-  rob.io.branchFlushInfo := cu.io.branchFlushInfo
-  rob.io.hasInterrupt    := csr.io.hasInterrupt
+  rob.io.isFlush      := cu.io.backendFlush
+  rob.io.hasInterrupt := csr.io.hasInterrupt
 
   // commit stage
   commitStage.io.ins.zip(rob.io.commits).foreach {
@@ -319,24 +318,24 @@ class CoreCpuTop extends Module {
   }
   cu.io.csrValues             := csr.io.csrValues
   cu.io.stableCounterReadPort <> stableCounter.io
-  cu.io.robInstValids.zip(rob.io.robInstValids).foreach {
-    case (dst, src) =>
-      dst := src
-  }
+  // cu.io.robInstValids.zip(rob.io.robInstValids).foreach {
+  //   case (dst, src) =>
+  //     dst := src
+  // }
 
   require(Param.loadStoreIssuePipelineIndex == 0)
   if (Param.jumpBranchPipelineIndex == 0) {
-    cu.io.jumpPc := exeForMemStage.io.peer.get.branchSetPort
+    cu.io.branchExe := exeForMemStage.io.peer.get.branchSetPort
   } else {
-    cu.io.jumpPc := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort
+    cu.io.branchExe := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort
   }
   cu.io.hardWareInetrrupt := io.intrpt
 
   // After memory request flush connection
-  memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
-  cu.io.isExceptionValidVec(0)               := memReqStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(1)               := memResStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(2)               := commitStage.io.isExceptionValid
+  // memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
+  cu.io.isExceptionValidVec(0) := false.B // memReqStage.io.peer.get.isExceptionValid
+  cu.io.isExceptionValidVec(1) := false.B // memResStage.io.peer.get.isExceptionValid
+  cu.io.isExceptionValidVec(2) := commitStage.io.isExceptionValid
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {

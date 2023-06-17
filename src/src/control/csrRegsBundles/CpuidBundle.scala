@@ -10,5 +10,5 @@ class CpuidBundle extends Bundle {
 }
 
 object CpuidBundle {
-  val default = 0.U.asTypeOf(new CpuidBundle)
+  def default = 0.U.asTypeOf(new CpuidBundle)
 }

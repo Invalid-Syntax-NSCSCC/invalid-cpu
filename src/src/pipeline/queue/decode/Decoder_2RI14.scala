@@ -63,7 +63,6 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprReadPorts(1).en   := true.B
       outInfo.gprReadPorts(1).addr := rd
       outInfo.loadStoreImm         := immSext.asUInt
-      io.out.info.isStore          := true.B
     }
     // csr读写指令
     is(Inst.csr_) {

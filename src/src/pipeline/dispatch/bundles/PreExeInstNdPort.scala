@@ -34,8 +34,6 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 
   def code = jumpBranchAddr
 
-  val isStore = Bool()
-
   val needCsr = Bool()
   val tlbInfo = new TlbMaintenanceNdPort
   // TODO: Signals in this port is not sufficient
@@ -53,7 +51,6 @@ object PreExeInstNdPort {
     _.jumpBranchAddr -> zeroWord,
     _.csrReadEn -> false.B,
     _.csrWriteEn -> false.B,
-    _.isStore -> false.B,
     _.tlbInfo -> TlbMaintenanceNdPort.default
   )
 }

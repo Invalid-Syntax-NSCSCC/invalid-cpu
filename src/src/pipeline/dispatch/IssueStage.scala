@@ -27,7 +27,7 @@ import pipeline.common.MultiBaseStageWOSaveIn
 // }
 
 // object FetchInstDecodeNdPort {
-//   val default = (new FetchInstDecodeNdPort).Lit(
+//   def default = (new FetchInstDecodeNdPort).Lit(
 //     _.decode -> DecodeOutNdPort.default,
 //     _.instInfo -> InstInfoNdPort.default
 //   )
@@ -39,11 +39,10 @@ class IssueStagePeerPort(
     extends Bundle {
 
   // `IssueStage` <-> `Rob`
-  val robEmptyNum   = Input(UInt(Param.Width.Rob.id))
-  val requests      = Output(Vec(issueNum, new RobReadRequestNdPort))
-  val results       = Input(Vec(issueNum, new RobReadResultNdPort))
-  val resultsValid  = Input(Bool())
-  val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
+  val robEmptyNum  = Input(UInt(Param.Width.Rob.id))
+  val requests     = Output(Vec(issueNum, new RobReadRequestNdPort))
+  val results      = Input(Vec(issueNum, new RobReadResultNdPort))
+  val resultsValid = Input(Bool())
 
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
@@ -104,10 +103,9 @@ class IssueStage(
         dst.bits  := src
     }
   }
-  // reservationStations.foreach(_.io.setPorts.foreach { port =>
-  //   port.valid := false.B
-  //   port.bits  := DontCare
-  // })
+
+  // stop fetch when branch
+  val fetchEnableFlag = RegInit(true.B)
 
   /** fetch -> reservation stations
     */
@@ -119,7 +117,7 @@ class IssueStage(
 
   io.ins.lazyZip(canDispatchs).foreach {
     case (in, canDispatch) =>
-      in.ready := canDispatch && io.peer.get.resultsValid // * rob distribute failed
+      in.ready := canDispatch && fetchEnableFlag && io.peer.get.resultsValid // * rob distribute failed
   }
 
   selectedIns.lazyZip(dispatchMap).zipWithIndex.foreach {
@@ -176,15 +174,16 @@ class IssueStage(
     for (dst_idx <- 0 until pipelineNum) {
       when(dispatchMap(src_idx)(dst_idx)) {
         // decode info
-        reservationStations(dst_idx).io.enqueuePorts(0).valid := io.peer.get.resultsValid // * rob distribute failed
+        reservationStations(dst_idx).io
+          .enqueuePorts(0)
+          .valid := fetchEnableFlag && io.peer.get.resultsValid // * rob distribute failed
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.preExeInstInfo := selectedIns(
           src_idx
         ).decode.info
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.instInfo := selectedIns(src_idx).instInfo
 
         // rob result
-        io.peer.get.requests(src_idx).en      := true.B
-        io.peer.get.requests(src_idx).isStore := selectedIns(src_idx).decode.info.isStore
+        io.peer.get.requests(src_idx).en := true.B
         io.peer.get.requests(src_idx).readRequests.zip(selectedIns(src_idx).decode.info.gprReadPorts).foreach {
           case (req, decodeRead) =>
             req := decodeRead
@@ -253,9 +252,11 @@ class IssueStage(
   reservationStations.lazyZip(resultOutsReg).lazyZip(validToOuts).zipWithIndex.foreach {
     case ((reservationStation, out, outEnable), idx) =>
       val deqPort = reservationStation.io.dequeuePorts(0)
-      val deqEn = outEnable && deqPort.valid && (deqPort.bits.robResult.readResults
-        .map(_.sel === RobDistributeSel.realData)
-        .reduce(_ && _) || !io.peer.get.robInstValids(deqPort.bits.robResult.robId))
+      val deqEn = outEnable &&
+        deqPort.valid &&
+        deqPort.bits.robResult.readResults
+          .map(_.sel === RobDistributeSel.realData)
+          .reduce(_ && _)
       out.valid     := deqEn
       deqPort.ready := deqEn
 
@@ -273,18 +274,19 @@ class IssueStage(
         out.bits.csrData := io.peer.get.csrReadPort.data
       }
 
-      out.bits.instInfo         := deqPort.bits.regReadPort.instInfo
-      out.bits.instInfo.robId   := deqPort.bits.robResult.robId
-      out.bits.instInfo.isValid := io.peer.get.robInstValids(deqPort.bits.robResult.robId)
+      out.bits.instInfo       := deqPort.bits.regReadPort.instInfo
+      out.bits.instInfo.robId := deqPort.bits.robResult.robId
   }
 
   when(io.peer.get.branchFlush) {
     io.peer.get.requests.foreach(_.en := false.B)
     io.ins.foreach(_.ready := false.B)
+    fetchEnableFlag := false.B
   }
 
   when(io.isFlush) {
     io.peer.get.requests.foreach(_.en := false.B)
     io.ins.foreach(_.ready := false.B)
+    fetchEnableFlag := true.B
   }
 }

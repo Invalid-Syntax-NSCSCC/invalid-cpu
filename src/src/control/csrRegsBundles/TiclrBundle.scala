@@ -10,5 +10,5 @@ class TiclrBundle extends Bundle {
 }
 
 object TiclrBundle {
-  val default = 0.U.asTypeOf(new TiclrBundle)
+  def default = 0.U.asTypeOf(new TiclrBundle)
 }

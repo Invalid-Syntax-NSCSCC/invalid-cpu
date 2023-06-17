@@ -34,16 +34,19 @@ class Cu(
     // `Csr` -> `Cu`
     val csrValues = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
-    val jumpPc = Input(new PcSetPort)
-    // `Csr` -> `Pc`
+    val branchExe = Input(new PcSetPort)
+    // `Rob` -> `Cu`
+    val branchCommit = Input(Bool())
+    // `Cu` -> `Pc`
     val newPc = Output(new PcSetPort)
 
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`, `Scoreboard`
-    val exceptionFlush  = Output(Bool())
-    val branchFlushInfo = Output(new BranchFlushInfo)
+    // val exceptionFlush  = Output(Bool())
+    // val branchFlushInfo = Output(new BranchFlushInfo)
+    val frontendFlush = Output(Bool())
+    val backendFlush  = Output(Bool())
 
     // <- `MemResStage`, `WbStage`
     val isExceptionValidVec = Input(Vec(3, Bool()))
@@ -51,7 +54,7 @@ class Cu(
     val isAfterMemReqFlush = Output(Bool())
 
     // <- `Rob`
-    val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
+    // val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
@@ -211,11 +214,13 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  io.exceptionFlush := RegNext(exceptionFlush, false.B)
-  val branchSetEnable = WireDefault(io.jumpPc.en && io.robInstValids(io.jumpPc.robId))
-  io.branchFlushInfo.en    := RegNext(branchSetEnable)
-  io.branchFlushInfo.robId := RegNext(io.jumpPc.robId)
-  io.csrMessage.ertnFlush  := ertnFlush
+  // io.exceptionFlush := RegNext(exceptionFlush, false.B)
+  // val branchSetEnable = WireDefault(io.jumpPc.en && io.robInstValids(io.jumpPc.robId))
+  // io.branchFlushInfo.en    := RegNext(branchSetEnable)
+  // io.branchFlushInfo.robId := RegNext(io.jumpPc.robId)
+  io.csrMessage.ertnFlush := ertnFlush
+  io.frontendFlush        := RegNext(exceptionFlush || io.branchExe.en, false.B)
+  io.backendFlush         := RegNext(exceptionFlush || io.branchCommit, false.B)
 
   // select new pc
   when(exceptionFlush) {
@@ -226,8 +231,8 @@ class Cu(
     }.otherwise {
       io.newPc.pcAddr := io.csrValues.eentry.asUInt
     }
-  }.elsewhen(branchSetEnable) {
-    io.newPc := io.jumpPc
+  }.elsewhen(io.branchExe.en) {
+    io.newPc := io.branchExe
   }
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&

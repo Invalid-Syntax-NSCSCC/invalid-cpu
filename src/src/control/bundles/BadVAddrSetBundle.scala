@@ -10,5 +10,5 @@ class BadVAddrSetBundle extends Bundle {
 }
 
 object BadVAddrSetBundle {
-  val default = 0.U.asTypeOf(new BadVAddrSetBundle)
+  def default = 0.U.asTypeOf(new BadVAddrSetBundle)
 }
