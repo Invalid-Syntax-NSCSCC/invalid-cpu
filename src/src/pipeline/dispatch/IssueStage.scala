@@ -27,7 +27,7 @@ import pipeline.common.MultiBaseStageWOSaveIn
 // }
 
 // object FetchInstDecodeNdPort {
-//   val default = (new FetchInstDecodeNdPort).Lit(
+//   def default = (new FetchInstDecodeNdPort).Lit(
 //     _.decode -> DecodeOutNdPort.default,
 //     _.instInfo -> InstInfoNdPort.default
 //   )

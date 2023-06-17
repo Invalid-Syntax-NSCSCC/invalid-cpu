@@ -11,7 +11,7 @@ class ScoreboardChangeNdPort(addrWidth: internal.firrtl.Width = Width.Reg.addr) 
 }
 
 object ScoreboardChangeNdPort {
-  val default = (new ScoreboardChangeNdPort).Lit(
+  def default = (new ScoreboardChangeNdPort).Lit(
     _.en -> false.B,
     _.addr -> zeroWord
   )

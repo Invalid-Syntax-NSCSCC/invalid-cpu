@@ -12,5 +12,5 @@ class TcfgBundle extends Bundle {
 }
 
 object TcfgBundle {
-  val default = 0.U.asTypeOf(new TcfgBundle)
+  def default = 0.U.asTypeOf(new TcfgBundle)
 }

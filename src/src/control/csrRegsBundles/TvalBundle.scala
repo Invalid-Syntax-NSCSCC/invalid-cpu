@@ -12,5 +12,5 @@ class TvalBundle extends Bundle {
 }
 
 object TvalBundle {
-  val default = 0.U.asTypeOf(new TvalBundle)
+  def default = 0.U.asTypeOf(new TvalBundle)
 }

@@ -13,8 +13,5 @@ class ReservationStationBundle extends Bundle {
 }
 
 object ReservationStationBundle {
-  val default = (new ReservationStationBundle).Lit(
-    _.regReadPort -> RegReadNdPort.default,
-    _.robResult -> RobReadResultNdPort.default
-  )
+  def default = 0.U.asTypeOf(new ReservationStationBundle)
 }

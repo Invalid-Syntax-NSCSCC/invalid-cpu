@@ -14,7 +14,7 @@ class RobReadRequestNdPort extends Bundle {
 }
 
 object RobReadRequestNdPort {
-  val default = (new RobReadRequestNdPort).Lit(
+  def default = (new RobReadRequestNdPort).Lit(
     _.en -> false.B,
     _.writeRequest -> RfAccessInfoNdPort.default,
     _.readRequests -> Vec.Lit(Seq.fill(Param.regFileReadNum)(RfAccessInfoNdPort.default): _*)

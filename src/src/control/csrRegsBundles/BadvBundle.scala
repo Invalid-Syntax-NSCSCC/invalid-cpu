@@ -9,5 +9,5 @@ class BadvBundle extends Bundle {
 }
 
 object BadvBundle {
-  val default = 0.U.asTypeOf(new BadvBundle)
+  def default = 0.U.asTypeOf(new BadvBundle)
 }

@@ -13,7 +13,7 @@ class AluResultNdPort extends Bundle {
 }
 
 object AluResultNdPort {
-  val default = (new AluResultNdPort).Lit(
+  def default = (new AluResultNdPort).Lit(
     _.logic -> zeroWord,
     _.shift -> zeroWord,
     _.arithmetic -> zeroWord,

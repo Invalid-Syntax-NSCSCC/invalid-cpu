@@ -38,5 +38,5 @@ class CsrValuePort extends Bundle {
 }
 
 object CsrValuePort {
-  val default = 0.U.asTypeOf(new CsrValuePort)
+  def default = 0.U.asTypeOf(new CsrValuePort)
 }

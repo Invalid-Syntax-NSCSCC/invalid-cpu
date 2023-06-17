@@ -13,7 +13,7 @@ class RobMatchBundle extends Bundle {
 }
 
 object RobMatchBundle {
-  val default = (new RobMatchBundle).Lit(
+  def default = (new RobMatchBundle).Lit(
     _.locate -> RegDataLocateSel.regfile,
     _.robId -> 0.U
   )
