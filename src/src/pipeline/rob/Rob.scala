@@ -52,6 +52,8 @@ class Rob(
     // `MemReqStage` <-> `Rob`
     val commitStore = Decoupled()
 
+    val branchCommit = Output(Bool())
+
     // `Csr` -> `Rob`
     val hasInterrupt = Input(Bool())
 
@@ -126,7 +128,8 @@ class Rob(
 
   /** Commit
     */
-
+  io.commitStore.valid := false.B
+  io.branchCommit      := false.B
   io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
     case ((commit, deqPort), idx) =>
       when(
@@ -138,8 +141,8 @@ class Rob(
 
         // commit
         if (idx == 0) {
-          commit.valid         := true.B
-          io.commitStore.valid := deqPort.bits.wbPort.instInfo.store.en.orR
+          io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.en.orR
+          io.branchCommit      := commit.ready && deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch
           deqPort.ready        := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
         } else {
           deqPort.ready := commit.ready &&
@@ -149,7 +152,8 @@ class Rob(
             queue.io.dequeuePorts(idx - 1).ready // promise commit in order
         }
 
-        commit.bits := deqPort.bits.wbPort
+        commit.valid := deqPort.ready
+        commit.bits  := deqPort.bits.wbPort
 
         // change match table
         when(

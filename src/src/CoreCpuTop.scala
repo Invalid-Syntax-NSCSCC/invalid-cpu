@@ -291,6 +291,7 @@ class CoreCpuTop extends Module {
   }
   rob.io.isFlush      := cu.io.backendFlush
   rob.io.hasInterrupt := csr.io.hasInterrupt
+  rob.io.commitStore  <> memReqStage.io.peer.get.commitStore
 
   // commit stage
   commitStage.io.ins.zip(rob.io.commits).foreach {
@@ -323,12 +324,10 @@ class CoreCpuTop extends Module {
   //     dst := src
   // }
 
-  require(Param.loadStoreIssuePipelineIndex == 0)
-  if (Param.jumpBranchPipelineIndex == 0) {
-    cu.io.branchExe := exeForMemStage.io.peer.get.branchSetPort
-  } else {
-    cu.io.branchExe := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort
-  }
+  require(Param.jumpBranchPipelineIndex != 0)
+  cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort
+  cu.io.branchCommit := rob.io.branchCommit
+
   cu.io.hardWareInetrrupt := io.intrpt
 
   // After memory request flush connection
