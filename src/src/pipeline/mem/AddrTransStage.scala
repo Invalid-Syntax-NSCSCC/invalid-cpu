@@ -107,9 +107,16 @@ class AddrTransStage
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
       val exceptionIndex = peer.tlbTrans.exception.bits
-      out.instInfo.exceptionRecords(exceptionIndex) :=
-        selectedIn.instInfo.exceptionRecords(exceptionIndex) || peer.tlbTrans.exception.valid
-      out.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || peer.tlbTrans.exception.valid
+      // out.instInfo.exceptionRecords(exceptionIndex) :=
+      //   selectedIn.instInfo.exceptionRecords(exceptionIndex) || peer.tlbTrans.exception.valid
+      // out.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || peer.tlbTrans.exception.valid
+      out.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid
+      when(!selectedIn.instInfo.isExceptionValid) {
+        when(peer.tlbTrans.exception.valid) {
+          out.instInfo.isExceptionValid := true.B
+          out.instInfo.exceptionRecord  := exceptionIndex
+        }
+      }
     }
   }
 

@@ -110,7 +110,7 @@ class Cu(
   // 使用时仍需判断是否有exception
   val selectLineNum   = PriorityEncoder(linesHasException)
   val selectInstInfo  = WireDefault(io.instInfoPorts(selectLineNum))
-  val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
+  val selectException = WireDefault(selectInstInfo.exceptionRecord)
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
   val isTlbRefillException = selectException === Csr.ExceptionIndex.tlbr
 

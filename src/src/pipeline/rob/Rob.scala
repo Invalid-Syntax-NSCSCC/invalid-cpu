@@ -167,15 +167,17 @@ class Rob(
   val hasInterruptReg = RegInit(false.B)
   when(io.hasInterrupt) {
     when(io.commits(0).valid && io.commits(0).ready) {
-      io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-      io.commits(0).bits.instInfo.isExceptionValid                         := true.B
+      // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+      io.commits(0).bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.int
+      io.commits(0).bits.instInfo.isExceptionValid := true.B
     }.otherwise {
       hasInterruptReg := true.B
     }
   }.elsewhen(hasInterruptReg && io.commits(0).valid && io.commits(0).ready) {
-    hasInterruptReg                                                      := false.B
-    io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-    io.commits(0).bits.instInfo.isExceptionValid                         := true.B
+    hasInterruptReg := false.B
+    // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+    io.commits(0).bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.int
+    io.commits(0).bits.instInfo.isExceptionValid := true.B
   }
 
   /** Distribute for issue stage

@@ -125,17 +125,24 @@ class ExePassWbStage
   /** CsrWrite
     */
 
-  // 指令未对齐
-  val isAle = WireDefault(false.B)
-
   def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
   val isSyscall = selectedIn.exeOp === ExeInst.Op.syscall
   val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
-  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
-  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.sys) := isSyscall
-  resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.brk) := isBreak
-  resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || isAle || isSyscall || isBreak
+  // resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
+  // resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.sys) := isSyscall
+  // resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.brk) := isBreak
+  // resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || isAle || isSyscall || isBreak
+  resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid
+  when(!selectedIn.instInfo.isExceptionValid) {
+    when(isSyscall) {
+      resultOutReg.bits.instInfo.isExceptionValid := true.B
+      resultOutReg.bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.sys
+    }.elsewhen(isBreak) {
+      resultOutReg.bits.instInfo.isExceptionValid := true.B
+      resultOutReg.bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.brk
+    }
+  }
 
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.csrwr) {
@@ -163,10 +170,10 @@ class ExePassWbStage
     }
   }
 
-  when(selectedIn.instInfo.pc(1, 0).orR) {
-    resultOutReg.bits.instInfo.isExceptionValid                          := true.B
-    resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
-  }
+  // when(selectedIn.instInfo.pc(1, 0).orR) {
+  //   resultOutReg.bits.instInfo.isExceptionValid                          := true.B
+  //   resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
+  // }
 
   // resultOutReg.bits.instInfo.load.en := Mux(
   //   isAle,

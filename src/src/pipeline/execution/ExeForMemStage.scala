@@ -24,13 +24,22 @@ import pipeline.mem.AddrTransNdPort
 import scala.collection.immutable
 import control.csrRegsBundles.EraBundle
 
+class ExeForMemPeerPort extends Bundle {
+  // `ExeStage` -> `Cu` (no delay)
+  val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
+  val csr = Input(new Bundle {
+    val llbctl = new LlbctlBundle
+    val era    = new EraBundle
+  })
+}
+
 // throw exception: 地址未对齐 ale
 class ExeForMemStage
     extends BaseStage(
       new ExeNdPort,
       new AddrTransNdPort,
       ExeNdPort.default,
-      Some(new ExePeerPort)
+      Some(new ExeForMemPeerPort)
     ) {
 
   isComputed                 := true.B
@@ -49,6 +58,13 @@ class ExeForMemStage
 
   // 指令未对齐
   val isAle = WireDefault(false.B)
+  resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid
+  when(!selectedIn.instInfo.isExceptionValid) {
+    when(isAle) {
+      resultOutReg.bits.instInfo.isExceptionValid := true.B
+      resultOutReg.bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.ale
+    }
+  }
 
   def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
@@ -60,10 +76,10 @@ class ExeForMemStage
     }
   }
 
-  when(selectedIn.instInfo.pc(1, 0).orR) {
-    resultOutReg.bits.instInfo.isExceptionValid                          := true.B
-    resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
-  }
+  // when(selectedIn.instInfo.pc(1, 0).orR) {
+  //   resultOutReg.bits.instInfo.isExceptionValid                          := true.B
+  //   resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
+  // }
 
   /** MemAccess
     */
