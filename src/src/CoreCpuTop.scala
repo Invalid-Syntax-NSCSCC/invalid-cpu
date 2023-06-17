@@ -325,8 +325,8 @@ class CoreCpuTop extends Module {
   // }
 
   require(Param.jumpBranchPipelineIndex != 0)
-  cu.io.branchExe := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort
-  // cu.io.branchCommit := rob.io.branchCommit
+  cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort
+  cu.io.branchCommit := rob.io.branchCommit
 
   cu.io.hardWareInetrrupt := io.intrpt
 

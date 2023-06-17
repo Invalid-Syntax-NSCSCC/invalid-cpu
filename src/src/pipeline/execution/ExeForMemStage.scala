@@ -25,7 +25,6 @@ import scala.collection.immutable
 import control.csrRegsBundles.EraBundle
 
 class ExeForMemPeerPort extends Bundle {
-  // `ExeStage` -> `Cu` (no delay)
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
