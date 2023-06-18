@@ -217,10 +217,10 @@ class ExePassWbStage
   val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
   when(isIdle) {
     io.peer.get.branchSetPort.isIdle := true.B
-    io.peer.get.branchSetPort.en     := true.B
+    io.peer.get.branchSetPort.en     := branchEnableFlag
     io.peer.get.branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
   }.elsewhen(isErtn) {
-    io.peer.get.branchSetPort.en     := true.B
+    io.peer.get.branchSetPort.en     := branchEnableFlag
     io.peer.get.branchSetPort.pcAddr := io.peer.get.csr.era.pc
   }
 

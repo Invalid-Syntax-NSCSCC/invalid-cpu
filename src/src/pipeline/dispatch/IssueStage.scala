@@ -173,7 +173,7 @@ class IssueStage(
   // -> reservation stations
   for (src_idx <- Seq.range(issueNum - 1, -1, -1)) {
     for (dst_idx <- 0 until pipelineNum) {
-      when(dispatchMap(src_idx)(dst_idx)) {
+      when(dispatchMap(src_idx)(dst_idx) && fetchEnableFlag && io.peer.get.resultsValid) {
         // decode info
         reservationStations(dst_idx).io
           .enqueuePorts(0)
@@ -218,8 +218,11 @@ class IssueStage(
         }
 
         // csr score board
-        io.peer.get.csrOccupyPort.en   := selectedIns(src_idx).decode.info.needCsr
-        io.peer.get.csrOccupyPort.addr := DontCare
+        if (dst_idx == Param.csrIssuePipelineIndex) {
+          io.peer.get.csrOccupyPort.en   := selectedIns(src_idx).decode.info.needCsr
+          io.peer.get.csrOccupyPort.addr := DontCare
+        }
+
       }
     }
   }

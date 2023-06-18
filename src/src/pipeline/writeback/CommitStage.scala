@@ -106,7 +106,7 @@ class CommitStage(
       dt.csr_rstat := RegNext(
         inBits(0).instInfo.inst(31, 24) === Inst._2RI14.csr_ &&
           inBits(0).instInfo.inst(23, 10) === "h5".U
-      )
+      ) && io.ins(0).valid && io.ins(0).ready
       dt.ld_en    := RegNext(inBits(0).instInfo.load.en)
       dt.ld_vaddr := RegNext(inBits(0).instInfo.load.vaddr)
       dt.ld_paddr := RegNext(inBits(0).instInfo.load.paddr)
