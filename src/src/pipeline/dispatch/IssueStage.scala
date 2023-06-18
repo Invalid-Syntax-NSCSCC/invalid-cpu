@@ -84,7 +84,8 @@ class IssueStage(
         1,
         1,
         new ReservationStationBundle,
-        ReservationStationBundle.default
+        ReservationStationBundle.default,
+        writeFirst = false
       )
     )
   )

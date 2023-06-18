@@ -70,11 +70,11 @@ class MemReqStage
   storeOut.ready        := false.B
 
   // Handle pipelined input
-  when(selectedIn.instInfo.isValid) {
+  when(selectedIn.instInfo.isValid && !peer.commitStore.valid) {
     switch(selectedIn.translatedMemReq.rw) {
       is(ReadWriteSel.read) {
         // Whether last memory request is submitted and no stores in queue and not committing store
-        when(io.out.ready && !storeOut.valid && !peer.commitStore.valid) {
+        when(io.out.ready && !storeOut.valid) {
           when(selectedIn.isCached) {
             peer.dCacheReq.client.isValid := true.B
             isComputed                    := peer.dCacheReq.isReady
@@ -91,7 +91,7 @@ class MemReqStage
         out.isInstantReq := false.B
 
         // Whether last memory request is submitted and not committing store
-        when(io.out.ready && !peer.commitStore.valid) {
+        when(io.out.ready) {
           storeIn.valid := true.B
           isComputed    := storeIn.ready
         }.otherwise {
@@ -115,6 +115,8 @@ class MemReqStage
     out.isRead       := false.B
     out.dataMask     := storeOut.bits.mask
 
+    isComputed := false.B
+
     // Whether can submit memory request instantly
     when(peer.commitStore.ready) {
       peer.dCacheReq.client.rw           := ReadWriteSel.write
@@ -126,6 +128,7 @@ class MemReqStage
       peer.uncachedReq.client.mask       := storeOut.bits.mask
       peer.uncachedReq.client.write.data := storeOut.bits.data
 
+      storeOut.ready     := true.B
       resultOutReg.valid := true.B
 
       when(storeOut.bits.isCached) {
