@@ -219,9 +219,11 @@ class ExePassWbStage
     io.peer.get.branchSetPort.isIdle := true.B
     io.peer.get.branchSetPort.en     := branchEnableFlag
     io.peer.get.branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
+    branchEnableFlag                 := false.B
   }.elsewhen(isErtn) {
     io.peer.get.branchSetPort.en     := branchEnableFlag
     io.peer.get.branchSetPort.pcAddr := io.peer.get.csr.era.pc
+    branchEnableFlag                 := false.B
   }
 
   resultOutReg.bits.instInfo.branchSetPort := io.peer.get.branchSetPort

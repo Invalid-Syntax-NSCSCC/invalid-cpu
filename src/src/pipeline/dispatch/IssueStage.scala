@@ -264,9 +264,6 @@ class IssueStage(
       out.valid     := deqEn
       deqPort.ready := deqEn
 
-      io.peer.get.csrReadPort.en   := deqPort.bits.regReadPort.preExeInstInfo.csrReadEn
-      io.peer.get.csrReadPort.addr := deqPort.bits.regReadPort.preExeInstInfo.csrAddr
-
       out.bits.leftOperand  := deqPort.bits.robResult.readResults(0).result
       out.bits.rightOperand := deqPort.bits.robResult.readResults(1).result
       out.bits.exeSel       := deqPort.bits.regReadPort.preExeInstInfo.exeSel
@@ -274,8 +271,12 @@ class IssueStage(
       out.bits.gprWritePort := deqPort.bits.regReadPort.preExeInstInfo.gprWritePort
       // jumbBranch / memLoadStort / csr
       out.bits.jumpBranchAddr := deqPort.bits.regReadPort.preExeInstInfo.jumpBranchAddr
-      when(deqPort.bits.regReadPort.preExeInstInfo.csrReadEn) {
-        out.bits.csrData := io.peer.get.csrReadPort.data
+      if (idx == Param.csrIssuePipelineIndex) {
+        io.peer.get.csrReadPort.en   := deqPort.bits.regReadPort.preExeInstInfo.csrReadEn
+        io.peer.get.csrReadPort.addr := deqPort.bits.regReadPort.preExeInstInfo.csrAddr
+        when(deqPort.bits.regReadPort.preExeInstInfo.csrReadEn) {
+          out.bits.csrData := io.peer.get.csrReadPort.data
+        }
       }
 
       out.bits.instInfo       := deqPort.bits.regReadPort.instInfo
