@@ -99,7 +99,9 @@ class Cu(
   // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
     case (dst, src) =>
-      dst := src.csrWritePort
+      dst.en   := src.csrWritePort.en && src.isValid
+      dst.addr := src.csrWritePort.addr
+      dst.data := src.csrWritePort.data
   }
 
   /** csr write by exception
