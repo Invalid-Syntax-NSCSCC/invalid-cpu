@@ -142,14 +142,16 @@ class Rob(
         // commit
         if (idx == 0) {
           io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.en.orR
-          io.branchCommit      := commit.ready && deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch && deqPort.bits.wbPort.instInfo.branchSetPort.en
-          deqPort.ready        := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
+          io.branchCommit := commit.ready && deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch && deqPort.bits.wbPort.instInfo.branchSetPort.en
+          deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
         } else {
           deqPort.ready := commit.ready &&
             deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
             !deqPort.bits.wbPort.instInfo.store.en.orR &&
             queue.io.dequeuePorts(idx - 1).valid &&
-            queue.io.dequeuePorts(idx - 1).ready // promise commit in order
+            queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
+            !io.commits(idx - 1).bits.instInfo.isExceptionValid
+
         }
 
         commit.valid := deqPort.ready
