@@ -142,7 +142,7 @@ class Rob(
         // commit
         if (idx == 0) {
           io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.en.orR
-          io.branchCommit      := commit.ready && deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch
+          io.branchCommit      := commit.ready && deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch && deqPort.bits.wbPort.instInfo.branchSetPort.en
           deqPort.ready        := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
         } else {
           deqPort.ready := commit.ready &&
