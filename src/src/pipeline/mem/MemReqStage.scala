@@ -99,43 +99,43 @@ class MemReqStage
         }
       }
     }
+  }
 
-    // Handle writeback store trigger
-    peer.commitStore.ready := io.out.ready && Mux(
-      storeOut.bits.isCached,
-      peer.dCacheReq.isReady,
-      peer.uncachedReq.isReady
-    )
+  // Handle writeback store trigger
+  peer.commitStore.ready := io.out.ready && Mux(
+    storeOut.bits.isCached,
+    peer.dCacheReq.isReady,
+    peer.uncachedReq.isReady
+  )
 
-    when(peer.commitStore.valid) {
-      out.isPipelined  := false.B
-      out.isInstantReq := true.B
-      out.isCached     := storeOut.bits.isCached
-      out.isRead       := false.B
-      out.dataMask     := storeOut.bits.mask
+  when(peer.commitStore.valid) {
+    out.isPipelined  := false.B
+    out.isInstantReq := true.B
+    out.isCached     := storeOut.bits.isCached
+    out.isRead       := false.B
+    out.dataMask     := storeOut.bits.mask
 
-      // Whether can submit memory request instantly
-      when(peer.commitStore.ready) {
-        peer.dCacheReq.client.rw           := ReadWriteSel.write
-        peer.dCacheReq.client.addr         := storeOut.bits.addr
-        peer.dCacheReq.client.mask         := storeOut.bits.mask
-        peer.dCacheReq.client.write.data   := storeOut.bits.data
-        peer.uncachedReq.client.rw         := ReadWriteSel.write
-        peer.uncachedReq.client.addr       := storeOut.bits.addr
-        peer.uncachedReq.client.mask       := storeOut.bits.mask
-        peer.uncachedReq.client.write.data := storeOut.bits.data
+    // Whether can submit memory request instantly
+    when(peer.commitStore.ready) {
+      peer.dCacheReq.client.rw           := ReadWriteSel.write
+      peer.dCacheReq.client.addr         := storeOut.bits.addr
+      peer.dCacheReq.client.mask         := storeOut.bits.mask
+      peer.dCacheReq.client.write.data   := storeOut.bits.data
+      peer.uncachedReq.client.rw         := ReadWriteSel.write
+      peer.uncachedReq.client.addr       := storeOut.bits.addr
+      peer.uncachedReq.client.mask       := storeOut.bits.mask
+      peer.uncachedReq.client.write.data := storeOut.bits.data
 
-        resultOutReg.valid := true.B
+      resultOutReg.valid := true.B
 
-        when(storeOut.bits.isCached) {
-          peer.dCacheReq.client.isValid := true.B
-        }.otherwise {
-          peer.uncachedReq.client.isValid := true.B
-        }
+      when(storeOut.bits.isCached) {
+        peer.dCacheReq.client.isValid := true.B
+      }.otherwise {
+        peer.uncachedReq.client.isValid := true.B
       }
-    }.otherwise {
-      // Submit pipelined result
-      resultOutReg.valid := isComputed
     }
+  }.otherwise {
+    // Submit pipelined result
+    resultOutReg.valid := isComputed
   }
 }

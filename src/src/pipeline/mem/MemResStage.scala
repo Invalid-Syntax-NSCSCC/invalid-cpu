@@ -39,7 +39,7 @@ class MemResStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.gprWrite.en   := selectedIn.isRead
+  out.gprWrite.en   := selectedIn.isRead && selectedIn.isInstantReq
   out.gprWrite.addr := selectedIn.gprAddr
   out.instInfo      := selectedIn.instInfo
 
