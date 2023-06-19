@@ -10,5 +10,5 @@ class EuenBundle extends Bundle {
 }
 
 object EuenBundle {
-  val default = 0.U.asTypeOf(new EuenBundle)
+  def default = 0.U.asTypeOf(new EuenBundle)
 }

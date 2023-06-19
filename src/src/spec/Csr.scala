@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import control.bundles.EcodeBundle
 import spec._
+import chisel3.util.log2Ceil
 
 object Csr {
 
@@ -154,6 +155,7 @@ object Csr {
     val fpe  = next
     val tlbr = next
 
-    def width = count + 1
+    def num   = count + 1
+    def width = log2Ceil(count + 1).W
   }
 }

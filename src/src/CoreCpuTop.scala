@@ -9,12 +9,9 @@ import memory.{DCache, Tlb, UncachedAgent}
 import pipeline.dispatch.{RegReadNdPort, RegReadStage}
 import pipeline.dispatch.Scoreboard
 import pipeline.dispatch.CsrScoreboard
-
-import pipeline.dispatch.BiIssueStage
-
-import pipeline.execution.ExeStage
+import pipeline.execution.ExeForMemStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
-import pipeline.writeback.WbStage
+import pipeline.writeback.CommitStage
 import spec.Param.isDiffTest
 import spec.{Count, Param, PipelineStageIndex}
 import spec.zeroWord
@@ -26,6 +23,14 @@ import memory.ICache
 import frontend.Frontend
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.Param.csrIssuePipelineIndex
+import pipeline.dispatch.IssueStage
+import pipeline.execution.ExePassWbStage
+import pipeline.rob.Rob
+import pipeline.writeback.WbNdPort
+import pipeline.rob.bundles.InstWbNdPort
+import chisel3.util.DecoupledIO
+import spec.ExeInst
+import pipeline.rob.enums.RegDataLocateSel
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -102,34 +107,35 @@ class CoreCpuTop extends Module {
       else None
   })
 
-  val iCache        = Module(new ICache)
-  val frontend      = Module(new Frontend)
-  val instQueue     = Module(new MultiInstQueue)
-  val issueStage    = Module(new BiIssueStage)
-  val regReadStage  = Module(new RegReadStage)
-  val exeStage      = Module(new ExeStage)
-  val wbStage       = Module(new WbStage)
-  val cu            = Module(new Cu)
-  val csr           = Module(new Csr)
-  val stableCounter = Module(new StableCounter)
+  val iCache          = Module(new ICache)
+  val frontend        = Module(new Frontend)
+  val instQueue       = Module(new MultiInstQueue)
+  val issueStage      = Module(new IssueStage)
+  val exeForMemStage  = Module(new ExeForMemStage)
+  val exePassWbStages = Seq.fill(Param.exePassWbNum)(Module(new ExePassWbStage))
+  val commitStage     = Module(new CommitStage)
+  val rob             = Module(new Rob)
+  val cu              = Module(new Cu)
+  val csr             = Module(new Csr)
+  val stableCounter   = Module(new StableCounter)
 
   // TODO: Finish mem stages connection
   val addrTransStage = Module(new AddrTransStage)
   val memReqStage    = Module(new MemReqStage)
   val memResStage    = Module(new MemResStage)
 
+  // pass through
+  memReqStage.io.out.ready := true.B
+  exePassWbStages.foreach(_.io.out.ready := true.B)
+
   val crossbar = Module(new Axi3x1Crossbar)
 
-  val scoreboard    = Module(new Scoreboard)
   val csrScoreBoard = Module(new CsrScoreboard)
 
   // val dataforward = Module(new DataForwardStage)
 
   val regFile = Module(new RegFile)
   val pc      = Module(new Pc)
-
-  // Default DontCare
-  csr.io <> DontCare
 
   // PC
   pc.io.newPc  := cu.io.newPc
@@ -169,7 +175,7 @@ class CoreCpuTop extends Module {
 
   // Frontend
   //   inst fetch stage
-  frontend.io.isFlush    := cu.io.exceptionFlush || cu.io.branchFlush
+  frontend.io.isFlush    := cu.io.frontendFlush
   frontend.io.accessPort <> iCache.io.accessPort
   frontend.io.pc         := pc.io.pc
   frontend.io.pcUpdate   := pc.io.pcUpdate
@@ -182,61 +188,72 @@ class CoreCpuTop extends Module {
   instQueue.io.enqueuePorts(0) <> frontend.io.instEnqueuePort
 
   // TODO: CONNECT
-  instQueue.io.enqueuePorts(1)       <> DontCare // TODO: Connect Second Pipeline
-  instQueue.io.enqueuePorts(1).valid := false.B // TODO: Connect Second Pipeline
-  instQueue.io.isFlush               := cu.io.exceptionFlush || cu.io.branchFlush
+  instQueue.io.enqueuePorts(1)       <> DontCare // TODO: Connect Second Fetch Inst
+  instQueue.io.enqueuePorts(1).valid := false.B // TODO: Connect Second Fetch Inst
+  instQueue.io.isFlush               := cu.io.frontendFlush
 
   // Issue stage
-  issueStage.io.ins(0)               <> instQueue.io.dequeuePorts(0)
-  issueStage.io.outs(1).ready        := false.B // TODO: Connect Second Pipeline
-  issueStage.io.ins(1)               := DontCare // TODO: Connect Second Pipeline
-  issueStage.io.ins(1).valid         := false.B // TODO: Connect Second Pipeline
-  instQueue.io.dequeuePorts(1).ready := false.B // TODO: Connect Second Pipeline
-  issueStage.io.peer.get.regScores   := scoreboard.io.regScores
+  issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
+    case (dst, src) =>
+      dst <> src
+  }
+  issueStage.io.isFlush              := cu.io.backendFlush
+  issueStage.io.peer.get.branchFlush := cu.io.frontendFlush
+  issueStage.io.peer.get.robEmptyNum := rob.io.emptyNum
+  issueStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+  issueStage.io.peer.get.resultsValid := rob.io.distributeResultsValid
+  // issueStage.io.peer.get.robInstValids.zip(rob.io.robInstValids).foreach {
+  //   case (dst, src) =>
+  //     dst := src
+  // }
 
-  issueStage.io.isFlush              := cu.io.exceptionFlush || cu.io.branchFlush
+  // def connect_wb(dst: InstWbNdPort, src: DecoupledIO[WbNdPort]): Unit = {
+  //   dst.en    := src.valid
+  //   dst.data  := src.bits.gprWrite.data
+  //   dst.robId := src.bits.instInfo.robId
+  // }
+  // issueStage.io.peer.get.writebacks.zipWithIndex.foreach {
+  //   case (dst, idx) =>
+  //     assert(Param.loadStoreIssuePipelineIndex == 0, "if load store no issue in line 0, please change if-else below")
+  //     if (idx == Param.loadStoreIssuePipelineIndex) {
+  //       connect_wb(dst, memResStage.io.out)
+  //     } else {
+  //       connect_wb(dst, exePassWbStages(idx - 1).io.out)
+  //     }
+  // }
+  issueStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
+    case (dst, src) =>
+      dst := src
+  }
   issueStage.io.peer.get.csrRegScore := csrScoreBoard.io.regScore
-
-  issueStage.io.peer.get.robEmptyNum := 2.U // TODO: Connect Second Pipeline
-  issueStage.io.peer.get.idGetPorts.foreach { port =>
-    port.id := 0.U
-  } // TODO: Connect Second Pipeline
+  issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
 
   // Scoreboards
-  scoreboard.io.freePorts(0)   := wbStage.io.freePort
-  csrScoreBoard.io.freePort    := wbStage.io.csrFreePort
-  scoreboard.io.freePorts(1)   := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  scoreboard.io.toMemPorts(0)  := exeStage.io.peer.get.scoreboardChangePort
-  scoreboard.io.toMemPorts(1)  := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  csrScoreBoard.io.toMemPort   := exeStage.io.peer.get.csrScoreboardChangePort
-  scoreboard.io.occupyPorts(0) := issueStage.io.peer.get.occupyPortss(0)(0)
+  csrScoreBoard.io.freePort    := commitStage.io.csrFreePort
+  csrScoreBoard.io.toMemPort   := exeForMemStage.io.peer.get.csrScoreboardChangePort // TODO: check this
   csrScoreBoard.io.occupyPort  := issueStage.io.peer.get.csrOccupyPort
-  scoreboard.io.occupyPorts(1) := ScoreboardChangeNdPort.default // TODO: Connect Second Pipeline
-  scoreboard.io.isFlush        := cu.io.exceptionFlush
-  csrScoreBoard.io.isFlush     := cu.io.exceptionFlush
-  scoreboard.io.branchFlush    := cu.io.branchFlush
-  csrScoreBoard.io.branchFlush := cu.io.branchFlush
-
-  // Reg-read stage
-  regReadStage.io.in <> issueStage.io.outs(0)
-  regReadStage.io.peer.get.gprReadPorts.zip(regFile.io.readPorts).foreach {
-    case (stage, rf) =>
-      stage <> rf
-  }
-  regReadStage.io.peer.get.csrReadPorts(0) <> csr.io.readPorts(0)
-  regReadStage.io.isFlush                  := cu.io.exceptionFlush || cu.io.branchFlush
+  csrScoreBoard.io.isFlush     := cu.io.backendFlush
+  csrScoreBoard.io.branchFlush := cu.io.frontendFlush
 
   // Execution stage
-  exeStage.io.in      <> regReadStage.io.out
-  exeStage.io.isFlush := cu.io.exceptionFlush
-  exeStage.io.peer.foreach { p =>
-    p.csr.llbctl := csr.io.csrValues.llbctl
-    p.csr.era    := csr.io.csrValues.era
+  exeForMemStage.io.in                  <> issueStage.io.outs(Param.loadStoreIssuePipelineIndex)
+  exeForMemStage.io.isFlush             := cu.io.backendFlush
+  exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
+  exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
+  assert(Param.loadStoreIssuePipelineIndex == 0)
+  exePassWbStages.zipWithIndex.foreach {
+    case (exe, idx) =>
+      exe.io.in                  <> issueStage.io.outs(idx + 1)
+      exe.io.isFlush             := cu.io.backendFlush
+      exe.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
+      exe.io.peer.get.csr.era    := csr.io.csrValues.era
   }
-
   // Mem stages
-  addrTransStage.io.in      <> exeStage.io.out
-  addrTransStage.io.isFlush := cu.io.exceptionFlush
+  addrTransStage.io.in      <> exeForMemStage.io.out
+  addrTransStage.io.isFlush := cu.io.backendFlush
   addrTransStage.io.peer.foreach { p =>
     p.tlbTrans   <> tlb.io.tlbTransPorts(0)
     p.csr.dmw(0) := csr.io.csrValues.dmw0
@@ -244,39 +261,80 @@ class CoreCpuTop extends Module {
     p.csr.crmd   := csr.io.csrValues.crmd
   }
 
-  memReqStage.io.isFlush := cu.io.exceptionFlush
+  memReqStage.io.isFlush := cu.io.backendFlush
   memReqStage.io.in      <> addrTransStage.io.out
   memReqStage.io.peer.foreach { p =>
     p.dCacheReq   <> dCache.io.accessPort.req
     p.uncachedReq <> uncachedAgent.io.accessPort.req
   }
 
-  memResStage.io.isFlush := cu.io.exceptionFlush
+  memResStage.io.isFlush := cu.io.backendFlush
   memResStage.io.in      <> memReqStage.io.out
   memResStage.io.peer.foreach { p =>
     p.dCacheRes   := dCache.io.accessPort.res
     p.uncachedRes := uncachedAgent.io.accessPort.res
   }
 
-  // Write-back stage
-  wbStage.io.in           <> memResStage.io.out
-  wbStage.io.hasInterrupt := csr.io.hasInterrupt
-  wbStage.io.csrValues    := csr.io.csrValues
-  regFile.io.writePort    := cu.io.gprWritePassThroughPorts.out(0)
+  // rob
+  require(Param.loadStoreIssuePipelineIndex == 0)
+  rob.io.finishInsts.zipWithIndex.foreach {
+    case (dst, idx) =>
+      if (idx == Param.loadStoreIssuePipelineIndex) {
+        dst <> memResStage.io.out
+      } else {
+        dst <> exePassWbStages(idx - 1).io.out
+      }
+  }
+  rob.io.requests.zip(issueStage.io.peer.get.requests).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+  rob.io.isFlush      := cu.io.backendFlush
+  rob.io.hasInterrupt := csr.io.hasInterrupt
+  rob.io.commitStore  <> memReqStage.io.peer.get.commitStore
+
+  // commit stage
+  commitStage.io.ins.zip(rob.io.commits).foreach {
+    case (dst, src) =>
+      dst <> src
+  }
+  commitStage.io.csrValues := csr.io.csrValues
+
+  // regfile
+  regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out
+  regFile.io.readPorts.zip(rob.io.regReadPortss).foreach {
+    case (rfReads, robReads) =>
+      rfReads.zip(robReads).foreach {
+        case (rfRead, robRead) =>
+          rfRead <> robRead
+      }
+  }
 
   // Ctrl unit
-  cu.io.instInfoPorts(0)               := wbStage.io.cuInstInfoPort
-  cu.io.gprWritePassThroughPorts.in(0) := wbStage.io.gprWritePort
-  cu.io.csrValues                      := csr.io.csrValues
-  cu.io.stableCounterReadPort          <> stableCounter.io
-  cu.io.jumpPc                         := exeStage.io.peer.get.branchSetPort
-  cu.io.hardWareInetrrupt              := io.intrpt
+  cu.io.instInfoPorts.zip(commitStage.io.cuInstInfoPorts).foreach {
+    case (dst, src) => dst := src
+  }
+  cu.io.gprWritePassThroughPorts.in.zip(commitStage.io.gprWritePorts).foreach {
+    case (dst, src) => dst := src
+  }
+  cu.io.csrValues             := csr.io.csrValues
+  cu.io.stableCounterReadPort <> stableCounter.io
+  // cu.io.robInstValids.zip(rob.io.robInstValids).foreach {
+  //   case (dst, src) =>
+  //     dst := src
+  // }
+
+  require(Param.jumpBranchPipelineIndex != 0)
+  cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort
+  cu.io.branchCommit := rob.io.branchCommit
+
+  cu.io.hardWareInetrrupt := io.intrpt
 
   // After memory request flush connection
-  memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
-  cu.io.isExceptionValidVec(0)               := memReqStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(1)               := memResStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(2)               := wbStage.io.isExceptionValid
+  // memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
+  cu.io.isExceptionValidVec(0) := false.B // memReqStage.io.peer.get.isExceptionValid
+  cu.io.isExceptionValidVec(1) := false.B // memResStage.io.peer.get.isExceptionValid
+  cu.io.isExceptionValidVec(2) := commitStage.io.isExceptionValid
 
   // Csr
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -286,15 +344,15 @@ class CoreCpuTop extends Module {
   csr.io.csrMessage := cu.io.csrMessage
 
   // Debug ports
-  io.debug0_wb.pc       := wbStage.io.in.bits.instInfo.pc
-  io.debug0_wb.inst     := wbStage.io.in.bits.instInfo.inst
-  io.debug0_wb.rf.wen   := wbStage.io.gprWritePort.en
-  io.debug0_wb.rf.wnum  := wbStage.io.gprWritePort.addr
-  io.debug0_wb.rf.wdata := wbStage.io.gprWritePort.data
+  io.debug0_wb.pc       := commitStage.io.ins(0).bits.instInfo.pc
+  io.debug0_wb.inst     := commitStage.io.ins(0).bits.instInfo.inst
+  io.debug0_wb.rf.wen   := commitStage.io.gprWritePorts(0).en
+  io.debug0_wb.rf.wnum  := commitStage.io.gprWritePorts(0).addr
+  io.debug0_wb.rf.wdata := commitStage.io.gprWritePorts(0).data
 
   // Difftest
   // TODO: Some ports
-  (io.diffTest, wbStage.io.difftest) match {
+  (io.diffTest, commitStage.io.difftest) match {
     case (Some(t), Some(w)) =>
       t.cmt_valid        := w.valid && !t.cmt_excp_flush
       t.cmt_pc           := w.pc

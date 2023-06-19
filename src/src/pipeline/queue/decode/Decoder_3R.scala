@@ -41,6 +41,7 @@ class Decoder_3R extends Decoder {
       outInfo.gprReadPorts.foreach(_.en := false.B)
       outInfo.gprWritePort.en := false.B
       outInfo.exeOp           := ExeInst.Op.idle
+      outInfo.exeSel          := ExeInst.Sel.jumpBranch
     }
     is(Inst.invtlb) {
       io.out.isMatched               := true.B

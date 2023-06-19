@@ -12,7 +12,7 @@ class RegReadPortWithValidBundle extends Bundle {
 }
 
 object RegReadPortWithValidBundle {
-  val default = (new RegReadPortWithValidBundle).Lit(
+  def default = (new RegReadPortWithValidBundle).Lit(
     _.valid -> false.B,
     _.issueInfo -> RegReadNdPort.default
   )

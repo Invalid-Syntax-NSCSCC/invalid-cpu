@@ -15,5 +15,5 @@ class TlbeloBundle extends Bundle {
 }
 
 object TlbeloBundle {
-  val default = 0.U.asTypeOf(new TlbeloBundle)
+  def default = 0.U.asTypeOf(new TlbeloBundle)
 }

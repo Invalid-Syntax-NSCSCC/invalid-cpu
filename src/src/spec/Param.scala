@@ -17,14 +17,16 @@ object Param {
   val ctrlControlNum         = PipelineStageIndex.count + 1
   val fetchInstMaxNum        = 2 // 单次取指
   val issueInstInfoMaxNum    = 2 // 发射数量
-  val pipelineNum            = 2 // number of pipeline
+  val commitNum              = 1 // 单次提交数量
+  val pipelineNum            = 3 // number of pipeline
   val reservationStationDeep = 3 // 保留站深度
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
-  val robIdLength            = 32 // rob给出的id
 
-  val csrIssuePipelineIndex       = 0 // csr 相关指令在第0条流水线
+  val csrIssuePipelineIndex       = 1 // csr 相关指令在第1条流水线
   val loadStoreIssuePipelineIndex = 0 // load & store相关指令在第0条流水线
+  val jumpBranchPipelineIndex     = 1
+  val exePassWbNum                = pipelineNum - 1
 
   val dataForwardInputNum = 2
 
@@ -33,9 +35,8 @@ object Param {
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
     object Rob {
-      val id      = 8.W
       val _length = 15
-      val addr    = log2Ceil(_length).W
+      val id      = log2Ceil(_length + 1).W
     }
 
     object Axi {
@@ -99,6 +100,10 @@ object Param {
     object Tlb {
       val num      = 32
       val transNum = 2
+    }
+
+    object Mem {
+      val storeQueueLen = 8
     }
   }
 

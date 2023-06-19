@@ -15,7 +15,7 @@ class ExeResultPort extends Bundle {
 }
 
 object ExeResultPort {
-  val default = (new ExeResultPort).Lit(
+  def default = (new ExeResultPort).Lit(
     _.memAccessPort -> MemRequestNdPort.default,
     _.gprWritePort -> RfWriteNdPort.default,
     _.instInfo -> InstInfoNdPort.default

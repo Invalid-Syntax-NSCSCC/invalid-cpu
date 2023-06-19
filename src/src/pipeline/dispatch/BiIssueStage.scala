@@ -16,6 +16,7 @@ import pipeline.dispatch.enums.ScoreboardState
 import pipeline.common.MultiBaseStage
 import chisel3.experimental.BundleLiterals._
 import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
+// import pipeline.dispatch.RegReadNdPort
 
 class FetchInstDecodeNdPort extends Bundle {
   val decode   = new DecodeOutNdPort
@@ -23,7 +24,7 @@ class FetchInstDecodeNdPort extends Bundle {
 }
 
 object FetchInstDecodeNdPort {
-  val default = (new FetchInstDecodeNdPort).Lit(
+  def default = (new FetchInstDecodeNdPort).Lit(
     _.decode -> DecodeOutNdPort.default,
     _.instInfo -> InstInfoNdPort.default
   )

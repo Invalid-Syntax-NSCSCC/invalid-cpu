@@ -32,7 +32,6 @@ class MultiInstQueue(
       })
     )
   })
-  require(issueNum == 2)
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
 
@@ -41,9 +40,10 @@ class MultiInstQueue(
   // fall back
   instQueue.io.enqueuePorts <> io.enqueuePorts
   instQueue.io.isFlush      := io.isFlush
-  instQueue.io.setPorts.foreach { set =>
-    set.valid := false.B
-    set.bits  := DontCare
+  instQueue.io.setPorts.zip(instQueue.io.elems).foreach {
+    case (dst, src) =>
+      dst.valid := false.B
+      dst.bits  := src
   }
   instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
     case (q, out) =>
@@ -104,19 +104,14 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.exeSel            := selectedDecoder.info.exeSel
       dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
       dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
-      dequeuePort.bits.instInfo.exceptionRecords(
-        Csr.ExceptionIndex.adef
-      ) := decodeInstInfo.exceptionValid && decodeInstInfo.exception === Csr.ExceptionIndex.adef
-      dequeuePort.bits.instInfo.exceptionRecords(
-        Csr.ExceptionIndex.pif
-      ) := decodeInstInfo.exceptionValid && decodeInstInfo.exception === Csr.ExceptionIndex.pif
-      dequeuePort.bits.instInfo.exceptionRecords(
-        Csr.ExceptionIndex.ppi
-      ) := decodeInstInfo.exceptionValid && decodeInstInfo.exception === Csr.ExceptionIndex.ppi
-      dequeuePort.bits.instInfo.exceptionRecords(
-        Csr.ExceptionIndex.tlbr
-      ) := decodeInstInfo.exceptionValid && decodeInstInfo.exception === Csr.ExceptionIndex.tlbr
-      dequeuePort.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ine) := !isMatched
-      dequeuePort.bits.instInfo.isExceptionValid                         := !isMatched || decodeInstInfo.exceptionValid
+
+      dequeuePort.bits.instInfo.isExceptionValid := decodeInstInfo.exceptionValid
+      dequeuePort.bits.instInfo.exceptionRecord  := decodeInstInfo.exception
+      when(!decodeInstInfo.exceptionValid) {
+        when(!isMatched) {
+          dequeuePort.bits.instInfo.isExceptionValid := true.B
+          dequeuePort.bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.ine
+        }
+      }
   }
 }

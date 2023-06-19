@@ -11,7 +11,7 @@ class JumpBranchInfoNdPort extends Bundle {
 }
 
 object JumpBranchInfoNdPort {
-  val default = (new JumpBranchInfoNdPort).Lit(
+  def default = (new JumpBranchInfoNdPort).Lit(
     _.en -> false.B,
     _.pcAddr -> zeroWord
   )

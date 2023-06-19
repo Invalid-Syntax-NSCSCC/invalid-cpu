@@ -9,5 +9,5 @@ class CsrSaveBundle extends Bundle {
 }
 
 object CsrSaveBundle {
-  val default = 0.U.asTypeOf(new CsrSaveBundle)
+  def default = 0.U.asTypeOf(new CsrSaveBundle)
 }

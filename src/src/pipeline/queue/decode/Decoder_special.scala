@@ -99,6 +99,7 @@ class Decoder_special extends Decoder {
     is(Inst.ertn) {
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.ertn
+      outInfo.exeSel   := ExeInst.Sel.jumpBranch
       outInfo.needCsr  := true.B
     }
     is(Inst.tlbsrch) {

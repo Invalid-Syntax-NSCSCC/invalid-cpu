@@ -16,5 +16,5 @@ class EstatBundle extends Bundle {
 }
 
 object EstatBundle {
-  val default = 0.U.asTypeOf(new EstatBundle)
+  def default = 0.U.asTypeOf(new EstatBundle)
 }

@@ -12,5 +12,5 @@ class LlbctlBundle extends Bundle {
 }
 
 object LlbctlBundle {
-  val default = 0.U.asTypeOf(new LlbctlBundle)
+  def default = 0.U.asTypeOf(new LlbctlBundle)
 }

@@ -7,6 +7,7 @@ import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCount
 import pipeline.writeback.bundles.InstInfoNdPort
 import spec.{Csr, ExeInst, Param, PipelineStageIndex}
 import spec.Param.isDiffTest
+import control.bundles.BranchFlushInfo
 
 // TODO: Add stall to frontend ?
 // TODO: Add deal exceptions
@@ -17,15 +18,15 @@ import spec.Param.isDiffTest
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
-  dispatchNum:    Int = 1 // Param.issueInstInfoMaxNum
-) extends Module {
+  commitNum:      Int = Param.commitNum)
+    extends Module {
   val io = IO(new Bundle {
 
     /** 回写与异常处理
       */
     // `WbStage` -> `Cu` -> `Regfile`
-    val gprWritePassThroughPorts = new PassThroughPort(Vec(dispatchNum, new RfWriteNdPort))
-    val instInfoPorts            = Input(Vec(dispatchNum, new InstInfoNdPort))
+    val gprWritePassThroughPorts = new PassThroughPort(Vec(commitNum, new RfWriteNdPort))
+    val instInfoPorts            = Input(Vec(commitNum, new InstInfoNdPort))
     // `Cu` -> `Csr`, 软件写
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写
@@ -33,21 +34,27 @@ class Cu(
     // `Csr` -> `Cu`
     val csrValues = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
-    val jumpPc = Input(new PcSetPort)
-    // `Csr` -> `Pc`
+    val branchExe = Input(new PcSetPort)
+    // `Rob` -> `Cu`
+    val branchCommit = Input(Bool())
+    // `Cu` -> `Pc`
     val newPc = Output(new PcSetPort)
 
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`, `Scoreboard`
-    val exceptionFlush = Output(Bool())
-    val branchFlush    = Output(Bool())
+    // val exceptionFlush  = Output(Bool())
+    // val branchFlushInfo = Output(new BranchFlushInfo)
+    val frontendFlush = Output(Bool())
+    val backendFlush  = Output(Bool())
 
     // <- `MemResStage`, `WbStage`
     val isExceptionValidVec = Input(Vec(3, Bool()))
     // -> `MemReqStage`
     val isAfterMemReqFlush = Output(Bool())
+
+    // <- `Rob`
+    // val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
@@ -92,7 +99,9 @@ class Cu(
   // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
     case (dst, src) =>
-      dst := src.csrWritePort
+      dst.en   := src.csrWritePort.en && src.isValid
+      dst.addr := src.csrWritePort.addr
+      dst.data := src.csrWritePort.data
   }
 
   /** csr write by exception
@@ -103,7 +112,7 @@ class Cu(
   // 使用时仍需判断是否有exception
   val selectLineNum   = PriorityEncoder(linesHasException)
   val selectInstInfo  = WireDefault(io.instInfoPorts(selectLineNum))
-  val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
+  val selectException = WireDefault(selectInstInfo.exceptionRecord)
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
   val isTlbRefillException = selectException === Csr.ExceptionIndex.tlbr
 
@@ -207,9 +216,13 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  io.exceptionFlush       := RegNext(exceptionFlush, false.B)
-  io.branchFlush          := RegNext(io.jumpPc.en)
+  // io.exceptionFlush := RegNext(exceptionFlush, false.B)
+  // val branchSetEnable = WireDefault(io.jumpPc.en && io.robInstValids(io.jumpPc.robId))
+  // io.branchFlushInfo.en    := RegNext(branchSetEnable)
+  // io.branchFlushInfo.robId := RegNext(io.jumpPc.robId)
   io.csrMessage.ertnFlush := ertnFlush
+  io.frontendFlush        := RegNext(exceptionFlush || io.branchExe.en, false.B)
+  io.backendFlush         := RegNext(exceptionFlush || io.branchCommit, false.B)
 
   // select new pc
   when(exceptionFlush) {
@@ -220,8 +233,8 @@ class Cu(
     }.otherwise {
       io.newPc.pcAddr := io.csrValues.eentry.asUInt
     }
-  }.elsewhen(io.jumpPc.en) {
-    io.newPc := io.jumpPc
+  }.elsewhen(io.branchExe.en) {
+    io.newPc := io.branchExe
   }
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&
