@@ -118,15 +118,19 @@ object Csr {
 
   object TimeVal {
     object Width {
-      // 待修改
       val timeVal = 32
     }
   }
 
   object Tlbidx {
     object Width {
-      // Attention: 这与TLB实现有关，待修改
-      val index = 12
+      val index = log2Ceil(Param.Count.Tlb.num)
+    }
+  }
+
+  object Tlbelo {
+    object Width {
+      val palen = spec.Width.Mem._addr
     }
   }
 
