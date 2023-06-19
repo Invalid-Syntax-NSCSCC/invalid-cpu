@@ -5,7 +5,7 @@ import chisel3.experimental.BundleLiterals._
 import spec._
 
 class TlbeloBundle extends Bundle {
-  val ppn  = UInt(24.W)
+  val ppn  = UInt((spec.Csr.Tlbelo.Width.palen - 12).W)
   val zero = Bool()
   val g    = Bool()
   val mat  = UInt(2.W)
