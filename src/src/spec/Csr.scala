@@ -130,6 +130,12 @@ object Csr {
     }
   }
 
+  object Tlbelo {
+    object Width {
+      val palen = 36
+    }
+  }
+
   object ExceptionIndex {
     var count = -1
 

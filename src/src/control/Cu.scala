@@ -9,12 +9,7 @@ import spec.{Csr, ExeInst, Param, PipelineStageIndex}
 import spec.Param.isDiffTest
 import control.bundles.BranchFlushInfo
 
-// TODO: Add stall to frontend ?
-// TODO: Add deal exceptions
 // TODO: 出错虚地址badv的赋值
-// TODO: 处理break和syscall指令
-// 优先解决多发射中index小的流水线
-// Attention: ll与sc指令只能从第0条流水线发射（按满洋的设计）
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
