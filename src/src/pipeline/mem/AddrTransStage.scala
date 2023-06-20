@@ -10,11 +10,12 @@ import memory.enums.TlbMemType
 import pipeline.common.BaseStage
 import pipeline.mem.bundles.{MemCsrNdPort, MemRequestNdPort}
 import pipeline.mem.enums.AddrTransType
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec.Value.Csr
 import spec.Width
 
 import scala.collection.immutable
+import control.enums.ExceptionPos
 
 class AddrTransNdPort extends Bundle {
   val memRequest = new MemRequestNdPort
@@ -107,14 +108,11 @@ class AddrTransStage
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
       val exceptionIndex = peer.tlbTrans.exception.bits
-      // out.instInfo.exceptionRecords(exceptionIndex) :=
-      //   selectedIn.instInfo.exceptionRecords(exceptionIndex) || peer.tlbTrans.exception.valid
-      // out.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || peer.tlbTrans.exception.valid
-      out.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid
-      when(!selectedIn.instInfo.isExceptionValid) {
+      out.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
+      when(selectedIn.instInfo.exceptionPos =/= ExceptionPos.none) {
         when(peer.tlbTrans.exception.valid) {
-          out.instInfo.isExceptionValid := true.B
-          out.instInfo.exceptionRecord  := exceptionIndex
+          out.instInfo.exceptionPos    := ExceptionPos.backend
+          out.instInfo.exceptionRecord := exceptionIndex
         }
       }
     }

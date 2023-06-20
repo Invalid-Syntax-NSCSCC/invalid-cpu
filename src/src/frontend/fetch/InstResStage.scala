@@ -8,7 +8,7 @@ import memory.bundles.TlbTransPort
 import memory.enums.TlbMemType
 import pipeline.mem.bundles.MemCsrNdPort
 import pipeline.mem.enums.AddrTransType
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec.Value.Csr
 import spec.Width
 import memory.bundles.MemResponseNdPort

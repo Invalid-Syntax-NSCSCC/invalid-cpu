@@ -10,7 +10,7 @@ import pipeline.common.BaseStage
 import pipeline.mem.bundles.MemCsrNdPort
 import pipeline.mem.enums.AddrTransType
 import pipeline.mem.AddrTransPeerPort
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec.Value.Csr
 import spec.Width
 
