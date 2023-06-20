@@ -59,7 +59,7 @@ class ExeForMemStage
   // 指令未对齐
   val isAle = WireDefault(false.B)
   resultOutReg.bits.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
-  when(selectedIn.instInfo.exceptionPos =/= ExceptionPos.none) {
+  when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
     when(isAle) {
       resultOutReg.bits.instInfo.exceptionPos    := ExceptionPos.backend
       resultOutReg.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ale

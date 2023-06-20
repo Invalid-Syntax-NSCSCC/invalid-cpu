@@ -132,7 +132,7 @@ class ExePassWbStage
   val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
 
   resultOutReg.bits.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
-  when(selectedIn.instInfo.exceptionPos =/= ExceptionPos.none) {
+  when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
     when(isSyscall) {
       resultOutReg.bits.instInfo.exceptionPos    := ExceptionPos.backend
       resultOutReg.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.sys
