@@ -10,7 +10,7 @@ import spec.Param.isDiffTest
 import control.bundles.BranchFlushInfo
 import control.enums.ExceptionPos
 
-// TODO: 出错虚地址badv的赋值
+// Note. Exception只从第0个提交
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
@@ -68,10 +68,11 @@ class Cu(
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := PcSetPort.default
 
-  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
-    (instInfo.exceptionPos =/= ExceptionPos.none) && instInfo.isValid
-  }))
-  val hasException = WireDefault(linesHasException.reduce(_ || _))
+  // val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
+  //   (instInfo.exceptionPos =/= ExceptionPos.none) && instInfo.isValid
+  // }))
+  // val hasException = WireDefault(linesHasException.reduce(_ || _))
+  val hasException = WireDefault(io.instInfoPorts(0).exceptionPos =/= ExceptionPos.none)
 
   /** stable counter
     */
@@ -80,9 +81,12 @@ class Cu(
   /** Write Regfile
     */
   // temp
-  io.gprWritePassThroughPorts.out(0) := io.gprWritePassThroughPorts.in(0)
+  io.gprWritePassThroughPorts.out.zip(io.gprWritePassThroughPorts.in).foreach {
+    case (dst, src) =>
+      dst := src
+  }
   when(hasException) {
-    io.gprWritePassThroughPorts.out(0) := RfWriteNdPort.default
+    io.gprWritePassThroughPorts.out.foreach(_ := RfWriteNdPort.default)
   }.elsewhen(io.stableCounterReadPort.isMatch) {
     io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
   }
@@ -106,8 +110,9 @@ class Cu(
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  val selectLineNum      = PriorityEncoder(linesHasException)
-  val selectInstInfo     = WireDefault(io.instInfoPorts(selectLineNum))
+  // val selectLineNum      = PriorityEncoder(linesHasException)
+  // val selectInstInfo     = WireDefault(io.instInfoPorts(selectLineNum))
+  val selectInstInfo     = WireDefault(io.instInfoPorts(0))
   val selectException    = WireDefault(selectInstInfo.exceptionRecord)
   val selectExceptionPos = WireDefault(selectInstInfo.exceptionPos)
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定

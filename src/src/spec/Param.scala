@@ -17,7 +17,7 @@ object Param {
   val ctrlControlNum         = PipelineStageIndex.count + 1
   val fetchInstMaxNum        = 2 // 单次取指
   val issueInstInfoMaxNum    = 2 // 发射数量
-  val commitNum              = 1 // 单次提交数量
+  val commitNum              = 2 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
   val reservationStationDeep = 3 // 保留站深度
   val csrRegsReadNum         = 1

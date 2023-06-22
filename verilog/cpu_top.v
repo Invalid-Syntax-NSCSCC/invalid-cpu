@@ -67,7 +67,8 @@ module core_top (
 
 `ifdef DIFFTEST_EN
     // Wires
-    wire             cmt_valid           ;
+    wire             cmt_valid_0         ;
+    wire             cmt_valid_1         ;
     wire             cmt_cnt_inst        ;
     wire     [63:0]  cmt_timer_64        ;
     wire     [ 7:0]  cmt_inst_ld_en      ;
@@ -80,11 +81,17 @@ module core_top (
     wire             cmt_csr_rstat_en    ;
     wire     [31:0]  cmt_csr_data        ;
 
-    wire             cmt_wen             ;
-    wire     [ 7:0]  cmt_wdest           ;
-    wire     [31:0]  cmt_wdata           ;
-    wire     [31:0]  cmt_pc              ;
-    wire     [31:0]  cmt_inst            ;
+    wire             cmt_wen_0           ;
+    wire     [ 7:0]  cmt_wdest_0         ;
+    wire     [31:0]  cmt_wdata_0         ;
+    wire     [31:0]  cmt_pc_0            ;
+    wire     [31:0]  cmt_inst_0          ;
+
+    wire             cmt_wen_1           ;
+    wire     [ 7:0]  cmt_wdest_1         ;
+    wire     [31:0]  cmt_wdata_1         ;
+    wire     [31:0]  cmt_pc_1            ;
+    wire     [31:0]  cmt_inst_1          ;
 
     wire             cmt_excp_flush      ;
     wire             cmt_ertn            ;
@@ -171,7 +178,8 @@ module core_top (
         .io_debug0_wb_rf_wnum(debug0_wb_rf_wnum),
         .io_debug0_wb_rf_wdata(debug0_wb_rf_wdata),
         .io_debug0_wb_inst(debug0_wb_inst),
-        .io_diffTest_cmt_valid(cmt_valid),
+        .io_diffTest_cmt_valid_0(cmt_valid_0),
+        .io_diffTest_cmt_valid_1(cmt_valid_1),
         .io_diffTest_cmt_cnt_inst(cmt_cnt_inst),
         .io_diffTest_cmt_timer_64(cmt_timer_64),
         .io_diffTest_cmt_inst_ld_en(cmt_inst_ld_en),
@@ -183,11 +191,16 @@ module core_top (
         .io_diffTest_cmt_st_data(cmt_st_data),
         .io_diffTest_cmt_csr_rstat_en(cmt_csr_rstat_en),
         .io_diffTest_cmt_csr_data(cmt_csr_data),
-        .io_diffTest_cmt_wen(cmt_wen),
-        .io_diffTest_cmt_wdest(cmt_wdest),
-        .io_diffTest_cmt_wdata(cmt_wdata),
-        .io_diffTest_cmt_pc(cmt_pc),
-        .io_diffTest_cmt_inst(cmt_inst),
+        .io_diffTest_cmt_wen_0(cmt_wen),
+        .io_diffTest_cmt_wdest_0(cmt_wdest),
+        .io_diffTest_cmt_wdata_0(cmt_wdata),
+        .io_diffTest_cmt_pc_0(cmt_pc),
+        .io_diffTest_cmt_inst_0(cmt_inst),
+        .io_diffTest_cmt_wen_1(cmt_wen),
+        .io_diffTest_cmt_wdest_1(cmt_wdest),
+        .io_diffTest_cmt_wdata_1(cmt_wdata),
+        .io_diffTest_cmt_pc_1(cmt_pc),
+        .io_diffTest_cmt_inst_1(cmt_inst),
         .io_diffTest_cmt_excp_flush(cmt_excp_flush),
         .io_diffTest_cmt_ertn(cmt_ertn),
         .io_diffTest_cmt_csr_ecode(cmt_csr_ecode),
@@ -257,22 +270,41 @@ module core_top (
     );
 
 `ifdef DIFFTEST_EN
-    DifftestInstrCommit DifftestInstrCommit(
+    DifftestInstrCommit DifftestInstrCommit_0(
         .clock              (aclk           ),
         .coreid             (0              ),
         .index              (0              ),
-        .valid              (cmt_valid      ),
-        .pc                 (cmt_pc         ),
-        .instr              (cmt_inst       ),
+        .valid              (cmt_valid_0    ),
+        .pc                 (cmt_pc_0       ),
+        .instr              (cmt_inst_0     ),
         .skip               (0              ),
         .is_TLBFILL         (cmt_tlbfill_en ),
         .TLBFILL_index      (cmt_rand_index ),
         .is_CNTinst         (cmt_cnt_inst   ),
         .timer_64_value     (cmt_timer_64   ),
-        .wen                (cmt_wen        ),
-        .wdest              (cmt_wdest      ),
-        .wdata              (cmt_wdata      ),
+        .wen                (cmt_wen_0      ),
+        .wdest              (cmt_wdest_0    ),
+        .wdata              (cmt_wdata_0    ),
         .csr_rstat          (cmt_csr_rstat_en),
+        .csr_data           (cmt_csr_data   )
+    );
+
+    DifftestInstrCommit DifftestInstrCommit_1(
+        .clock              (aclk           ),
+        .coreid             (0              ),
+        .index              (1              ),
+        .valid              (cmt_valid_1    ),
+        .pc                 (cmt_pc_1       ),
+        .instr              (cmt_inst_1     ),
+        .skip               (0              ),
+        .is_TLBFILL         (0              ),
+        .TLBFILL_index      (0              ),
+        .is_CNTinst         (0              ),
+        .timer_64_value     (cmt_timer_64   ),
+        .wen                (cmt_wen_1      ),
+        .wdest              (cmt_wdest_1    ),
+        .wdata              (cmt_wdata_1    ),
+        .csr_rstat          (0              ),
         .csr_data           (cmt_csr_data   )
     );
 
