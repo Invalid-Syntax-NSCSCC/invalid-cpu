@@ -10,7 +10,7 @@ import utils._
 import spec._
 import utils.BiCounter
 import pipeline.dataforward.bundles.ReadPortWithValid
-import pipeline.writeback.WbNdPort
+import pipeline.commit.WbNdPort
 import pipeline.common.MultiQueue
 import pipeline.rob.bundles.RobReadRequestNdPort
 import pipeline.rob.bundles.RobReadResultNdPort
@@ -24,6 +24,7 @@ import control.bundles.BranchFlushInfo
 import chisel3.experimental.BundleLiterals._
 import chisel3.internal.firrtl.DefReg
 import pipeline.rob.bundles.InstWbNdPort
+import control.enums.ExceptionPos
 
 // assert: commits cannot ready 1 but not 0
 class Rob(
@@ -150,7 +151,7 @@ class Rob(
             !deqPort.bits.wbPort.instInfo.store.en.orR &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
-            !io.commits(idx - 1).bits.instInfo.isExceptionValid
+            (io.commits(idx - 1).bits.instInfo.exceptionPos =/= ExceptionPos.none)
 
         }
 
@@ -174,16 +175,16 @@ class Rob(
   when(io.hasInterrupt) {
     when(io.commits(0).valid && io.commits(0).ready) {
       // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-      io.commits(0).bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.int
-      io.commits(0).bits.instInfo.isExceptionValid := true.B
+      io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
+      io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
     }.otherwise {
       hasInterruptReg := true.B
     }
   }.elsewhen(hasInterruptReg && io.commits(0).valid && io.commits(0).ready) {
     hasInterruptReg := false.B
     // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
-    io.commits(0).bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.int
-    io.commits(0).bits.instInfo.isExceptionValid := true.B
+    io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
+    io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
   }
 
   /** Distribute for issue stage

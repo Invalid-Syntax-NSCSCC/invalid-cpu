@@ -11,7 +11,7 @@ import pipeline.dispatch.Scoreboard
 import pipeline.dispatch.CsrScoreboard
 import pipeline.execution.ExeForMemStage
 import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
-import pipeline.writeback.CommitStage
+import pipeline.commit.CommitStage
 import spec.Param.isDiffTest
 import spec.{Count, Param, PipelineStageIndex}
 import spec.zeroWord
@@ -26,7 +26,7 @@ import spec.Param.csrIssuePipelineIndex
 import pipeline.dispatch.IssueStage
 import pipeline.execution.ExePassWbStage
 import pipeline.rob.Rob
-import pipeline.writeback.WbNdPort
+import pipeline.commit.WbNdPort
 import pipeline.rob.bundles.InstWbNdPort
 import chisel3.util.DecoupledIO
 import spec.ExeInst

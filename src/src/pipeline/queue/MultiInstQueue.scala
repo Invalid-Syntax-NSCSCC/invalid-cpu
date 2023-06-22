@@ -6,11 +6,12 @@ import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode.{Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_2RI16, Decoder_3R, Decoder_special}
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec._
 import utils.BiCounter
 import utils.MultiCounter
 import pipeline.common.MultiQueue
+import control.enums.ExceptionPos
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
@@ -105,13 +106,13 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
       dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
 
-      dequeuePort.bits.instInfo.isExceptionValid := decodeInstInfo.exceptionValid
-      dequeuePort.bits.instInfo.exceptionRecord  := decodeInstInfo.exception
-      when(!decodeInstInfo.exceptionValid) {
-        when(!isMatched) {
-          dequeuePort.bits.instInfo.isExceptionValid := true.B
-          dequeuePort.bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.ine
-        }
+      dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
+      dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
+      when(decodeInstInfo.exceptionValid) {
+        dequeuePort.bits.instInfo.exceptionPos := ExceptionPos.frontend
+      }.elsewhen(!isMatched) {
+        dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
+        dequeuePort.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ine
       }
   }
 }

@@ -1,15 +1,16 @@
-package pipeline.writeback
+package pipeline.commit
 
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.mem.MemResNdPort
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec._
 import chisel3.experimental.BundleLiterals._
 import control.bundles.CsrValuePort
+import control.enums.ExceptionPos
 
 class WbNdPort extends Bundle {
   val gprWrite = new RfWriteNdPort
@@ -70,7 +71,9 @@ class CommitStage(
   val inBits = WireDefault(VecInit(io.ins.map(_.bits)))
 
   // Whether current instruction causes exception
-  io.isExceptionValid := inBits.map { inBit => inBit.instInfo.isValid && inBit.instInfo.isExceptionValid }
+  io.isExceptionValid := inBits.map { inBit =>
+    inBit.instInfo.isValid && (inBit.instInfo.exceptionPos =/= ExceptionPos.none)
+  }
     .reduce(_ || _) // inBits.instInfo.isValid && inBits.instInfo.isExceptionValid
 
   // Output connection

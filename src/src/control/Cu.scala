@@ -4,10 +4,11 @@ import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec.{Csr, ExeInst, Param, PipelineStageIndex}
 import spec.Param.isDiffTest
 import control.bundles.BranchFlushInfo
+import control.enums.ExceptionPos
 
 // TODO: 出错虚地址badv的赋值
 class Cu(
@@ -68,7 +69,7 @@ class Cu(
   io.newPc      := PcSetPort.default
 
   val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
-    instInfo.isExceptionValid && instInfo.isValid
+    (instInfo.exceptionPos =/= ExceptionPos.none) && instInfo.isValid
   }))
   val hasException = WireDefault(linesHasException.reduce(_ || _))
 
@@ -105,9 +106,10 @@ class Cu(
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  val selectLineNum   = PriorityEncoder(linesHasException)
-  val selectInstInfo  = WireDefault(io.instInfoPorts(selectLineNum))
-  val selectException = WireDefault(selectInstInfo.exceptionRecord)
+  val selectLineNum      = PriorityEncoder(linesHasException)
+  val selectInstInfo     = WireDefault(io.instInfoPorts(selectLineNum))
+  val selectException    = WireDefault(selectInstInfo.exceptionRecord)
+  val selectExceptionPos = WireDefault(selectInstInfo.exceptionPos)
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
   val isTlbRefillException = selectException === Csr.ExceptionIndex.tlbr
 
@@ -187,8 +189,12 @@ class Cu(
         Csr.ExceptionIndex.ppi
       ).contains(selectException)
     ) {
-      io.csrMessage.badVAddrSet.en   := true.B
-      io.csrMessage.badVAddrSet.addr := selectInstInfo.load.vaddr
+      io.csrMessage.badVAddrSet.en := true.B
+      io.csrMessage.badVAddrSet.addr := Mux(
+        selectExceptionPos === ExceptionPos.backend,
+        selectInstInfo.load.vaddr,
+        selectInstInfo.pc
+      )
     }
   }
 

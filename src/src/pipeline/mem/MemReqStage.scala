@@ -6,7 +6,7 @@ import common.enums.ReadWriteSel
 import memory.bundles.MemRequestHandshakePort
 import pipeline.common.BaseStage
 import pipeline.mem.bundles.{MemRequestNdPort, StoreInfoBundle}
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec._
 
 class MemReqNdPort extends Bundle {

@@ -10,7 +10,7 @@ import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals._
 import spec.Param.{ExeStageState => State}
 import pipeline.execution.Alu
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
@@ -23,7 +23,8 @@ import pipeline.mem.AddrTransNdPort
 
 import scala.collection.immutable
 import control.csrRegsBundles.EraBundle
-import pipeline.writeback.WbNdPort
+import pipeline.commit.WbNdPort
+import control.enums.ExceptionPos
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -129,18 +130,15 @@ class ExePassWbStage
 
   val isSyscall = selectedIn.exeOp === ExeInst.Op.syscall
   val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
-  // resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.ale) := isAle
-  // resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.sys) := isSyscall
-  // resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.brk) := isBreak
-  // resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid || isAle || isSyscall || isBreak
-  resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid
-  when(!selectedIn.instInfo.isExceptionValid) {
+
+  resultOutReg.bits.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
+  when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
     when(isSyscall) {
-      resultOutReg.bits.instInfo.isExceptionValid := true.B
-      resultOutReg.bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.sys
+      resultOutReg.bits.instInfo.exceptionPos    := ExceptionPos.backend
+      resultOutReg.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.sys
     }.elsewhen(isBreak) {
-      resultOutReg.bits.instInfo.isExceptionValid := true.B
-      resultOutReg.bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.brk
+      resultOutReg.bits.instInfo.exceptionPos    := ExceptionPos.backend
+      resultOutReg.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.brk
     }
   }
 

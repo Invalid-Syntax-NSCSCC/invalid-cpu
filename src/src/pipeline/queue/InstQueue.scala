@@ -6,7 +6,7 @@ import control.bundles.PipelineControlNdPort
 import pipeline.dispatch.bundles.InstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode.{Decoder_2RI12, Decoder_2RI14, Decoder_2RI16, Decoder_3R, Decoder_special}
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec._
 
 class InstQueue(val queueLength: Int = Param.instQueueLength) extends Module {

@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import spec._
 import pipeline.dispatch.enums.{IssueStageState => State}
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import Csr.ExceptionIndex
 import common.bundles.PassThroughPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort

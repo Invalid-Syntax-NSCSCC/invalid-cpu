@@ -5,7 +5,7 @@ import chisel3.util._
 import spec._
 import chisel3.experimental.BundleLiterals._
 import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.enums.ScoreboardState

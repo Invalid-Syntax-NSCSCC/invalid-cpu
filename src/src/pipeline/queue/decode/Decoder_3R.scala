@@ -171,6 +171,7 @@ class Decoder_3R extends Decoder {
     is(Inst.break_) {
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.break_
+      outInfo.needCsr              := true.B
       outInfo.gprReadPorts(0).en   := false.B
       outInfo.gprReadPorts(0).addr := DontCare
       outInfo.gprReadPorts(1).en   := false.B
@@ -181,6 +182,7 @@ class Decoder_3R extends Decoder {
     is(Inst.syscall) {
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.syscall
+      outInfo.needCsr              := true.B
       outInfo.gprReadPorts(0).en   := false.B
       outInfo.gprReadPorts(0).addr := DontCare
       outInfo.gprReadPorts(1).en   := false.B

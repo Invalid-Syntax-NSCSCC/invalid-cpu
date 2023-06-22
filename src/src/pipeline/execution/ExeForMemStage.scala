@@ -10,7 +10,7 @@ import chisel3.experimental.VecLiterals._
 import chisel3.experimental.BundleLiterals._
 import spec.Param.{ExeStageState => State}
 import pipeline.execution.Alu
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.execution.bundles.JumpBranchInfoNdPort
 import common.bundles.PcSetPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
@@ -23,6 +23,7 @@ import pipeline.mem.AddrTransNdPort
 
 import scala.collection.immutable
 import control.csrRegsBundles.EraBundle
+import control.enums.ExceptionPos
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
@@ -57,11 +58,11 @@ class ExeForMemStage
 
   // 指令未对齐
   val isAle = WireDefault(false.B)
-  resultOutReg.bits.instInfo.isExceptionValid := selectedIn.instInfo.isExceptionValid
-  when(!selectedIn.instInfo.isExceptionValid) {
+  resultOutReg.bits.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
+  when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
     when(isAle) {
-      resultOutReg.bits.instInfo.isExceptionValid := true.B
-      resultOutReg.bits.instInfo.exceptionRecord  := Csr.ExceptionIndex.ale
+      resultOutReg.bits.instInfo.exceptionPos    := ExceptionPos.backend
+      resultOutReg.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ale
     }
   }
 
