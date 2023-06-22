@@ -152,7 +152,8 @@ class Rob(
             !deqPort.bits.wbPort.instInfo.load.en.orR &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
-            (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none)
+            (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none) &&
+            !io.commits(idx - 1).bits.instInfo.branchSetPort.en
 
         }
 
