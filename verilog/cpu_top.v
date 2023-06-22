@@ -271,22 +271,22 @@ module core_top (
 
 `ifdef DIFFTEST_EN
     DifftestInstrCommit DifftestInstrCommit_0(
-        .clock              (aclk           ),
-        .coreid             (0              ),
-        .index              (0              ),
-        .valid              (cmt_valid_0    ),
-        .pc                 (cmt_pc_0       ),
-        .instr              (cmt_inst_0     ),
-        .skip               (0              ),
-        .is_TLBFILL         (cmt_tlbfill_en ),
-        .TLBFILL_index      (cmt_rand_index ),
-        .is_CNTinst         (cmt_cnt_inst   ),
-        .timer_64_value     (cmt_timer_64   ),
-        .wen                (cmt_wen_0      ),
-        .wdest              (cmt_wdest_0    ),
-        .wdata              (cmt_wdata_0    ),
+        .clock              (aclk            ),
+        .coreid             (0               ),
+        .index              (0               ),
+        .valid              (cmt_valid_0     ),
+        .pc                 (cmt_pc_0        ),
+        .instr              (cmt_inst_0      ),
+        .skip               (0               ),
+        .is_TLBFILL         (cmt_tlbfill_en  ),
+        .TLBFILL_index      (cmt_rand_index  ),
+        .is_CNTinst         (cmt_cnt_inst    ),
+        .timer_64_value     (cmt_timer_64    ),
+        .wen                (cmt_wen_0       ),
+        .wdest              (cmt_wdest_0     ),
+        .wdata              (cmt_wdata_0     ),
         .csr_rstat          (cmt_csr_rstat_en),
-        .csr_data           (cmt_csr_data   )
+        .csr_data           (cmt_csr_data    )
     );
 
     DifftestInstrCommit DifftestInstrCommit_1(
@@ -309,14 +309,14 @@ module core_top (
     );
 
     DifftestExcpEvent DifftestExcpEvent(
-        .clock              (aclk           ),
-        .coreid             (0              ),
-        .excp_valid         (cmt_excp_flush ),
-        .eret               (cmt_ertn       ),
+        .clock              (aclk                  ),
+        .coreid             (0                     ),
+        .excp_valid         (cmt_excp_flush        ),
+        .eret               (cmt_ertn              ),
         .intrNo             (csr_estat_diff_0[12:2]),
-        .cause              (cmt_csr_ecode  ),
-        .exceptionPC        (cmt_pc_0         ),
-        .exceptionInst      (cmt_inst_0       )
+        .cause              (cmt_csr_ecode         ),
+        .exceptionPC        (cmt_pc_0              ),
+        .exceptionInst      (cmt_inst_0            )
     );
 /*
     DifftestTrapEvent DifftestTrapEvent(
@@ -324,7 +324,7 @@ module core_top (
         .coreid             (0              ),
         .valid              (trap           ),
         .code               (trap_code      ),
-        .pc                 (cmt_pc_0         ),
+        .pc                 (cmt_pc_0       ),
         .cycleCnt           (cycleCnt       ),
         .instrCnt           (instrCnt       )
     );
