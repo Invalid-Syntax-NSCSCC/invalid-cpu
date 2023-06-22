@@ -13,41 +13,42 @@ import utils.MultiCounter
 import pipeline.common.MultiQueue
 import control.enums.ExceptionPos
 import pipeline.dispatch.FetchInstDecodeNdPort
+import pipeline.common.MultiBaseStageWOSaveIn
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
   val queueLength: Int = Param.instQueueLength,
   val fetchNum:    Int = Param.fetchInstMaxNum,
   val issueNum:    Int = Param.issueInstInfoMaxNum)
-    extends Module {
-  val io = IO(new Bundle {
-    // val isFlush     = Input(Bool())
-    val isFlush      = Input(Bool())
-    val enqueuePorts = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
-
-    // `InstQueue` -> `IssueStage`
-    val dequeuePorts = Vec(
-      issueNum,
-      Decoupled(new FetchInstDecodeNdPort)
-    )
-  })
+    extends MultiBaseStageWOSaveIn(
+      new InstInfoBundle,
+      new FetchInstDecodeNdPort,
+      InstInfoBundle.default,
+      None,
+      fetchNum,
+      issueNum
+    ) {
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
 
   val instQueue = Module(new MultiQueue(queueLength, fetchNum, issueNum, new InstInfoBundle, InstInfoBundle.default))
 
   // fall back
-  instQueue.io.enqueuePorts <> io.enqueuePorts
-  instQueue.io.isFlush      := io.isFlush
+  instQueue.io.enqueuePorts.zip(io.ins).foreach {
+    case (dst, src) =>
+      dst <> src
+  }
+  instQueue.io.isFlush := io.isFlush
   instQueue.io.setPorts.zip(instQueue.io.elems).foreach {
     case (dst, src) =>
       dst.valid := false.B
       dst.bits  := src
   }
-  instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
-    case (q, out) =>
-      q.ready   := out.ready
-      out.valid := q.valid
+
+  instQueue.io.dequeuePorts.lazyZip(validToOuts).lazyZip(resultOutsReg).foreach {
+    case (deqPort, validToOut, out) =>
+      out.valid     := deqPort.valid
+      deqPort.ready := validToOut
   }
 
   // Decode
@@ -89,7 +90,7 @@ class MultiInstQueue(
       decoderWire(decoderIndex)
   }))
 
-  io.dequeuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
+  resultOutsReg.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
     case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
       dequeuePort.bits.decode        := selectedDecoder
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
