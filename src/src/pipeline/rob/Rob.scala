@@ -149,6 +149,7 @@ class Rob(
           deqPort.ready := commit.ready &&
             deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
             !deqPort.bits.wbPort.instInfo.store.en.orR &&
+            !deqPort.bits.wbPort.instInfo.load.en.orR &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
             (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none)
