@@ -316,7 +316,7 @@ module core_top (
         .intrNo             (csr_estat_diff_0[12:2]),
         .cause              (cmt_csr_ecode  ),
         .exceptionPC        (cmt_pc_0         ),
-        .exceptionInst      (cmt_inst       )
+        .exceptionInst      (cmt_inst_0       )
     );
 /*
     DifftestTrapEvent DifftestTrapEvent(
