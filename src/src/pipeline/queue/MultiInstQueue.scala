@@ -12,6 +12,7 @@ import utils.BiCounter
 import utils.MultiCounter
 import pipeline.common.MultiQueue
 import control.enums.ExceptionPos
+import pipeline.dispatch.FetchInstDecodeNdPort
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
@@ -27,10 +28,7 @@ class MultiInstQueue(
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
       issueNum,
-      Decoupled(new Bundle {
-        val decode   = new DecodeOutNdPort
-        val instInfo = new InstInfoNdPort
-      })
+      Decoupled(new FetchInstDecodeNdPort)
     )
   })
   require(queueLength > fetchNum)
