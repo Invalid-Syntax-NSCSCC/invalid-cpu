@@ -25,6 +25,7 @@ import scala.collection.immutable
 import control.csrRegsBundles.EraBundle
 import pipeline.commit.WbNdPort
 import control.enums.ExceptionPos
+import scalaz.std.boolean
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -57,10 +58,10 @@ object ExeNdPort {
   )
 }
 
-class ExePeerPort extends Bundle {
+class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
-  val branchSetPort           = Output(new PcSetPort)
-  val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
+  val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetPort)) else None
+  val csrScoreboardChangePort = if (supportBranchCsr) Some(Output(new ScoreboardChangeNdPort)) else None
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
     val era    = new EraBundle
@@ -68,12 +69,12 @@ class ExePeerPort extends Bundle {
 }
 
 // throw exception: 地址未对齐 ale
-class ExePassWbStage
+class ExePassWbStage(supportBranchCsr: Boolean = true)
     extends BaseStage(
       new ExeNdPort,
       new WbNdPort,
       ExeNdPort.default,
-      Some(new ExePeerPort)
+      Some(new ExePeerPort(supportBranchCsr))
     ) {
 
   // ALU module
@@ -199,34 +200,43 @@ class ExePassWbStage
   //   )
   // )
 
-  val branchEnableFlag = RegInit(true.B)
+  resultOutReg.bits.instInfo.branchSetPort := PcSetPort.default
 
-  // branch set
-  io.peer.get.branchSetPort    := PcSetPort.default
-  io.peer.get.branchSetPort.en := alu.io.result.jumpBranchInfo.en && branchEnableFlag
-  when(alu.io.result.jumpBranchInfo.en) {
-    branchEnableFlag := false.B
-  }
-  io.peer.get.branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
-  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
-  io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
+  if (supportBranchCsr) {
 
-  val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
-  val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
-  when(isIdle) {
-    io.peer.get.branchSetPort.isIdle := true.B
-    io.peer.get.branchSetPort.en     := branchEnableFlag
-    io.peer.get.branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
-    branchEnableFlag                 := false.B
-  }.elsewhen(isErtn) {
-    io.peer.get.branchSetPort.en     := branchEnableFlag
-    io.peer.get.branchSetPort.pcAddr := io.peer.get.csr.era.pc
-    branchEnableFlag                 := false.B
-  }
+    val branchEnableFlag = RegInit(true.B)
 
-  resultOutReg.bits.instInfo.branchSetPort := io.peer.get.branchSetPort
+    val branchSetPort           = io.peer.get.branchSetPort.get
+    val csrScoreboardChangePort = io.peer.get.csrScoreboardChangePort.get
 
-  when(io.isFlush) {
-    branchEnableFlag := true.B
+    // branch set
+    branchSetPort    := PcSetPort.default
+    branchSetPort.en := alu.io.result.jumpBranchInfo.en && branchEnableFlag
+    when(alu.io.result.jumpBranchInfo.en) {
+      branchEnableFlag := false.B
+    }
+    branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
+    csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
+    csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
+
+    val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
+    val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
+    when(isIdle) {
+      branchSetPort.isIdle := true.B
+      branchSetPort.en     := branchEnableFlag
+      branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
+      branchEnableFlag     := false.B
+    }.elsewhen(isErtn) {
+      branchSetPort.en     := branchEnableFlag
+      branchSetPort.pcAddr := io.peer.get.csr.era.pc
+      branchEnableFlag     := false.B
+    }
+
+    resultOutReg.bits.instInfo.branchSetPort := branchSetPort
+
+    when(io.isFlush) {
+      branchEnableFlag := true.B
+    }
+
   }
 }
