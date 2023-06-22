@@ -154,6 +154,7 @@ class Rob(
             !deqPort.bits.wbPort.instInfo.store.en.orR &&
             !deqPort.bits.wbPort.instInfo.load.en.orR &&
             !deqPort.bits.wbPort.instInfo.needCsr &&
+            (deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none) &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
             (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none) &&
