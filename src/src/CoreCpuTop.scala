@@ -50,7 +50,8 @@ class CoreCpuTop extends Module {
     val diffTest =
       if (isDiffTest)
         Some(Output(new Bundle {
-          val cmt_valid        = Bool()
+          val cmt_valid_0      = Bool()
+          val cmt_valid_1      = Bool()
           val cmt_cnt_inst     = Bool()
           val cmt_timer_64     = UInt(64.W)
           val cmt_inst_ld_en   = UInt(8.W)
@@ -63,11 +64,17 @@ class CoreCpuTop extends Module {
           val cmt_csr_rstat_en = Bool()
           val cmt_csr_data     = UInt(32.W)
 
-          val cmt_wen   = Bool()
-          val cmt_wdest = UInt(8.W)
-          val cmt_wdata = UInt(32.W)
-          val cmt_pc    = UInt(32.W)
-          val cmt_inst  = UInt(32.W)
+          val cmt_wen_0   = Bool()
+          val cmt_wdest_0 = UInt(8.W)
+          val cmt_wdata_0 = UInt(32.W)
+          val cmt_pc_0    = UInt(32.W)
+          val cmt_inst_0  = UInt(32.W)
+
+          val cmt_wen_1   = Bool()
+          val cmt_wdest_1 = UInt(8.W)
+          val cmt_wdata_1 = UInt(32.W)
+          val cmt_pc_1    = UInt(32.W)
+          val cmt_inst_1  = UInt(32.W)
 
           val cmt_excp_flush = Bool()
           val cmt_ertn       = Bool()
@@ -354,14 +361,14 @@ class CoreCpuTop extends Module {
   // TODO: Some ports
   (io.diffTest, commitStage.io.difftest) match {
     case (Some(t), Some(w)) =>
-      t.cmt_valid        := w.valid && !t.cmt_excp_flush
-      t.cmt_pc           := w.pc
-      t.cmt_inst         := w.instr
+      t.cmt_valid_0      := w.valid && !t.cmt_excp_flush
+      t.cmt_pc_0         := w.pc
+      t.cmt_inst_0       := w.instr
       t.cmt_tlbfill_en   := w.is_TLBFILL
       t.cmt_rand_index   := w.TLBFILL_index
-      t.cmt_wen          := w.wen
-      t.cmt_wdest        := w.wdest
-      t.cmt_wdata        := w.wdata
+      t.cmt_wen_0        := w.wen
+      t.cmt_wdest_0      := w.wdest
+      t.cmt_wdata_0      := w.wdata
       t.cmt_csr_rstat_en := w.csr_rstat
       t.cmt_inst_ld_en   := w.ld_en
       t.cmt_ld_vaddr     := w.ld_vaddr
@@ -370,6 +377,13 @@ class CoreCpuTop extends Module {
       t.cmt_st_vaddr     := w.st_vaddr
       t.cmt_st_paddr     := w.st_paddr
       t.cmt_st_data      := w.st_data
+
+      t.cmt_valid_1 := w.valid_1
+      t.cmt_pc_1    := w.pc_1
+      t.cmt_inst_1  := w.instr_1
+      t.cmt_wen_1   := w.wen_1
+      t.cmt_wdest_1 := w.wdest_1
+      t.cmt_wdata_1 := w.wdata_1
     case _ =>
   }
   (io.diffTest, cu.io.difftest) match {

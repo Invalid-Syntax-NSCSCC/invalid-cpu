@@ -27,3 +27,9 @@ Reset or make invalid every regs in current stage.
 # 中断
 
 从write back中随机挑选一条幸运指令加上int
+
+# 提交
+
+例外、分支跳转、load、store只能从第0条提交
+
+例外、跳转成功只能单独提交

@@ -129,6 +129,9 @@ class Rob(
 
   /** Commit
     */
+
+  val hasInterruptReg = RegInit(false.B)
+
   io.commitStore.valid := false.B
   io.branchCommit      := false.B
   io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
@@ -149,10 +152,15 @@ class Rob(
           deqPort.ready := commit.ready &&
             deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
             !deqPort.bits.wbPort.instInfo.store.en.orR &&
+            !deqPort.bits.wbPort.instInfo.load.en.orR &&
+            !deqPort.bits.wbPort.instInfo.needCsr &&
+            (deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none) &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
-            (io.commits(idx - 1).bits.instInfo.exceptionPos =/= ExceptionPos.none)
-
+            (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none) &&
+            !io.commits(idx - 1).bits.instInfo.branchSetPort.en &&
+            !hasInterruptReg &&
+            !io.hasInterrupt
         }
 
         commit.valid := deqPort.ready
@@ -171,7 +179,6 @@ class Rob(
       }
   }
 
-  val hasInterruptReg = RegInit(false.B)
   when(io.hasInterrupt) {
     when(io.commits(0).valid && io.commits(0).ready) {
       // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B

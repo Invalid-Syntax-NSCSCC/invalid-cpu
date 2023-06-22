@@ -62,6 +62,13 @@ class CommitStage(
           val st_vaddr      = UInt(32.W)
           val st_paddr      = UInt(32.W)
           val st_data       = UInt(32.W)
+
+          val valid_1 = Bool()
+          val pc_1    = UInt(Width.Reg.data)
+          val instr_1 = UInt(Width.Reg.data)
+          val wen_1   = Bool()
+          val wdest_1 = UInt(Width.Reg.addr)
+          val wdata_1 = UInt(Width.Reg.data)
         }))
       else None
   })
@@ -117,6 +124,21 @@ class CommitStage(
       dt.st_vaddr := RegNext(inBits(0).instInfo.store.vaddr)
       dt.st_paddr := RegNext(inBits(0).instInfo.store.paddr)
       dt.st_data  := RegNext(inBits(0).instInfo.store.data)
+
+      dt.valid_1 := false.B
+      dt.instr_1 := DontCare
+      dt.pc_1    := DontCare
+      dt.wen_1   := DontCare
+      dt.wdest_1 := DontCare
+      dt.wdata_1 := DontCare
+      if (commitNum == 2) {
+        dt.valid_1 := RegNext(inBits(1).instInfo.isValid && io.ins(1).valid && io.ins(1).ready)
+        dt.instr_1 := RegNext(inBits(1).instInfo.inst)
+        dt.pc_1    := RegNext(inBits(1).instInfo.pc)
+        dt.wen_1   := RegNext(inBits(1).gprWrite.en)
+        dt.wdest_1 := RegNext(inBits(1).gprWrite.addr)
+        dt.wdata_1 := RegNext(inBits(1).gprWrite.data)
+      }
     case _ =>
   }
 }
