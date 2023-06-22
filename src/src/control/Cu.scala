@@ -72,7 +72,7 @@ class Cu(
   //   (instInfo.exceptionPos =/= ExceptionPos.none) && instInfo.isValid
   // }))
   // val hasException = WireDefault(linesHasException.reduce(_ || _))
-  val hasException = WireDefault(io.instInfoPorts(0).exceptionPos =/= ExceptionPos.none)
+  val hasException = WireDefault(io.instInfoPorts(0).exceptionPos =/= ExceptionPos.none) && io.instInfoPorts(0).isValid
 
   /** stable counter
     */
