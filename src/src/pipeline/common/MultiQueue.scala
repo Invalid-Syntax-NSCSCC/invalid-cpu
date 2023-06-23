@@ -23,7 +23,7 @@ class MultiQueue[ElemT <: Data](
     // deq_ptr -> enq_ptr
     val setPorts      = Input(Vec(queueLength, ValidIO(elemNdFactory)))
     val elems         = Output(Vec(queueLength, elemNdFactory))
-    val emptyNum      = Output(UInt(log2Ceil(queueLength).W))
+    val emptyNum      = Output(UInt(log2Ceil(queueLength + 1).W))
     val enqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength).W)))
     val deqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength).W)))
     val enq_ptr       = Output(UInt(log2Ceil(queueLength).W))

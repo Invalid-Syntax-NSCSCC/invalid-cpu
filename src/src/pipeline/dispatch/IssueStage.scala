@@ -39,7 +39,7 @@ class IssueStagePeerPort(
     extends Bundle {
 
   // `IssueStage` <-> `Rob`
-  val robEmptyNum  = Input(UInt(Param.Width.Rob.id))
+  val robEmptyNum  = Input(UInt(log2Ceil(Param.Width.Rob._length + 1).W))
   val requests     = Output(Vec(issueNum, new RobReadRequestNdPort))
   val results      = Input(Vec(issueNum, new RobReadResultNdPort))
   val resultsValid = Input(Bool())

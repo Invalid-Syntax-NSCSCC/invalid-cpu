@@ -35,7 +35,7 @@ class Rob(
     extends Module {
   val io = IO(new Bundle {
     // `Rob` <-> `IssueStage`
-    val emptyNum               = Output(UInt(Param.Width.Rob.id))
+    val emptyNum               = Output(UInt(log2Ceil(robLength + 1).W))
     val requests               = Input(Vec(issueNum, new RobReadRequestNdPort))
     val distributeResultsValid = Output(Bool())
     val distributeResults      = Output(Vec(issueNum, new RobReadResultNdPort))
