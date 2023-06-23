@@ -34,10 +34,11 @@ class DistributedQueue[ElemT <: Data](
     case (in, idx) =>
       Queue(
         in,
-        entries = channelLength,
-        pipe    = false,
-        flow    = false,
-        flush   = Some(io.isFlush)
+        entries        = channelLength,
+        pipe           = false,
+        flow           = false,
+        useSyncReadMem = true,
+        flush          = Some(io.isFlush)
       )
   })
 
