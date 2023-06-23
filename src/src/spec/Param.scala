@@ -8,7 +8,8 @@ object Param {
 
   val isDiffTest = true
 
-  val instQueueLength        = 8
+  val instQueueLength        = 16
+  val instQueueChannelNum    = 4
   val regFileReadNum         = 2
   val regFileWriteNum        = 1
   val scoreboardChangeNum    = 1 // 3

@@ -14,10 +14,12 @@ import pipeline.common.MultiQueue
 import control.enums.ExceptionPos
 import pipeline.dispatch.FetchInstDecodeNdPort
 import pipeline.common.MultiBaseStageWOSaveIn
+import pipeline.common.DistributedQueue
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
   val queueLength: Int = Param.instQueueLength,
+  val channelNum:  Int = Param.instQueueChannelNum,
   val fetchNum:    Int = Param.fetchInstMaxNum,
   val issueNum:    Int = Param.issueInstInfoMaxNum)
     extends Module {
@@ -37,8 +39,21 @@ class MultiInstQueue(
   })
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
+  require(channelNum >= fetchNum)
+  require(channelNum >= issueNum)
+  require(queueLength % channelNum == 0)
 
-  val instQueue = Module(new MultiQueue(queueLength, fetchNum, issueNum, new InstInfoBundle, InstInfoBundle.default))
+  // val instQueue = Module(new MultiQueue(queueLength, fetchNum, issueNum, new InstInfoBundle, InstInfoBundle.default))
+  val instQueue = Module(
+    new DistributedQueue(
+      fetchNum,
+      issueNum,
+      channelNum,
+      queueLength / channelNum,
+      new InstInfoBundle,
+      InstInfoBundle.default
+    )
+  )
 
   // fall back
   instQueue.io.enqueuePorts.zip(io.enqueuePorts).foreach {
@@ -46,11 +61,6 @@ class MultiInstQueue(
       dst <> src
   }
   instQueue.io.isFlush := io.isFlush
-  instQueue.io.setPorts.zip(instQueue.io.elems).foreach {
-    case (dst, src) =>
-      dst.valid := false.B
-      dst.bits  := src
-  }
 
   instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
     case (q, out) =>

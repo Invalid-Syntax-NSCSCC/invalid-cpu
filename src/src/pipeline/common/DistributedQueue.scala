@@ -23,23 +23,30 @@ class DistributedQueue[ElemT <: Data](
     val dequeuePorts = Vec(deqMaxNum, Decoupled(elemNdFactory))
 
     // deq_ptr -> enq_ptr
-    val enqIncResults = Output(Vec(channelNum + 1, UInt(log2Ceil(channelNum).W)))
-    val deqIncResults = Output(Vec(channelNum + 1, UInt(log2Ceil(channelNum).W)))
+    val enqIncResults = Output(Vec(enqMaxNum + 1, UInt(log2Ceil(channelNum).W)))
+    val deqIncResults = Output(Vec(deqMaxNum + 1, UInt(log2Ceil(channelNum).W)))
     val enq_ptr       = Output(UInt(log2Ceil(channelNum).W))
     val deq_ptr       = Output(UInt(log2Ceil(channelNum).W))
   })
 
-  val queues = VecInit(
-    Seq.fill(channelNum)(
+  val storeIns = Wire(Vec(channelNum, (DecoupledIO(elemNdFactory))))
+  val storeOuts = VecInit(storeIns.zipWithIndex.map {
+    case (in, idx) =>
       Queue(
-        Decoupled(elemNdFactory),
+        in,
         entries = channelLength,
         pipe    = false,
         flow    = false,
         flush   = Some(io.isFlush)
       )
-    )
-  )
+  })
+
+  storeIns.foreach { in =>
+    in.valid := false.B
+    in.bits  := DontCare
+  }
+
+  storeOuts.foreach(_.ready := false.B)
 
   val enq_ptr = Module(new MultiCounter(channelLength, enqMaxNum))
   val deq_ptr = Module(new MultiCounter(channelLength, enqMaxNum))
@@ -47,20 +54,28 @@ class DistributedQueue[ElemT <: Data](
   deq_ptr.io.flush := io.isFlush
   io.enq_ptr       := enq_ptr.io.value
   io.deq_ptr       := deq_ptr.io.value
+  io.enqIncResults.zip(enq_ptr.io.incResults).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+  io.deqIncResults.zip(deq_ptr.io.incResults).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   enq_ptr.io.inc := io.enqueuePorts.zipWithIndex.map {
     case (enqPort, idx) =>
       // connect
-      enqPort <> queues(enq_ptr.io.incResults(idx))
+      enqPort <> storeIns(enq_ptr.io.incResults(idx))
       // return
-      enqPort.valid && queues(enq_ptr.io.incResults(idx)).ready
+      enqPort.valid && storeOuts(enq_ptr.io.incResults(idx)).ready
   }.map(_.asUInt).reduce(_ +& _)
 
   deq_ptr.io.inc := io.dequeuePorts.zipWithIndex.map {
     case (deqPort, idx) =>
       // connect
-      deqPort <> queues(deq_ptr.io.incResults(idx))
+      deqPort <> storeOuts(deq_ptr.io.incResults(idx))
       // return
-      deqPort.valid && queues(deq_ptr.io.incResults(idx)).ready
+      deqPort.valid && storeOuts(deq_ptr.io.incResults(idx)).ready
   }.map(_.asUInt).reduce(_ +& _)
 }
