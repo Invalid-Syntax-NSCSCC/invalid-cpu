@@ -68,7 +68,7 @@ class DistributedQueue[ElemT <: Data](
       // connect
       enqPort <> storeIns(enq_ptr.io.incResults(idx))
       // return
-      enqPort.valid && storeOuts(enq_ptr.io.incResults(idx)).ready
+      enqPort.valid && storeIns(enq_ptr.io.incResults(idx)).ready
   }.map(_.asUInt).reduce(_ +& _)
 
   deq_ptr.io.inc := io.dequeuePorts.zipWithIndex.map {
