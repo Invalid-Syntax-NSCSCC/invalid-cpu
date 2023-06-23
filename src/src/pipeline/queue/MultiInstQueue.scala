@@ -20,21 +20,28 @@ class MultiInstQueue(
   val queueLength: Int = Param.instQueueLength,
   val fetchNum:    Int = Param.fetchInstMaxNum,
   val issueNum:    Int = Param.issueInstInfoMaxNum)
-    extends MultiBaseStageWOSaveIn(
-      new InstInfoBundle,
-      new FetchInstDecodeNdPort,
-      InstInfoBundle.default,
-      None,
-      fetchNum,
-      issueNum
-    ) {
+    extends Module {
+  val io = IO(new Bundle {
+    // val isFlush     = Input(Bool())
+    val isFlush      = Input(Bool())
+    val enqueuePorts = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
+
+    // `InstQueue` -> `IssueStage`
+    val dequeuePorts = Vec(
+      issueNum,
+      Decoupled(new Bundle {
+        val decode   = new DecodeOutNdPort
+        val instInfo = new InstInfoNdPort
+      })
+    )
+  })
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
 
   val instQueue = Module(new MultiQueue(queueLength, fetchNum, issueNum, new InstInfoBundle, InstInfoBundle.default))
 
   // fall back
-  instQueue.io.enqueuePorts.zip(io.ins).foreach {
+  instQueue.io.enqueuePorts.zip(io.enqueuePorts).foreach {
     case (dst, src) =>
       dst <> src
   }
@@ -45,10 +52,10 @@ class MultiInstQueue(
       dst.bits  := src
   }
 
-  instQueue.io.dequeuePorts.lazyZip(validToOuts).lazyZip(resultOutsReg).foreach {
-    case (deqPort, validToOut, out) =>
-      out.valid     := deqPort.valid
-      deqPort.ready := validToOut
+  instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
+    case (q, out) =>
+      q.ready   := out.ready
+      out.valid := q.valid
   }
 
   // Decode
@@ -90,7 +97,7 @@ class MultiInstQueue(
       decoderWire(decoderIndex)
   }))
 
-  resultOutsReg.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
+  io.dequeuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
     case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
       dequeuePort.bits.decode        := selectedDecoder
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
