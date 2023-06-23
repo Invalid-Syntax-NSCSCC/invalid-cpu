@@ -39,10 +39,9 @@ class IssueStagePeerPort(
     extends Bundle {
 
   // `IssueStage` <-> `Rob`
-  val robEmptyNum  = Input(UInt(log2Ceil(Param.Width.Rob._length + 1).W))
-  val requests     = Output(Vec(issueNum, new RobReadRequestNdPort))
-  val results      = Input(Vec(issueNum, new RobReadResultNdPort))
-  val resultsValid = Input(Bool())
+  val robEmptyNum = Input(UInt(log2Ceil(Param.Width.Rob._length + 1).W))
+  val requests    = Output(Vec(issueNum, new RobReadRequestNdPort))
+  val results     = Input(Vec(issueNum, new RobReadResultNdPort))
 
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
@@ -118,7 +117,7 @@ class IssueStage(
 
   io.ins.lazyZip(canDispatchs).foreach {
     case (in, canDispatch) =>
-      in.ready := canDispatch && fetchEnableFlag && io.peer.get.resultsValid // * rob distribute failed
+      in.ready := canDispatch && fetchEnableFlag
   }
 
   selectedIns.lazyZip(dispatchMap).zipWithIndex.foreach {
@@ -173,11 +172,11 @@ class IssueStage(
   // -> reservation stations
   for (src_idx <- Seq.range(issueNum - 1, -1, -1)) {
     for (dst_idx <- 0 until pipelineNum) {
-      when(dispatchMap(src_idx)(dst_idx) && fetchEnableFlag && io.peer.get.resultsValid) {
+      when(dispatchMap(src_idx)(dst_idx) && fetchEnableFlag) {
         // decode info
         reservationStations(dst_idx).io
           .enqueuePorts(0)
-          .valid := fetchEnableFlag && io.peer.get.resultsValid // * rob distribute failed
+          .valid := fetchEnableFlag
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.preExeInstInfo := selectedIns(
           src_idx
         ).decode.info
