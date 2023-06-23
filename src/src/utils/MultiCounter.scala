@@ -8,8 +8,8 @@ class MultiCounter(
   maxIncNum: Int,
   init:      Int = 0)
     extends Module {
-  require(maxCount > maxIncNum)
-  val value_w = log2Ceil(maxCount + 1)
+  require(maxCount >= maxIncNum)
+  val value_w = log2Ceil(maxCount)
   val inc_w   = log2Ceil(maxIncNum + 1)
   val io = IO(new Bundle {
     // inc =/= `11`
