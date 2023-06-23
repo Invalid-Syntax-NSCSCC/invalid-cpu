@@ -11,6 +11,9 @@ class MultiCounter(
   require(maxCount >= maxIncNum)
   val value_w = log2Ceil(maxCount)
   val inc_w   = log2Ceil(maxIncNum + 1)
+
+  val isMaxCountPow2: Boolean = log2Ceil(maxCount) == log2Floor(maxCount)
+
   val io = IO(new Bundle {
     // inc =/= `11`
     val inc   = Input(UInt(inc_w.W))
@@ -31,13 +34,17 @@ class MultiCounter(
 
   incResults.zipWithIndex.foreach {
     case (incResult, inc) =>
-      val rawAdd = Wire(UInt((value_w + 1).W))
-      rawAdd := counter +& inc.U
-      incResult := Mux(
-        rawAdd >= maxCount.U,
-        rawAdd - maxCount.U, // 溢出
-        rawAdd
-      )
+      if (isMaxCountPow2) {
+        incResult := counter + inc.U
+      } else {
+        val rawAdd = Wire(UInt((value_w + 1).W))
+        rawAdd := counter +& inc.U
+        incResult := Mux(
+          rawAdd >= maxCount.U,
+          rawAdd - maxCount.U, // 溢出
+          rawAdd
+        )
+      }
   }
 
   counter := incResults(io.inc)
