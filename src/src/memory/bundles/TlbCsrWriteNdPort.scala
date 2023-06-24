@@ -2,7 +2,7 @@ package memory.bundles
 
 import chisel3._
 import chisel3.util._
-import control.csrRegsBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
+import control.csrBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
 
 class TlbCsrWriteNdPort extends Bundle {
   val tlbidx    = Valid(new TlbidxBundle)

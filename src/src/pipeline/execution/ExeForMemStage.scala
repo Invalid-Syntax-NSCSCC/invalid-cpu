@@ -3,7 +3,7 @@ package pipeline.execution
 import chisel3._
 import chisel3.util._
 import common.enums.ReadWriteSel
-import control.csrRegsBundles.{EraBundle, LlbctlBundle}
+import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
@@ -34,14 +34,7 @@ class ExeForMemStage
   resultOutReg.bits.instInfo := selectedIn.instInfo
 
   // write-back information fallback
-  // resultOutReg.bits.gprWrite.en   := false.B
-  // resultOutReg.bits.gprWrite.addr := zeroWord
-  // resultOutReg.bits.gprWrite.data := zeroWord
   resultOutReg.bits.gprAddr := selectedIn.gprWritePort.addr
-
-  // // write-back information selection
-  // resultOutReg.bits.gprWrite.en   := selectedIn.gprWritePort.en
-  // resultOutReg.bits.gprWrite.addr := selectedIn.gprWritePort.addr
 
   // 指令未对齐
   val isAle = WireDefault(false.B)
@@ -62,11 +55,6 @@ class ExeForMemStage
       resultOutReg.bits.instInfo.tlbInfo.virtAddr     := selectedIn.rightOperand
     }
   }
-
-  // when(selectedIn.instInfo.pc(1, 0).orR) {
-  //   resultOutReg.bits.instInfo.isExceptionValid                          := true.B
-  //   resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
-  // }
 
   /** MemAccess
     */
@@ -167,5 +155,4 @@ class ExeForMemStage
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
-
 }

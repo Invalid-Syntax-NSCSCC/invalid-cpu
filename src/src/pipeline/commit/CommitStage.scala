@@ -40,8 +40,6 @@ class CommitStage(
     // `CommitStage` -> `Cu` NO delay
     val isExceptionValid = Output(Bool())
 
-    val csrValues = Input(new CsrValuePort)
-
     val difftest =
       if (isDiffTest)
         Some(Output(new Bundle {

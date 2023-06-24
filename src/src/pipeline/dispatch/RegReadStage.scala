@@ -22,24 +22,24 @@ object RegReadNdPort {
   )
 }
 
-class RegReadPeerPort(readNum: Int, csrRegsReadNum: Int) extends Bundle {
+class RegReadPeerPort(readNum: Int, csrReadNum: Int) extends Bundle {
   // `RegReadStage` <-> `Regfile`
   val gprReadPorts = Vec(readNum, Flipped(new RfReadPort))
 
   // `RegReadStage <-> `Csr`
-  val csrReadPorts = Vec(csrRegsReadNum, Flipped(new CsrReadPort))
+  val csrReadPorts = Vec(csrReadNum, Flipped(new CsrReadPort))
 
 }
 
-class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum)
+class RegReadStage(readNum: Int = Param.instRegReadNum, csrReadNum: Int = Param.csrReadNum)
     extends BaseStage(
       new RegReadNdPort,
       new ExeNdPort,
       RegReadNdPort.default,
-      Some(new RegReadPeerPort(readNum, csrRegsReadNum))
+      Some(new RegReadPeerPort(readNum, csrReadNum))
     ) {
 
-  require(csrRegsReadNum == 1)
+  require(csrReadNum == 1)
 
   // Read from GPR
   selectedIn.preExeInstInfo.gprReadPorts.zip(io.peer.get.gprReadPorts).foreach {

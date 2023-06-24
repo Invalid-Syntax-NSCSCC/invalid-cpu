@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import common.bundles.{PcSetPort, RfAccessInfoNdPort}
-import control.csrRegsBundles.{EraBundle, LlbctlBundle}
+import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import pipeline.commit.WbNdPort
 import pipeline.commit.bundles.InstInfoNdPort
