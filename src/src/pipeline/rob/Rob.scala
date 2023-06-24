@@ -41,7 +41,8 @@ class Rob(
     // `Csr` -> `Rob`
     val hasInterrupt = Input(Bool())
 
-    // val robInstValids = Output(Vec(robLength, Bool()))
+    // `Rob` -> `IssueStage`
+    val tlbStart = Output(Bool())
 
     // `Cu` <-> `Rob`
     val isFlush = Input(Bool())
@@ -112,6 +113,7 @@ class Rob(
 
   io.commitStore.valid := false.B
   io.branchCommit      := false.B
+  io.tlbStart          := false.B
   io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
     case ((commit, deqPort), idx) =>
       when(
@@ -124,7 +126,10 @@ class Rob(
         // commit
         if (idx == 0) {
           io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.en.orR
-          io.branchCommit := commit.ready && deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch && deqPort.bits.wbPort.instInfo.branchSetPort.en
+          io.tlbStart          := commit.ready && deqPort.bits.wbPort.instInfo.isTlb
+          io.branchCommit := commit.ready &&
+            deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch &&
+            deqPort.bits.wbPort.instInfo.branchSetPort.en
           deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
         } else {
           deqPort.ready := commit.ready &&

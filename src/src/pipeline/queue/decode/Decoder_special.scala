@@ -105,6 +105,7 @@ class Decoder_special extends Decoder {
     is(Inst.tlbsrch) {
       io.out.isMatched         := true.B
       outInfo.exeOp            := ExeInst.Op.tlbsrch
+      outInfo.isTlb            := true.B
       outInfo.tlbInfo.isSearch := true.B
       outInfo.needCsr          := true.B
       outInfo.exeSel           := ExeInst.Sel.jumpBranch
@@ -113,6 +114,7 @@ class Decoder_special extends Decoder {
     is(Inst.tlbrd) {
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.tlbrd
+      outInfo.isTlb          := true.B
       outInfo.tlbInfo.isRead := true.B
       outInfo.needCsr        := true.B
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
@@ -121,6 +123,7 @@ class Decoder_special extends Decoder {
     is(Inst.tlbwr) {
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbwr
+      outInfo.isTlb           := true.B
       outInfo.tlbInfo.isWrite := true.B
       outInfo.needCsr         := true.B
       outInfo.exeSel          := ExeInst.Sel.jumpBranch
@@ -128,6 +131,8 @@ class Decoder_special extends Decoder {
     }
     is(Inst.tlbfill) {
       io.out.isMatched       := true.B
+      outInfo.exeOp          := ExeInst.Op.tlbfill
+      outInfo.isTlb          := true.B
       outInfo.tlbInfo.isFill := true.B
       outInfo.needCsr        := true.B
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
