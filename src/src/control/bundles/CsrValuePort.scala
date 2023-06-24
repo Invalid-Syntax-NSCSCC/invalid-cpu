@@ -1,7 +1,7 @@
 package control.bundles
 
 import chisel3._
-import control.csrRegsBundles._
+import control.csrBundles._
 
 class CsrValuePort extends Bundle {
   val crmd      = new CrmdBundle

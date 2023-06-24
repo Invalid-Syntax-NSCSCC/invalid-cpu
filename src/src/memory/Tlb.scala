@@ -2,7 +2,7 @@ package memory
 
 import chisel3._
 import chisel3.util._
-import control.csrRegsBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
+import control.csrBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
 import memory.bundles._
 import memory.enums.TlbMemType
 import spec.ExeInst.Op.Tlb._

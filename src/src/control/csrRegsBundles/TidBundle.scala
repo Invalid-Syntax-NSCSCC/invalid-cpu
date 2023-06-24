@@ -1,4 +1,4 @@
-package control.csrRegsBundles
+package control.csrBundles
 
 import chisel3._
 import spec._

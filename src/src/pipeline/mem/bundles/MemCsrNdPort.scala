@@ -1,7 +1,7 @@
 package pipeline.mem.bundles
 
 import chisel3._
-import control.csrRegsBundles.{CrmdBundle, DmwBundle}
+import control.csrBundles.{CrmdBundle, DmwBundle}
 
 class MemCsrNdPort extends Bundle {
   val crmd = new CrmdBundle
