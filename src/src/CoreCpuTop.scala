@@ -23,7 +23,6 @@ import control.bundles.PipelineControlNdPort
 import chisel3.util.is
 import pipeline.rob.bundles.RobIdDistributePort
 import memory.ICache
-import frontend.Frontend
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.Param.csrIssuePipelineIndex
 
