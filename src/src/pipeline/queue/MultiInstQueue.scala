@@ -9,6 +9,8 @@ import pipeline.dispatch.bundles.InstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode._
 import spec._
+import pipeline.dispatch.FetchInstDecodeNdPort
+import pipeline.common.MultiQueue
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
@@ -91,19 +93,16 @@ class MultiInstQueue(
   }))
 
   val resultQueue = Module(
-    new MultiQueue(
-      issueNum * 2,
+    new DistributedQueue(
       issueNum,
       issueNum,
+      issueNum,
+      2,
       new FetchInstDecodeNdPort,
       FetchInstDecodeNdPort.default
     )
   )
   resultQueue.io.isFlush := io.isFlush
-  resultQueue.io.setPorts.foreach { set =>
-    set.valid := false.B
-    set.bits  := DontCare
-  }
 
   resultQueue.io.enqueuePorts.zip(instQueue.io.dequeuePorts).foreach {
     case (dst, src) =>
