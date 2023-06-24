@@ -24,17 +24,13 @@ class MultiInstQueue(
   val issueNum:    Int = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new Bundle {
-    // val isFlush     = Input(Bool())
     val isFlush      = Input(Bool())
     val enqueuePorts = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
       issueNum,
-      Decoupled(new Bundle {
-        val decode   = new DecodeOutNdPort
-        val instInfo = new InstInfoNdPort
-      })
+      Decoupled(new FetchInstDecodeNdPort)
     )
   })
   require(queueLength > fetchNum)
@@ -43,7 +39,6 @@ class MultiInstQueue(
   require(channelNum >= issueNum)
   require(queueLength % channelNum == 0)
 
-  // val instQueue = Module(new MultiQueue(queueLength, fetchNum, issueNum, new InstInfoBundle, InstInfoBundle.default))
   val instQueue = Module(
     new DistributedQueue(
       fetchNum,
@@ -61,12 +56,6 @@ class MultiInstQueue(
       dst <> src
   }
   instQueue.io.isFlush := io.isFlush
-
-  instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
-    case (q, out) =>
-      q.ready   := out.ready
-      out.valid := q.valid
-  }
 
   // Decode
   val decodeInstInfos = WireDefault(VecInit(instQueue.io.dequeuePorts.map(_.bits)))
@@ -107,14 +96,60 @@ class MultiInstQueue(
       decoderWire(decoderIndex)
   }))
 
-  io.dequeuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
+  // instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
+  //   case (q, out) =>
+  //     q.ready := out.ready
+  // }
+
+  // val resultOutsReg = Reg(Vec(issueNum, Valid(new FetchInstDecodeNdPort)))
+  // val result_ptr    = Module(new MultiCounter(issueNum, issueNum))
+  // resultOutsReg.foreach { r =>
+  //   r.valid := false.B
+  //   r.bits  := DontCare
+  // }
+  // result_ptr.io.flush := io.isFlush
+  // result_ptr.io.inc   := io.dequeuePorts.map { out => out.ready && out.valid }.map(_.asUInt).reduce(_ +& _)
+
+  // io.dequeuePorts.zipWithIndex.foreach {
+  //   case (out, idx) =>
+  //     out.valid := resultOutsReg(result_ptr.io.incResults(idx)).valid
+  //     out.bits  := resultOutsReg(result_ptr.io.incResults(idx)).bits
+  // }
+
+  val resultQueue = Module(
+    new MultiQueue(
+      issueNum * 2,
+      issueNum,
+      issueNum,
+      new FetchInstDecodeNdPort,
+      FetchInstDecodeNdPort.default
+    )
+  )
+  resultQueue.io.isFlush := io.isFlush
+  resultQueue.io.setPorts.foreach { set =>
+    set.valid := false.B
+    set.bits  := DontCare
+  }
+
+  resultQueue.io.enqueuePorts.zip(instQueue.io.dequeuePorts).foreach {
+    case (dst, src) =>
+      dst.valid := src.valid
+      src.ready := dst.ready
+  }
+
+  io.dequeuePorts.zip(resultQueue.io.dequeuePorts).foreach {
+    case (dst, src) =>
+      dst <> src
+  }
+
+  resultQueue.io.enqueuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
     case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
       dequeuePort.bits.decode        := selectedDecoder
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
       val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
-      dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
+      dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr =/= 0.U // TODO: Check if it can change to isMatched (see whether commit or not)
       dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
       dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp

@@ -24,10 +24,7 @@ class FetchInstDecodeNdPort extends Bundle {
 }
 
 object FetchInstDecodeNdPort {
-  def default = (new FetchInstDecodeNdPort).Lit(
-    _.decode -> DecodeOutNdPort.default,
-    _.instInfo -> InstInfoNdPort.default
-  )
+  def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
 }
 
 class BiIssueStagePeerPort(
