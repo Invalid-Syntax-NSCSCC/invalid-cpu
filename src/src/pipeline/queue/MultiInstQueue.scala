@@ -96,26 +96,6 @@ class MultiInstQueue(
       decoderWire(decoderIndex)
   }))
 
-  // instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
-  //   case (q, out) =>
-  //     q.ready := out.ready
-  // }
-
-  // val resultOutsReg = Reg(Vec(issueNum, Valid(new FetchInstDecodeNdPort)))
-  // val result_ptr    = Module(new MultiCounter(issueNum, issueNum))
-  // resultOutsReg.foreach { r =>
-  //   r.valid := false.B
-  //   r.bits  := DontCare
-  // }
-  // result_ptr.io.flush := io.isFlush
-  // result_ptr.io.inc   := io.dequeuePorts.map { out => out.ready && out.valid }.map(_.asUInt).reduce(_ +& _)
-
-  // io.dequeuePorts.zipWithIndex.foreach {
-  //   case (out, idx) =>
-  //     out.valid := resultOutsReg(result_ptr.io.incResults(idx)).valid
-  //     out.bits  := resultOutsReg(result_ptr.io.incResults(idx)).bits
-  // }
-
   val resultQueue = Module(
     new MultiQueue(
       issueNum * 2,
