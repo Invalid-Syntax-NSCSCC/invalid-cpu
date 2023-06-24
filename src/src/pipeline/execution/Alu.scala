@@ -2,12 +2,9 @@ package pipeline.execution
 
 import chisel3._
 import chisel3.util._
-import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort}
+import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort, JumpBranchInfoNdPort}
+import spec.ExeInst.Op
 import spec._
-import ExeInst.Op
-import control.bundles.PipelineControlNdPort
-import pipeline.execution.bundles.JumpBranchInfoNdPort
-import spec.Param.{AluState => State}
 
 class Alu extends Module {
   val io = IO(new Bundle {

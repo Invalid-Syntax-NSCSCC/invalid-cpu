@@ -2,20 +2,11 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PassThroughPort, RfWriteNdPort}
-import control.bundles.PipelineControlNdPort
-import memory.bundles.TlbTransPort
 import memory.enums.TlbMemType
-import pipeline.common.BaseStage
-import pipeline.mem.bundles.MemCsrNdPort
-import pipeline.mem.enums.AddrTransType
 import pipeline.mem.AddrTransPeerPort
-import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.mem.enums.AddrTransType
 import spec.Value.Csr
 import spec.Width
-
-import scala.collection.immutable
-import pipeline.mem.AddrTransPeerPort
 
 class InstAddrTransStage extends Module {
   val io = IO(new Bundle {

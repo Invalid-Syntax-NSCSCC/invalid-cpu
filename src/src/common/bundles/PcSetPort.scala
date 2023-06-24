@@ -1,9 +1,8 @@
 package common.bundles
 
 import chisel3._
-import chisel3.util._
-import spec._
 import chisel3.experimental.BundleLiterals._
+import spec._
 
 class PcSetPort extends Bundle {
   val isIdle = Bool()

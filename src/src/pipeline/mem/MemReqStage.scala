@@ -4,9 +4,9 @@ import chisel3._
 import chisel3.util._
 import common.enums.ReadWriteSel
 import memory.bundles.MemRequestHandshakePort
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.BaseStage
 import pipeline.mem.bundles.{MemRequestNdPort, StoreInfoBundle}
-import pipeline.commit.bundles.InstInfoNdPort
 import spec._
 
 class MemReqNdPort extends Bundle {

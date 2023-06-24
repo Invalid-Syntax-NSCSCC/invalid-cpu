@@ -1,16 +1,15 @@
 package pipeline.commit
 
 import chisel3._
-import chisel3.util._
-import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
-import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import pipeline.mem.MemResNdPort
-import pipeline.commit.bundles.InstInfoNdPort
-import spec.Param.isDiffTest
-import spec._
 import chisel3.experimental.BundleLiterals._
+import chisel3.util._
+import common.bundles.RfWriteNdPort
 import control.bundles.CsrValuePort
 import control.enums.ExceptionPos
+import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.dispatch.bundles.ScoreboardChangeNdPort
+import spec.Param.isDiffTest
+import spec._
 
 class WbNdPort extends Bundle {
   val gprWrite = new RfWriteNdPort

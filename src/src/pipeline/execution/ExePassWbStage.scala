@@ -1,31 +1,17 @@
 package pipeline.execution
 
 import chisel3._
+import chisel3.experimental.BundleLiterals._
 import chisel3.util._
-import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
+import common.bundles.{PcSetPort, RfAccessInfoNdPort}
+import control.csrRegsBundles.{EraBundle, LlbctlBundle}
+import control.enums.ExceptionPos
+import pipeline.commit.WbNdPort
+import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.common.BaseStage
+import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.ExeInst.Sel
 import spec._
-import control.bundles.PipelineControlNdPort
-import chisel3.experimental.VecLiterals._
-import chisel3.experimental.BundleLiterals._
-import spec.Param.{ExeStageState => State}
-import pipeline.execution.Alu
-import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.execution.bundles.JumpBranchInfoNdPort
-import common.bundles.PcSetPort
-import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import common.enums.ReadWriteSel
-import control.csrRegsBundles.LlbctlBundle
-import pipeline.mem.bundles.MemRequestNdPort
-import pipeline.execution.bundles.ExeResultPort
-import pipeline.common.BaseStage
-import pipeline.mem.AddrTransNdPort
-
-import scala.collection.immutable
-import control.csrRegsBundles.EraBundle
-import pipeline.commit.WbNdPort
-import control.enums.ExceptionPos
-import scalaz.std.boolean
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage

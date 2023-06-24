@@ -1,16 +1,12 @@
 package frontend
 
-import axi.AxiMaster
-import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
-import control.bundles.PipelineControlNdPort
-import pipeline.dispatch.bundles.InstInfoBundle
-import spec._
-import frontend.InstFetch
 import frontend.bundles.ICacheAccessPort
 import memory.bundles.TlbTransPort
+import pipeline.dispatch.bundles.InstInfoBundle
 import pipeline.mem.bundles.MemCsrNdPort
+import spec._
 
 class Frontend extends Module {
   val io = IO(new Bundle {

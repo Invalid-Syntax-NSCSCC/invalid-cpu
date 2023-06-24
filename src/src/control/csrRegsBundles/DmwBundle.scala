@@ -1,8 +1,6 @@
 package control.csrRegsBundles
 
 import chisel3._
-import chisel3.experimental.BundleLiterals._
-import spec._
 
 class DmwBundle extends Bundle {
   val vseg  = UInt(3.W)

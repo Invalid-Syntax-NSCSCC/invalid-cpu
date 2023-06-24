@@ -2,28 +2,15 @@ package pipeline.execution
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
-import spec.ExeInst.Sel
-import spec._
-import control.bundles.PipelineControlNdPort
-import chisel3.experimental.VecLiterals._
-import chisel3.experimental.BundleLiterals._
-import spec.Param.{ExeStageState => State}
-import pipeline.execution.Alu
-import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.execution.bundles.JumpBranchInfoNdPort
-import common.bundles.PcSetPort
-import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import common.enums.ReadWriteSel
-import control.csrRegsBundles.LlbctlBundle
-import pipeline.mem.bundles.MemRequestNdPort
-import pipeline.execution.bundles.ExeResultPort
+import control.csrRegsBundles.{EraBundle, LlbctlBundle}
+import control.enums.ExceptionPos
 import pipeline.common.BaseStage
+import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.mem.AddrTransNdPort
+import spec._
 
 import scala.collection.immutable
-import control.csrRegsBundles.EraBundle
-import control.enums.ExceptionPos
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)

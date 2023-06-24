@@ -1,10 +1,8 @@
 package memory.bundles
 
 import chisel3._
-import chisel3.util._
-import control.csrRegsBundles.AsidBundle
-import spec._
 import chisel3.experimental.BundleLiterals._
+import spec._
 
 class TlbMaintenanceNdPort extends Bundle {
   val isInvalidate   = Bool()

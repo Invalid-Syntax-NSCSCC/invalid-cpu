@@ -2,7 +2,6 @@ package pipeline.common
 
 import chisel3._
 import chisel3.util._
-import spec._
 import utils.MultiCounter
 
 class MultiQueue[ElemT <: Data](

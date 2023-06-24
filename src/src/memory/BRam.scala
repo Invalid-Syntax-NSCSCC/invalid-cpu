@@ -2,8 +2,6 @@ package memory
 
 import chisel3._
 import chisel3.util._
-import memory.bundles.{SimpleRamReadPort, SimpleRamWriteNdPort}
-import spec._
 
 class BRam(size: Int, dataWidth: Int) extends Module {
   val addrWidth = log2Ceil(size)

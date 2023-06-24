@@ -3,9 +3,9 @@ package pipeline.mem
 import chisel3._
 import chisel3.util._
 import memory.bundles.MemResponseNdPort
-import pipeline.common.BaseStage
 import pipeline.commit.WbNdPort
 import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.common.BaseStage
 import spec._
 
 class MemResNdPort extends Bundle {

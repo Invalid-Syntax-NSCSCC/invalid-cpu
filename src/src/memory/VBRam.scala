@@ -2,7 +2,6 @@ package memory
 
 import chisel3._
 import chisel3.util._
-import spec._
 
 class VBRam(size: Int, dataWidth: Int) extends Module {
   val addrWidth = log2Ceil(size)

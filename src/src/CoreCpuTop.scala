@@ -1,36 +1,18 @@
-import axi.bundles.AxiMasterInterface
 import axi.Axi3x1Crossbar
+import axi.bundles.AxiMasterInterface
 import chisel3._
 import common.{Pc, RegFile}
 import control.{Csr, Cu, StableCounter}
-import frontend.{Frontend, InstFetch}
-
-import memory.{DCache, Tlb, UncachedAgent}
-import pipeline.dispatch.{RegReadNdPort, RegReadStage}
-import pipeline.dispatch.Scoreboard
-import pipeline.dispatch.CsrScoreboard
-import pipeline.execution.ExeForMemStage
-import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
-import pipeline.commit.CommitStage
-import spec.Param.isDiffTest
-import spec.{Count, Param, PipelineStageIndex}
-import spec.zeroWord
-import pipeline.queue.MultiInstQueue
-import control.bundles.PipelineControlNdPort
-import chisel3.util.is
-import pipeline.rob.bundles.RobIdDistributePort
-import memory.ICache
 import frontend.Frontend
-import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import spec.Param.csrIssuePipelineIndex
-import pipeline.dispatch.IssueStage
-import pipeline.execution.ExePassWbStage
+import memory.{DCache, ICache, Tlb, UncachedAgent}
+import pipeline.commit.CommitStage
+import pipeline.dispatch.{CsrScoreboard, IssueStage}
+import pipeline.execution.{ExeForMemStage, ExePassWbStage}
+import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
+import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
-import pipeline.commit.WbNdPort
-import pipeline.rob.bundles.InstWbNdPort
-import chisel3.util.DecoupledIO
-import spec.ExeInst
-import pipeline.rob.enums.RegDataLocateSel
+import spec.Param
+import spec.Param.isDiffTest
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {

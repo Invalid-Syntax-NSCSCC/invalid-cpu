@@ -1,10 +1,9 @@
 package pipeline.common
 
-import spec._
 import chisel3._
 import chisel3.util._
-import pipeline.common.bundles.BaseStageIo
 import pipeline.common.bundles.MultiBaseStageIo
+import spec._
 
 abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   inNdFactory:  => InT,
