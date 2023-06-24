@@ -13,7 +13,7 @@ class InstInfoBundle extends Bundle {
 }
 
 object InstInfoBundle {
-  val default = (new InstInfoBundle).Lit(
+  def default = (new InstInfoBundle).Lit(
     _.pcAddr -> zeroWord,
     _.inst -> zeroWord,
     _.exceptionValid -> false.B,

@@ -4,28 +4,25 @@ import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec.{Csr, ExeInst, Param, PipelineStageIndex}
 import spec.Param.isDiffTest
+import control.bundles.BranchFlushInfo
+import control.enums.ExceptionPos
 
-// TODO: Add stall to frontend ?
-// TODO: Add deal exceptions
-// TODO: 出错虚地址badv的赋值
-// TODO: 处理break和syscall指令
-// 优先解决多发射中index小的流水线
-// Attention: ll与sc指令只能从第0条流水线发射（按满洋的设计）
+// Note. Exception只从第0个提交
 class Cu(
   ctrlControlNum: Int = Param.ctrlControlNum,
   writeNum:       Int = Param.csrRegsWriteNum,
-  dispatchNum:    Int = 1 // Param.issueInstInfoMaxNum
-) extends Module {
+  commitNum:      Int = Param.commitNum)
+    extends Module {
   val io = IO(new Bundle {
 
     /** 回写与异常处理
       */
     // `WbStage` -> `Cu` -> `Regfile`
-    val gprWritePassThroughPorts = new PassThroughPort(Vec(dispatchNum, new RfWriteNdPort))
-    val instInfoPorts            = Input(Vec(dispatchNum, new InstInfoNdPort))
+    val gprWritePassThroughPorts = new PassThroughPort(Vec(commitNum, new RfWriteNdPort))
+    val instInfoPorts            = Input(Vec(commitNum, new InstInfoNdPort))
     // `Cu` -> `Csr`, 软件写
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写
@@ -33,21 +30,27 @@ class Cu(
     // `Csr` -> `Cu`
     val csrValues = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
-    val jumpPc = Input(new PcSetPort)
-    // `Csr` -> `Pc`
+    val branchExe = Input(new PcSetPort)
+    // `Rob` -> `Cu`
+    val branchCommit = Input(Bool())
+    // `Cu` -> `Pc`
     val newPc = Output(new PcSetPort)
 
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    // `Cu` -> `IssueStage`, `RegReadStage`, `ExeStage`, `AddrTransStage`, `AddrReqStage`, `Scoreboard`
-    val exceptionFlush = Output(Bool())
-    val branchFlush    = Output(Bool())
+    // val exceptionFlush  = Output(Bool())
+    // val branchFlushInfo = Output(new BranchFlushInfo)
+    val frontendFlush = Output(Bool())
+    val backendFlush  = Output(Bool())
 
     // <- `MemResStage`, `WbStage`
     val isExceptionValidVec = Input(Vec(3, Bool()))
     // -> `MemReqStage`
     val isAfterMemReqFlush = Output(Bool())
+
+    // <- `Rob`
+    // val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
@@ -65,10 +68,11 @@ class Cu(
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := PcSetPort.default
 
-  val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
-    instInfo.isExceptionValid && instInfo.isValid
-  }))
-  val hasException = WireDefault(linesHasException.reduce(_ || _))
+  // val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
+  //   (instInfo.exceptionPos =/= ExceptionPos.none) && instInfo.isValid
+  // }))
+  // val hasException = WireDefault(linesHasException.reduce(_ || _))
+  val hasException = WireDefault(io.instInfoPorts(0).exceptionPos =/= ExceptionPos.none) && io.instInfoPorts(0).isValid
 
   /** stable counter
     */
@@ -77,9 +81,12 @@ class Cu(
   /** Write Regfile
     */
   // temp
-  io.gprWritePassThroughPorts.out(0) := io.gprWritePassThroughPorts.in(0)
+  io.gprWritePassThroughPorts.out.zip(io.gprWritePassThroughPorts.in).foreach {
+    case (dst, src) =>
+      dst := src
+  }
   when(hasException) {
-    io.gprWritePassThroughPorts.out(0) := RfWriteNdPort.default
+    io.gprWritePassThroughPorts.out.foreach(_ := RfWriteNdPort.default)
   }.elsewhen(io.stableCounterReadPort.isMatch) {
     io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
   }
@@ -92,7 +99,9 @@ class Cu(
   // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
     case (dst, src) =>
-      dst := src.csrWritePort
+      dst.en   := src.csrWritePort.en && src.isValid
+      dst.addr := src.csrWritePort.addr
+      dst.data := src.csrWritePort.data
   }
 
   /** csr write by exception
@@ -101,9 +110,11 @@ class Cu(
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  val selectLineNum   = PriorityEncoder(linesHasException)
-  val selectInstInfo  = WireDefault(io.instInfoPorts(selectLineNum))
-  val selectException = PriorityEncoder(selectInstInfo.exceptionRecords)
+  // val selectLineNum      = PriorityEncoder(linesHasException)
+  // val selectInstInfo     = WireDefault(io.instInfoPorts(selectLineNum))
+  val selectInstInfo     = WireDefault(io.instInfoPorts(0))
+  val selectException    = WireDefault(selectInstInfo.exceptionRecord)
+  val selectExceptionPos = WireDefault(selectInstInfo.exceptionPos)
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
   val isTlbRefillException = selectException === Csr.ExceptionIndex.tlbr
 
@@ -183,8 +194,12 @@ class Cu(
         Csr.ExceptionIndex.ppi
       ).contains(selectException)
     ) {
-      io.csrMessage.badVAddrSet.en   := true.B
-      io.csrMessage.badVAddrSet.addr := selectInstInfo.load.vaddr
+      io.csrMessage.badVAddrSet.en := true.B
+      io.csrMessage.badVAddrSet.addr := Mux(
+        selectExceptionPos === ExceptionPos.backend,
+        selectInstInfo.load.vaddr,
+        selectInstInfo.pc
+      )
     }
   }
 
@@ -207,9 +222,13 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  io.exceptionFlush       := RegNext(exceptionFlush, false.B)
-  io.branchFlush          := RegNext(io.jumpPc.en)
+  // io.exceptionFlush := RegNext(exceptionFlush, false.B)
+  // val branchSetEnable = WireDefault(io.jumpPc.en && io.robInstValids(io.jumpPc.robId))
+  // io.branchFlushInfo.en    := RegNext(branchSetEnable)
+  // io.branchFlushInfo.robId := RegNext(io.jumpPc.robId)
   io.csrMessage.ertnFlush := ertnFlush
+  io.frontendFlush        := RegNext(exceptionFlush || io.branchExe.en, false.B)
+  io.backendFlush         := RegNext(exceptionFlush || io.branchCommit, false.B)
 
   // select new pc
   when(exceptionFlush) {
@@ -220,8 +239,8 @@ class Cu(
     }.otherwise {
       io.newPc.pcAddr := io.csrValues.eentry.asUInt
     }
-  }.elsewhen(io.jumpPc.en) {
-    io.newPc := io.jumpPc
+  }.elsewhen(io.branchExe.en) {
+    io.newPc := io.branchExe
   }
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&

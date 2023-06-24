@@ -20,5 +20,5 @@ class CuToCsrNdPort extends Bundle {
 }
 
 object CuToCsrNdPort {
-  val default = 0.U.asTypeOf(new CuToCsrNdPort)
+  def default = 0.U.asTypeOf(new CuToCsrNdPort)
 }

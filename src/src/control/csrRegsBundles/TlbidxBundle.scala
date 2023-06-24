@@ -13,5 +13,5 @@ class TlbidxBundle extends Bundle {
 }
 
 object TlbidxBundle {
-  val default = 0.U.asTypeOf(new TlbidxBundle)
+  def default = 0.U.asTypeOf(new TlbidxBundle)
 }

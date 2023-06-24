@@ -6,7 +6,7 @@ import chisel3.util._
 import pipeline.common.bundles.BaseStageIo
 import pipeline.common.bundles.MultiBaseStageIo
 
-abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
+abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
   inNdFactory:  => InT,
   outNdFactory: => OutT,
   blankIn:      => InT,
@@ -17,29 +17,6 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   val io = IO(new MultiBaseStageIo(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
 
   private val queueSize = 1
-
-  private val savedIns = RegInit(VecInit(Seq.fill(inNum)(blankIn)))
-  savedIns := savedIns
-  protected val isComputeds: Vec[Bool] = WireDefault(VecInit(Seq.fill(inNum)(false.B))) // ** different from BaseStage
-  protected val isLastComputeds: Vec[Bool] = RegNext(isComputeds, VecInit(Seq.fill(inNum)(false.B)))
-  protected val selectedIns:     Vec[InT]  = WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
-  selectedIns.lazyZip(io.ins).lazyZip(savedIns).foreach {
-    case (selectIn, in, saveIn) => {
-      selectIn := Mux(
-        io.isFlush,
-        blankIn,
-        Mux(
-          in.ready,
-          Mux(
-            in.valid,
-            in.bits,
-            blankIn
-          ),
-          saveIn
-        )
-      )
-    }
-  }
 
   protected val resultOutsReg: Vec[ValidIO[OutT]] = RegInit(
     VecInit(Seq.fill(outNum)(0.U.asTypeOf(ValidIO(outNdFactory))))
@@ -64,6 +41,21 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   // Handle output
   io.outs <> outQueues
 
+  protected val selectedIns: Vec[InT] = Wire(Vec(inNum, inNdFactory)) // WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
+  selectedIns.lazyZip(io.ins).foreach {
+    case (selectIn, in) => {
+      selectIn := Mux(
+        io.isFlush,
+        blankIn,
+        Mux(
+          in.valid,
+          in.bits,
+          blankIn
+        )
+      )
+    }
+  }
+
   // Handle input
   io.ins.foreach(_.ready := false.B)
   // 由于in和out不是一一对应，需要处理in.ready
@@ -74,28 +66,9 @@ abstract class MultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
       v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
   }
 
-  // validToOuts(1) := false.B
-
-  io.ins.zip(savedIns).foreach {
-    case (in, saveIn) =>
-      when(in.valid && in.ready) {
-        saveIn := in.bits
-      }
-  }
-
-  // Invalidate `savedIn` when computed
-  isComputeds.zip(savedIns).foreach {
-    case (isComputed, saveIn) =>
-      when(isComputed) {
-        saveIn := blankIn
-      }
-  }
-
   // Handle flush (queue is already handled)
   when(io.isFlush) {
     io.ins.foreach(_.ready := false.B)
     io.outs.foreach(_.valid := false.B)
-    isLastComputeds.foreach(_ := true.B)
-    savedIns.foreach(_ := blankIn)
   }
 }

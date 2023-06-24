@@ -9,5 +9,5 @@ class EraBundle extends Bundle {
 }
 
 object EraBundle {
-  val default = 0.U.asTypeOf(new EraBundle)
+  def default = 0.U.asTypeOf(new EraBundle)
 }

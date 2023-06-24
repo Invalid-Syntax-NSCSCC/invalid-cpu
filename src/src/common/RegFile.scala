@@ -6,10 +6,14 @@ import common.bundles._
 import spec.Param.isDiffTest
 import spec._
 
-class RegFile(readNum: Int = Param.regFileReadNum) extends Module {
+class RegFile(
+  issueNum: Int = Param.issueInstInfoMaxNum,
+  readNum:  Int = Param.regFileReadNum,
+  writeNum: Int = Param.commitNum)
+    extends Module {
   val io = IO(new Bundle {
-    val writePort = Input(new RfWriteNdPort)
-    val readPorts = Vec(readNum, new RfReadPort)
+    val writePorts = Input(Vec(writeNum, new RfWriteNdPort))
+    val readPorts  = Vec(issueNum, Vec(readNum, new RfReadPort))
 
     val difftest =
       if (isDiffTest)
@@ -23,29 +27,30 @@ class RegFile(readNum: Int = Param.regFileReadNum) extends Module {
   val regs = RegInit(VecInit(Seq.fill(Count.reg)(zeroWord)))
 
   // Write
+  // larger index write first
   regs.zipWithIndex.foreach {
     case (reg, index) =>
-      reg := Mux(
-        io.writePort.en === true.B && index.U === io.writePort.addr,
-        io.writePort.data,
-        reg
-      )
+      io.writePorts.foreach { write =>
+        when(write.en && index.U === write.addr) {
+          reg := write.data
+        }
+      }
   }
 
   // Read
-  io.readPorts.foreach { readPort =>
-    readPort.data := zeroWord
-    when(readPort.addr === 0.U) {
-      // Always zero
+  io.readPorts.foreach { readPorts =>
+    readPorts.foreach { readPort =>
       readPort.data := zeroWord
-    }.elsewhen(readPort.en) {
-      when(
-        io.writePort.en === true.B && readPort.addr === io.writePort.addr
-      ) {
-        // Write fall through to read
-        readPort.data := io.writePort.data
-      }.otherwise {
+      when(readPort.addr === 0.U) {
+        // Always zero
+        readPort.data := zeroWord
+      }.elsewhen(readPort.en) {
         readPort.data := regs(readPort.addr)
+        io.writePorts.foreach { write =>
+          when(write.en && write.addr === readPort.addr) {
+            readPort.data := write.data
+          }
+        }
       }
     }
   }

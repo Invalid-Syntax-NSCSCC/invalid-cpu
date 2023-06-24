@@ -5,7 +5,7 @@ import chisel3.util._
 import spec._
 import chisel3.experimental.BundleLiterals._
 import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.enums.ScoreboardState
@@ -18,6 +18,8 @@ import pipeline.rob.bundles.InstWbNdPort
 import pipeline.common.MultiQueue
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
+import control.bundles.CsrReadPort
+import pipeline.common.MultiBaseStageWOSaveIn
 
 // class FetchInstDecodeNdPort extends Bundle {
 //   val decode   = new DecodeOutNdPort
@@ -25,7 +27,7 @@ import pipeline.rob.enums.RobDistributeSel
 // }
 
 // object FetchInstDecodeNdPort {
-//   val default = (new FetchInstDecodeNdPort).Lit(
+//   def default = (new FetchInstDecodeNdPort).Lit(
 //     _.decode -> DecodeOutNdPort.default,
 //     _.instInfo -> InstInfoNdPort.default
 //   )
@@ -37,9 +39,10 @@ class IssueStagePeerPort(
     extends Bundle {
 
   // `IssueStage` <-> `Rob`
-  val robEmptyNum = Input(UInt(Param.Width.Rob.addr))
-  val requests    = Output(Vec(issueNum, new RobReadRequestNdPort))
-  val results     = Input(Vec(issueNum, new RobReadResultNdPort))
+  val robEmptyNum  = Input(UInt(Param.Width.Rob.id))
+  val requests     = Output(Vec(issueNum, new RobReadRequestNdPort))
+  val results      = Input(Vec(issueNum, new RobReadResultNdPort))
+  val resultsValid = Input(Bool())
 
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
@@ -47,14 +50,18 @@ class IssueStagePeerPort(
   // `IssueStage` <-> `Scoreboard(csr)`
   val csrOccupyPort = Output(new ScoreboardChangeNdPort)
   val csrRegScore   = Input(ScoreboardState())
+  val csrReadPort   = Flipped(new CsrReadPort)
+
+  // branch flush
+  val branchFlush = Input(Bool())
 }
 
 // dispatch & Reservation Stations
 class IssueStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
-  reservationLength: Int = spec.Param.reservationStationDeep)
-    extends MultiBaseStage(
+  reservationLength: Int = Param.reservationStationDeep)
+    extends MultiBaseStageWOSaveIn(
       new FetchInstDecodeNdPort,
       new ExeNdPort,
       FetchInstDecodeNdPort.default,
@@ -67,9 +74,20 @@ class IssueStage(
   resultOutsReg.foreach(_.bits := 0.U.asTypeOf(resultOutsReg(0).bits))
   io.peer.get.csrOccupyPort := ScoreboardChangeNdPort.default
   io.peer.get.requests.foreach(_ := RobReadRequestNdPort.default)
+  io.peer.get.csrReadPort.en   := false.B
+  io.peer.get.csrReadPort.addr := false.B
 
   val reservationStations = Seq.fill(pipelineNum)(
-    Module(new MultiQueue(reservationLength, 1, 1, new ReservationStationBundle, ReservationStationBundle.default))
+    Module(
+      new MultiQueue(
+        reservationLength,
+        1,
+        1,
+        new ReservationStationBundle,
+        ReservationStationBundle.default,
+        writeFirst = false
+      )
+    )
   )
 
   // fall back
@@ -78,12 +96,17 @@ class IssueStage(
     port.io.enqueuePorts(0).bits  := DontCare
   }
   reservationStations.foreach(_.io.dequeuePorts(0).ready := false.B)
-  // TODO: BRANCH CONDITION
   reservationStations.foreach(_.io.isFlush := io.isFlush)
-  reservationStations.foreach(_.io.setPorts.foreach { port =>
-    port.valid := false.B
-    port.bits  := DontCare
-  })
+  reservationStations.foreach { rs =>
+    rs.io.setPorts.zip(rs.io.elems).foreach {
+      case (dst, src) =>
+        dst.valid := false.B
+        dst.bits  := src
+    }
+  }
+
+  // stop fetch when branch
+  val fetchEnableFlag = RegInit(true.B)
 
   /** fetch -> reservation stations
     */
@@ -92,13 +115,10 @@ class IssueStage(
 
   val dispatchMap  = WireDefault(VecInit(Seq.fill(issueNum)(VecInit(Seq.fill(pipelineNum)(false.B)))))
   val canDispatchs = WireDefault(VecInit(dispatchMap.map(_.reduceTree(_ || _))))
-  isComputeds.lazyZip(canDispatchs).lazyZip(selectedIns).foreach {
-    case (isComputed, canDispatch, in) =>
-      isComputed := canDispatch || !in.instInfo.isValid
-  }
-  io.ins.zip(isLastComputeds).foreach {
-    case (in, isLastComputed) =>
-      in.ready := isLastComputed
+
+  io.ins.lazyZip(canDispatchs).foreach {
+    case (in, canDispatch) =>
+      in.ready := canDispatch && fetchEnableFlag && io.peer.get.resultsValid // * rob distribute failed
   }
 
   selectedIns.lazyZip(dispatchMap).zipWithIndex.foreach {
@@ -117,14 +137,27 @@ class IssueStage(
             dispatchEn := ready &&
               !dispatchMap.take(src_idx).map(_(dst_idx)).foldLeft(false.B)(_ || _) &&
               canDispatchs.take(src_idx).foldLeft(true.B)(_ && _) &&
-              src_idx.U < io.peer.get.robEmptyNum
-            if (dst_idx != loadStoreIssuePipelineIndex) {
+              (src_idx.U < io.peer.get.robEmptyNum)
+            if (dst_idx == loadStoreIssuePipelineIndex) {
+              when(in.decode.info.exeSel =/= ExeInst.Sel.loadStore) {
+                dispatchEn := false.B
+              }
+            } else {
               when(in.decode.info.exeSel === ExeInst.Sel.loadStore) {
                 dispatchEn := false.B
               }
             }
-            if (dst_idx != csrIssuePipelineIndex) {
+            if (dst_idx == csrIssuePipelineIndex) {
+              when(in.instInfo.needCsr && (io.peer.get.csrRegScore =/= ScoreboardState.free)) {
+                dispatchEn := false.B
+              }
+            } else {
               when(in.instInfo.needCsr) {
+                dispatchEn := false.B
+              }
+            }
+            if (dst_idx != Param.jumpBranchPipelineIndex) {
+              when(in.decode.info.exeSel === ExeInst.Sel.jumpBranch) {
                 dispatchEn := false.B
               }
             }
@@ -139,16 +172,19 @@ class IssueStage(
 
   // -> reservation stations
   for (src_idx <- Seq.range(issueNum - 1, -1, -1)) {
-    for (dst_idx <- 0 to pipelineNum) {
-      when(dispatchMap(src_idx)(dst_idx)) {
+    for (dst_idx <- 0 until pipelineNum) {
+      when(dispatchMap(src_idx)(dst_idx) && fetchEnableFlag && io.peer.get.resultsValid) {
         // decode info
-        reservationStations(dst_idx).io.enqueuePorts(0).valid := true.B
+        reservationStations(dst_idx).io
+          .enqueuePorts(0)
+          .valid := fetchEnableFlag && io.peer.get.resultsValid // * rob distribute failed
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.preExeInstInfo := selectedIns(
           src_idx
         ).decode.info
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.instInfo := selectedIns(src_idx).instInfo
 
         // rob result
+        io.peer.get.requests(src_idx).en := true.B
         io.peer.get.requests(src_idx).readRequests.zip(selectedIns(src_idx).decode.info.gprReadPorts).foreach {
           case (req, decodeRead) =>
             req := decodeRead
@@ -164,7 +200,9 @@ class IssueStage(
             .foreach {
               case (readPort, robResult, rs) =>
                 // may be error
-                when(writeback.en && readPort.en && writeback.robId === robResult.result) {
+                when(
+                  writeback.en && readPort.en && robResult.sel === RobDistributeSel.robId && writeback.robId === robResult.result
+                ) {
                   rs.sel    := RobDistributeSel.realData
                   rs.result := writeback.data
                 }
@@ -180,8 +218,11 @@ class IssueStage(
         }
 
         // csr score board
-        io.peer.get.csrOccupyPort.en   := selectedIns(src_idx).decode.info.needCsr
-        io.peer.get.csrOccupyPort.addr := DontCare
+        if (dst_idx == Param.csrIssuePipelineIndex) {
+          io.peer.get.csrOccupyPort.en   := selectedIns(src_idx).decode.info.needCsr
+          io.peer.get.csrOccupyPort.addr := DontCare
+        }
+
       }
     }
   }
@@ -190,10 +231,67 @@ class IssueStage(
     */
 
   reservationStations.foreach { reservationStation =>
-    reservationStation.io.elems.zip(reservationStation.io.elemValids)
+    reservationStation.io.elems
+      .lazyZip(reservationStation.io.elemValids)
+      .lazyZip(reservationStation.io.setPorts)
+      .foreach {
+        case (elem, elemValid, set) =>
+          when(elemValid) {
+            io.peer.get.writebacks.foreach { wb =>
+              elem.robResult.readResults.zip(set.bits.robResult.readResults).foreach {
+                case (readResult, setReadResult) =>
+                  when(readResult.sel === RobDistributeSel.robId && wb.en && readResult.result === wb.robId) {
+                    set.valid            := true.B
+                    setReadResult.sel    := RobDistributeSel.realData
+                    setReadResult.result := wb.data
+                  }
+              }
+            }
+          }
+      }
   }
 
   /** output
     */
+  reservationStations.lazyZip(resultOutsReg).lazyZip(validToOuts).zipWithIndex.foreach {
+    case ((reservationStation, out, outEnable), idx) =>
+      val deqPort = reservationStation.io.dequeuePorts(0)
+      val deqEn = outEnable &&
+        deqPort.valid &&
+        deqPort.bits.robResult.readResults
+          .map(_.sel === RobDistributeSel.realData)
+          .reduce(_ && _)
+      out.valid     := deqEn
+      deqPort.ready := deqEn
 
+      out.bits.leftOperand  := deqPort.bits.robResult.readResults(0).result
+      out.bits.rightOperand := deqPort.bits.robResult.readResults(1).result
+      out.bits.exeSel       := deqPort.bits.regReadPort.preExeInstInfo.exeSel
+      out.bits.exeOp        := deqPort.bits.regReadPort.preExeInstInfo.exeOp
+      out.bits.gprWritePort := deqPort.bits.regReadPort.preExeInstInfo.gprWritePort
+      // jumbBranch / memLoadStort / csr
+      out.bits.jumpBranchAddr := deqPort.bits.regReadPort.preExeInstInfo.jumpBranchAddr
+      if (idx == Param.csrIssuePipelineIndex) {
+        io.peer.get.csrReadPort.en   := deqPort.bits.regReadPort.preExeInstInfo.csrReadEn
+        io.peer.get.csrReadPort.addr := deqPort.bits.regReadPort.preExeInstInfo.csrAddr
+        when(deqPort.bits.regReadPort.preExeInstInfo.csrReadEn) {
+          out.bits.csrData := io.peer.get.csrReadPort.data
+        }
+      }
+
+      out.bits.instInfo       := deqPort.bits.regReadPort.instInfo
+      out.bits.instInfo.robId := deqPort.bits.robResult.robId
+  }
+
+  when(io.peer.get.branchFlush) {
+    io.peer.get.requests.foreach(_.en := false.B)
+    io.ins.foreach(_.ready := false.B)
+    fetchEnableFlag := false.B
+  }
+
+  when(io.isFlush) {
+    io.peer.get.requests.foreach(_.en := false.B)
+    io.ins.foreach(_.ready := false.B)
+    fetchEnableFlag := true.B
+  }
 }

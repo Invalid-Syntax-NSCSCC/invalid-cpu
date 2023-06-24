@@ -2,7 +2,7 @@ package pipeline.dispatch.bundles
 
 import chisel3._
 import chisel3.util._
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.dispatch.RegReadNdPort
 import chisel3.experimental.BundleLiterals._
 
@@ -12,7 +12,7 @@ class RegReadPortWithValidBundle extends Bundle {
 }
 
 object RegReadPortWithValidBundle {
-  val default = (new RegReadPortWithValidBundle).Lit(
+  def default = (new RegReadPortWithValidBundle).Lit(
     _.valid -> false.B,
     _.issueInfo -> RegReadNdPort.default
   )

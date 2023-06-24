@@ -6,7 +6,7 @@ import spec._
 import pipeline.mem.bundles.MemRequestNdPort
 import common.bundles.RfWriteNdPort
 import chisel3.experimental.BundleLiterals._
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 
 class ExeResultPort extends Bundle {
   val memAccessPort = (new MemRequestNdPort)
@@ -15,7 +15,7 @@ class ExeResultPort extends Bundle {
 }
 
 object ExeResultPort {
-  val default = (new ExeResultPort).Lit(
+  def default = (new ExeResultPort).Lit(
     _.memAccessPort -> MemRequestNdPort.default,
     _.gprWritePort -> RfWriteNdPort.default,
     _.instInfo -> InstInfoNdPort.default

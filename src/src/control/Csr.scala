@@ -10,10 +10,6 @@ import common.bundles.RfReadPort
 import control.csrRegsBundles._
 import spec.Param.isDiffTest
 
-// TODO: 中断：ecfg, estat.is
-// TODO: 同时读写csrRegs时候读端口的赋值
-// TODO: TLB相关寄存器
-// TODO: 计时器中断
 class Csr(
   writeNum: Int = Param.csrRegsWriteNum,
   readNum:  Int = Param.csrRegsReadNum)
@@ -146,7 +142,7 @@ class Csr(
     when(tval.out.timeVal === 0.U) {
       tval.in.timeVal := Mux(
         tcfg.out.periodic,
-        Cat(tcfg.out.initVal, 0.U(2.W)),
+        tcfg.out.initVal << 2,
         "hffffffff".U(32.W)
       )
       estat.in.is_timeInt := true.B
@@ -170,13 +166,14 @@ class Csr(
           crmd.in.datm := writePort.data(8, 7)
         }
         is(spec.Csr.Index.prmd) {
-          prmd.in := Cat(0.U(29.W), writePort.data(2, 0)).asTypeOf(prmd.in)
+          prmd.in.pplv := writePort.data(1, 0)
+          prmd.in.pie  := writePort.data(2)
         }
         is(spec.Csr.Index.euen) {
-          euen.in := Cat(0.U(31.W), writePort.data(0)).asTypeOf(euen.in)
+          euen.in.fpe := writePort.data(0)
         }
         is(spec.Csr.Index.ecfg) {
-          ecfg.in := Cat(0.U(19.W), writePort.data(12, 0)).asTypeOf(ecfg.in)
+          ecfg.in.lie := writePort.data(12, 0)
         }
         is(spec.Csr.Index.estat) {
           estat.in.is_softwareInt := writePort.data(1, 0)
@@ -217,7 +214,7 @@ class Csr(
           tid.in := writePort.data.asTypeOf(tid.in)
         }
         is(spec.Csr.Index.eentry) {
-          eentry.in := Cat(writePort.data(31, 6), 0.U(6.W)).asTypeOf(eentry.in)
+          eentry.in.va := writePort.data(31, 6)
         }
         is(spec.Csr.Index.cpuid) {
           // no write
@@ -229,30 +226,28 @@ class Csr(
           }
         }
         is(spec.Csr.Index.tlbidx) {
-          tlbidx.in := Cat(
-            writePort.data(31),
-            false.B,
-            writePort.data(29, 24),
-            0.U((24 - spec.Csr.Tlbidx.Width.index).W),
-            writePort.data(spec.Csr.Tlbidx.Width.index - 1, 0)
-          ).asTypeOf(tlbidx.in)
+          tlbidx.in.index := writePort.data(spec.Csr.Tlbidx.Width.index - 1, 0)
+          tlbidx.in.ps    := writePort.data(29, 24)
+          tlbidx.in.ne    := writePort.data(31)
         }
         is(spec.Csr.Index.tlbehi) {
-          tlbehi.in := Cat(writePort.data(31, 13), 0.U(13.W)).asTypeOf(tlbehi.in)
+          tlbehi.in.vppn := writePort.data(31, 13)
         }
         is(spec.Csr.Index.tlbelo0) {
-          tlbelo0.in := Cat(
-            writePort.data(31, 8),
-            false.B,
-            writePort.data(6, 0)
-          ).asTypeOf(tlbelo0.in)
+          tlbelo0.in.v   := writePort.data(0)
+          tlbelo0.in.d   := writePort.data(1)
+          tlbelo0.in.plv := writePort.data(3, 2)
+          tlbelo0.in.mat := writePort.data(5, 4)
+          tlbelo0.in.g   := writePort.data(6)
+          tlbelo0.in.ppn := writePort.data(spec.Csr.Tlbelo.Width.palen - 5, 8)
         }
         is(spec.Csr.Index.tlbelo1) {
-          tlbelo1.in := Cat(
-            writePort.data(31, 8),
-            false.B,
-            writePort.data(6, 0)
-          ).asTypeOf(tlbelo1.in)
+          tlbelo1.in.v   := writePort.data(0)
+          tlbelo1.in.d   := writePort.data(1)
+          tlbelo1.in.plv := writePort.data(3, 2)
+          tlbelo1.in.mat := writePort.data(5, 4)
+          tlbelo1.in.g   := writePort.data(6)
+          tlbelo1.in.ppn := writePort.data(spec.Csr.Tlbelo.Width.palen - 5, 8)
         }
         is(spec.Csr.Index.asid) {
           asid.in.asid := writePort.data(9, 0)
@@ -261,42 +256,34 @@ class Csr(
           // no write
         }
         is(spec.Csr.Index.pgdl) {
-          pgdl.in := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(pgdl.in)
+          pgdl.in.base := writePort.data(31, 12)
         }
         is(spec.Csr.Index.pgdh) {
-          pgdh.in := Cat(writePort.data(31, 12), 0.U(12.W)).asTypeOf(pgdh.in)
+          pgdh.in.base := writePort.data(31, 12)
         }
         is(spec.Csr.Index.tlbrentry) {
-          tlbrentry.in := Cat(writePort.data(31, 6), 0.U(6.W)).asTypeOf(tlbrentry.in)
+          tlbrentry.in.pa := writePort.data(31, 6)
         }
         is(spec.Csr.Index.dmw0) {
-          dmw0.in := Cat(
-            writePort.data(31, 29),
-            false.B,
-            writePort.data(27, 25),
-            0.U(19.W),
-            writePort.data(5, 3),
-            0.U(2.W),
-            writePort.data(0)
-          ).asTypeOf(dmw0.in)
+          dmw0.in.plv0 := writePort.data(0)
+          dmw0.in.plv3 := writePort.data(3)
+          dmw0.in.mat  := writePort.data(5, 4)
+          dmw0.in.pseg := writePort.data(27, 25)
+          dmw0.in.vseg := writePort.data(31, 29)
         }
         is(spec.Csr.Index.dmw1) {
-          dmw1.in := Cat(
-            writePort.data(31, 29),
-            false.B,
-            writePort.data(27, 25),
-            0.U(19.W),
-            writePort.data(5, 3),
-            0.U(2.W),
-            writePort.data(0)
-          ).asTypeOf(dmw1.in)
+          dmw1.in.plv0 := writePort.data(0)
+          dmw1.in.plv3 := writePort.data(3)
+          dmw1.in.mat  := writePort.data(5, 4)
+          dmw1.in.pseg := writePort.data(27, 25)
+          dmw1.in.vseg := writePort.data(31, 29)
         }
         is(spec.Csr.Index.tcfg) {
           val initVal = WireDefault(writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 2))
           tcfg.in.initVal  := initVal
           tcfg.in.periodic := writePort.data(1)
           tcfg.in.en       := writePort.data(0)
-          tval.in.timeVal  := Cat(initVal, 0.U(2.W))
+          tval.in.timeVal  := initVal << 2
         }
         is(spec.Csr.Index.tval) {
           // no write
@@ -370,8 +357,8 @@ class Csr(
   }
 
   // 中断
-  // la 空出来了一位
-  estat.in.is_hardwareInt := Cat(false.B, io.csrMessage.hardWareInetrrupt)
+  // la 最高位空出来了一位
+  estat.in.is_hardwareInt := io.csrMessage.hardWareInetrrupt
 
   val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)

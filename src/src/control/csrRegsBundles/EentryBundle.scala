@@ -10,5 +10,5 @@ class EentryBundle extends Bundle {
 }
 
 object EentryBundle {
-  val default = 0.U.asTypeOf(new EentryBundle)
+  def default = 0.U.asTypeOf(new EentryBundle)
 }

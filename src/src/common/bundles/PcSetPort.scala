@@ -12,7 +12,7 @@ class PcSetPort extends Bundle {
 }
 
 object PcSetPort {
-  val default = (new PcSetPort).Lit(
+  def default = (new PcSetPort).Lit(
     _.en -> false.B,
     _.pcAddr -> zeroWord,
     _.isIdle -> false.B

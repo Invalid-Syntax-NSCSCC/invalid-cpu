@@ -12,7 +12,7 @@ class DecodeOutNdPort extends Bundle {
 }
 
 object DecodeOutNdPort {
-  val default = (new DecodeOutNdPort).Lit(
+  def default = (new DecodeOutNdPort).Lit(
     _.isMatched -> false.B,
     _.info -> PreExeInstNdPort.default
   )

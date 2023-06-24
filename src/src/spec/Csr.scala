@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import control.bundles.EcodeBundle
 import spec._
+import chisel3.util.log2Ceil
 
 object Csr {
 
@@ -117,15 +118,19 @@ object Csr {
 
   object TimeVal {
     object Width {
-      // 待修改
       val timeVal = 32
     }
   }
 
   object Tlbidx {
     object Width {
-      // Attention: 这与TLB实现有关，待修改
-      val index = 12
+      val index = log2Ceil(Param.Count.Tlb.num)
+    }
+  }
+
+  object Tlbelo {
+    object Width {
+      val palen = spec.Width.Mem._addr
     }
   }
 
@@ -154,6 +159,7 @@ object Csr {
     val fpe  = next
     val tlbr = next
 
-    def width = count + 1
+    def num   = count + 1
+    def width = log2Ceil(count + 1).W
   }
 }

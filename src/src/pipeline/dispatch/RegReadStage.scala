@@ -7,11 +7,11 @@ import pipeline.execution.ExeNdPort
 import chisel3.experimental.BundleLiterals._
 import spec._
 import control.bundles.PipelineControlNdPort
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import control.bundles.CsrReadPort
 import pipeline.common.BaseStage
 import common.bundles.RfAccessInfoNdPort
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.dispatch.bundles.PreExeInstNdPort
 
 class RegReadNdPort extends Bundle {

@@ -13,5 +13,5 @@ class InstWbNdPort extends Bundle {
 }
 
 object InstWbNdPort {
-  val default = 0.U.asTypeOf(new InstWbNdPort)
+  def default = 0.U.asTypeOf(new InstWbNdPort)
 }

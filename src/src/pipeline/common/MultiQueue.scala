@@ -11,7 +11,6 @@ class MultiQueue[ElemT <: Data](
   deqMaxNum:          Int,
   elemNdFactory:      => ElemT,
   blankElem:          => ElemT,
-  needValidPorts:     Boolean = false,
   isRelativePosition: Boolean = false,
   writeFirst:         Boolean = true)
     extends Module {
@@ -22,9 +21,14 @@ class MultiQueue[ElemT <: Data](
     val dequeuePorts = Vec(deqMaxNum, Decoupled(elemNdFactory))
 
     // deq_ptr -> enq_ptr
-    val setPorts   = Input(Vec(queueLength, ValidIO(elemNdFactory)))
-    val elems      = Output(Vec(queueLength, elemNdFactory))
-    val elemValids = if (needValidPorts) Some(Output(Vec(queueLength, Bool()))) else None
+    val setPorts      = Input(Vec(queueLength, ValidIO(elemNdFactory)))
+    val elems         = Output(Vec(queueLength, elemNdFactory))
+    val emptyNum      = Output(UInt(log2Ceil(queueLength).W))
+    val enqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength + 1).W)))
+    val deqIncResults = Output(Vec(queueLength + 1, UInt(log2Ceil(queueLength + 1).W)))
+    val enq_ptr       = Output(UInt(log2Ceil(queueLength + 1).W))
+    val deq_ptr       = Output(UInt(log2Ceil(queueLength + 1).W))
+    val elemValids    = Output(Vec(queueLength, Bool()))
   })
 
   require(queueLength > enqMaxNum)
@@ -40,6 +44,16 @@ class MultiQueue[ElemT <: Data](
   enq_ptr.io.flush := io.isFlush
   deq_ptr.io.inc   := 0.U
   deq_ptr.io.flush := io.isFlush
+  io.enqIncResults.zip(enq_ptr.io.incResults).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+  io.deqIncResults.zip(deq_ptr.io.incResults).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+  io.enq_ptr := enq_ptr.io.value
+  io.deq_ptr := deq_ptr.io.value
 
   val maybeFull = RegInit(false.B)
   val ptrMatch  = enq_ptr.io.value === deq_ptr.io.value
@@ -53,11 +67,12 @@ class MultiQueue[ElemT <: Data](
       Mux(
         enq_ptr.io.value > deq_ptr.io.value,
         enq_ptr.io.value - deq_ptr.io.value,
-        (queueLength.U - deq_ptr.io.value) + enq_ptr.io.value
+        (queueLength.U -& deq_ptr.io.value) +& enq_ptr.io.value
       )
     )
   )
   val emptyNum = WireDefault(queueLength.U - storeNum)
+  io.emptyNum := emptyNum
 
   val isEmptyBy = WireDefault(VecInit(Seq.range(0, deqMaxNum).map(_.U === storeNum)))
   val isFullBy  = WireDefault(VecInit(Seq.range(0, enqMaxNum).map(_.U === emptyNum)))
@@ -102,17 +117,20 @@ class MultiQueue[ElemT <: Data](
   enq_ptr.io.inc := enqueueNum
   io.enqueuePorts.lazyZip(enqEn).zipWithIndex.foreach {
     case ((enqPort, en), idx) =>
-      when(idx.U < enqueueNum) {
+      when(en) {
         ram(enq_ptr.io.incResults(idx))       := enqPort.bits
         ramValids(enq_ptr.io.incResults(idx)) := true.B
       }
   }
 
   deq_ptr.io.inc := dequeueNum
-  io.dequeuePorts.zipWithIndex.foreach {
-    case (deq, idx) =>
-      deq.bits                              := ram(deq_ptr.io.incResults(idx))
-      ramValids(deq_ptr.io.incResults(idx)) := false.B
+  io.dequeuePorts.lazyZip(deqEn).zipWithIndex.foreach {
+    case ((deq, en), idx) =>
+      deq.bits := ram(deq_ptr.io.incResults(idx))
+      when(en) {
+        ramValids(deq_ptr.io.incResults(idx)) := false.B
+      }
+
   }
 
   if (writeFirst) {
@@ -138,17 +156,13 @@ class MultiQueue[ElemT <: Data](
 
   }
 
-  io.elemValids match {
-    case Some(elemValids) =>
-      io.elemValids.zipWithIndex.foreach {
-        case (dst, idx) =>
-          if (isRelativePosition) {
-            dst := ramValids(deq_ptr.io.incResults(idx))
-          } else {
-            dst := ramValids(idx)
-          }
+  io.elemValids.zipWithIndex.foreach {
+    case (dst, idx) =>
+      if (isRelativePosition) {
+        dst := ramValids(deq_ptr.io.incResults(idx))
+      } else {
+        dst := ramValids(idx)
       }
-    case None =>
   }
 
   when(io.isFlush) {

@@ -10,5 +10,5 @@ class LLBitSetBundle extends Bundle {
 }
 
 object LLBitSetBundle {
-  val default = 0.U.asTypeOf(new LLBitSetBundle)
+  def default = 0.U.asTypeOf(new LLBitSetBundle)
 }

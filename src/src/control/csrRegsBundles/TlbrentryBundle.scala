@@ -10,5 +10,5 @@ class TlbrentryBundle extends Bundle {
 }
 
 object TlbrentryBundle {
-  val default = 0.U.asTypeOf(new TlbrentryBundle)
+  def default = 0.U.asTypeOf(new TlbrentryBundle)
 }

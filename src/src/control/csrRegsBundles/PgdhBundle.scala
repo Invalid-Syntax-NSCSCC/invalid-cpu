@@ -10,5 +10,5 @@ class PgdhBundle extends Bundle {
 }
 
 object PgdhBundle {
-  val default = 0.U.asTypeOf(new PgdhBundle)
+  def default = 0.U.asTypeOf(new PgdhBundle)
 }

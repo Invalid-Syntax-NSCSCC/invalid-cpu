@@ -2,24 +2,21 @@ package pipeline.mem
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PassThroughPort, RfWriteNdPort}
-import control.bundles.PipelineControlNdPort
 import memory.bundles.MemResponseNdPort
 import pipeline.common.BaseStage
-import pipeline.writeback.WbNdPort
-import pipeline.writeback.bundles.InstInfoNdPort
+import pipeline.commit.WbNdPort
+import pipeline.commit.bundles.InstInfoNdPort
 import spec._
 
-import scala.collection.immutable
-
 class MemResNdPort extends Bundle {
-  val isHasReq   = Bool()
-  val isCached   = Bool()
-  val isUnsigned = Bool()
-  val isRead     = Bool()
-  val dataMask   = UInt((Width.Mem._data / byteLength).W)
-  val gprWrite   = new RfWriteNdPort
-  val instInfo   = new InstInfoNdPort
+  val isPipelined  = Bool()
+  val isInstantReq = Bool()
+  val isCached     = Bool()
+  val isUnsigned   = Bool()
+  val isRead       = Bool()
+  val dataMask     = UInt((Width.Mem._data / byteLength).W)
+  val gprAddr      = UInt(Width.Reg.addr)
+  val instInfo     = new InstInfoNdPort
 }
 
 object MemResNdPort {
@@ -29,8 +26,6 @@ object MemResNdPort {
 class MemResPeerPort extends Bundle {
   val dCacheRes   = Input(new MemResponseNdPort)
   val uncachedRes = Input(new MemResponseNdPort)
-  // --> `Cu`
-  val isExceptionValid = Output(Bool())
 }
 
 class MemResStage
@@ -44,11 +39,9 @@ class MemResStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.gprWrite := selectedIn.gprWrite
-  out.instInfo := selectedIn.instInfo
-
-  // Whether current instruction causes exception
-  peer.isExceptionValid := selectedIn.instInfo.isValid && selectedIn.instInfo.isExceptionValid
+  out.gprWrite.en   := selectedIn.isRead && selectedIn.isInstantReq
+  out.gprWrite.addr := selectedIn.gprAddr
+  out.instInfo      := selectedIn.instInfo
 
   // Get read data
   val rawReadData = WireDefault(
@@ -75,7 +68,7 @@ class MemResStage
   )
   signedReadData   := readDataLookup(_.asSInt)
   unsignedReadData := readDataLookup(_.asUInt)
-  when(selectedIn.isRead && selectedIn.isHasReq) {
+  when(selectedIn.isRead && selectedIn.isInstantReq) {
     out.gprWrite.data := Mux(selectedIn.isUnsigned, unsignedReadData, signedReadData.asUInt)
   }
 
@@ -83,7 +76,7 @@ class MemResStage
 
   when(selectedIn.instInfo.isValid) {
     // Whether memory access complete
-    when(selectedIn.isHasReq) {
+    when(selectedIn.isInstantReq) {
       when(selectedIn.isCached) {
         isComputed := peer.dCacheRes.isComplete
       }.otherwise {
@@ -93,7 +86,7 @@ class MemResStage
     }
 
     // Submit result
-    resultOutReg.valid := isComputed
+    resultOutReg.valid := isComputed && selectedIn.isPipelined
   }
 
   val shouldDiscardReg = RegInit(false.B)
