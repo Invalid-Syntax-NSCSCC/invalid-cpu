@@ -3,7 +3,6 @@ package spec
 import chisel3._
 import chisel3.internal.firrtl.Width
 import spec.Width.{Op => wd}
-import ujson.Str
 
 object Inst {
   private def b(str: String, width: Width, underLineNum: Int): UInt = {

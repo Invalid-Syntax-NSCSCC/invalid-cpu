@@ -2,13 +2,11 @@ package pipeline.commit.bundles
 
 import chisel3._
 import chisel3.experimental.BundleLiterals._
-import chisel3.experimental.VecLiterals._
-import chisel3.util._
-import spec._
-import control.bundles.CsrWriteNdPort
-import memory.bundles.TlbMaintenanceNdPort
 import common.bundles.PcSetPort
+import control.bundles.CsrWriteNdPort
 import control.enums.ExceptionPos
+import memory.bundles.TlbMaintenanceNdPort
+import spec._
 
 class InstInfoNdPort extends Bundle {
   val isValid         = Bool()

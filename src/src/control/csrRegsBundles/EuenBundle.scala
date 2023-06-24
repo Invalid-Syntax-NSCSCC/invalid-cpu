@@ -1,8 +1,6 @@
 package control.csrRegsBundles
 
 import chisel3._
-import chisel3.experimental.BundleLiterals._
-import spec._
 
 class EuenBundle extends Bundle {
   val zero = UInt(31.W)

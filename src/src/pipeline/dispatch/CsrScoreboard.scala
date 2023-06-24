@@ -1,10 +1,8 @@
 package pipeline.dispatch
 
 import chisel3._
-import chisel3.util._
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.enums.{ScoreboardState => State}
-import spec._
 
 class CsrScoreboard extends Module {
   val io = IO(new Bundle {

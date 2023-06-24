@@ -1,18 +1,14 @@
 package pipeline.dispatch
 
 import chisel3._
-import chisel3.util._
-import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfReadPort, RfWriteNdPort}
-import pipeline.execution.ExeNdPort
 import chisel3.experimental.BundleLiterals._
-import spec._
-import control.bundles.PipelineControlNdPort
-import pipeline.commit.bundles.InstInfoNdPort
+import common.bundles.RfReadPort
 import control.bundles.CsrReadPort
-import pipeline.common.BaseStage
-import common.bundles.RfAccessInfoNdPort
 import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.PreExeInstNdPort
+import pipeline.execution.ExeNdPort
+import spec._
 
 class RegReadNdPort extends Bundle {
   val preExeInstInfo = new PreExeInstNdPort

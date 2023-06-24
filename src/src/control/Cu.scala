@@ -4,11 +4,10 @@ import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
-import pipeline.commit.bundles.InstInfoNdPort
-import spec.{Csr, ExeInst, Param, PipelineStageIndex}
-import spec.Param.isDiffTest
-import control.bundles.BranchFlushInfo
 import control.enums.ExceptionPos
+import pipeline.commit.bundles.InstInfoNdPort
+import spec.Param.isDiffTest
+import spec.{Csr, ExeInst, Param}
 
 // Note. Exception只从第0个提交
 class Cu(

@@ -1,11 +1,8 @@
 package common
 
 import chisel3._
-import chisel3.util._
 import common.bundles._
 import spec._
-import pipeline.execution.bundles.JumpBranchInfoNdPort
-import control.bundles.PipelineControlNdPort
 
 // attention: 从cache不一定能一次性全部取出，待修改
 class Pc(

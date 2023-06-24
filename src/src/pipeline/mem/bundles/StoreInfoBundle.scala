@@ -1,7 +1,6 @@
 package pipeline.mem.bundles
 
 import chisel3._
-import chisel3.util._
 import spec._
 
 class StoreInfoBundle extends Bundle {

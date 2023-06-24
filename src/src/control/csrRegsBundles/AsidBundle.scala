@@ -1,8 +1,6 @@
 package control.csrRegsBundles
 
 import chisel3._
-import chisel3.experimental.BundleLiterals._
-import spec._
 
 class AsidBundle extends Bundle {
   val zero1    = UInt(8.W)

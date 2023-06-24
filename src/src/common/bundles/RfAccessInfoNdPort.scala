@@ -2,7 +2,6 @@ package common.bundles
 
 import chisel3._
 import chisel3.experimental.BundleLiterals._
-import chisel3.util._
 import spec._
 
 class RfAccessInfoNdPort(addrWidth: internal.firrtl.Width = Width.Reg.addr) extends Bundle {

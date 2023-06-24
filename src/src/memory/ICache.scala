@@ -5,11 +5,10 @@ import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
-import common.enums.ReadWriteSel
-import memory.bundles.{CacheMaintenanceHandshakePort, ICacheStatusTagBundle, StatusTagBundle}
+import frontend.bundles.ICacheAccessPort
+import memory.bundles.{CacheMaintenanceHandshakePort, ICacheStatusTagBundle}
 import memory.enums.{ICacheState => State}
 import spec._
-import frontend.bundles.ICacheAccessPort
 
 class ICache(
   isDebug:           Boolean   = false,

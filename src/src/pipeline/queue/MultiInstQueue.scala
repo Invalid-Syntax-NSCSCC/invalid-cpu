@@ -2,19 +2,13 @@ package pipeline.queue
 
 import chisel3._
 import chisel3.util._
-import control.bundles.PipelineControlNdPort
+import control.enums.ExceptionPos
+import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.common.DistributedQueue
 import pipeline.dispatch.bundles.InstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
-import pipeline.queue.decode.{Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_2RI16, Decoder_3R, Decoder_special}
-import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.queue.decode._
 import spec._
-import utils.BiCounter
-import utils.MultiCounter
-import pipeline.common.MultiQueue
-import control.enums.ExceptionPos
-import pipeline.dispatch.FetchInstDecodeNdPort
-import pipeline.common.MultiBaseStageWOSaveIn
-import pipeline.common.DistributedQueue
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(

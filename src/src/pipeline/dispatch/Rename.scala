@@ -2,14 +2,11 @@ package pipeline.dispatch
 
 import chisel3._
 import chisel3.util._
-import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import spec._
-import pipeline.dispatch.enums.{PrfState => State}
-import pipeline.dispatch.bundles.RenameRequestNdPort
-import pipeline.dispatch.bundles.RenameResultNdPort
-import utils.BiPriorityMux
-import utils.BiCounter
 import control.bundles.PipelineControlNdPort
+import pipeline.dispatch.bundles.{RenameRequestNdPort, RenameResultNdPort, ScoreboardChangeNdPort}
+import pipeline.dispatch.enums.{PrfState => State}
+import spec._
+import utils.BiCounter
 
 // 重命名+计分板，仅供乱序发射使用,顺序发射时不需要
 class Rename(

@@ -1,9 +1,8 @@
 package control.bundles
 
 import chisel3._
-import chisel3.experimental.BundleLiterals._
-import spec._
 import spec.Param.isDiffTest
+import spec._
 
 class StableCounterReadPort extends Bundle {
   val exeOp   = Input(UInt(Param.Width.exeOp))

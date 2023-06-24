@@ -2,20 +2,18 @@ package pipeline.mem
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PassThroughPort, RfWriteNdPort}
 import common.enums.ReadWriteSel
-import control.bundles.PipelineControlNdPort
+import control.enums.ExceptionPos
 import memory.bundles.TlbTransPort
 import memory.enums.TlbMemType
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.BaseStage
 import pipeline.mem.bundles.{MemCsrNdPort, MemRequestNdPort}
 import pipeline.mem.enums.AddrTransType
-import pipeline.commit.bundles.InstInfoNdPort
 import spec.Value.Csr
 import spec.Width
 
 import scala.collection.immutable
-import control.enums.ExceptionPos
 
 class AddrTransNdPort extends Bundle {
   val memRequest = new MemRequestNdPort

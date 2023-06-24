@@ -1,11 +1,10 @@
 package frontend.fetch
 
-import pipeline.common.BaseStage
-import chisel3.Bundle
-import chisel3._
+import chisel3.{Bundle, _}
 import chisel3.util._
-import spec.{Csr, Width}
 import frontend.bundles.{ICacheRequestHandshakePort, ICacheRequestNdPort}
+import pipeline.common.BaseStage
+import spec.{Csr, Width}
 
 class InstReqNdPort extends Bundle {
   val translatedMemReq = new ICacheRequestNdPort

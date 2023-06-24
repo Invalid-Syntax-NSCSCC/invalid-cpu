@@ -2,18 +2,10 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PassThroughPort, RfWriteNdPort}
-import control.bundles.PipelineControlNdPort
-import memory.bundles.TlbTransPort
-import memory.enums.TlbMemType
-import pipeline.mem.bundles.MemCsrNdPort
-import pipeline.mem.enums.AddrTransType
-import pipeline.commit.bundles.InstInfoNdPort
-import spec.Value.Csr
-import spec.Width
 import memory.bundles.MemResponseNdPort
 import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.InstInfoBundle
+import spec.Width
 
 class InstResNdPort extends Bundle {
   val isValid   = Bool()

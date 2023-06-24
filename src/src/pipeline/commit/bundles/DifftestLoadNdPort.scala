@@ -2,8 +2,6 @@ package pipeline.commit.bundles
 
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chisel3.util._
-import spec._
 
 class DifftestLoadNdPort extends Bundle {
   val en    = UInt(8.W) // {2'b0, inst_ll_w, inst_ld_w, inst_ld_hu, inst_ld_h, inst_ld_bu, inst_ld_b}

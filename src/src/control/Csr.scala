@@ -2,13 +2,9 @@ package control
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.BundleLiterals._
-import spec._
-import spec.PipelineStageIndex
 import control.bundles._
-import common.bundles.RfReadPort
 import control.csrRegsBundles._
-import spec.Param.isDiffTest
+import spec._
 
 class Csr(
   writeNum: Int = Param.csrRegsWriteNum,

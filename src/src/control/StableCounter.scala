@@ -1,11 +1,10 @@
 package control
 
 import chisel3._
-import spec.doubleWordLength
-import spec._
 import chisel3.util._
 import control.bundles.StableCounterReadPort
 import spec.Param.isDiffTest
+import spec._
 
 class StableCounter extends Module {
 

@@ -2,9 +2,8 @@ package spec
 
 import chisel3._
 import chisel3.experimental.BundleLiterals._
-import control.bundles.EcodeBundle
-import spec._
 import chisel3.util.log2Ceil
+import control.bundles.EcodeBundle
 
 object Csr {
 
