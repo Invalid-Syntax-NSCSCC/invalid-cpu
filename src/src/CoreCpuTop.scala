@@ -96,12 +96,11 @@ class CoreCpuTop extends Module {
       else None
   })
 
-  val iCache         = Module(new ICache)
-  val frontend       = Module(new Frontend)
-  val instQueue      = Module(new MultiInstQueue)
-  val issueStage     = Module(new IssueStage)
-  val exeForMemStage = Module(new ExeForMemStage)
-  // val exePassWbStages = Seq.fill(Param.exePassWbNum)(Module(new ExePassWbStage))
+  val iCache           = Module(new ICache)
+  val frontend         = Module(new Frontend)
+  val instQueue        = Module(new MultiInstQueue)
+  val issueStage       = Module(new IssueStage)
+  val exeForMemStage   = Module(new ExeForMemStage)
   val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
   val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))
   val exePassWbStages  = Seq(exePassWbStage_1, exePassWbStage_2)
@@ -116,15 +115,13 @@ class CoreCpuTop extends Module {
   val memReqStage    = Module(new MemReqStage)
   val memResStage    = Module(new MemResStage)
 
-  // pass through
+  // Passthrough
   memReqStage.io.out.ready := true.B
   exePassWbStages.foreach(_.io.out.ready := true.B)
 
   val crossbar = Module(new Axi3x1Crossbar)
 
   val csrScoreBoard = Module(new CsrScoreboard)
-
-  // val dataforward = Module(new DataForwardStage)
 
   val regFile = Module(new RegFile)
   val pc      = Module(new Pc)
@@ -136,7 +133,7 @@ class CoreCpuTop extends Module {
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
 
-  // `ICache` <> AXI crossbar
+  // ICache <> AXI crossbar
   crossbar.io.slave(0) <> iCache.io.axiMasterPort
 
   // Memory related modules
@@ -196,25 +193,6 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  // issueStage.io.peer.get.robInstValids.zip(rob.io.robInstValids).foreach {
-  //   case (dst, src) =>
-  //     dst := src
-  // }
-
-  // def connect_wb(dst: InstWbNdPort, src: DecoupledIO[WbNdPort]): Unit = {
-  //   dst.en    := src.valid
-  //   dst.data  := src.bits.gprWrite.data
-  //   dst.robId := src.bits.instInfo.robId
-  // }
-  // issueStage.io.peer.get.writebacks.zipWithIndex.foreach {
-  //   case (dst, idx) =>
-  //     assert(Param.loadStoreIssuePipelineIndex == 0, "if load store no issue in line 0, please change if-else below")
-  //     if (idx == Param.loadStoreIssuePipelineIndex) {
-  //       connect_wb(dst, memResStage.io.out)
-  //     } else {
-  //       connect_wb(dst, exePassWbStages(idx - 1).io.out)
-  //     }
-  // }
   issueStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
     case (dst, src) =>
       dst := src
@@ -289,9 +267,8 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  commitStage.io.csrValues := csr.io.csrValues
 
-  // regfile
+  // Reg file
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out
   regFile.io.readPorts.zip(rob.io.regReadPortss).foreach {
     case (rfReads, robReads) =>
@@ -301,7 +278,7 @@ class CoreCpuTop extends Module {
       }
   }
 
-  // Ctrl unit
+  // Control unit
   cu.io.instInfoPorts.zip(commitStage.io.cuInstInfoPorts).foreach {
     case (dst, src) => dst := src
   }
@@ -310,10 +287,6 @@ class CoreCpuTop extends Module {
   }
   cu.io.csrValues             := csr.io.csrValues
   cu.io.stableCounterReadPort <> stableCounter.io
-  // cu.io.robInstValids.zip(rob.io.robInstValids).foreach {
-  //   case (dst, src) =>
-  //     dst := src
-  // }
 
   require(Param.jumpBranchPipelineIndex != 0)
   cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
@@ -322,12 +295,11 @@ class CoreCpuTop extends Module {
   cu.io.hardWareInetrrupt := io.intrpt
 
   // After memory request flush connection
-  // memReqStage.io.peer.get.isAfterMemReqFlush := cu.io.isAfterMemReqFlush
   cu.io.isExceptionValidVec(0) := false.B // memReqStage.io.peer.get.isExceptionValid
   cu.io.isExceptionValidVec(1) := false.B // memResStage.io.peer.get.isExceptionValid
   cu.io.isExceptionValidVec(2) := commitStage.io.isExceptionValid
 
-  // Csr
+  // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
     case (dst, src) =>
       dst := src
