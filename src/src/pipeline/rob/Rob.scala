@@ -80,10 +80,6 @@ class Rob(
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.isFlush
   io.emptyNum      := queue.io.emptyNum
-  // io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).lazyZip(queue.io.setPorts).foreach {
-  //   case (dst, elem, elemValid, set) =>
-  //     dst := elemValid && elem.isValid && (!set.valid || set.bits.isValid)
-  // }
   io.instWbBroadCasts.zip(io.finishInsts).foreach {
     case (dst, src) =>
       dst.en    := src.valid // && io.robInstValids(src.bits.instInfo.robId)
@@ -163,15 +159,13 @@ class Rob(
 
   when(io.hasInterrupt) {
     when(io.commits(0).valid && io.commits(0).ready) {
-      // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
       io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
       io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
     }.otherwise {
       hasInterruptReg := true.B
     }
   }.elsewhen(hasInterruptReg && io.commits(0).valid && io.commits(0).ready) {
-    hasInterruptReg := false.B
-    // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+    hasInterruptReg                             := false.B
     io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
     io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
   }
@@ -242,39 +236,6 @@ class Rob(
         }
 
     }
-
-  // /** branch
-  //   *
-  //   * insts between branch inst and enq
-  //   *
-  //   * TODO: clean csr score board
-  //   */
-  // when(io.branchFlushInfo.en) {
-  //   queue.io.enqueuePorts.foreach(_.bits.isValid := false.B)
-  //   when(io.branchFlushInfo.robId >= queue.io.deq_ptr) {
-  //     // ----- deq_ptr --*(stay)*-- branch_ptr(robId) -----
-  //     branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
-  //       case ((set, elem), id) =>
-  //         when(id.U < queue.io.deq_ptr || io.branchFlushInfo.robId < id.U) {
-  //           set.valid        := true.B
-  //           set.bits.state   := State.ready // elem.state
-  //           set.bits.wbPort  := elem.wbPort
-  //           set.bits.isValid := false.B
-  //         }
-  //     }
-  //   }.otherwise {
-  //     // --*(stay)*-- branch_ptr(robId) ----- deq_ptr --*(stay)*--
-  //     branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
-  //       case ((set, elem), id) =>
-  //         when(io.branchFlushInfo.robId < id.U && id.U < queue.io.deq_ptr) {
-  //           set.valid        := true.B
-  //           set.bits.state   := State.ready // elem.state
-  //           set.bits.wbPort  := elem.wbPort
-  //           set.bits.isValid := false.B
-  //         }
-  //     }
-  //   }
-  // }
 
   /** flush
     */

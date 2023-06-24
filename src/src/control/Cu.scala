@@ -11,9 +11,8 @@ import spec.{Csr, ExeInst, Param}
 
 // Note. Exception只从第0个提交
 class Cu(
-  ctrlControlNum: Int = Param.ctrlControlNum,
-  writeNum:       Int = Param.csrRegsWriteNum,
-  commitNum:      Int = Param.commitNum)
+  writeNum:  Int = Param.csrWriteNum,
+  commitNum: Int = Param.commitNum)
     extends Module {
   val io = IO(new Bundle {
 
@@ -48,9 +47,6 @@ class Cu(
     // -> `MemReqStage`
     val isAfterMemReqFlush = Output(Bool())
 
-    // <- `Rob`
-    // val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
-
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
 
@@ -67,10 +63,6 @@ class Cu(
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := PcSetPort.default
 
-  // val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
-  //   (instInfo.exceptionPos =/= ExceptionPos.none) && instInfo.isValid
-  // }))
-  // val hasException = WireDefault(linesHasException.reduce(_ || _))
   val hasException = WireDefault(io.instInfoPorts(0).exceptionPos =/= ExceptionPos.none) && io.instInfoPorts(0).isValid
 
   /** stable counter
@@ -109,8 +101,6 @@ class Cu(
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  // val selectLineNum      = PriorityEncoder(linesHasException)
-  // val selectInstInfo     = WireDefault(io.instInfoPorts(selectLineNum))
   val selectInstInfo     = WireDefault(io.instInfoPorts(0))
   val selectException    = WireDefault(selectInstInfo.exceptionRecord)
   val selectExceptionPos = WireDefault(selectInstInfo.exceptionPos)
@@ -212,8 +202,6 @@ class Cu(
   /** Flush & jump
     */
 
-  val exceptionFlush = WireDefault(hasException)
-
   val ertnFlush = WireDefault(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
@@ -221,16 +209,12 @@ class Cu(
   // Handle after memory request exception valid
   io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
 
-  // io.exceptionFlush := RegNext(exceptionFlush, false.B)
-  // val branchSetEnable = WireDefault(io.jumpPc.en && io.robInstValids(io.jumpPc.robId))
-  // io.branchFlushInfo.en    := RegNext(branchSetEnable)
-  // io.branchFlushInfo.robId := RegNext(io.jumpPc.robId)
   io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush        := RegNext(exceptionFlush || io.branchExe.en, false.B)
-  io.backendFlush         := RegNext(exceptionFlush || io.branchCommit, false.B)
+  io.frontendFlush        := RegNext(hasException || io.branchExe.en, false.B)
+  io.backendFlush         := RegNext(hasException || io.branchCommit, false.B)
 
   // select new pc
-  when(exceptionFlush) {
+  when(hasException) {
     io.newPc.en     := true.B
     io.newPc.isIdle := false.B
     when(isTlbRefillException) {
@@ -248,12 +232,9 @@ class Cu(
     io.instInfoPorts(0).csrWritePort.data(1, 0).orR
 
   io.difftest match {
-    case Some(dt) => {
-      dt.cmt_ertn := RegNext(ertnFlush)
-      dt.cmt_excp_flush := RegNext(
-        exceptionFlush
-      )
-    }
+    case Some(dt) =>
+      dt.cmt_ertn       := RegNext(ertnFlush)
+      dt.cmt_excp_flush := RegNext(hasException)
     case _ =>
   }
 }

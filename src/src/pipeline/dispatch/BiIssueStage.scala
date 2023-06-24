@@ -41,7 +41,7 @@ class BiIssueStagePeerPort(
 
   // `IssueStage` <-> `Scoreboard(csr)`
   val csrOccupyPort = Output(new ScoreboardChangeNdPort)
-  val csrRegScore   = Input(ScoreboardState())
+  val csrcore       = Input(ScoreboardState())
 }
 
 // TODO: deal WAR / WAW data hazard
@@ -103,7 +103,7 @@ class BiIssueStage(
         !(
           // csr only issue in one pipeline
           if (idx == csrIssuePipelineIndex) {
-            in.instInfo.needCsr && (io.peer.get.csrRegScore =/= ScoreboardState.free)
+            in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)
           } else {
             in.instInfo.needCsr
           }
