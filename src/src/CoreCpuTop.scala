@@ -148,8 +148,6 @@ class CoreCpuTop extends Module {
   iCache.io.maintenancePort.client.isL1Valid := false.B
 
   // Connection for memory related modules
-  // TODO: Finish TLB maintanence connection
-  tlb.io               <> DontCare
   crossbar.io.slave(1) <> dCache.io.axiMasterPort
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
@@ -161,6 +159,7 @@ class CoreCpuTop extends Module {
   tlb.io.csr.in.tlbehi      := csr.io.csrValues.tlbehi
   tlb.io.csr.in.tlbloVec(0) := csr.io.csrValues.tlbelo0
   tlb.io.csr.in.tlbloVec(1) := csr.io.csrValues.tlbelo1
+  tlb.io.maintenanceInfo    := cu.io.tlbMaintenancePort
 
   // Frontend
   //   inst fetch stage
@@ -244,7 +243,7 @@ class CoreCpuTop extends Module {
     p.uncachedRes := uncachedAgent.io.accessPort.res
   }
 
-  // rob
+  // ROB
   require(Param.loadStoreIssuePipelineIndex == 0)
   rob.io.finishInsts.zipWithIndex.foreach {
     case (dst, idx) =>
@@ -268,7 +267,7 @@ class CoreCpuTop extends Module {
       dst <> src
   }
 
-  // Reg file
+  // Register file (GPR file)
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out
   regFile.io.readPorts.zip(rob.io.regReadPortss).foreach {
     case (rfReads, robReads) =>
@@ -294,17 +293,13 @@ class CoreCpuTop extends Module {
 
   cu.io.hardWareInetrrupt := io.intrpt
 
-  // After memory request flush connection
-  cu.io.isExceptionValidVec(0) := false.B // memReqStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(1) := false.B // memResStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(2) := commitStage.io.isExceptionValid
-
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
     case (dst, src) =>
       dst := src
   }
-  csr.io.csrMessage := cu.io.csrMessage
+  csr.io.tlbWritePort := tlb.io.csr.out
+  csr.io.csrMessage   := cu.io.csrMessage
 
   // Debug ports
   io.debug0_wb.pc       := commitStage.io.ins(0).bits.instInfo.pc

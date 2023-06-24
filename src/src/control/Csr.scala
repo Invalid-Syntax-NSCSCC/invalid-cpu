@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import control.bundles._
 import control.csrBundles._
+import memory.bundles.TlbCsrWriteNdPort
 import spec._
 
 class Csr(
@@ -12,9 +13,10 @@ class Csr(
     extends Module {
   val io = IO(new Bundle {
     // `Cu` -> `Csr`
-    val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
-    val csrMessage = Input(new CuToCsrNdPort)
-    val csrValues  = Output(new CsrValuePort)
+    val tlbWritePort = Input(new TlbCsrWriteNdPort)
+    val writePorts   = Input(Vec(writeNum, new CsrWriteNdPort))
+    val csrMessage   = Input(new CuToCsrNdPort)
+    val csrValues    = Output(new CsrValuePort)
     // `Csr` <-> `RegReadStage`
     val readPorts = Vec(Param.csrReadNum, new CsrReadPort)
     // `Csr` -> `WbStage`
@@ -352,6 +354,23 @@ class Csr(
     llbctl.in.klo := false.B
   }
 
+  // TLB maintenance write
+  when(io.tlbWritePort.tlbidx.valid) {
+    tlbidx.in := io.tlbWritePort.tlbidx.bits
+  }
+  when(io.tlbWritePort.tlbehi.valid) {
+    tlbehi.in := io.tlbWritePort.tlbehi.bits
+  }
+  when(io.tlbWritePort.tlbeloVec(0).valid) {
+    tlbelo0.in := io.tlbWritePort.tlbeloVec(0).bits
+  }
+  when(io.tlbWritePort.tlbeloVec(1).valid) {
+    tlbelo1.in := io.tlbWritePort.tlbeloVec(1).bits
+  }
+  when(io.tlbWritePort.asId.valid) {
+    asid.in := io.tlbWritePort.asId.bits
+  }
+
   // 中断
   // la 最高位空出来了一位
   estat.in.is_hardwareInt := io.csrMessage.hardWareInetrrupt
@@ -359,7 +378,7 @@ class Csr(
   val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
 
-  // output
+  // Output
   io.csrValues.crmd      := crmd.out
   io.csrValues.prmd      := prmd.out
   io.csrValues.euen      := euen.out
@@ -389,5 +408,4 @@ class Csr(
   io.csrValues.tlbrentry := tlbrentry.out
   io.csrValues.dmw0      := dmw0.out
   io.csrValues.dmw1      := dmw1.out
-
 }

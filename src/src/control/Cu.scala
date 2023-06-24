@@ -5,6 +5,7 @@ import chisel3.util._
 import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
 import control.enums.ExceptionPos
+import memory.bundles.TlbMaintenanceNdPort
 import pipeline.commit.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param}
@@ -25,6 +26,8 @@ class Cu(
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写
     val csrMessage = Output(new CuToCsrNdPort)
+    // `Cu` -> `Tlb`, TLB maintenance write
+    val tlbMaintenancePort = Output(new TlbMaintenanceNdPort)
     // `Csr` -> `Cu`
     val csrValues = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
@@ -41,11 +44,6 @@ class Cu(
     // val branchFlushInfo = Output(new BranchFlushInfo)
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
-
-    // <- `MemResStage`, `WbStage`
-    val isExceptionValidVec = Input(Vec(3, Bool()))
-    // -> `MemReqStage`
-    val isAfterMemReqFlush = Output(Bool())
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
@@ -86,6 +84,9 @@ class Cu(
     */
 
   io.csrMessage.hardWareInetrrupt := io.hardWareInetrrupt
+
+  // Maintenance TLB
+  io.tlbMaintenancePort := io.instInfoPorts.head.tlbMaintenancePort
 
   // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
@@ -162,7 +163,7 @@ class Cu(
     }
   }
 
-  // tlb
+  // TLB refill exception
   io.csrMessage.tlbRefillException := isTlbRefillException
 
   // badv
@@ -202,18 +203,27 @@ class Cu(
   /** Flush & jump
     */
 
+  val tlbMaintenanceFlush = WireDefault(
+    io.tlbMaintenancePort.isFill ||
+      io.tlbMaintenancePort.isRead ||
+      io.tlbMaintenancePort.isWrite ||
+      io.tlbMaintenancePort.isSearch ||
+      io.tlbMaintenancePort.isInvalidate
+  )
   val ertnFlush = WireDefault(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
 
-  // Handle after memory request exception valid
-  io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
-
   io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush        := RegNext(hasException || io.branchExe.en, false.B)
-  io.backendFlush         := RegNext(hasException || io.branchCommit, false.B)
+  io.frontendFlush        := RegNext(hasException || io.branchExe.en || tlbMaintenanceFlush, false.B)
+  io.backendFlush         := RegNext(hasException || io.branchCommit || tlbMaintenanceFlush, false.B)
 
   // select new pc
+  when(tlbMaintenanceFlush) {
+    io.newPc.en     := true.B
+    io.newPc.isIdle := false.B
+    io.newPc.pcAddr := io.instInfoPorts.head.pc + 4.U
+  }
   when(hasException) {
     io.newPc.en     := true.B
     io.newPc.isIdle := false.B
