@@ -8,7 +8,8 @@ object Param {
 
   val isDiffTest = true
 
-  val instQueueLength        = 8
+  val instQueueLength        = 16
+  val instQueueChannelNum    = 4
   val regFileReadNum         = 2
   val regFileWriteNum        = 1
   val scoreboardChangeNum    = 1 // 3
@@ -19,7 +20,7 @@ object Param {
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 2 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
-  val reservationStationDeep = 3 // 保留站深度
+  val reservationStationDeep = 4 // 保留站深度
   val csrRegsReadNum         = 1
   val csrRegsWriteNum        = 1
 
@@ -35,8 +36,8 @@ object Param {
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
     object Rob {
-      val _length = 15
-      val id      = log2Ceil(_length + 1).W
+      val _length = 16
+      val id      = log2Ceil(_length).W
     }
 
     object Axi {

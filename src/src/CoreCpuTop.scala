@@ -114,17 +114,20 @@ class CoreCpuTop extends Module {
       else None
   })
 
-  val iCache          = Module(new ICache)
-  val frontend        = Module(new Frontend)
-  val instQueue       = Module(new MultiInstQueue)
-  val issueStage      = Module(new IssueStage)
-  val exeForMemStage  = Module(new ExeForMemStage)
-  val exePassWbStages = Seq.fill(Param.exePassWbNum)(Module(new ExePassWbStage))
-  val commitStage     = Module(new CommitStage)
-  val rob             = Module(new Rob)
-  val cu              = Module(new Cu)
-  val csr             = Module(new Csr)
-  val stableCounter   = Module(new StableCounter)
+  val iCache         = Module(new ICache)
+  val frontend       = Module(new Frontend)
+  val instQueue      = Module(new MultiInstQueue)
+  val issueStage     = Module(new IssueStage)
+  val exeForMemStage = Module(new ExeForMemStage)
+  // val exePassWbStages = Seq.fill(Param.exePassWbNum)(Module(new ExePassWbStage))
+  val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
+  val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))
+  val exePassWbStages  = Seq(exePassWbStage_1, exePassWbStage_2)
+  val commitStage      = Module(new CommitStage)
+  val rob              = Module(new Rob)
+  val cu               = Module(new Cu)
+  val csr              = Module(new Csr)
+  val stableCounter    = Module(new StableCounter)
 
   // TODO: Finish mem stages connection
   val addrTransStage = Module(new AddrTransStage)
@@ -211,7 +214,6 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  issueStage.io.peer.get.resultsValid := rob.io.distributeResultsValid
   // issueStage.io.peer.get.robInstValids.zip(rob.io.robInstValids).foreach {
   //   case (dst, src) =>
   //     dst := src
@@ -332,7 +334,7 @@ class CoreCpuTop extends Module {
   // }
 
   require(Param.jumpBranchPipelineIndex != 0)
-  cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort
+  cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
   cu.io.branchCommit := rob.io.branchCommit
 
   cu.io.hardWareInetrrupt := io.intrpt
