@@ -46,7 +46,7 @@ class Decoder_3R extends Decoder {
     is(Inst.invtlb) {
       io.out.isMatched               := true.B
       outInfo.exeOp                  := ExeInst.Op.invtlb
-      outInfo.exeSel                 := ExeInst.Sel.jumpBranch
+      outInfo.exeSel                 := ExeInst.Sel.loadStore
       outInfo.jumpBranchAddr         := io.instInfoPort.pcAddr + 4.U
       outInfo.isTlb                  := true.B
       outInfo.tlbInfo.isInvalidate   := true.B

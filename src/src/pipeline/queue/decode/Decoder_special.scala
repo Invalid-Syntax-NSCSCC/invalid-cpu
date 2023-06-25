@@ -108,7 +108,7 @@ class Decoder_special extends Decoder {
       outInfo.isTlb            := true.B
       outInfo.tlbInfo.isSearch := true.B
       outInfo.needCsr          := true.B
-      outInfo.exeSel           := ExeInst.Sel.jumpBranch
+      outInfo.exeSel           := ExeInst.Sel.loadStore
       outInfo.jumpBranchAddr   := io.instInfoPort.pcAddr + 4.U
     }
     is(Inst.tlbrd) {
@@ -117,7 +117,7 @@ class Decoder_special extends Decoder {
       outInfo.isTlb          := true.B
       outInfo.tlbInfo.isRead := true.B
       outInfo.needCsr        := true.B
-      outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.exeSel         := ExeInst.Sel.loadStore
       outInfo.jumpBranchAddr := io.instInfoPort.pcAddr + 4.U
     }
     is(Inst.tlbwr) {
@@ -126,7 +126,7 @@ class Decoder_special extends Decoder {
       outInfo.isTlb           := true.B
       outInfo.tlbInfo.isWrite := true.B
       outInfo.needCsr         := true.B
-      outInfo.exeSel          := ExeInst.Sel.jumpBranch
+      outInfo.exeSel          := ExeInst.Sel.loadStore
       outInfo.jumpBranchAddr  := io.instInfoPort.pcAddr + 4.U
     }
     is(Inst.tlbfill) {
@@ -135,7 +135,7 @@ class Decoder_special extends Decoder {
       outInfo.isTlb          := true.B
       outInfo.tlbInfo.isFill := true.B
       outInfo.needCsr        := true.B
-      outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.exeSel         := ExeInst.Sel.loadStore
       outInfo.jumpBranchAddr := io.instInfoPort.pcAddr + 4.U
     }
   }

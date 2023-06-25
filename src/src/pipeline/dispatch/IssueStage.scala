@@ -138,11 +138,11 @@ class IssueStage(
               }
             }
             if (dst_idx == csrIssuePipelineIndex) {
-              when(in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) {
+              when((in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) || in.instInfo.isTlb) {
                 dispatchEn := false.B
               }
             } else {
-              when(in.instInfo.needCsr) {
+              when(in.instInfo.needCsr && !in.instInfo.isTlb) {
                 dispatchEn := false.B
               }
             }
@@ -207,15 +207,19 @@ class IssueStage(
           ).decode.info.imm
         }
 
-        // csr score board
-        if (dst_idx == Param.csrIssuePipelineIndex) {
-          io.peer.get.csrOccupyPort.en   := selectedIns(src_idx).decode.info.needCsr
-          io.peer.get.csrOccupyPort.addr := DontCare
-        }
-
       }
     }
   }
+
+  io.peer.get.csrOccupyPort.en := reservationStations
+    .map(
+      _.io.enqueuePorts(0)
+    )
+    .map { port =>
+      port.valid && port.bits.regReadPort.instInfo.needCsr
+    }
+    .reduce(_ || _)
+  io.peer.get.csrOccupyPort.addr := DontCare
 
   /** commit --fill--> reservation stations
     */
