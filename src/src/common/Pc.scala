@@ -31,7 +31,7 @@ class Pc(
     pcReg        := io.newPc.pcAddr
     isIdle       := io.newPc.isIdle
     isTlbRunning := io.newPc.isTlb
-    pcUpdateReg  := true.B
+    pcUpdateReg  := !io.newPc.isTlb
   }.elsewhen(io.isNext && !isIdle && !isTlbRunning) {
     // pcReg := pcReg + (4 * issueNum).U
     pcReg       := pcReg + 4.U
@@ -43,5 +43,6 @@ class Pc(
 
   when(io.tlbFinish) {
     isTlbRunning := false.B
+    pcUpdateReg  := true.B
   }
 }
