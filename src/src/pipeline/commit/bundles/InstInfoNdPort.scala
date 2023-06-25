@@ -26,6 +26,7 @@ class InstInfoNdPort extends Bundle {
   val load  = new DifftestLoadNdPort
   val store = new DifftestStoreNdPort
 
+  val isTlb              = Bool()
   val tlbMaintenancePort = new TlbMaintenanceNdPort
 }
 
@@ -44,7 +45,8 @@ object InstInfoNdPort {
     _.needCsr -> false.B,
     _.branchSetPort -> PcSetPort.default,
     _.load -> DifftestLoadNdPort.default,
-    _.store -> DifftestStoreNdPort.default
+    _.store -> DifftestStoreNdPort.default,
+    _.isTlb -> false.B
   )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
@@ -59,5 +61,6 @@ object InstInfoNdPort {
     instInfo.store.en           := false.B
     instInfo.tlbMaintenancePort := TlbMaintenanceNdPort.default
     instInfo.branchSetPort.en   := false.B
+    instInfo.isTlb              := false.B
   }
 }

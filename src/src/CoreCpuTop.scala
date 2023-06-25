@@ -198,6 +198,8 @@ class CoreCpuTop extends Module {
   }
   issueStage.io.peer.get.csrcore     := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
+  issueStage.io.peer.get.tlbStart    := rob.io.tlbStart
+  issueStage.io.peer.get.tlbEnd      := false.B // TODO: connect TLB
 
   // Scoreboards
   csrScoreBoard.io.freePort    := commitStage.io.csrFreePort

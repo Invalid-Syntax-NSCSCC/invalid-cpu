@@ -216,6 +216,10 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       branchSetPort.en     := branchEnableFlag
       branchSetPort.pcAddr := io.peer.get.csr.era.pc
       branchEnableFlag     := false.B
+    }.elsewhen(selectedIn.instInfo.isTlb) {
+      branchSetPort.en     := branchEnableFlag
+      branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
+      branchEnableFlag     := false.B
     }
 
     resultOutReg.bits.instInfo.branchSetPort := branchSetPort
