@@ -44,11 +44,6 @@ class IssueStagePeerPort(
 
   // `Cu` -> `IssueStage`
   val branchFlush = Input(Bool())
-
-  // `Rob` -> `IssueStage`
-  val tlbStart = Input(Bool())
-  // Tlb ? -> `IssueStage`
-  val tlbEnd = Input(Bool())
 }
 
 // dispatch & Reservation Stations
@@ -100,14 +95,6 @@ class IssueStage(
     }
   }
 
-  // stop when tlb running
-  val fetchEnableByTlbFlag = RegInit(true.B)
-  when(io.peer.get.tlbStart) {
-    fetchEnableByTlbFlag := false.B
-  }.elsewhen(io.peer.get.tlbEnd) {
-    fetchEnableByTlbFlag := true.B
-  }
-
   // stop fetch when branch
   val fetchEnableFlag = RegInit(true.B)
 
@@ -121,7 +108,7 @@ class IssueStage(
 
   io.ins.lazyZip(canDispatchs).foreach {
     case (in, canDispatch) =>
-      in.ready := canDispatch && fetchEnableFlag && fetchEnableByTlbFlag
+      in.ready := canDispatch && fetchEnableFlag
   }
 
   selectedIns.lazyZip(dispatchMap).zipWithIndex.foreach {
@@ -176,7 +163,7 @@ class IssueStage(
   // -> reservation stations
   for (src_idx <- Seq.range(issueNum - 1, -1, -1)) {
     for (dst_idx <- 0 until pipelineNum) {
-      when(dispatchMap(src_idx)(dst_idx) && fetchEnableFlag && fetchEnableByTlbFlag) {
+      when(dispatchMap(src_idx)(dst_idx) && fetchEnableFlag) {
         // decode info
         reservationStations(dst_idx).io
           .enqueuePorts(0)

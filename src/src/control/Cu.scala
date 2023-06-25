@@ -86,7 +86,11 @@ class Cu(
   io.csrMessage.hardWareInetrrupt := io.hardWareInetrrupt
 
   // Maintenance TLB
-  io.tlbMaintenancePort := io.instInfoPorts.head.tlbMaintenancePort
+  io.tlbMaintenancePort := Mux(
+    hasException || !io.instInfoPorts.head.isValid,
+    TlbMaintenanceNdPort.default,
+    io.instInfoPorts.head.tlbMaintenancePort
+  )
 
   // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
@@ -203,13 +207,7 @@ class Cu(
   /** Flush & jump
     */
 
-  val tlbMaintenanceFlush = WireDefault(
-    io.tlbMaintenancePort.isFill ||
-      io.tlbMaintenancePort.isRead ||
-      io.tlbMaintenancePort.isWrite ||
-      io.tlbMaintenancePort.isSearch ||
-      io.tlbMaintenancePort.isInvalidate
-  )
+  val tlbMaintenanceFlush = WireDefault(io.instInfoPorts.head.isTlb && io.instInfoPorts.head.isValid && !hasException)
   val ertnFlush = WireDefault(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
@@ -219,22 +217,14 @@ class Cu(
   io.backendFlush         := RegNext(hasException || io.branchCommit || tlbMaintenanceFlush, false.B)
 
   // select new pc
-  when(tlbMaintenanceFlush) {
-    io.newPc.en     := true.B
-    io.newPc.isIdle := false.B
-    io.newPc.pcAddr := io.instInfoPorts.head.pc + 4.U
-  }
-  when(hasException) {
-    io.newPc.en     := true.B
-    io.newPc.isIdle := false.B
-    when(isTlbRefillException) {
-      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
-    }.otherwise {
-      io.newPc.pcAddr := io.csrValues.eentry.asUInt
-    }
-  }.elsewhen(io.branchExe.en) {
-    io.newPc := io.branchExe
-  }
+  io.newPc.en     := tlbMaintenanceFlush || hasException || io.branchExe.en
+  io.newPc.isIdle := io.branchExe.en && io.branchExe.isIdle && !hasException && !tlbMaintenanceFlush
+  io.newPc.isTlb  := tlbMaintenanceFlush
+  io.newPc.pcAddr := Mux(
+    hasException,
+    Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
+    Mux(tlbMaintenanceFlush, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
+  )
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&
     io.instInfoPorts(0).csrWritePort.en &&
