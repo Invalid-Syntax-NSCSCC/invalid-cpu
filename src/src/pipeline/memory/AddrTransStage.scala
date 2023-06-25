@@ -1,24 +1,25 @@
-package pipeline.mem
+package pipeline.memory
 
 import chisel3._
 import chisel3.util._
 import common.enums.ReadWriteSel
 import control.enums.ExceptionPos
-import memory.bundles.TlbTransPort
+import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
 import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.BaseStage
-import pipeline.mem.bundles.{MemCsrNdPort, MemRequestNdPort}
-import pipeline.mem.enums.AddrTransType
+import pipeline.memory.bundles.{MemCsrNdPort, MemRequestNdPort}
+import pipeline.memory.enums.AddrTransType
 import spec.Value.Csr
 import spec.Width
 
 import scala.collection.immutable
 
 class AddrTransNdPort extends Bundle {
-  val memRequest = new MemRequestNdPort
-  val gprAddr    = UInt(Width.Reg.addr)
-  val instInfo   = new InstInfoNdPort
+  val memRequest     = new MemRequestNdPort
+  val gprAddr        = UInt(Width.Reg.addr)
+  val instInfo       = new InstInfoNdPort
+  val tlbMaintenance = new TlbMaintenanceNdPort
 }
 
 object AddrTransNdPort {
@@ -26,8 +27,9 @@ object AddrTransNdPort {
 }
 
 class AddrTransPeerPort extends Bundle {
-  val csr      = Input(new MemCsrNdPort)
-  val tlbTrans = Flipped(new TlbTransPort)
+  val csr            = Input(new MemCsrNdPort)
+  val tlbTrans       = Flipped(new TlbTransPort)
+  val tlbMaintenance = Output(new TlbMaintenanceNdPort)
 }
 
 class AddrTransStage
@@ -39,6 +41,9 @@ class AddrTransStage
     ) {
   val peer = io.peer.get
   val out  = resultOutReg.bits
+
+  val tlbBlockingReg = RegInit(false.B)
+  tlbBlockingReg := tlbBlockingReg
 
   // Fallback output
   out.instInfo         := selectedIn.instInfo
@@ -79,6 +84,16 @@ class AddrTransStage
     }
   }
 
+  // Handle exception
+  def handleException(): Unit = {
+    val exceptionIndex = peer.tlbTrans.exception.bits
+    out.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
+    when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && peer.tlbTrans.exception.valid) {
+      out.instInfo.exceptionPos    := ExceptionPos.backend
+      out.instInfo.exceptionRecord := exceptionIndex
+    }
+  }
+
   // Translate address
   val translatedAddr = WireDefault(selectedIn.memRequest.addr)
   out.instInfo.load.paddr   := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.vaddr(1, 0))
@@ -105,18 +120,9 @@ class AddrTransStage
       translatedAddr               := peer.tlbTrans.physAddr
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
-      val exceptionIndex = peer.tlbTrans.exception.bits
-      out.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
-      when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
-        when(peer.tlbTrans.exception.valid) {
-          out.instInfo.exceptionPos    := ExceptionPos.backend
-          out.instInfo.exceptionRecord := exceptionIndex
-        }
-      }
+      handleException()
     }
   }
-
-  // TODO: CSR write for TLB maintenance
 
   // Can use cache
   switch(peer.csr.crmd.datm) {
@@ -126,6 +132,18 @@ class AddrTransStage
     is(Csr.Crmd.Datm.cc) {
       out.isCached := true.B
     }
+  }
+
+  // Handle TLB maintenance
+  peer.tlbMaintenance := selectedIn.tlbMaintenance
+  when(selectedIn.instInfo.isTlb) {
+    tlbBlockingReg := true.B
+  }
+  io.in.ready := !tlbBlockingReg
+
+  // Handle flush (actually is TLB maintenance done)
+  when(io.isFlush) {
+    tlbBlockingReg := false.B
   }
 
   // Submit result

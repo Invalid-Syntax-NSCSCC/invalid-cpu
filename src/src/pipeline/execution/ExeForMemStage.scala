@@ -7,7 +7,7 @@ import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import pipeline.mem.AddrTransNdPort
+import pipeline.memory.AddrTransNdPort
 import spec._
 
 import scala.collection.immutable

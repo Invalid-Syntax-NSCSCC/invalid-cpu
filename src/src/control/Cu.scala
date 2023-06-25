@@ -26,8 +26,8 @@ class Cu(
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写
     val csrMessage = Output(new CuToCsrNdPort)
-    // `Cu` -> `Tlb`, TLB maintenance write
-    val tlbMaintenancePort = Output(new TlbMaintenanceNdPort)
+    // `Cu` -> `Csr`, Should TLB maintenance write
+    val tlbCsrWriteValid = Output(new Bool)
     // `Csr` -> `Cu`
     val csrValues = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
@@ -40,8 +40,6 @@ class Cu(
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    // val exceptionFlush  = Output(Bool())
-    // val branchFlushInfo = Output(new BranchFlushInfo)
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
 
@@ -84,13 +82,6 @@ class Cu(
     */
 
   io.csrMessage.hardWareInetrrupt := io.hardWareInetrrupt
-
-  // Maintenance TLB
-  io.tlbMaintenancePort := Mux(
-    hasException || !io.instInfoPorts.head.isValid,
-    TlbMaintenanceNdPort.default,
-    io.instInfoPorts.head.tlbMaintenancePort
-  )
 
   // csr write by inst
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
@@ -204,26 +195,29 @@ class Cu(
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := line0Is_ll
 
+  // Handle TLB maintenance
+  val isTlbMaintenance = WireDefault(io.instInfoPorts.head.isTlb && io.instInfoPorts.head.isValid && !hasException)
+  io.tlbCsrWriteValid := isTlbMaintenance
+
   /** Flush & jump
     */
 
-  val tlbMaintenanceFlush = WireDefault(io.instInfoPorts.head.isTlb && io.instInfoPorts.head.isValid && !hasException)
   val ertnFlush = WireDefault(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
 
   io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush        := RegNext(hasException || io.branchExe.en || tlbMaintenanceFlush, false.B)
-  io.backendFlush         := RegNext(hasException || io.branchCommit || tlbMaintenanceFlush, false.B)
+  io.frontendFlush        := RegNext(hasException || io.branchExe.en || isTlbMaintenance, false.B)
+  io.backendFlush         := RegNext(hasException || io.branchCommit || isTlbMaintenance, false.B)
 
   // select new pc
-  io.newPc.en     := tlbMaintenanceFlush || hasException || io.branchExe.en
-  io.newPc.isIdle := io.branchExe.en && io.branchExe.isIdle && !hasException && !tlbMaintenanceFlush
-  io.newPc.isTlb  := tlbMaintenanceFlush
+  io.newPc.en     := isTlbMaintenance || hasException || io.branchExe.en
+  io.newPc.isIdle := io.branchExe.en && io.branchExe.isIdle && !hasException && !isTlbMaintenance
+  io.newPc.isTlb  := isTlbMaintenance
   io.newPc.pcAddr := Mux(
     hasException,
     Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
-    Mux(tlbMaintenanceFlush, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
+    Mux(isTlbMaintenance, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
   )
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&

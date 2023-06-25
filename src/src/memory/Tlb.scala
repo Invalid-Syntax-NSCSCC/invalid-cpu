@@ -24,17 +24,22 @@ class Tlb extends Module {
     val tlbTransPorts = Vec(Param.Count.Tlb.transNum, new TlbTransPort)
   })
 
+  // Connection graph:
+  // +-----+ <---- maintenanceInfo <---- AddrTransStage
+  // | TLB | <---> tlbTransPort    <---> Frontend translation
+  // +-----+ <---> tlbTransPort    <---> AddrTransStage
+  //         <---> csr             <---> Csr
+
   val tlbEntryVec = RegInit(VecInit(Seq.fill(Param.Count.Tlb.num)(TlbEntryBundle.default)))
   tlbEntryVec := tlbEntryVec
   val virtAddrLen = Width.Mem._addr
   val physAddrLen = Width.Mem._addr
 
+  val csrOutReg = RegInit(TlbCsrWriteNdPort.default)
+  csrOutReg := csrOutReg
+
   // Fallback
-  io.csr.out              := DontCare
-  io.csr.out.tlbidx.valid := false.B
-  io.csr.out.tlbehi.valid := false.B
-  io.csr.out.tlbeloVec.foreach(_.valid := false.B)
-  io.csr.out.asId.valid := false.B
+  io.csr.out := csrOutReg // CSR write information is given in next cycle
   io.tlbTransPorts.foreach { port =>
     port.exception.valid := false.B
     port.exception.bits  := DontCare
@@ -70,13 +75,13 @@ class Tlb extends Module {
       selectedEntry.trans(1)
     )
     val isFound = isFoundVec.asUInt.orR
-    io.csr.out.tlbidx.valid := io.maintenanceInfo.isSearch
-    io.csr.out.tlbidx.bits  := io.csr.in.tlbidx
+    csrOutReg.tlbidx.valid := io.maintenanceInfo.isSearch
+    csrOutReg.tlbidx.bits  := io.csr.in.tlbidx
     when(isFound) {
-      io.csr.out.tlbidx.bits.index := selectedIndex
-      io.csr.out.tlbidx.bits.ne    := false.B
+      csrOutReg.tlbidx.bits.index := selectedIndex
+      csrOutReg.tlbidx.bits.ne    := false.B
     }.otherwise {
-      io.csr.out.tlbidx.bits.ne := true.B
+      csrOutReg.tlbidx.bits.ne := true.B
     }
 
     // Translate
@@ -124,21 +129,21 @@ class Tlb extends Module {
   // Maintenance: Read
   val readEntry = tlbEntryVec(io.csr.in.tlbidx.index)
   when(io.maintenanceInfo.isRead) {
-    io.csr.out.tlbidx.valid := true.B
-    io.csr.out.tlbehi.valid := true.B
-    io.csr.out.tlbeloVec.foreach(_.valid := true.B)
-    io.csr.out.tlbidx.bits := io.csr.in.tlbidx
-    io.csr.out.tlbehi.bits := io.csr.in.tlbehi
-    io.csr.out.tlbeloVec.map(_.bits).zip(io.csr.in.tlbloVec).foreach {
+    csrOutReg.tlbidx.valid := true.B
+    csrOutReg.tlbehi.valid := true.B
+    csrOutReg.tlbeloVec.foreach(_.valid := true.B)
+    csrOutReg.tlbidx.bits := io.csr.in.tlbidx
+    csrOutReg.tlbehi.bits := io.csr.in.tlbehi
+    csrOutReg.tlbeloVec.map(_.bits).zip(io.csr.in.tlbloVec).foreach {
       case (out, in) =>
         out := in
     }
-    io.csr.out.asId.bits := io.csr.in.asId
+    csrOutReg.asId.bits := io.csr.in.asId
     when(readEntry.compare.isExisted) {
-      io.csr.out.tlbidx.bits.ne   := false.B
-      io.csr.out.tlbidx.bits.ps   := readEntry.compare.pageSize
-      io.csr.out.tlbehi.bits.vppn := readEntry.compare.virtPageNum
-      io.csr.out.tlbeloVec.map(_.bits).zip(readEntry.trans).foreach {
+      csrOutReg.tlbidx.bits.ne   := false.B
+      csrOutReg.tlbidx.bits.ps   := readEntry.compare.pageSize
+      csrOutReg.tlbehi.bits.vppn := readEntry.compare.virtPageNum
+      csrOutReg.tlbeloVec.map(_.bits).zip(readEntry.trans).foreach {
         case (tlbelo, trans) =>
           tlbelo.v   := trans.isValid
           tlbelo.d   := trans.isDirty
@@ -148,12 +153,12 @@ class Tlb extends Module {
           tlbelo.ppn := trans.physPageNum
       }
     }.otherwise {
-      io.csr.out.asId.valid     := true.B
-      io.csr.out.tlbidx.bits.ne := true.B
-      io.csr.out.tlbidx.bits.ps := 0.U
-      io.csr.out.asId.bits      := 0.U.asTypeOf(new AsidBundle)
-      io.csr.out.tlbehi.bits    := 0.U.asTypeOf(new TlbehiBundle)
-      io.csr.out.tlbeloVec.foreach(_.bits := 0.U.asTypeOf(new TlbeloBundle))
+      csrOutReg.asId.valid     := true.B
+      csrOutReg.tlbidx.bits.ne := true.B
+      csrOutReg.tlbidx.bits.ps := 0.U
+      csrOutReg.asId.bits      := 0.U.asTypeOf(new AsidBundle)
+      csrOutReg.tlbehi.bits    := 0.U.asTypeOf(new TlbehiBundle)
+      csrOutReg.tlbeloVec.foreach(_.bits := 0.U.asTypeOf(new TlbeloBundle))
     }
   }
 

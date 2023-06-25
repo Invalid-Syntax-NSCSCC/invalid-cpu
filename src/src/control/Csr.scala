@@ -13,7 +13,7 @@ class Csr(
     extends Module {
   val io = IO(new Bundle {
     // `Cu` -> `Csr`
-    val tlbWritePort = Input(new TlbCsrWriteNdPort)
+    val tlbWritePort = Flipped(Valid(new TlbCsrWriteNdPort))
     val writePorts   = Input(Vec(writeNum, new CsrWriteNdPort))
     val csrMessage   = Input(new CuToCsrNdPort)
     val csrValues    = Output(new CsrValuePort)
@@ -355,20 +355,23 @@ class Csr(
   }
 
   // TLB maintenance write
-  when(io.tlbWritePort.tlbidx.valid) {
-    tlbidx.in := io.tlbWritePort.tlbidx.bits
-  }
-  when(io.tlbWritePort.tlbehi.valid) {
-    tlbehi.in := io.tlbWritePort.tlbehi.bits
-  }
-  when(io.tlbWritePort.tlbeloVec(0).valid) {
-    tlbelo0.in := io.tlbWritePort.tlbeloVec(0).bits
-  }
-  when(io.tlbWritePort.tlbeloVec(1).valid) {
-    tlbelo1.in := io.tlbWritePort.tlbeloVec(1).bits
-  }
-  when(io.tlbWritePort.asId.valid) {
-    asid.in := io.tlbWritePort.asId.bits
+  val tlbWrite = io.tlbWritePort.bits
+  when(io.tlbWritePort.valid) {
+    when(tlbWrite.tlbidx.valid) {
+      tlbidx.in := tlbWrite.tlbidx.bits
+    }
+    when(tlbWrite.tlbehi.valid) {
+      tlbehi.in := tlbWrite.tlbehi.bits
+    }
+    when(tlbWrite.tlbeloVec(0).valid) {
+      tlbelo0.in := tlbWrite.tlbeloVec(0).bits
+    }
+    when(tlbWrite.tlbeloVec(1).valid) {
+      tlbelo1.in := tlbWrite.tlbeloVec(1).bits
+    }
+    when(tlbWrite.asId.valid) {
+      asid.in := tlbWrite.asId.bits
+    }
   }
 
   // 中断

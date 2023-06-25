@@ -1,4 +1,4 @@
-package pipeline.mem.bundles
+package pipeline.memory.bundles
 
 import chisel3._
 import control.csrBundles.{CrmdBundle, DmwBundle}

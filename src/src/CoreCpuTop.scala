@@ -8,7 +8,7 @@ import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
 import pipeline.dispatch.{CsrScoreboard, IssueStage}
 import pipeline.execution.{ExeForMemStage, ExePassWbStage}
-import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
+import pipeline.memory.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
@@ -160,7 +160,7 @@ class CoreCpuTop extends Module {
   tlb.io.csr.in.tlbehi      := csr.io.csrValues.tlbehi
   tlb.io.csr.in.tlbloVec(0) := csr.io.csrValues.tlbelo0
   tlb.io.csr.in.tlbloVec(1) := csr.io.csrValues.tlbelo1
-  tlb.io.maintenanceInfo    := cu.io.tlbMaintenancePort
+  tlb.io.maintenanceInfo    := addrTransStage.io.peer.get.tlbMaintenance
 
   // Frontend
   //   inst fetch stage
@@ -299,8 +299,9 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  csr.io.tlbWritePort := tlb.io.csr.out
-  csr.io.csrMessage   := cu.io.csrMessage
+  csr.io.tlbWritePort.valid := cu.io.tlbCsrWriteValid
+  csr.io.tlbWritePort.bits  := tlb.io.csr.out
+  csr.io.csrMessage         := cu.io.csrMessage
 
   // Debug ports
   io.debug0_wb.pc       := commitStage.io.ins(0).bits.instInfo.pc

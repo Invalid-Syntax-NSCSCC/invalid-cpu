@@ -3,8 +3,8 @@ package frontend.fetch
 import chisel3._
 import chisel3.util._
 import memory.enums.TlbMemType
-import pipeline.mem.AddrTransPeerPort
-import pipeline.mem.enums.AddrTransType
+import pipeline.memory.AddrTransPeerPort
+import pipeline.memory.enums.AddrTransType
 import spec.Value.Csr
 import spec.Width
 
