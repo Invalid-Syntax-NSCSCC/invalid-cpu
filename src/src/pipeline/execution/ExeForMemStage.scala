@@ -11,6 +11,7 @@ import pipeline.memory.AddrTransNdPort
 import spec._
 
 import scala.collection.immutable
+import memory.bundles.TlbMaintenanceNdPort
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
@@ -48,11 +49,26 @@ class ExeForMemStage
 
   def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
+  resultOutReg.bits.tlbMaintenance := TlbMaintenanceNdPort.default
   switch(selectedIn.exeOp) {
+    is(ExeInst.Op.tlbfill) {
+      resultOutReg.bits.tlbMaintenance.isFill := true.B
+    }
+    is(ExeInst.Op.tlbrd) {
+      resultOutReg.bits.tlbMaintenance.isRead := true.B
+    }
+    is(ExeInst.Op.tlbsrch) {
+      resultOutReg.bits.tlbMaintenance.isSearch := true.B
+    }
+    is(ExeInst.Op.tlbwr) {
+      resultOutReg.bits.tlbMaintenance.isWrite := true.B
+    }
     is(ExeInst.Op.invtlb) {
+      resultOutReg.bits.tlbMaintenance.isInvalidate := true.B
       // lop : asid  rop : virtual addr
-      resultOutReg.bits.instInfo.tlbMaintenancePort.registerAsid := selectedIn.leftOperand(9, 0)
-      resultOutReg.bits.instInfo.tlbMaintenancePort.virtAddr     := selectedIn.rightOperand
+      resultOutReg.bits.tlbMaintenance.registerAsid   := selectedIn.leftOperand(9, 0)
+      resultOutReg.bits.tlbMaintenance.virtAddr       := selectedIn.rightOperand
+      resultOutReg.bits.tlbMaintenance.invalidateInst := selectedIn.tlbInvalidateInst
     }
   }
 

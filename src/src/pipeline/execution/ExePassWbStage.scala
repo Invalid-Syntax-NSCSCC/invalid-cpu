@@ -22,9 +22,10 @@ class ExeNdPort extends Bundle {
   val rightOperand = UInt(Width.Reg.data)
 
   // Branch jump addr
-  val jumpBranchAddr = UInt(Width.Reg.data)
-  def loadStoreImm   = jumpBranchAddr
-  def csrData        = jumpBranchAddr
+  val jumpBranchAddr    = UInt(Width.Reg.data)
+  def loadStoreImm      = jumpBranchAddr
+  def csrData           = jumpBranchAddr
+  def tlbInvalidateInst = jumpBranchAddr
 
   // GPR write (writeback)
   val gprWritePort = new RfAccessInfoNdPort
@@ -148,43 +149,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       csrWriteData                    := gprWriteDataVec.asUInt
       resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
-    is(ExeInst.Op.invtlb) {
-      // lop : asid  rop : virtual addr
-      resultOutReg.bits.instInfo.tlbMaintenancePort.registerAsid := selectedIn.leftOperand(9, 0)
-      resultOutReg.bits.instInfo.tlbMaintenancePort.virtAddr     := selectedIn.rightOperand
-    }
   }
-
-  // when(selectedIn.instInfo.pc(1, 0).orR) {
-  //   resultOutReg.bits.instInfo.isExceptionValid                          := true.B
-  //   resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
-  // }
-
-  // resultOutReg.bits.instInfo.load.en := Mux(
-  //   isAle,
-  //   0.U,
-  //   Cat(
-  //     0.U(2.W),
-  //     selectedIn.exeOp === ExeInst.Op.ll,
-  //     selectedIn.exeOp === ExeInst.Op.ld_w,
-  //     selectedIn.exeOp === ExeInst.Op.ld_hu,
-  //     selectedIn.exeOp === ExeInst.Op.ld_h,
-  //     selectedIn.exeOp === ExeInst.Op.ld_bu,
-  //     selectedIn.exeOp === ExeInst.Op.ld_b
-  //   )
-  // )
-  // resultOutReg.bits.instInfo.store.en := Mux(
-  //   isAle,
-  //   0.U,
-  //   Cat(
-  //     0.U(4.W),
-  //     io.peer.get.csr.llbctl.wcllb &&
-  //       selectedIn.exeOp === ExeInst.Op.sc,
-  //     selectedIn.exeOp === ExeInst.Op.st_w,
-  //     selectedIn.exeOp === ExeInst.Op.st_h,
-  //     selectedIn.exeOp === ExeInst.Op.st_b
-  //   )
-  // )
 
   resultOutReg.bits.instInfo.branchSetPort := PcSetPort.default
 

@@ -26,8 +26,8 @@ class InstInfoNdPort extends Bundle {
   val load  = new DifftestLoadNdPort
   val store = new DifftestStoreNdPort
 
-  val isTlb              = Bool()
-  val tlbMaintenancePort = new TlbMaintenanceNdPort
+  val isTlb = Bool()
+  // val tlbMaintenancePort = new TlbMaintenanceNdPort
 }
 
 object InstInfoNdPort {
@@ -41,7 +41,7 @@ object InstInfoNdPort {
     _.exeOp -> ExeInst.Op.nop,
     _.exeSel -> ExeInst.Sel.none,
     _.robId -> zeroWord,
-    _.tlbMaintenancePort -> TlbMaintenanceNdPort.default,
+    // _.tlbMaintenancePort -> TlbMaintenanceNdPort.default,
     _.needCsr -> false.B,
     _.branchSetPort -> PcSetPort.default,
     _.load -> DifftestLoadNdPort.default,
@@ -50,17 +50,17 @@ object InstInfoNdPort {
   )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
-    instInfo.isValid            := false.B
-    instInfo.needCsr            := false.B
-    instInfo.exceptionRecord    := 0.U
-    instInfo.exceptionPos       := ExceptionPos.none
-    instInfo.exeOp              := ExeInst.Op.nop
-    instInfo.exeSel             := ExeInst.Sel.none
-    instInfo.csrWritePort.en    := false.B
-    instInfo.load.en            := false.B
-    instInfo.store.en           := false.B
-    instInfo.tlbMaintenancePort := TlbMaintenanceNdPort.default
-    instInfo.branchSetPort.en   := false.B
-    instInfo.isTlb              := false.B
+    instInfo.isValid         := false.B
+    instInfo.needCsr         := false.B
+    instInfo.exceptionRecord := 0.U
+    instInfo.exceptionPos    := ExceptionPos.none
+    instInfo.exeOp           := ExeInst.Op.nop
+    instInfo.exeSel          := ExeInst.Sel.none
+    instInfo.csrWritePort.en := false.B
+    instInfo.load.en         := false.B
+    instInfo.store.en        := false.B
+    // instInfo.tlbMaintenancePort := TlbMaintenanceNdPort.default
+    instInfo.branchSetPort.en := false.B
+    instInfo.isTlb            := false.B
   }
 }

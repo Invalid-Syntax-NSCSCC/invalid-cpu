@@ -109,13 +109,12 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
       val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
       dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr.orR // TODO: Check if it can change to isMatched (see whether commit or not)
-      dequeuePort.bits.instInfo.csrWritePort.en    := selectedDecoder.info.csrWriteEn
-      dequeuePort.bits.instInfo.csrWritePort.addr  := selectedDecoder.info.csrAddr
-      dequeuePort.bits.instInfo.exeOp              := selectedDecoder.info.exeOp
-      dequeuePort.bits.instInfo.exeSel             := selectedDecoder.info.exeSel
-      dequeuePort.bits.instInfo.tlbMaintenancePort := selectedDecoder.info.tlbInfo
-      dequeuePort.bits.instInfo.isTlb              := selectedDecoder.info.isTlb
-      dequeuePort.bits.instInfo.needCsr            := selectedDecoder.info.needCsr
+      dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
+      dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
+      dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
+      dequeuePort.bits.instInfo.exeSel            := selectedDecoder.info.exeSel
+      dequeuePort.bits.instInfo.isTlb             := selectedDecoder.info.isTlb
+      dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
 
       dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
       dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
