@@ -15,7 +15,7 @@ object Param {
   val scoreboardChangeNum    = 1 // 3
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
-  val fetchInstMaxNum        = 2 // 单次取指
+  val fetchInstMaxNum        = 1 // 单次取指
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 2 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline

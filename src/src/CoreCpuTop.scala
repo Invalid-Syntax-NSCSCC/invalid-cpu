@@ -174,12 +174,11 @@ class CoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // Instruction queue
-  instQueue.io.enqueuePorts(0) <> frontend.io.instEnqueuePort
+  instQueue.io.enqueuePorts.valid   := frontend.io.instEnqueuePort.valid
+  frontend.io.instEnqueuePort.ready := instQueue.io.enqueuePorts.ready
+  instQueue.io.enqueuePorts.bits(0) := frontend.io.instEnqueuePort.bits
 
-  // TODO: CONNECT
-  instQueue.io.enqueuePorts(1)       <> DontCare // TODO: Connect Second Fetch Inst
-  instQueue.io.enqueuePorts(1).valid := false.B // TODO: Connect Second Fetch Inst
-  instQueue.io.isFlush               := cu.io.frontendFlush
+  instQueue.io.isFlush := cu.io.frontendFlush
 
   // Issue stage
   issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {

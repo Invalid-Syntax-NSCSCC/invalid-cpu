@@ -20,7 +20,7 @@ class MultiInstQueue(
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
     val isFlush      = Input(Bool())
-    val enqueuePorts = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
+    val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
@@ -50,11 +50,13 @@ class MultiInstQueue(
   )
 
   // fall back
-  instQueue.io.enqueuePorts.zip(io.enqueuePorts).foreach {
-    case (dst, src) =>
-      dst <> src
+  instQueue.io.enqueuePorts.zipWithIndex.foreach {
+    case (enq, idx) =>
+      enq.valid := io.enqueuePorts.valid
+      enq.bits  := io.enqueuePorts.bits(idx)
   }
-  instQueue.io.isFlush := io.isFlush
+  io.enqueuePorts.ready := instQueue.io.enqueuePorts.map(_.ready).reduce(_ && _)
+  instQueue.io.isFlush  := io.isFlush
 
   instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
     case (q, out) =>
