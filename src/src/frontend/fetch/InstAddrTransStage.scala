@@ -43,14 +43,15 @@ class InstAddrTransStage extends Module {
   // Fallback output
   outReg.pc                       := io.pc
   outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !isAdef
-  outReg.exception.valid          := peer.tlbTrans.exception.valid || isAdef
-  outReg.exception.bits           := peer.tlbTrans.exception.bits
-  when(isAdef) {
-    // exception priority: pif > ppi > adef > tlbr
-    when(!peer.tlbTrans.exception.valid) {
-      outReg.exception.bits := spec.Csr.ExceptionIndex.adef
-    }.elsewhen(peer.tlbTrans.exception.bits === spec.Csr.ExceptionIndex.tlbr) {
-      outReg.exception.bits := spec.Csr.ExceptionIndex.adef
+  outReg.exception.valid          := isAdef
+  outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
+
+  // Handle exception
+  def handleException(): Unit = {
+    outReg.exception.valid := isAdef || peer.tlbTrans.exception.valid
+    // exception priority: pif > ppi > adef > tlbr  bitsValue 0 as highest priority
+    when(peer.tlbTrans.exception.valid && peer.tlbTrans.exception.bits < spec.Csr.ExceptionIndex.adef) {
+      outReg.exception.bits := peer.tlbTrans.exception.valid
     }
   }
 
@@ -103,21 +104,11 @@ class InstAddrTransStage extends Module {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      if (!isNoPrivilege) {
-        translatedAddr := peer.tlbTrans.physAddr
-        outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
-          !peer.tlbTrans.exception.valid && !isAdef
+      translatedAddr := peer.tlbTrans.physAddr
+      outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
+        !peer.tlbTrans.exception.valid && !isAdef
 
-        // Handle exception
-        val isExceptionValid = isAdef || peer.tlbTrans.exception.valid || hasSentException
-        outReg.exception.valid := isExceptionValid
-        when(peer.tlbTrans.exception.valid && !isAdef) {
-          outReg.exception.bits := peer.tlbTrans.exception.bits
-        }
-        when(isExceptionValid) {
-          hasSentException := true.B
-        }
-      }
+      handleException()
     }
   }
 
