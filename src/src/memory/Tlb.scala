@@ -44,6 +44,14 @@ class Tlb extends Module {
     port.exception.valid := false.B
     port.exception.bits  := DontCare
   }
+  val isTlbMaintenance =
+    io.maintenanceInfo.isSearch || io.maintenanceInfo.isWrite || io.maintenanceInfo.isFill || io.maintenanceInfo.isRead || io.maintenanceInfo.isInvalidate
+  when(isTlbMaintenance) {
+    csrOutReg.tlbidx.valid := false.B
+    csrOutReg.asId.valid   := false.B
+    csrOutReg.tlbehi       := false.B
+    csrOutReg.tlbeloVec.foreach(_.valid := false.B)
+  }
 
   def isVirtPageNumMatched(compare: TlbCompareEntryBundle, vaddr: UInt) = Mux(
     compare.pageSize === Value.Tlb.Ps._4Kb,
@@ -75,13 +83,15 @@ class Tlb extends Module {
       selectedEntry.trans(1)
     )
     val isFound = isFoundVec.asUInt.orR
-    csrOutReg.tlbidx.valid := io.maintenanceInfo.isSearch
-    csrOutReg.tlbidx.bits  := io.csr.in.tlbidx
-    when(isFound) {
-      csrOutReg.tlbidx.bits.index := selectedIndex
-      csrOutReg.tlbidx.bits.ne    := false.B
-    }.otherwise {
-      csrOutReg.tlbidx.bits.ne := true.B
+    when(io.maintenanceInfo.isSearch) {
+      csrOutReg.tlbidx.valid := io.maintenanceInfo.isSearch
+      csrOutReg.tlbidx.bits  := io.csr.in.tlbidx
+      when(isFound) {
+        csrOutReg.tlbidx.bits.index := selectedIndex
+        csrOutReg.tlbidx.bits.ne    := false.B
+      }.otherwise {
+        csrOutReg.tlbidx.bits.ne := true.B
+      }
     }
 
     // Translate
