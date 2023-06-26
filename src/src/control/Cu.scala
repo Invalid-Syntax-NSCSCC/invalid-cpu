@@ -5,6 +5,7 @@ import chisel3.util._
 import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
 import control.enums.ExceptionPos
+import memory.bundles.TlbMaintenanceNdPort
 import pipeline.commit.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param}
@@ -25,8 +26,11 @@ class Cu(
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写
     val csrMessage = Output(new CuToCsrNdPort)
+    // `Cu` -> `Csr`, Should TLB maintenance write
+    val tlbCsrWriteValid = Output(new Bool)
     // `Csr` -> `Cu`
-    val csrValues = Input(new CsrValuePort)
+    val datmfChange = Input(Bool())
+    val csrValues   = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
     val branchExe = Input(new PcSetPort)
     // `Rob` -> `Cu`
@@ -37,15 +41,8 @@ class Cu(
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    // val exceptionFlush  = Output(Bool())
-    // val branchFlushInfo = Output(new BranchFlushInfo)
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
-
-    // <- `MemResStage`, `WbStage`
-    val isExceptionValidVec = Input(Vec(3, Bool()))
-    // -> `MemReqStage`
-    val isAfterMemReqFlush = Output(Bool())
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
@@ -162,7 +159,7 @@ class Cu(
     }
   }
 
-  // tlb
+  // TLB refill exception
   io.csrMessage.tlbRefillException := isTlbRefillException
 
   // badv
@@ -186,7 +183,7 @@ class Cu(
       io.csrMessage.badVAddrSet.en := true.B
       io.csrMessage.badVAddrSet.addr := Mux(
         selectExceptionPos === ExceptionPos.backend,
-        selectInstInfo.load.vaddr,
+        selectInstInfo.load.get.vaddr,
         selectInstInfo.pc
       )
     }
@@ -199,32 +196,32 @@ class Cu(
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := line0Is_ll
 
+  // Handle TLB maintenance
+  val isTlbMaintenance = WireDefault(io.instInfoPorts.head.isTlb && io.instInfoPorts.head.isValid && !hasException)
+  io.tlbCsrWriteValid := isTlbMaintenance
+
   /** Flush & jump
     */
+
+  val datmfChangeFlush = io.datmfChange
 
   val ertnFlush = WireDefault(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
 
-  // Handle after memory request exception valid
-  io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
-
   io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush        := RegNext(hasException || io.branchExe.en, false.B)
-  io.backendFlush         := RegNext(hasException || io.branchCommit, false.B)
+  io.frontendFlush        := RegNext(hasException || io.branchExe.en || isTlbMaintenance || datmfChangeFlush, false.B)
+  io.backendFlush         := RegNext(hasException || io.branchCommit || isTlbMaintenance || datmfChangeFlush, false.B)
 
   // select new pc
-  when(hasException) {
-    io.newPc.en     := true.B
-    io.newPc.isIdle := false.B
-    when(isTlbRefillException) {
-      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
-    }.otherwise {
-      io.newPc.pcAddr := io.csrValues.eentry.asUInt
-    }
-  }.elsewhen(io.branchExe.en) {
-    io.newPc := io.branchExe
-  }
+  io.newPc.en     := isTlbMaintenance || hasException || io.branchExe.en
+  io.newPc.isIdle := io.branchExe.en && io.branchExe.isIdle && !hasException && !isTlbMaintenance
+  io.newPc.isTlb  := isTlbMaintenance
+  io.newPc.pcAddr := Mux(
+    hasException,
+    Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
+    Mux(isTlbMaintenance || datmfChangeFlush, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
+  )
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&
     io.instInfoPorts(0).csrWritePort.en &&

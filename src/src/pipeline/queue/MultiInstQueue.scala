@@ -115,7 +115,7 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
       dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
       dequeuePort.bits.instInfo.exeSel            := selectedDecoder.info.exeSel
-      dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
+      dequeuePort.bits.instInfo.isTlb             := selectedDecoder.info.isTlb
       dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
 
       dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none

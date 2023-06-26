@@ -42,7 +42,7 @@ class IssueStagePeerPort(
   val csrcore       = Input(ScoreboardState())
   val csrReadPort   = Flipped(new CsrReadPort)
 
-  // branch flush
+  // `Cu` -> `IssueStage`
   val branchFlush = Input(Bool())
 }
 
@@ -137,8 +137,20 @@ class IssueStage(
                 dispatchEn := false.B
               }
             }
+            if (src_idx > 0) {
+              when(selectedIns.take(src_idx).map(_.instInfo.needCsr).reduce(_ || _) && in.instInfo.needCsr) {
+                dispatchEn := false.B
+              }
+            }
             if (dst_idx == csrIssuePipelineIndex) {
-              when(in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) {
+              when(
+                (in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) ||
+                  in.instInfo.isTlb
+              ) {
+                dispatchEn := false.B
+              }
+            } else if (dst_idx == loadStoreIssuePipelineIndex) {
+              when(in.instInfo.isTlb && (io.peer.get.csrcore =/= ScoreboardState.free)) {
                 dispatchEn := false.B
               }
             } else {
@@ -167,7 +179,7 @@ class IssueStage(
         // decode info
         reservationStations(dst_idx).io
           .enqueuePorts(0)
-          .valid := fetchEnableFlag
+          .valid := true.B
         reservationStations(dst_idx).io.enqueuePorts(0).bits.regReadPort.preExeInstInfo := selectedIns(
           src_idx
         ).decode.info
@@ -207,15 +219,19 @@ class IssueStage(
           ).decode.info.imm
         }
 
-        // csr score board
-        if (dst_idx == Param.csrIssuePipelineIndex) {
-          io.peer.get.csrOccupyPort.en   := selectedIns(src_idx).decode.info.needCsr
-          io.peer.get.csrOccupyPort.addr := DontCare
-        }
-
       }
     }
   }
+
+  io.peer.get.csrOccupyPort.en := reservationStations
+    .map(
+      _.io.enqueuePorts(0)
+    )
+    .map { port =>
+      port.valid && port.bits.regReadPort.instInfo.needCsr
+    }
+    .reduce(_ || _)
+  io.peer.get.csrOccupyPort.addr := DontCare
 
   /** commit --fill--> reservation stations
     */

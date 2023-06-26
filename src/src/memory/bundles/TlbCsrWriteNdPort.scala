@@ -10,3 +10,7 @@ class TlbCsrWriteNdPort extends Bundle {
   val tlbeloVec = Vec(2, Valid(new TlbeloBundle))
   val asId      = Valid(new AsidBundle)
 }
+
+object TlbCsrWriteNdPort {
+  def default = 0.U.asTypeOf(new TlbCsrWriteNdPort)
+}

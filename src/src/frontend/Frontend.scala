@@ -5,7 +5,7 @@ import chisel3.util._
 import frontend.bundles.ICacheAccessPort
 import memory.bundles.TlbTransPort
 import pipeline.dispatch.bundles.InstInfoBundle
-import pipeline.mem.bundles.MemCsrNdPort
+import pipeline.memory.bundles.MemCsrNdPort
 import spec._
 
 class Frontend extends Module {

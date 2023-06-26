@@ -3,10 +3,16 @@ package frontend.fetch
 import chisel3._
 import chisel3.util._
 import memory.enums.TlbMemType
-import pipeline.mem.AddrTransPeerPort
-import pipeline.mem.enums.AddrTransType
+import memory.bundles.TlbTransPort
+import pipeline.memory.enums.AddrTransType
+import frontend.bundles.FetchCsrNdPort
 import spec.Value.Csr
 import spec.Width
+
+class InstAddrTransPeerPort extends Bundle {
+  val csr      = Input(new FetchCsrNdPort)
+  val tlbTrans = Flipped(new TlbTransPort)
+}
 
 class InstAddrTransStage extends Module {
   val io = IO(new Bundle {
@@ -14,7 +20,7 @@ class InstAddrTransStage extends Module {
     val isPcUpdate = Input(Bool())
     val pc         = Input(UInt(Width.Mem.addr))
     val out        = Decoupled(new InstReqNdPort)
-    val peer       = new AddrTransPeerPort
+    val peer       = new InstAddrTransPeerPort
   })
 
   val peer = io.peer
@@ -85,14 +91,15 @@ class InstAddrTransStage extends Module {
   }
 
   // Can use cache
-  switch(peer.csr.crmd.datm) {
-    is(Csr.Crmd.Datm.suc) {
-      outReg.translatedMemReq.isCached := false.B
-    }
-    is(Csr.Crmd.Datm.cc) {
-      outReg.translatedMemReq.isCached := true.B
-    }
-  }
+  outReg.translatedMemReq.isCached := true.B // Always cached
+//  switch(peer.csr.crmd.datf) {
+//    is(Csr.Crmd.Datm.suc) {
+//      outReg.translatedMemReq.isCached := false.B
+//    }
+//    is(Csr.Crmd.Datm.cc) {
+//      outReg.translatedMemReq.isCached := true.B
+//    }
+//  }
 
   // If next stage not ready, then wait until ready
   when(!io.out.ready && !io.isFlush) {

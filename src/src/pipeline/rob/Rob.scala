@@ -41,8 +41,6 @@ class Rob(
     // `Csr` -> `Rob`
     val hasInterrupt = Input(Bool())
 
-    // val robInstValids = Output(Vec(robLength, Bool()))
-
     // `Cu` <-> `Rob`
     val isFlush = Input(Bool())
   })
@@ -123,20 +121,23 @@ class Rob(
 
         // commit
         if (idx == 0) {
-          io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.en.orR
-          io.branchCommit := commit.ready && deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch && deqPort.bits.wbPort.instInfo.branchSetPort.en
+          io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.get.en.orR
+          io.branchCommit := commit.ready &&
+            deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch &&
+            deqPort.bits.wbPort.instInfo.branchSetPort.en
           deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
         } else {
           deqPort.ready := commit.ready &&
             deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
-            !deqPort.bits.wbPort.instInfo.store.en.orR &&
-            !deqPort.bits.wbPort.instInfo.load.en.orR &&
+            !deqPort.bits.wbPort.instInfo.store.get.en.orR &&
+            !deqPort.bits.wbPort.instInfo.load.get.en.orR &&
             !deqPort.bits.wbPort.instInfo.needCsr &&
             (deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none) &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
             (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none) &&
             !io.commits(idx - 1).bits.instInfo.branchSetPort.en &&
+            !io.commits(idx - 1).bits.instInfo.needCsr &&
             !hasInterruptReg &&
             !io.hasInterrupt
         }

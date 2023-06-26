@@ -6,7 +6,7 @@ import frontend.bundles.ICacheAccessPort
 import frontend.fetch._
 import memory.bundles.TlbTransPort
 import pipeline.dispatch.bundles.InstInfoBundle
-import pipeline.mem.bundles.MemCsrNdPort
+import pipeline.memory.bundles.MemCsrNdPort
 import spec._
 
 class InstFetch extends Module {

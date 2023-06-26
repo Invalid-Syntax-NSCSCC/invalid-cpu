@@ -8,7 +8,7 @@ import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
 import pipeline.dispatch.{CsrScoreboard, IssueStage}
 import pipeline.execution.{ExeForMemStage, ExePassWbStage}
-import pipeline.mem.{AddrTransStage, MemReqStage, MemResStage}
+import pipeline.memory.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
@@ -148,8 +148,6 @@ class CoreCpuTop extends Module {
   iCache.io.maintenancePort.client.isL1Valid := false.B
 
   // Connection for memory related modules
-  // TODO: Finish TLB maintanence connection
-  tlb.io               <> DontCare
   crossbar.io.slave(1) <> dCache.io.axiMasterPort
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
@@ -161,6 +159,8 @@ class CoreCpuTop extends Module {
   tlb.io.csr.in.tlbehi      := csr.io.csrValues.tlbehi
   tlb.io.csr.in.tlbloVec(0) := csr.io.csrValues.tlbelo0
   tlb.io.csr.in.tlbloVec(1) := csr.io.csrValues.tlbelo1
+  tlb.io.csr.in.estat       := csr.io.csrValues.estat
+  tlb.io.maintenanceInfo    := addrTransStage.io.peer.get.tlbMaintenance
 
   // Frontend
   //   inst fetch stage
@@ -227,6 +227,9 @@ class CoreCpuTop extends Module {
     p.csr.dmw(0) := csr.io.csrValues.dmw0
     p.csr.dmw(1) := csr.io.csrValues.dmw1
     p.csr.crmd   := csr.io.csrValues.crmd
+    if (isDiffTest) {
+      p.tlbDifftest.get := tlb.io.difftest.get
+    }
   }
 
   memReqStage.io.isFlush := cu.io.backendFlush
@@ -243,7 +246,7 @@ class CoreCpuTop extends Module {
     p.uncachedRes := uncachedAgent.io.accessPort.res
   }
 
-  // rob
+  // ROB
   require(Param.loadStoreIssuePipelineIndex == 0)
   rob.io.finishInsts.zipWithIndex.foreach {
     case (dst, idx) =>
@@ -267,7 +270,7 @@ class CoreCpuTop extends Module {
       dst <> src
   }
 
-  // Reg file
+  // Register file (GPR file)
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out
   regFile.io.readPorts.zip(rob.io.regReadPortss).foreach {
     case (rfReads, robReads) =>
@@ -292,18 +295,16 @@ class CoreCpuTop extends Module {
   cu.io.branchCommit := rob.io.branchCommit
 
   cu.io.hardWareInetrrupt := io.intrpt
-
-  // After memory request flush connection
-  cu.io.isExceptionValidVec(0) := false.B // memReqStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(1) := false.B // memResStage.io.peer.get.isExceptionValid
-  cu.io.isExceptionValidVec(2) := commitStage.io.isExceptionValid
+  cu.io.datmfChange       := csr.io.datmfChange
 
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
     case (dst, src) =>
       dst := src
   }
-  csr.io.csrMessage := cu.io.csrMessage
+  csr.io.tlbWritePort.valid := cu.io.tlbCsrWriteValid
+  csr.io.tlbWritePort.bits  := tlb.io.csr.out
+  csr.io.csrMessage         := cu.io.csrMessage
 
   // Debug ports
   io.debug0_wb.pc       := commitStage.io.ins(0).bits.instInfo.pc

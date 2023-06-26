@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import common.bundles.RfWriteNdPort
 import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.mem.bundles.MemRequestNdPort
+import pipeline.memory.bundles.MemRequestNdPort
 
 class ExeResultPort extends Bundle {
   val memAccessPort = (new MemRequestNdPort)
