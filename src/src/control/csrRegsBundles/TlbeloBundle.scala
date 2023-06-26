@@ -1,8 +1,6 @@
-package control.csrRegsBundles
+package control.csrBundles
 
 import chisel3._
-import chisel3.experimental.BundleLiterals._
-import spec._
 
 class TlbeloBundle extends Bundle {
   val ppn  = UInt((spec.Csr.Tlbelo.Width.palen - 12).W)

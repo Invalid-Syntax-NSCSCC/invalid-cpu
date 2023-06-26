@@ -2,9 +2,8 @@ package pipeline.execution
 
 import chisel3._
 import chisel3.util._
-import spec._
 import pipeline.execution.bundles.MulDivInstNdPort
-import os.isFile
+import spec._
 
 // Attention : 如果运行时输入数据，输入无效
 class Div extends Module {

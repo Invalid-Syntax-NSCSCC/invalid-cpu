@@ -2,27 +2,27 @@ package control
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.BundleLiterals._
-import spec._
-import spec.PipelineStageIndex
 import control.bundles._
-import common.bundles.RfReadPort
-import control.csrRegsBundles._
-import spec.Param.isDiffTest
+import control.csrBundles._
+import memory.bundles.TlbCsrWriteNdPort
+import spec._
 
 class Csr(
-  writeNum: Int = Param.csrRegsWriteNum,
-  readNum:  Int = Param.csrRegsReadNum)
+  writeNum: Int = Param.csrWriteNum,
+  readNum:  Int = Param.csrReadNum)
     extends Module {
   val io = IO(new Bundle {
     // `Cu` -> `Csr`
-    val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
-    val csrMessage = Input(new CuToCsrNdPort)
-    val csrValues  = Output(new CsrValuePort)
+    val tlbWritePort = Flipped(Valid(new TlbCsrWriteNdPort))
+    val writePorts   = Input(Vec(writeNum, new CsrWriteNdPort))
+    val csrMessage   = Input(new CuToCsrNdPort)
+    val csrValues    = Output(new CsrValuePort)
     // `Csr` <-> `RegReadStage`
-    val readPorts = Vec(Param.csrRegsReadNum, new CsrReadPort)
+    val readPorts = Vec(Param.csrReadNum, new CsrReadPort)
     // `Csr` -> `WbStage`
     val hasInterrupt = Output(Bool())
+    // `Csr` -> Cu`
+    val datmfChange = Output(Bool())
   })
 
   // Util: view UInt as Bundle
@@ -39,98 +39,98 @@ class Csr(
     passPort
   }
 
-  val csrRegs = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
+  val csr = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
   // CRMD 当前模式信息
 
-  val crmd = viewUInt(csrRegs(spec.Csr.Index.crmd), new CrmdBundle)
+  val crmd = viewUInt(csr(spec.Csr.Index.crmd), new CrmdBundle)
 
   // PRMD 例外前模式信息
-  val prmd = viewUInt(csrRegs(spec.Csr.Index.prmd), new PrmdBundle)
+  val prmd = viewUInt(csr(spec.Csr.Index.prmd), new PrmdBundle)
 
   // EUEN扩展部件使能
-  val euen = viewUInt(csrRegs(spec.Csr.Index.euen), new EuenBundle)
+  val euen = viewUInt(csr(spec.Csr.Index.euen), new EuenBundle)
 
   // ECFG 例外控制
-  val ecfg = viewUInt(csrRegs(spec.Csr.Index.ecfg), new EcfgBundle)
+  val ecfg = viewUInt(csr(spec.Csr.Index.ecfg), new EcfgBundle)
 
   // ESTAT
-  val estat = viewUInt(csrRegs(spec.Csr.Index.estat), new EstatBundle)
+  val estat = viewUInt(csr(spec.Csr.Index.estat), new EstatBundle)
 
   // ERA 例外返回地址: 触发例外指令的pc记录在此
-  val era = viewUInt(csrRegs(spec.Csr.Index.era), new EraBundle)
+  val era = viewUInt(csr(spec.Csr.Index.era), new EraBundle)
 
   // BADV 出错虚地址
-  val badv = viewUInt(csrRegs(spec.Csr.Index.badv), new BadvBundle)
+  val badv = viewUInt(csr(spec.Csr.Index.badv), new BadvBundle)
 
   // EENTRY 例外入口地址
-  val eentry = viewUInt(csrRegs(spec.Csr.Index.eentry), new EentryBundle)
+  val eentry = viewUInt(csr(spec.Csr.Index.eentry), new EentryBundle)
 
   // CPUID 处理器编号
-  val cpuid = viewUInt(csrRegs(spec.Csr.Index.cpuid), new CpuidBundle)
+  val cpuid = viewUInt(csr(spec.Csr.Index.cpuid), new CpuidBundle)
 
   // SAVE0-3 数据保存
   val saves = VecInit(spec.Csr.Index.save0, spec.Csr.Index.save1, spec.Csr.Index.save2, spec.Csr.Index.save3).map {
     idx =>
-      viewUInt(csrRegs(idx), new CsrSaveBundle)
+      viewUInt(csr(idx), new CsrSaveBundle)
   }
 
   // LLBCTL  LLBit控制
-  val llbctl = viewUInt(csrRegs(spec.Csr.Index.llbctl), new LlbctlBundle)
+  val llbctl = viewUInt(csr(spec.Csr.Index.llbctl), new LlbctlBundle)
 
   // TLBIDX  TLB索引
-  val tlbidx = viewUInt(csrRegs(spec.Csr.Index.tlbidx), new TlbidxBundle)
+  val tlbidx = viewUInt(csr(spec.Csr.Index.tlbidx), new TlbidxBundle)
 
   // TLBEHI  TLB表项高位
-  val tlbehi = viewUInt(csrRegs(spec.Csr.Index.tlbehi), new TlbehiBundle)
+  val tlbehi = viewUInt(csr(spec.Csr.Index.tlbehi), new TlbehiBundle)
 
   // TLBELO 0-1  TLB表项低位
-  val tlbelo0 = viewUInt(csrRegs(spec.Csr.Index.tlbelo0), new TlbeloBundle)
+  val tlbelo0 = viewUInt(csr(spec.Csr.Index.tlbelo0), new TlbeloBundle)
 
-  val tlbelo1 = viewUInt(csrRegs(spec.Csr.Index.tlbelo1), new TlbeloBundle)
+  val tlbelo1 = viewUInt(csr(spec.Csr.Index.tlbelo1), new TlbeloBundle)
 
   // ASID 地址空间标识符
-  val asid = viewUInt(csrRegs(spec.Csr.Index.asid), new AsidBundle)
+  val asid = viewUInt(csr(spec.Csr.Index.asid), new AsidBundle)
 
   // PGDL 低半地址空间全局目录基址
-  val pgdl = viewUInt(csrRegs(spec.Csr.Index.pgdl), new PgdlBundle)
+  val pgdl = viewUInt(csr(spec.Csr.Index.pgdl), new PgdlBundle)
 
   // PGDH 高半地址空间全局目录基址
-  val pgdh = viewUInt(csrRegs(spec.Csr.Index.pgdh), new PgdhBundle)
+  val pgdh = viewUInt(csr(spec.Csr.Index.pgdh), new PgdhBundle)
 
   // PGD 全局地址空间全局目录基址
-  val pgd = viewUInt(csrRegs(spec.Csr.Index.pgd), new PgdBundle)
+  val pgd = viewUInt(csr(spec.Csr.Index.pgd), new PgdBundle)
 
   // TLBRENTRY  TLB重填例外入口地址
-  val tlbrentry = viewUInt(csrRegs(spec.Csr.Index.tlbrentry), new TlbrentryBundle)
+  val tlbrentry = viewUInt(csr(spec.Csr.Index.tlbrentry), new TlbrentryBundle)
 
   // DMW 0-1 直接映射配置窗口
-  val dmw0 = viewUInt(csrRegs(spec.Csr.Index.dmw0), new DmwBundle)
+  val dmw0 = viewUInt(csr(spec.Csr.Index.dmw0), new DmwBundle)
 
-  val dmw1 = viewUInt(csrRegs(spec.Csr.Index.dmw1), new DmwBundle)
+  val dmw1 = viewUInt(csr(spec.Csr.Index.dmw1), new DmwBundle)
 
   // TID 定时器编号
-  val tid = viewUInt(csrRegs(spec.Csr.Index.tid), new TidBundle)
+  val tid = viewUInt(csr(spec.Csr.Index.tid), new TidBundle)
 
   // TCFG 定时器配置
-  val tcfg = viewUInt(csrRegs(spec.Csr.Index.tcfg), new TcfgBundle)
+  val tcfg = viewUInt(csr(spec.Csr.Index.tcfg), new TcfgBundle)
 
   // TVAL 定时器数值
-  val tval = viewUInt(csrRegs(spec.Csr.Index.tval), new TvalBundle)
+  val tval = viewUInt(csr(spec.Csr.Index.tval), new TvalBundle)
 
   // TICLR 定时器中断清除
-  val ticlr = viewUInt(csrRegs(spec.Csr.Index.ticlr), new TiclrBundle)
+  val ticlr = viewUInt(csr(spec.Csr.Index.ticlr), new TiclrBundle)
 
   // read
   io.readPorts.foreach { readPort =>
     readPort.data := zeroWord
     when(readPort.en) {
-      readPort.data := csrRegs(readPort.addr)
+      readPort.data := csr(readPort.addr)
       when(readPort.addr === spec.Csr.Index.pgd) {
         readPort.data := Mux(
           badv.out.vaddr(31),
-          csrRegs(spec.Csr.Index.pgdh),
-          csrRegs(spec.Csr.Index.pgdl)
+          csr(spec.Csr.Index.pgdh),
+          csr(spec.Csr.Index.pgdl)
         )
       }
     }
@@ -151,7 +151,7 @@ class Csr(
     }
   }
 
-  // 软件写csrRegs
+  // 软件写csr
   // 保留域断断续续的样子真是可爱捏
   io.writePorts.foreach { writePort =>
     when(writePort.en) {
@@ -356,6 +356,26 @@ class Csr(
     llbctl.in.klo := false.B
   }
 
+  // TLB maintenance write
+  val tlbWrite = io.tlbWritePort.bits
+  when(io.tlbWritePort.valid) {
+    when(tlbWrite.tlbidx.valid) {
+      tlbidx.in := tlbWrite.tlbidx.bits
+    }
+    when(tlbWrite.tlbehi.valid) {
+      tlbehi.in := tlbWrite.tlbehi.bits
+    }
+    when(tlbWrite.tlbeloVec(0).valid) {
+      tlbelo0.in := tlbWrite.tlbeloVec(0).bits
+    }
+    when(tlbWrite.tlbeloVec(1).valid) {
+      tlbelo1.in := tlbWrite.tlbeloVec(1).bits
+    }
+    when(tlbWrite.asId.valid) {
+      asid.in := tlbWrite.asId.bits
+    }
+  }
+
   // 中断
   // la 最高位空出来了一位
   estat.in.is_hardwareInt := io.csrMessage.hardWareInetrrupt
@@ -363,7 +383,10 @@ class Csr(
   val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
 
-  // output
+  // CRMD.DATM change
+  io.datmfChange := (crmd.in.datm =/= crmd.out.datm) || (crmd.in.datf =/= crmd.out.datf)
+
+  // Output
   io.csrValues.crmd      := crmd.out
   io.csrValues.prmd      := prmd.out
   io.csrValues.euen      := euen.out
@@ -393,5 +416,4 @@ class Csr(
   io.csrValues.tlbrentry := tlbrentry.out
   io.csrValues.dmw0      := dmw0.out
   io.csrValues.dmw1      := dmw1.out
-
 }

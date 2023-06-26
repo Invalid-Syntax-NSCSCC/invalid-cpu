@@ -1,13 +1,9 @@
 package pipeline.dataforward
 
 import chisel3._
-import chisel3.util._
-import spec._
 import common.bundles.RfWriteNdPort
-import common.bundles.RfReadPort
-import pipeline.dataforward.bundles._
-
 import pipeline.dataforward.bundles.ReadPortWithValid
+import spec._
 class DataForwardStage(
   dataForwardNum: Int = Param.dataForwardInputNum,
   readNum:        Int = Param.regFileReadNum)

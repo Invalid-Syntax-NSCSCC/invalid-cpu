@@ -1,14 +1,11 @@
 package frontend
 
-import axi.AxiMaster
-import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
-import control.bundles.PipelineControlNdPort
+import frontend.bundles.ICacheAccessPort
 import pipeline.dispatch.bundles.InstInfoBundle
 import spec.Param.{NaiiveFetchStageState => State}
 import spec._
-import frontend.bundles.ICacheAccessPort
 
 class InstFetchStage extends Module {
   val io = IO(new Bundle {

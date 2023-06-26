@@ -4,17 +4,16 @@ import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, PcSetPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
-import pipeline.commit.bundles.InstInfoNdPort
-import spec.{Csr, ExeInst, Param, PipelineStageIndex}
-import spec.Param.isDiffTest
-import control.bundles.BranchFlushInfo
 import control.enums.ExceptionPos
+import memory.bundles.TlbMaintenanceNdPort
+import pipeline.commit.bundles.InstInfoNdPort
+import spec.Param.isDiffTest
+import spec.{Csr, ExeInst, Param}
 
 // Note. Exception只从第0个提交
 class Cu(
-  ctrlControlNum: Int = Param.ctrlControlNum,
-  writeNum:       Int = Param.csrRegsWriteNum,
-  commitNum:      Int = Param.commitNum)
+  writeNum:  Int = Param.csrWriteNum,
+  commitNum: Int = Param.commitNum)
     extends Module {
   val io = IO(new Bundle {
 
@@ -27,8 +26,11 @@ class Cu(
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写
     val csrMessage = Output(new CuToCsrNdPort)
+    // `Cu` -> `Csr`, Should TLB maintenance write
+    val tlbCsrWriteValid = Output(new Bool)
     // `Csr` -> `Cu`
-    val csrValues = Input(new CsrValuePort)
+    val datmfChange = Input(Bool())
+    val csrValues   = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
     val branchExe = Input(new PcSetPort)
     // `Rob` -> `Cu`
@@ -39,18 +41,8 @@ class Cu(
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
-    // val exceptionFlush  = Output(Bool())
-    // val branchFlushInfo = Output(new BranchFlushInfo)
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
-
-    // <- `MemResStage`, `WbStage`
-    val isExceptionValidVec = Input(Vec(3, Bool()))
-    // -> `MemReqStage`
-    val isAfterMemReqFlush = Output(Bool())
-
-    // <- `Rob`
-    // val robInstValids = Input(Vec(Param.Width.Rob._length, Bool()))
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
@@ -68,10 +60,6 @@ class Cu(
   io.csrMessage := CuToCsrNdPort.default
   io.newPc      := PcSetPort.default
 
-  // val linesHasException = WireDefault(VecInit(io.instInfoPorts.map { instInfo =>
-  //   (instInfo.exceptionPos =/= ExceptionPos.none) && instInfo.isValid
-  // }))
-  // val hasException = WireDefault(linesHasException.reduce(_ || _))
   val hasException = WireDefault(io.instInfoPorts(0).exceptionPos =/= ExceptionPos.none) && io.instInfoPorts(0).isValid
 
   /** stable counter
@@ -110,8 +98,6 @@ class Cu(
   io.csrMessage.exceptionFlush := hasException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  // val selectLineNum      = PriorityEncoder(linesHasException)
-  // val selectInstInfo     = WireDefault(io.instInfoPorts(selectLineNum))
   val selectInstInfo     = WireDefault(io.instInfoPorts(0))
   val selectException    = WireDefault(selectInstInfo.exceptionRecord)
   val selectExceptionPos = WireDefault(selectInstInfo.exceptionPos)
@@ -173,7 +159,7 @@ class Cu(
     }
   }
 
-  // tlb
+  // TLB refill exception
   io.csrMessage.tlbRefillException := isTlbRefillException
 
   // badv
@@ -197,7 +183,7 @@ class Cu(
       io.csrMessage.badVAddrSet.en := true.B
       io.csrMessage.badVAddrSet.addr := Mux(
         selectExceptionPos === ExceptionPos.backend,
-        selectInstInfo.load.vaddr,
+        selectInstInfo.load.get.vaddr,
         selectInstInfo.pc
       )
     }
@@ -210,38 +196,32 @@ class Cu(
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := line0Is_ll
 
+  // Handle TLB maintenance
+  val isTlbMaintenance = WireDefault(io.instInfoPorts.head.isTlb && io.instInfoPorts.head.isValid && !hasException)
+  io.tlbCsrWriteValid := isTlbMaintenance
+
   /** Flush & jump
     */
 
-  val exceptionFlush = WireDefault(hasException)
+  val datmfChangeFlush = io.datmfChange
 
   val ertnFlush = WireDefault(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
 
-  // Handle after memory request exception valid
-  io.isAfterMemReqFlush := io.isExceptionValidVec.asUInt.orR
-
-  // io.exceptionFlush := RegNext(exceptionFlush, false.B)
-  // val branchSetEnable = WireDefault(io.jumpPc.en && io.robInstValids(io.jumpPc.robId))
-  // io.branchFlushInfo.en    := RegNext(branchSetEnable)
-  // io.branchFlushInfo.robId := RegNext(io.jumpPc.robId)
   io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush        := RegNext(exceptionFlush || io.branchExe.en, false.B)
-  io.backendFlush         := RegNext(exceptionFlush || io.branchCommit, false.B)
+  io.frontendFlush        := RegNext(hasException || io.branchExe.en || isTlbMaintenance || datmfChangeFlush, false.B)
+  io.backendFlush         := RegNext(hasException || io.branchCommit || isTlbMaintenance || datmfChangeFlush, false.B)
 
   // select new pc
-  when(exceptionFlush) {
-    io.newPc.en     := true.B
-    io.newPc.isIdle := false.B
-    when(isTlbRefillException) {
-      io.newPc.pcAddr := io.csrValues.tlbrentry.asUInt
-    }.otherwise {
-      io.newPc.pcAddr := io.csrValues.eentry.asUInt
-    }
-  }.elsewhen(io.branchExe.en) {
-    io.newPc := io.branchExe
-  }
+  io.newPc.en     := isTlbMaintenance || hasException || io.branchExe.en
+  io.newPc.isIdle := io.branchExe.en && io.branchExe.isIdle && !hasException && !isTlbMaintenance
+  io.newPc.isTlb  := isTlbMaintenance
+  io.newPc.pcAddr := Mux(
+    hasException,
+    Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
+    Mux(isTlbMaintenance || datmfChangeFlush, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
+  )
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&
     io.instInfoPorts(0).csrWritePort.en &&
@@ -249,12 +229,9 @@ class Cu(
     io.instInfoPorts(0).csrWritePort.data(1, 0).orR
 
   io.difftest match {
-    case Some(dt) => {
-      dt.cmt_ertn := RegNext(ertnFlush)
-      dt.cmt_excp_flush := RegNext(
-        exceptionFlush
-      )
-    }
+    case Some(dt) =>
+      dt.cmt_ertn       := RegNext(ertnFlush)
+      dt.cmt_excp_flush := RegNext(hasException)
     case _ =>
   }
 }

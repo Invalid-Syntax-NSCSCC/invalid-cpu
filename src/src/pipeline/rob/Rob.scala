@@ -2,29 +2,13 @@ package pipeline.rob
 
 import chisel3._
 import chisel3.util._
-import common.bundles.RfWriteNdPort
-import pipeline.rob.bundles.RobIdDistributePort
-import pipeline.rob.bundles.RobInstStoreBundle
-import pipeline.rob.enums.{RobInstState => State}
-import utils._
-import spec._
-import utils.BiCounter
-import pipeline.dataforward.bundles.ReadPortWithValid
+import common.bundles.RfReadPort
+import control.enums.ExceptionPos
 import pipeline.commit.WbNdPort
 import pipeline.common.MultiQueue
-import pipeline.rob.bundles.RobReadRequestNdPort
-import pipeline.rob.bundles.RobReadResultNdPort
-import pipeline.rob.bundles.RobMatchBundle
-import pipeline.rob.enums.RegDataLocateSel
-import common.bundles.RfReadPort
-import pipeline.rob.bundles.RobDistributeBundle
-import pipeline.rob.enums.RobDistributeSel
-import common.bundles.PcSetPort
-import control.bundles.BranchFlushInfo
-import chisel3.experimental.BundleLiterals._
-import chisel3.internal.firrtl.DefReg
-import pipeline.rob.bundles.InstWbNdPort
-import control.enums.ExceptionPos
+import pipeline.rob.bundles._
+import pipeline.rob.enums.{RegDataLocateSel, RobDistributeSel, RobInstState => State}
+import spec._
 
 // assert: commits cannot ready 1 but not 0
 class Rob(
@@ -35,10 +19,9 @@ class Rob(
     extends Module {
   val io = IO(new Bundle {
     // `Rob` <-> `IssueStage`
-    val emptyNum               = Output(UInt(Param.Width.Rob.id))
-    val requests               = Input(Vec(issueNum, new RobReadRequestNdPort))
-    val distributeResultsValid = Output(Bool())
-    val distributeResults      = Output(Vec(issueNum, new RobReadResultNdPort))
+    val emptyNum          = Output(UInt(log2Ceil(robLength + 1).W))
+    val requests          = Input(Vec(issueNum, new RobReadRequestNdPort))
+    val distributeResults = Output(Vec(issueNum, new RobReadResultNdPort))
 
     // `Rob` <-> `Regfile`
     val regReadPortss    = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
@@ -58,8 +41,6 @@ class Rob(
     // `Csr` -> `Rob`
     val hasInterrupt = Input(Bool())
 
-    // val robInstValids = Output(Vec(robLength, Bool()))
-
     // `Cu` <-> `Rob`
     val isFlush = Input(Bool())
   })
@@ -73,7 +54,6 @@ class Rob(
     commit.valid := false.B
     commit.bits  := DontCare
   }
-  io.distributeResultsValid := true.B
 
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
 
@@ -98,10 +78,6 @@ class Rob(
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.isFlush
   io.emptyNum      := queue.io.emptyNum
-  // io.robInstValids.lazyZip(queue.io.elems).lazyZip(queue.io.elemValids).lazyZip(queue.io.setPorts).foreach {
-  //   case (dst, elem, elemValid, set) =>
-  //     dst := elemValid && elem.isValid && (!set.valid || set.bits.isValid)
-  // }
   io.instWbBroadCasts.zip(io.finishInsts).foreach {
     case (dst, src) =>
       dst.en    := src.valid // && io.robInstValids(src.bits.instInfo.robId)
@@ -145,20 +121,23 @@ class Rob(
 
         // commit
         if (idx == 0) {
-          io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.en.orR
-          io.branchCommit := commit.ready && deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch && deqPort.bits.wbPort.instInfo.branchSetPort.en
+          io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.get.en.orR
+          io.branchCommit := commit.ready &&
+            deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch &&
+            deqPort.bits.wbPort.instInfo.branchSetPort.en
           deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
         } else {
           deqPort.ready := commit.ready &&
             deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
-            !deqPort.bits.wbPort.instInfo.store.en.orR &&
-            !deqPort.bits.wbPort.instInfo.load.en.orR &&
+            !deqPort.bits.wbPort.instInfo.store.get.en.orR &&
+            !deqPort.bits.wbPort.instInfo.load.get.en.orR &&
             !deqPort.bits.wbPort.instInfo.needCsr &&
             (deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none) &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
             (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none) &&
             !io.commits(idx - 1).bits.instInfo.branchSetPort.en &&
+            !io.commits(idx - 1).bits.instInfo.needCsr &&
             !hasInterruptReg &&
             !io.hasInterrupt
         }
@@ -181,15 +160,13 @@ class Rob(
 
   when(io.hasInterrupt) {
     when(io.commits(0).valid && io.commits(0).ready) {
-      // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
       io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
       io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
     }.otherwise {
       hasInterruptReg := true.B
     }
   }.elsewhen(hasInterruptReg && io.commits(0).valid && io.commits(0).ready) {
-    hasInterruptReg := false.B
-    // io.commits(0).bits.instInfo.exceptionRecords(Csr.ExceptionIndex.int) := true.B
+    hasInterruptReg                             := false.B
     io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
     io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
   }
@@ -235,12 +212,6 @@ class Rob(
                   resRead.sel    := RobDistributeSel.robId
                   resRead.result := matchTable(reqRead.addr).robId
                 }
-
-                // when inst of robId is not valid
-                // when(!io.robInstValids(matchTable(reqRead.addr).robId)) {
-                //   enqEnable                 := false.B
-                //   io.distributeResultsValid := false.B
-                // }
               }.otherwise {
                 // in regfile
                 rfReadPort.en   := true.B
@@ -266,39 +237,6 @@ class Rob(
         }
 
     }
-
-  // /** branch
-  //   *
-  //   * insts between branch inst and enq
-  //   *
-  //   * TODO: clean csr score board
-  //   */
-  // when(io.branchFlushInfo.en) {
-  //   queue.io.enqueuePorts.foreach(_.bits.isValid := false.B)
-  //   when(io.branchFlushInfo.robId >= queue.io.deq_ptr) {
-  //     // ----- deq_ptr --*(stay)*-- branch_ptr(robId) -----
-  //     branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
-  //       case ((set, elem), id) =>
-  //         when(id.U < queue.io.deq_ptr || io.branchFlushInfo.robId < id.U) {
-  //           set.valid        := true.B
-  //           set.bits.state   := State.ready // elem.state
-  //           set.bits.wbPort  := elem.wbPort
-  //           set.bits.isValid := false.B
-  //         }
-  //     }
-  //   }.otherwise {
-  //     // --*(stay)*-- branch_ptr(robId) ----- deq_ptr --*(stay)*--
-  //     branchSetQueuePorts.lazyZip(queue.io.elems).zipWithIndex.foreach {
-  //       case ((set, elem), id) =>
-  //         when(io.branchFlushInfo.robId < id.U && id.U < queue.io.deq_ptr) {
-  //           set.valid        := true.B
-  //           set.bits.state   := State.ready // elem.state
-  //           set.bits.wbPort  := elem.wbPort
-  //           set.bits.isValid := false.B
-  //         }
-  //     }
-  //   }
-  // }
 
   /** flush
     */

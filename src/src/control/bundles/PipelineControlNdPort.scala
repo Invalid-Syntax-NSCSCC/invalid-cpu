@@ -1,7 +1,6 @@
 package control.bundles
 
 import chisel3._
-import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 
 class PipelineControlNdPort extends Bundle {

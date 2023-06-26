@@ -2,27 +2,25 @@ package pipeline.queue
 
 import chisel3._
 import chisel3.util._
-import control.bundles.PipelineControlNdPort
+import control.enums.ExceptionPos
+import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.common.DistributedQueue
 import pipeline.dispatch.bundles.InstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
-import pipeline.queue.decode.{Decoder_2R, Decoder_2RI12, Decoder_2RI14, Decoder_2RI16, Decoder_3R, Decoder_special}
-import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.queue.decode._
 import spec._
-import utils.BiCounter
-import utils.MultiCounter
-import pipeline.common.MultiQueue
-import control.enums.ExceptionPos
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
   val queueLength: Int = Param.instQueueLength,
+  val channelNum:  Int = Param.instQueueChannelNum,
   val fetchNum:    Int = Param.fetchInstMaxNum,
   val issueNum:    Int = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
     val isFlush      = Input(Bool())
-    val enqueuePorts = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
+    val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
@@ -35,17 +33,31 @@ class MultiInstQueue(
   })
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
+  require(channelNum >= fetchNum)
+  require(channelNum >= issueNum)
+  require(queueLength % channelNum == 0)
 
-  val instQueue = Module(new MultiQueue(queueLength, fetchNum, issueNum, new InstInfoBundle, InstInfoBundle.default))
+  // val instQueue = Module(new MultiQueue(queueLength, fetchNum, issueNum, new InstInfoBundle, InstInfoBundle.default))
+  val instQueue = Module(
+    new DistributedQueue(
+      fetchNum,
+      issueNum,
+      channelNum,
+      queueLength / channelNum,
+      new InstInfoBundle,
+      InstInfoBundle.default
+    )
+  )
 
   // fall back
-  instQueue.io.enqueuePorts <> io.enqueuePorts
-  instQueue.io.isFlush      := io.isFlush
-  instQueue.io.setPorts.zip(instQueue.io.elems).foreach {
-    case (dst, src) =>
-      dst.valid := false.B
-      dst.bits  := src
+  instQueue.io.enqueuePorts.zipWithIndex.foreach {
+    case (enq, idx) =>
+      enq.valid := io.enqueuePorts.valid
+      enq.bits  := io.enqueuePorts.bits(idx)
   }
+  io.enqueuePorts.ready := instQueue.io.enqueuePorts.map(_.ready).reduce(_ && _)
+  instQueue.io.isFlush  := io.isFlush
+
   instQueue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
     case (q, out) =>
       q.ready   := out.ready
@@ -103,7 +115,7 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
       dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
       dequeuePort.bits.instInfo.exeSel            := selectedDecoder.info.exeSel
-      dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
+      dequeuePort.bits.instInfo.isTlb             := selectedDecoder.info.isTlb
       dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
 
       dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none

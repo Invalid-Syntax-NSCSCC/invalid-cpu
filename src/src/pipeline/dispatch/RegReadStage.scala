@@ -1,18 +1,14 @@
 package pipeline.dispatch
 
 import chisel3._
-import chisel3.util._
-import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfReadPort, RfWriteNdPort}
-import pipeline.execution.ExeNdPort
 import chisel3.experimental.BundleLiterals._
-import spec._
-import control.bundles.PipelineControlNdPort
-import pipeline.commit.bundles.InstInfoNdPort
+import common.bundles.RfReadPort
 import control.bundles.CsrReadPort
-import pipeline.common.BaseStage
-import common.bundles.RfAccessInfoNdPort
 import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.PreExeInstNdPort
+import pipeline.execution.ExeNdPort
+import spec._
 
 class RegReadNdPort extends Bundle {
   val preExeInstInfo = new PreExeInstNdPort
@@ -26,24 +22,24 @@ object RegReadNdPort {
   )
 }
 
-class RegReadPeerPort(readNum: Int, csrRegsReadNum: Int) extends Bundle {
+class RegReadPeerPort(readNum: Int, csrReadNum: Int) extends Bundle {
   // `RegReadStage` <-> `Regfile`
   val gprReadPorts = Vec(readNum, Flipped(new RfReadPort))
 
   // `RegReadStage <-> `Csr`
-  val csrReadPorts = Vec(csrRegsReadNum, Flipped(new CsrReadPort))
+  val csrReadPorts = Vec(csrReadNum, Flipped(new CsrReadPort))
 
 }
 
-class RegReadStage(readNum: Int = Param.instRegReadNum, csrRegsReadNum: Int = Param.csrRegsReadNum)
+class RegReadStage(readNum: Int = Param.instRegReadNum, csrReadNum: Int = Param.csrReadNum)
     extends BaseStage(
       new RegReadNdPort,
       new ExeNdPort,
       RegReadNdPort.default,
-      Some(new RegReadPeerPort(readNum, csrRegsReadNum))
+      Some(new RegReadPeerPort(readNum, csrReadNum))
     ) {
 
-  require(csrRegsReadNum == 1)
+  require(csrReadNum == 1)
 
   // Read from GPR
   selectedIn.preExeInstInfo.gprReadPorts.zip(io.peer.get.gprReadPorts).foreach {

@@ -1,11 +1,8 @@
 package common
 
 import chisel3._
-import chisel3.util._
 import common.bundles._
 import spec._
-import pipeline.execution.bundles.JumpBranchInfoNdPort
-import control.bundles.PipelineControlNdPort
 
 // attention: 从cache不一定能一次性全部取出，待修改
 class Pc(
@@ -24,14 +21,14 @@ class Pc(
   io.pc       := pcReg
   io.pcUpdate := pcUpdateReg
 
-  val canIncReg = RegInit(true.B)
+  val isIdle = RegInit(false.B)
 
   pcReg := pcReg
   when(io.newPc.en) {
     pcReg       := io.newPc.pcAddr
-    canIncReg   := !io.newPc.isIdle
+    isIdle      := io.newPc.isIdle
     pcUpdateReg := true.B
-  }.elsewhen(io.isNext && canIncReg) {
+  }.elsewhen(io.isNext && !isIdle) {
     // pcReg := pcReg + (4 * issueNum).U
     pcReg       := pcReg + 4.U
     pcUpdateReg := true.B
@@ -39,4 +36,5 @@ class Pc(
     pcReg       := pcReg
     pcUpdateReg := false.B
   }
+
 }

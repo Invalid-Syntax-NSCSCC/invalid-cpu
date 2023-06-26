@@ -1,7 +1,6 @@
-package control.csrRegsBundles
+package control.csrBundles
 
 import chisel3._
-import chisel3.experimental.BundleLiterals._
 import spec._
 
 class EstatBundle extends Bundle {

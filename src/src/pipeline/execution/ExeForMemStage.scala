@@ -2,28 +2,17 @@ package pipeline.execution
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
-import spec.ExeInst.Sel
-import spec._
-import control.bundles.PipelineControlNdPort
-import chisel3.experimental.VecLiterals._
-import chisel3.experimental.BundleLiterals._
-import spec.Param.{ExeStageState => State}
-import pipeline.execution.Alu
-import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.execution.bundles.JumpBranchInfoNdPort
-import common.bundles.PcSetPort
-import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import common.enums.ReadWriteSel
-import control.csrRegsBundles.LlbctlBundle
-import pipeline.mem.bundles.MemRequestNdPort
-import pipeline.execution.bundles.ExeResultPort
+import control.csrBundles.{EraBundle, LlbctlBundle}
+import control.enums.ExceptionPos
 import pipeline.common.BaseStage
-import pipeline.mem.AddrTransNdPort
+import pipeline.dispatch.bundles.ScoreboardChangeNdPort
+import pipeline.memory.AddrTransNdPort
+import spec.Param.isDiffTest
+import spec._
 
 import scala.collection.immutable
-import control.csrRegsBundles.EraBundle
-import control.enums.ExceptionPos
+import memory.bundles.TlbMaintenanceNdPort
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
@@ -47,14 +36,7 @@ class ExeForMemStage
   resultOutReg.bits.instInfo := selectedIn.instInfo
 
   // write-back information fallback
-  // resultOutReg.bits.gprWrite.en   := false.B
-  // resultOutReg.bits.gprWrite.addr := zeroWord
-  // resultOutReg.bits.gprWrite.data := zeroWord
   resultOutReg.bits.gprAddr := selectedIn.gprWritePort.addr
-
-  // // write-back information selection
-  // resultOutReg.bits.gprWrite.en   := selectedIn.gprWritePort.en
-  // resultOutReg.bits.gprWrite.addr := selectedIn.gprWritePort.addr
 
   // 指令未对齐
   val isAle = WireDefault(false.B)
@@ -68,23 +50,35 @@ class ExeForMemStage
 
   def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
+  resultOutReg.bits.tlbMaintenance := TlbMaintenanceNdPort.default
   switch(selectedIn.exeOp) {
+    is(ExeInst.Op.tlbfill) {
+      resultOutReg.bits.tlbMaintenance.isFill := true.B
+    }
+    is(ExeInst.Op.tlbrd) {
+      resultOutReg.bits.tlbMaintenance.isRead := true.B
+    }
+    is(ExeInst.Op.tlbsrch) {
+      resultOutReg.bits.tlbMaintenance.isSearch := true.B
+    }
+    is(ExeInst.Op.tlbwr) {
+      resultOutReg.bits.tlbMaintenance.isWrite := true.B
+    }
     is(ExeInst.Op.invtlb) {
+      resultOutReg.bits.tlbMaintenance.isInvalidate := true.B
       // lop : asid  rop : virtual addr
-      resultOutReg.bits.instInfo.tlbInfo.registerAsid := selectedIn.leftOperand(9, 0)
-      resultOutReg.bits.instInfo.tlbInfo.virtAddr     := selectedIn.rightOperand
+      resultOutReg.bits.tlbMaintenance.registerAsid   := selectedIn.leftOperand(9, 0)
+      resultOutReg.bits.tlbMaintenance.virtAddr       := selectedIn.rightOperand
+      resultOutReg.bits.tlbMaintenance.invalidateInst := selectedIn.tlbInvalidateInst
     }
   }
-
-  // when(selectedIn.instInfo.pc(1, 0).orR) {
-  //   resultOutReg.bits.instInfo.isExceptionValid                          := true.B
-  //   resultOutReg.bits.instInfo.exceptionRecords(Csr.ExceptionIndex.adef) := true.B
-  // }
 
   /** MemAccess
     */
 
   val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
+  resultOutReg.bits.instInfo.vaddr := loadStoreAddr
+
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
       .contains(selectedIn.exeOp)
@@ -132,53 +126,55 @@ class ExeForMemStage
     }
   }
 
-  resultOutReg.bits.instInfo.load.en := Mux(
-    isAle,
-    0.U,
-    Cat(
-      0.U(2.W),
-      selectedIn.exeOp === ExeInst.Op.ll,
-      selectedIn.exeOp === ExeInst.Op.ld_w,
-      selectedIn.exeOp === ExeInst.Op.ld_hu,
-      selectedIn.exeOp === ExeInst.Op.ld_h,
-      selectedIn.exeOp === ExeInst.Op.ld_bu,
-      selectedIn.exeOp === ExeInst.Op.ld_b
-    )
-  )
-  resultOutReg.bits.instInfo.store.en := Mux(
-    isAle,
-    0.U,
-    Cat(
-      0.U(4.W),
-      io.peer.get.csr.llbctl.wcllb &&
-        selectedIn.exeOp === ExeInst.Op.sc,
-      selectedIn.exeOp === ExeInst.Op.st_w,
-      selectedIn.exeOp === ExeInst.Op.st_h,
-      selectedIn.exeOp === ExeInst.Op.st_b
-    )
-  )
-  resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
-  resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
-  resultOutReg.bits.instInfo.store.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
-    immutable.Seq(
-      ExeInst.Op.st_b -> Mux(
-        maskEncode(1),
-        Mux(
-          maskEncode(0),
-          Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
-          Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
-        ),
-        Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
-      ),
-      ExeInst.Op.st_h -> Mux(
-        maskEncode(1),
-        Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
-        selectedIn.rightOperand(15, 0)
+  if (isDiffTest) {
+    resultOutReg.bits.instInfo.load.get.en := Mux(
+      isAle,
+      0.U,
+      Cat(
+        0.U(2.W),
+        selectedIn.exeOp === ExeInst.Op.ll,
+        selectedIn.exeOp === ExeInst.Op.ld_w,
+        selectedIn.exeOp === ExeInst.Op.ld_hu,
+        selectedIn.exeOp === ExeInst.Op.ld_h,
+        selectedIn.exeOp === ExeInst.Op.ld_bu,
+        selectedIn.exeOp === ExeInst.Op.ld_b
       )
     )
-  )
+    resultOutReg.bits.instInfo.store.get.en := Mux(
+      isAle,
+      0.U,
+      Cat(
+        0.U(4.W),
+        io.peer.get.csr.llbctl.wcllb &&
+          selectedIn.exeOp === ExeInst.Op.sc,
+        selectedIn.exeOp === ExeInst.Op.st_w,
+        selectedIn.exeOp === ExeInst.Op.st_h,
+        selectedIn.exeOp === ExeInst.Op.st_b
+      )
+    )
+    resultOutReg.bits.instInfo.load.get.vaddr  := loadStoreAddr
+    resultOutReg.bits.instInfo.store.get.vaddr := loadStoreAddr
+    resultOutReg.bits.instInfo.store.get.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
+      immutable.Seq(
+        ExeInst.Op.st_b -> Mux(
+          maskEncode(1),
+          Mux(
+            maskEncode(0),
+            Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
+            Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
+          ),
+          Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
+        ),
+        ExeInst.Op.st_h -> Mux(
+          maskEncode(1),
+          Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
+          selectedIn.rightOperand(15, 0)
+        )
+      )
+    )
+  }
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
-
+  resultOutReg.bits.instInfo.isStore       := resultOutReg.bits.instInfo.store.get.en.orR
 }

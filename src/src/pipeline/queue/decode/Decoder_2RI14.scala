@@ -2,9 +2,9 @@ package pipeline.queue.decode
 
 import chisel3._
 import chisel3.util._
-import pipeline.queue.bundles.{DecodeOutNdPort, DecodePort}
-import spec._
+import pipeline.queue.bundles.DecodeOutNdPort
 import spec.Inst.{_2RI14 => Inst}
+import spec._
 
 class Decoder_2RI14 extends Decoder {
 
@@ -79,7 +79,7 @@ class Decoder_2RI14 extends Decoder {
         outInfo.exeOp                := ExeInst.Op.csrwr
         outInfo.gprReadPorts(0).en   := true.B
         outInfo.gprReadPorts(0).addr := rd
-        outInfo.gprWritePort.en      := true.B
+        outInfo.gprWritePort.en      := rdIsNotZero
         outInfo.gprWritePort.addr    := rd
         outInfo.csrWriteEn           := true.B
       }.otherwise {
@@ -88,7 +88,7 @@ class Decoder_2RI14 extends Decoder {
         outInfo.gprReadPorts(0).addr := rd
         outInfo.gprReadPorts(1).en   := true.B
         outInfo.gprReadPorts(1).addr := rj
-        outInfo.gprWritePort.en      := true.B
+        outInfo.gprWritePort.en      := rdIsNotZero
         outInfo.gprWritePort.addr    := rd
         outInfo.csrWriteEn           := true.B
       }

@@ -3,10 +3,9 @@ package pipeline.dispatch.bundles
 import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.VecLiterals._
-import chisel3.util._
 import common.bundles.RfAccessInfoNdPort
-import spec._
 import memory.bundles.TlbMaintenanceNdPort
+import spec._
 
 class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   // Micro-instruction for execution stage
@@ -34,8 +33,10 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 
   def code = jumpBranchAddr
 
+  def tlbInvalidateInst = jumpBranchAddr
+
   val needCsr = Bool()
-  val tlbInfo = new TlbMaintenanceNdPort
+  val isTlb   = Bool()
   // TODO: Signals in this port is not sufficient
 }
 
@@ -51,6 +52,6 @@ object PreExeInstNdPort {
     _.jumpBranchAddr -> zeroWord,
     _.csrReadEn -> false.B,
     _.csrWriteEn -> false.B,
-    _.tlbInfo -> TlbMaintenanceNdPort.default
+    _.isTlb -> false.B
   )
 }

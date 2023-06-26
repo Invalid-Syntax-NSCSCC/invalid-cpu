@@ -1,9 +1,7 @@
 package memory.bundles
 
 import chisel3._
-import chisel3.util._
-import pipeline.mem.bundles.MemRequestNdPort
-import spec._
+import pipeline.memory.bundles.MemRequestNdPort
 
 class MemRequestHandshakePort extends Bundle {
   val client  = Input(new MemRequestNdPort)

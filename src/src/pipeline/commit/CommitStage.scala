@@ -1,16 +1,15 @@
 package pipeline.commit
 
 import chisel3._
-import chisel3.util._
-import common.bundles.{PassThroughPort, RfAccessInfoNdPort, RfWriteNdPort}
-import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import pipeline.mem.MemResNdPort
-import pipeline.commit.bundles.InstInfoNdPort
-import spec.Param.isDiffTest
-import spec._
 import chisel3.experimental.BundleLiterals._
+import chisel3.util._
+import common.bundles.RfWriteNdPort
 import control.bundles.CsrValuePort
 import control.enums.ExceptionPos
+import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.dispatch.bundles.ScoreboardChangeNdPort
+import spec.Param.isDiffTest
+import spec._
 
 class WbNdPort extends Bundle {
   val gprWrite = new RfWriteNdPort
@@ -40,8 +39,6 @@ class CommitStage(
 
     // `CommitStage` -> `Cu` NO delay
     val isExceptionValid = Output(Bool())
-
-    val csrValues = Input(new CsrValuePort)
 
     val difftest =
       if (isDiffTest)
@@ -106,7 +103,6 @@ class CommitStage(
   // Diff test connection
   io.difftest match {
     case Some(dt) =>
-      dt       := DontCare
       dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready) // && nextCommit)
       dt.pc    := RegNext(inBits(0).instInfo.pc)
       dt.instr := RegNext(inBits(0).instInfo.inst)
@@ -117,13 +113,13 @@ class CommitStage(
         inBits(0).instInfo.inst(31, 24) === Inst._2RI14.csr_ &&
           inBits(0).instInfo.inst(23, 10) === "h5".U
       ) && io.ins(0).valid && io.ins(0).ready
-      dt.ld_en    := RegNext(inBits(0).instInfo.load.en)
-      dt.ld_vaddr := RegNext(inBits(0).instInfo.load.vaddr)
-      dt.ld_paddr := RegNext(inBits(0).instInfo.load.paddr)
-      dt.st_en    := RegNext(inBits(0).instInfo.store.en)
-      dt.st_vaddr := RegNext(inBits(0).instInfo.store.vaddr)
-      dt.st_paddr := RegNext(inBits(0).instInfo.store.paddr)
-      dt.st_data  := RegNext(inBits(0).instInfo.store.data)
+      dt.ld_en    := RegNext(inBits(0).instInfo.load.get.en)
+      dt.ld_vaddr := RegNext(inBits(0).instInfo.load.get.vaddr)
+      dt.ld_paddr := RegNext(inBits(0).instInfo.load.get.paddr)
+      dt.st_en    := RegNext(inBits(0).instInfo.store.get.en)
+      dt.st_vaddr := RegNext(inBits(0).instInfo.store.get.vaddr)
+      dt.st_paddr := RegNext(inBits(0).instInfo.store.get.paddr)
+      dt.st_data  := RegNext(inBits(0).instInfo.store.get.data)
 
       dt.valid_1 := false.B
       dt.instr_1 := DontCare
@@ -139,6 +135,11 @@ class CommitStage(
         dt.wdest_1 := RegNext(inBits(1).gprWrite.addr)
         dt.wdata_1 := RegNext(inBits(1).gprWrite.data)
       }
+
+      dt.is_TLBFILL := RegNext(
+        inBits(0).instInfo.tlbFill.get.valid && inBits(0).instInfo.exceptionPos === ExceptionPos.none
+      )
+      dt.TLBFILL_index := RegNext(inBits(0).instInfo.tlbFill.get.fillIndex)
     case _ =>
   }
 }

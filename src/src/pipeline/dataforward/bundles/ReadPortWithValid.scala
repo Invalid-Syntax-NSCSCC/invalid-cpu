@@ -1,7 +1,6 @@
 package pipeline.dataforward.bundles
 
 import chisel3._
-import common.bundles.RfReadPort
 import spec._
 
 class ReadPortWithValid extends Bundle {

@@ -1,4 +1,4 @@
-package pipeline.mem.enums
+package pipeline.memory.enums
 
 import chisel3.ChiselEnum
 
