@@ -121,7 +121,7 @@ class Rob(
 
         // commit
         if (idx == 0) {
-          io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.isStore
+          io.commitStore.valid := commit.ready && deqPort.bits.wbPort.instInfo.store.get.en.orR
           io.branchCommit := commit.ready &&
             deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch &&
             deqPort.bits.wbPort.instInfo.branchSetPort.en
@@ -129,7 +129,8 @@ class Rob(
         } else {
           deqPort.ready := commit.ready &&
             deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
-            deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.loadStore &&
+            !deqPort.bits.wbPort.instInfo.store.get.en.orR &&
+            !deqPort.bits.wbPort.instInfo.load.get.en.orR &&
             !deqPort.bits.wbPort.instInfo.needCsr &&
             (deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none) &&
             queue.io.dequeuePorts(idx - 1).valid &&
