@@ -28,13 +28,23 @@ class InstAddrTransStage extends Module {
   val outReg = RegInit(InstReqNdPort.default)
   val isAdef = WireDefault(io.pc(1, 0).orR) // pc not aline
   io.out.bits  := outReg
-  io.out.valid := outReg.translatedMemReq.isValid || isAdef // still send to backend
+  io.out.valid := true.B // still send to backend
 
   val isLastSent = RegNext(true.B, true.B)
 
   // Fallback output
   outReg.pc                       := io.pc
   outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !isAdef
+  outReg.exception.valid          := peer.tlbTrans.exception.valid || isAdef
+  outReg.exception.bits           := peer.tlbTrans.exception.bits
+  when(isAdef) {
+    //exception priority: pif > ppi > adef > tlbr
+    when(!peer.tlbTrans.exception.valid) {
+      outReg.exception.bits := spec.Csr.ExceptionIndex.adef
+    }.elsewhen(peer.tlbTrans.exception.bits === spec.Csr.ExceptionIndex.tlbr) {
+      outReg.exception.bits := spec.Csr.ExceptionIndex.adef   
+    }
+  }
 
   // DMW mapping
   val directMapVec = Wire(
