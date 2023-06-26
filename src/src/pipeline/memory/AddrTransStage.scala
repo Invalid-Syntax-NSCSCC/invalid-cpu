@@ -6,12 +6,13 @@ import common.enums.ReadWriteSel
 import control.enums.ExceptionPos
 import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
-import pipeline.commit.bundles.InstInfoNdPort
+import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
 import pipeline.common.BaseStage
 import pipeline.memory.bundles.{MemCsrNdPort, MemRequestNdPort}
 import pipeline.memory.enums.AddrTransType
 import spec.Value.Csr
 import spec.Width
+import spec.Param.isDiffTest
 
 import scala.collection.immutable
 
@@ -30,6 +31,8 @@ class AddrTransPeerPort extends Bundle {
   val csr            = Input(new MemCsrNdPort)
   val tlbTrans       = Flipped(new TlbTransPort)
   val tlbMaintenance = Output(new TlbMaintenanceNdPort)
+
+  val tlbDifftest = if (isDiffTest) Some(Input(new DifftestTlbFillNdPort)) else None
 }
 
 class AddrTransStage
@@ -96,8 +99,13 @@ class AddrTransStage
 
   // Translate address
   val translatedAddr = WireDefault(selectedIn.memRequest.addr)
-  out.instInfo.load.paddr   := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.vaddr(1, 0))
-  out.instInfo.store.paddr  := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.store.vaddr(1, 0))
+  if (isDiffTest) {
+    out.instInfo.load.get.paddr := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.get.vaddr(1, 0))
+    out.instInfo.store.get.paddr := Cat(
+      translatedAddr(Width.Mem._addr - 1, 2),
+      selectedIn.instInfo.store.get.vaddr(1, 0)
+    )
+  }
   out.translatedMemReq.addr := translatedAddr
   peer.tlbTrans.memType := MuxLookup(
     selectedIn.memRequest.rw,
@@ -140,6 +148,9 @@ class AddrTransStage
     tlbBlockingReg := true.B
   }
   io.in.ready := inReady && !tlbBlockingReg
+  if (isDiffTest) {
+    out.instInfo.tlbFill.get := peer.tlbDifftest.get
+  }
 
   // Handle flush (actually is TLB maintenance done)
   when(io.isFlush) {

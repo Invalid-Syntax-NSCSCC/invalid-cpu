@@ -8,6 +8,7 @@ import control.enums.ExceptionPos
 import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.memory.AddrTransNdPort
+import spec.Param.isDiffTest
 import spec._
 
 import scala.collection.immutable
@@ -125,51 +126,53 @@ class ExeForMemStage
     }
   }
 
-  resultOutReg.bits.instInfo.load.en := Mux(
-    isAle,
-    0.U,
-    Cat(
-      0.U(2.W),
-      selectedIn.exeOp === ExeInst.Op.ll,
-      selectedIn.exeOp === ExeInst.Op.ld_w,
-      selectedIn.exeOp === ExeInst.Op.ld_hu,
-      selectedIn.exeOp === ExeInst.Op.ld_h,
-      selectedIn.exeOp === ExeInst.Op.ld_bu,
-      selectedIn.exeOp === ExeInst.Op.ld_b
-    )
-  )
-  resultOutReg.bits.instInfo.store.en := Mux(
-    isAle,
-    0.U,
-    Cat(
-      0.U(4.W),
-      io.peer.get.csr.llbctl.wcllb &&
-        selectedIn.exeOp === ExeInst.Op.sc,
-      selectedIn.exeOp === ExeInst.Op.st_w,
-      selectedIn.exeOp === ExeInst.Op.st_h,
-      selectedIn.exeOp === ExeInst.Op.st_b
-    )
-  )
-  resultOutReg.bits.instInfo.load.vaddr  := loadStoreAddr
-  resultOutReg.bits.instInfo.store.vaddr := loadStoreAddr
-  resultOutReg.bits.instInfo.store.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
-    immutable.Seq(
-      ExeInst.Op.st_b -> Mux(
-        maskEncode(1),
-        Mux(
-          maskEncode(0),
-          Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
-          Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
-        ),
-        Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
-      ),
-      ExeInst.Op.st_h -> Mux(
-        maskEncode(1),
-        Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
-        selectedIn.rightOperand(15, 0)
+  if (isDiffTest) {
+    resultOutReg.bits.instInfo.load.get.en := Mux(
+      isAle,
+      0.U,
+      Cat(
+        0.U(2.W),
+        selectedIn.exeOp === ExeInst.Op.ll,
+        selectedIn.exeOp === ExeInst.Op.ld_w,
+        selectedIn.exeOp === ExeInst.Op.ld_hu,
+        selectedIn.exeOp === ExeInst.Op.ld_h,
+        selectedIn.exeOp === ExeInst.Op.ld_bu,
+        selectedIn.exeOp === ExeInst.Op.ld_b
       )
     )
-  )
+    resultOutReg.bits.instInfo.store.get.en := Mux(
+      isAle,
+      0.U,
+      Cat(
+        0.U(4.W),
+        io.peer.get.csr.llbctl.wcllb &&
+          selectedIn.exeOp === ExeInst.Op.sc,
+        selectedIn.exeOp === ExeInst.Op.st_w,
+        selectedIn.exeOp === ExeInst.Op.st_h,
+        selectedIn.exeOp === ExeInst.Op.st_b
+      )
+    )
+    resultOutReg.bits.instInfo.load.get.vaddr  := loadStoreAddr
+    resultOutReg.bits.instInfo.store.get.vaddr := loadStoreAddr
+    resultOutReg.bits.instInfo.store.get.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
+      immutable.Seq(
+        ExeInst.Op.st_b -> Mux(
+          maskEncode(1),
+          Mux(
+            maskEncode(0),
+            Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
+            Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
+          ),
+          Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
+        ),
+        ExeInst.Op.st_h -> Mux(
+          maskEncode(1),
+          Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
+          selectedIn.rightOperand(15, 0)
+        )
+      )
+    )
+  }
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr

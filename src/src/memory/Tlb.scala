@@ -5,8 +5,10 @@ import chisel3.util._
 import control.csrBundles.{AsidBundle, EstatBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
 import memory.bundles._
 import memory.enums.TlbMemType
+import pipeline.commit.bundles.DifftestTlbFillNdPort
 import spec.ExeInst.Op.Tlb._
 import spec._
+import spec.Param.isDiffTest
 
 class Tlb extends Module {
   val io = IO(new Bundle {
@@ -23,6 +25,8 @@ class Tlb extends Module {
       val out = Output(new TlbCsrWriteNdPort)
     }
     val tlbTransPorts = Vec(Param.Count.Tlb.transNum, new TlbTransPort)
+
+    val difftest = if (isDiffTest) Some(Output(new DifftestTlbFillNdPort)) else None
   })
 
   // Connection graph:
@@ -54,6 +58,12 @@ class Tlb extends Module {
     csrOutReg.asId.valid   := false.B
     csrOutReg.tlbehi.valid := false.B
     csrOutReg.tlbeloVec.foreach(_.valid := false.B)
+    csrOutReg.tlbidx.bits := io.csr.in.tlbidx
+    csrOutReg.asId.bits   := io.csr.in.asId
+    csrOutReg.tlbehi.bits := io.csr.in.tlbehi
+    csrOutReg.tlbeloVec.map(_.bits).zip(io.csr.in.tlbloVec).foreach {
+      case (out, in) => out := in
+    }
   }
 
   def isVirtPageNumMatched(compare: TlbCompareEntryBundle, vaddr: UInt) = Mux(
@@ -144,17 +154,13 @@ class Tlb extends Module {
   when(io.maintenanceInfo.isRead) {
     csrOutReg.tlbidx.valid := true.B
     csrOutReg.tlbehi.valid := true.B
+    csrOutReg.asId.valid   := true.B
     csrOutReg.tlbeloVec.foreach(_.valid := true.B)
-    csrOutReg.tlbidx.bits := io.csr.in.tlbidx
-    csrOutReg.tlbehi.bits := io.csr.in.tlbehi
-    csrOutReg.tlbeloVec.map(_.bits).zip(io.csr.in.tlbloVec).foreach {
-      case (out, in) =>
-        out := in
-    }
     csrOutReg.asId.bits := io.csr.in.asId
     when(readEntry.compare.isExisted) {
       csrOutReg.tlbidx.bits.ne   := false.B
       csrOutReg.tlbidx.bits.ps   := readEntry.compare.pageSize
+      csrOutReg.asId.bits.asid   := readEntry.compare.asId
       csrOutReg.tlbehi.bits.vppn := readEntry.compare.virtPageNum
       csrOutReg.tlbeloVec.map(_.bits).zip(readEntry.trans).foreach {
         case (tlbelo, trans) =>
@@ -166,7 +172,6 @@ class Tlb extends Module {
           tlbelo.ppn := trans.physPageNum
       }
     }.otherwise {
-      csrOutReg.asId.valid     := true.B
       csrOutReg.tlbidx.bits.ne := true.B
       csrOutReg.tlbidx.bits.ps := 0.U
       csrOutReg.asId.bits      := 0.U.asTypeOf(new AsidBundle)
@@ -201,6 +206,13 @@ class Tlb extends Module {
         trans.isValid     := tlblo.v
         trans.physPageNum := tlblo.ppn
     }
+  }
+
+  io.difftest match {
+    case Some(dt) =>
+      dt.valid     := io.maintenanceInfo.isFill
+      dt.fillIndex := fillIndex
+    case None =>
   }
 
   // Maintenance: Invalidate

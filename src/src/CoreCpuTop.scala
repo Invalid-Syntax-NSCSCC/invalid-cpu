@@ -228,6 +228,9 @@ class CoreCpuTop extends Module {
     p.csr.dmw(0) := csr.io.csrValues.dmw0
     p.csr.dmw(1) := csr.io.csrValues.dmw1
     p.csr.crmd   := csr.io.csrValues.crmd
+    if (isDiffTest) {
+      p.tlbDifftest.get := tlb.io.difftest.get
+    }
   }
 
   memReqStage.io.isFlush := cu.io.backendFlush
