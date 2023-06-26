@@ -19,6 +19,8 @@ class InstAddrTransStage extends Module {
 
   val peer = io.peer
 
+  peer.tlbMaintenance := DontCare
+
   val outReg = RegInit(InstReqNdPort.default)
   val isAdef = WireDefault(io.pc(1, 0).orR) // pc not aline
   io.out.bits  := outReg

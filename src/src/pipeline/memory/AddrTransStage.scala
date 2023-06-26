@@ -139,7 +139,7 @@ class AddrTransStage
   when(selectedIn.instInfo.isTlb) {
     tlbBlockingReg := true.B
   }
-  io.in.ready := !tlbBlockingReg
+  io.in.ready := inReady && !tlbBlockingReg
 
   // Handle flush (actually is TLB maintenance done)
   when(io.isFlush) {
