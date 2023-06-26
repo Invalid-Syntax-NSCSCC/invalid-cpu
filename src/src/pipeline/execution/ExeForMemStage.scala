@@ -176,5 +176,5 @@ class ExeForMemStage
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
-  resultOutReg.bits.instInfo.isStore       := resultOutReg.bits.instInfo.store.en.orR
+  resultOutReg.bits.instInfo.isStore       := resultOutReg.bits.instInfo.store.get.en.orR
 }
