@@ -26,11 +26,10 @@ class InstAddrTransStage extends Module {
 
   val peer = io.peer
 
-  val outReg           = RegInit(InstReqNdPort.default)
-  val hasSentException = RegInit(false.B)
-  hasSentException := hasSentException
-  val isLastSent    = RegNext(true.B, true.B)
-  val isOutputValid = RegNext(io.isPcUpdate || !isLastSent, false.B)
+  val outReg = RegInit(InstReqNdPort.default)
+  val isAdef = WireDefault(io.pc(1, 0).orR) // pc not aline
+  io.out.bits  := outReg
+  io.out.valid := true.B // still send to backend
 
   io.out.valid := isOutputValid
   io.out.bits  := outReg
@@ -43,9 +42,17 @@ class InstAddrTransStage extends Module {
 
   // Fallback output
   outReg.pc                       := io.pc
-  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && !isAdef
-  outReg.exception.valid          := isAdef
-  outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
+  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !isAdef
+  outReg.exception.valid          := peer.tlbTrans.exception.valid || isAdef
+  outReg.exception.bits           := peer.tlbTrans.exception.bits
+  when(isAdef) {
+    // exception priority: pif > ppi > adef > tlbr
+    when(!peer.tlbTrans.exception.valid) {
+      outReg.exception.bits := spec.Csr.ExceptionIndex.adef
+    }.elsewhen(peer.tlbTrans.exception.bits === spec.Csr.ExceptionIndex.tlbr) {
+      outReg.exception.bits := spec.Csr.ExceptionIndex.adef
+    }
+  }
 
   // DMW mapping
   val directMapVec = Wire(
