@@ -194,7 +194,7 @@ class Tlb extends Module {
 
     writeEntry.compare.pageSize    := io.csr.in.tlbidx.ps
     writeEntry.compare.virtPageNum := io.csr.in.tlbehi.vppn
-    writeEntry.compare.isGlobal    := io.csr.in.tlbloVec(0).g
+    writeEntry.compare.isGlobal    := io.csr.in.tlbloVec.map(_.g).reduce(_ || _)
     writeEntry.compare.asId        := io.csr.in.asId.asid
     // Question: Should write ASID or not
 
@@ -262,8 +262,8 @@ class Tlb extends Module {
       is(clrGloblAsIdVa) {
         tlbEntryVec.foreach { entry =>
           when(
-            entry.compare.isGlobal &&
-              isAsIdMatched(entry) &&
+            (entry.compare.isGlobal ||
+              isAsIdMatched(entry)) &&
               isVirtPageNumMatched(entry.compare, io.maintenanceInfo.virtAddr)
           ) {
             invalidateEntry(entry)
