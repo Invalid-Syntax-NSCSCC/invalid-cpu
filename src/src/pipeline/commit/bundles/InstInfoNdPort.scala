@@ -13,7 +13,9 @@ class InstInfoNdPort extends Bundle {
   val pc              = UInt(Width.Reg.data)
   val inst            = UInt(Width.Reg.data)
   val exceptionPos    = ExceptionPos()
-  val exceptionRecord = UInt(Csr.ExceptionIndex.width) // Vec(Csr.ExceptionIndex.count + 1, Bool())
+  val exceptionRecord = UInt(Csr.ExceptionIndex.width)
+  val isStore         = Bool()
+  val vaddr           = UInt(Width.Mem.addr)
   val needCsr         = Bool()
   val csrWritePort    = new CsrWriteNdPort
 
@@ -27,7 +29,6 @@ class InstInfoNdPort extends Bundle {
   val store = new DifftestStoreNdPort
 
   val isTlb = Bool()
-  // val tlbMaintenancePort = new TlbMaintenanceNdPort
 }
 
 object InstInfoNdPort {
@@ -41,7 +42,8 @@ object InstInfoNdPort {
     _.exeOp -> ExeInst.Op.nop,
     _.exeSel -> ExeInst.Sel.none,
     _.robId -> zeroWord,
-    // _.tlbMaintenancePort -> TlbMaintenanceNdPort.default,
+    _.isStore -> false.B,
+    _.vaddr -> zeroWord,
     _.needCsr -> false.B,
     _.branchSetPort -> PcSetPort.default,
     _.load -> DifftestLoadNdPort.default,
@@ -62,5 +64,6 @@ object InstInfoNdPort {
     // instInfo.tlbMaintenancePort := TlbMaintenanceNdPort.default
     instInfo.branchSetPort.en := false.B
     instInfo.isTlb            := false.B
+    instInfo.isStore          := false.B
   }
 }

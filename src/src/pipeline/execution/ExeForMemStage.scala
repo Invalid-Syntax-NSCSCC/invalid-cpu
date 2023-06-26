@@ -76,6 +76,8 @@ class ExeForMemStage
     */
 
   val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
+  resultOutReg.bits.instInfo.vaddr := loadStoreAddr
+
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
       .contains(selectedIn.exeOp)
@@ -171,4 +173,5 @@ class ExeForMemStage
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
+  resultOutReg.bits.instInfo.isStore       := resultOutReg.bits.instInfo.store.en.orR
 }
