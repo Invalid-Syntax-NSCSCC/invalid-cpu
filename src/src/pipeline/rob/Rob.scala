@@ -137,7 +137,7 @@ class Rob(
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
             (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none) &&
             !io.commits(idx - 1).bits.instInfo.branchSetPort.en &&
-            !io.commits(idx - 1).bits.instInfo.isTlb &&
+            !io.commits(idx - 1).bits.instInfo.needCsr &&
             !hasInterruptReg &&
             !io.hasInterrupt
         }

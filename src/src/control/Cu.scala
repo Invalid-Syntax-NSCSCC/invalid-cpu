@@ -29,7 +29,8 @@ class Cu(
     // `Cu` -> `Csr`, Should TLB maintenance write
     val tlbCsrWriteValid = Output(new Bool)
     // `Csr` -> `Cu`
-    val csrValues = Input(new CsrValuePort)
+    val datmfChange = Input(Bool())
+    val csrValues   = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
     val branchExe = Input(new PcSetPort)
     // `Rob` -> `Cu`
@@ -202,13 +203,15 @@ class Cu(
   /** Flush & jump
     */
 
+  val datmfChangeFlush = io.datmfChange
+
   val ertnFlush = WireDefault(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
 
   io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush        := RegNext(hasException || io.branchExe.en || isTlbMaintenance, false.B)
-  io.backendFlush         := RegNext(hasException || io.branchCommit || isTlbMaintenance, false.B)
+  io.frontendFlush        := RegNext(hasException || io.branchExe.en || isTlbMaintenance || datmfChangeFlush, false.B)
+  io.backendFlush         := RegNext(hasException || io.branchCommit || isTlbMaintenance || datmfChangeFlush, false.B)
 
   // select new pc
   io.newPc.en     := isTlbMaintenance || hasException || io.branchExe.en
@@ -217,7 +220,7 @@ class Cu(
   io.newPc.pcAddr := Mux(
     hasException,
     Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
-    Mux(isTlbMaintenance, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
+    Mux(isTlbMaintenance || datmfChangeFlush, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
   )
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&

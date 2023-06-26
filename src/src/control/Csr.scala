@@ -21,6 +21,8 @@ class Csr(
     val readPorts = Vec(Param.csrReadNum, new CsrReadPort)
     // `Csr` -> `WbStage`
     val hasInterrupt = Output(Bool())
+    // `Csr` -> Cu`
+    val datmfChange = Output(Bool())
   })
 
   // Util: view UInt as Bundle
@@ -380,6 +382,9 @@ class Csr(
 
   val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
+
+  // CRMD.DATM change
+  io.datmfChange := (crmd.in.datm =/= crmd.out.datm) || (crmd.in.datf =/= crmd.out.datf)
 
   // Output
   io.csrValues.crmd      := crmd.out
