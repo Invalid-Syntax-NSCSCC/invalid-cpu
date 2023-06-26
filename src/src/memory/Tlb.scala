@@ -2,7 +2,7 @@ package memory
 
 import chisel3._
 import chisel3.util._
-import control.csrBundles.{AsidBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
+import control.csrBundles.{AsidBundle, EstatBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
 import memory.bundles._
 import memory.enums.TlbMemType
 import spec.ExeInst.Op.Tlb._
@@ -18,6 +18,7 @@ class Tlb extends Module {
         val tlbehi   = new TlbehiBundle
         val tlbidx   = new TlbidxBundle
         val tlbloVec = Vec(2, new TlbeloBundle)
+        val estat    = new EstatBundle
       })
       val out = Output(new TlbCsrWriteNdPort)
     }
@@ -35,6 +36,8 @@ class Tlb extends Module {
   val virtAddrLen = Width.Mem._addr
   val physAddrLen = Width.Mem._addr
 
+  val isTlbRefillException = io.csr.in.estat.ecode === Csr.Estat.tlbr.ecode
+
   val csrOutReg = RegInit(TlbCsrWriteNdPort.default)
   csrOutReg := csrOutReg
 
@@ -49,7 +52,7 @@ class Tlb extends Module {
   when(isTlbMaintenance) {
     csrOutReg.tlbidx.valid := false.B
     csrOutReg.asId.valid   := false.B
-    csrOutReg.tlbehi       := false.B
+    csrOutReg.tlbehi.valid := false.B
     csrOutReg.tlbeloVec.foreach(_.valid := false.B)
   }
 
@@ -182,7 +185,7 @@ class Tlb extends Module {
     )
   )
   when(io.maintenanceInfo.isWrite || io.maintenanceInfo.isFill) {
-    writeEntry.compare.isExisted := !io.csr.in.tlbidx.ne
+    writeEntry.compare.isExisted := !io.csr.in.tlbidx.ne || isTlbRefillException
 
     writeEntry.compare.pageSize    := io.csr.in.tlbidx.ps
     writeEntry.compare.virtPageNum := io.csr.in.tlbehi.vppn

@@ -159,6 +159,7 @@ class CoreCpuTop extends Module {
   tlb.io.csr.in.tlbehi      := csr.io.csrValues.tlbehi
   tlb.io.csr.in.tlbloVec(0) := csr.io.csrValues.tlbelo0
   tlb.io.csr.in.tlbloVec(1) := csr.io.csrValues.tlbelo1
+  tlb.io.csr.in.estat       := csr.io.csrValues.estat
   tlb.io.maintenanceInfo    := addrTransStage.io.peer.get.tlbMaintenance
 
   // Frontend
