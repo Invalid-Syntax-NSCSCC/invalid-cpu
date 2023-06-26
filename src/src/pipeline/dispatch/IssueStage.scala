@@ -149,8 +149,12 @@ class IssueStage(
               ) {
                 dispatchEn := false.B
               }
+            } else if (dst_idx == loadStoreIssuePipelineIndex) {
+              when(in.instInfo.isTlb && (io.peer.get.csrcore =/= ScoreboardState.free)) {
+                dispatchEn := false.B
+              }
             } else {
-              when(in.instInfo.needCsr && !in.instInfo.isTlb) {
+              when(in.instInfo.needCsr) {
                 dispatchEn := false.B
               }
             }
