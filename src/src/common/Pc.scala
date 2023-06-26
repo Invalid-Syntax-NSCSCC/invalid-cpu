@@ -14,8 +14,6 @@ class Pc(
     val isNext   = Input(Bool())
     // 异常处理 + 分支跳转
     val newPc = Input(new PcSetPort)
-
-    val tlbFinish = Input(Bool())
   })
 
   val pcReg       = RegInit(spec.Pc.init)
@@ -23,16 +21,14 @@ class Pc(
   io.pc       := pcReg
   io.pcUpdate := pcUpdateReg
 
-  val isIdle       = RegInit(false.B)
-  val isTlbRunning = RegInit(false.B)
+  val isIdle = RegInit(false.B)
 
   pcReg := pcReg
   when(io.newPc.en) {
-    pcReg        := io.newPc.pcAddr
-    isIdle       := io.newPc.isIdle
-    isTlbRunning := io.newPc.isTlb
-    pcUpdateReg  := !io.newPc.isTlb
-  }.elsewhen(io.isNext && !isIdle && !isTlbRunning) {
+    pcReg       := io.newPc.pcAddr
+    isIdle      := io.newPc.isIdle
+    pcUpdateReg := true.B
+  }.elsewhen(io.isNext && !isIdle) {
     // pcReg := pcReg + (4 * issueNum).U
     pcReg       := pcReg + 4.U
     pcUpdateReg := true.B
@@ -41,8 +37,4 @@ class Pc(
     pcUpdateReg := false.B
   }
 
-  when(io.tlbFinish) {
-    isTlbRunning := false.B
-    pcUpdateReg  := true.B
-  }
 }

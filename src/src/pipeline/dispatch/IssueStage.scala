@@ -137,8 +137,16 @@ class IssueStage(
                 dispatchEn := false.B
               }
             }
+            if (src_idx > 0) {
+              when(selectedIns.take(src_idx).map(_.instInfo.needCsr).reduce(_ || _) && in.instInfo.needCsr) {
+                dispatchEn := false.B
+              }
+            }
             if (dst_idx == csrIssuePipelineIndex) {
-              when((in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) || in.instInfo.isTlb) {
+              when(
+                (in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) ||
+                  in.instInfo.isTlb
+              ) {
                 dispatchEn := false.B
               }
             } else {
