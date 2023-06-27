@@ -352,3 +352,7 @@ hs_err_pid*
 
 ### Project Specific stuff
 !/utils/firtool.exe
+/.idea/vcs.xml
+/.idea/modules.xml
+/mill.vTEmVR
+
