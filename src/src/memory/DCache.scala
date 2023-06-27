@@ -617,6 +617,9 @@ class DCache(
         ram.io.dataIn  := 0.U
         ram.io.addr    := queryIndex
       }
+
+      // Next Stage 1
+      nextState := State.ready
     }
 
     is(State.maintenanceHit) {
