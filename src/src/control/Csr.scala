@@ -368,7 +368,27 @@ class Csr(
   val tlbExceptionWriteIndex = OHToUInt(io.tlbExceptionWritePorts.map(_.valid))
   val tlbExceptionWriteBits  = io.tlbExceptionWritePorts(tlbExceptionWriteIndex).bits
   when(tlbExceptionWriteValid) {
-    tlbehi.in.vppn := io.csrMessage.badVAddrSet.addr(31, 13) // tlbExceptionWriteBits.vppn
+    tlbehi.in.vppn := tlbExceptionWriteBits.vppn
+  }
+
+  // TLB maintenance write
+  val tlbMaintenanceWrite = io.tlbMaintenanceWritePort.bits
+  when(io.tlbMaintenanceWritePort.valid) {
+    when(tlbMaintenanceWrite.tlbidx.valid) {
+      tlbidx.in := tlbMaintenanceWrite.tlbidx.bits
+    }
+    when(tlbMaintenanceWrite.tlbehi.valid) {
+      tlbehi.in := tlbMaintenanceWrite.tlbehi.bits
+    }
+    when(tlbMaintenanceWrite.tlbeloVec(0).valid) {
+      tlbelo0.in := tlbMaintenanceWrite.tlbeloVec(0).bits
+    }
+    when(tlbMaintenanceWrite.tlbeloVec(1).valid) {
+      tlbelo1.in := tlbMaintenanceWrite.tlbeloVec(1).bits
+    }
+    when(tlbMaintenanceWrite.asId.valid) {
+      asid.in := tlbMaintenanceWrite.asId.bits
+    }
   }
 
   // 中断

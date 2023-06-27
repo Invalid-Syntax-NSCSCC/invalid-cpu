@@ -95,7 +95,7 @@ class InstAddrTransStage extends Module {
   outReg.translatedMemReq.addr := translatedAddr
   peer.tlbTrans.memType        := TlbMemType.fetch
   peer.tlbTrans.virtAddr       := io.pc
-  peer.tlbTrans.isValid        := !hasSentException
+  peer.tlbTrans.isValid        := false.B
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := io.pc
@@ -104,7 +104,8 @@ class InstAddrTransStage extends Module {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      translatedAddr := peer.tlbTrans.physAddr
+      peer.tlbTrans.isValid := true.B
+      translatedAddr        := peer.tlbTrans.physAddr
       outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
         !peer.tlbTrans.exception.valid && !isAdef
 
