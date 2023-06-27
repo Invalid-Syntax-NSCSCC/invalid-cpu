@@ -26,6 +26,7 @@ class ExeNdPort extends Bundle {
   def loadStoreImm      = jumpBranchAddr
   def csrData           = jumpBranchAddr
   def tlbInvalidateInst = jumpBranchAddr
+  def code              = jumpBranchAddr
 
   // GPR write (writeback)
   val gprWritePort = new RfAccessInfoNdPort

@@ -8,7 +8,7 @@ import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
 import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
 import pipeline.common.BaseStage
-import pipeline.memory.bundles.{MemCsrNdPort, MemRequestNdPort}
+import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
 import pipeline.memory.enums.AddrTransType
 import spec.Value.Csr
 import spec.Width
@@ -17,10 +17,11 @@ import spec.Param.isDiffTest
 import scala.collection.immutable
 
 class AddrTransNdPort extends Bundle {
-  val memRequest     = new MemRequestNdPort
-  val gprAddr        = UInt(Width.Reg.addr)
-  val instInfo       = new InstInfoNdPort
-  val tlbMaintenance = new TlbMaintenanceNdPort
+  val memRequest       = new MemRequestNdPort
+  val gprAddr          = UInt(Width.Reg.addr)
+  val instInfo         = new InstInfoNdPort
+  val tlbMaintenance   = new TlbMaintenanceNdPort
+  val cacheMaintenance = new CacheMaintenanceInstNdPort
 }
 
 object AddrTransNdPort {
@@ -52,6 +53,7 @@ class AddrTransStage
   out.instInfo         := selectedIn.instInfo
   out.gprAddr          := selectedIn.gprAddr
   out.translatedMemReq := selectedIn.memRequest
+  out.cacheMaintenance := selectedIn.cacheMaintenance
   out.isCached         := false.B // Fallback: Uncached
 
   // DMW mapping
@@ -100,6 +102,9 @@ class AddrTransStage
   }
 
   // Translate address
+  val isCacheMaintenance = selectedIn.cacheMaintenance.control.isInit ||
+    selectedIn.cacheMaintenance.control.isCoherentByIndex ||
+    selectedIn.cacheMaintenance.control.isCoherentByHit
   val translatedAddr = WireDefault(selectedIn.memRequest.addr)
   if (isDiffTest) {
     out.instInfo.load.get.paddr := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.get.vaddr(1, 0))
@@ -128,7 +133,7 @@ class AddrTransStage
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      peer.tlbTrans.isValid        := selectedIn.memRequest.isValid
+      peer.tlbTrans.isValid        := selectedIn.memRequest.isValid || isCacheMaintenance
       translatedAddr               := peer.tlbTrans.physAddr
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 

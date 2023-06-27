@@ -147,6 +147,15 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
     }
+    is(Inst.cacop) {
+      io.out.isMatched            := true.B
+      io.out.info.exeOp           := ExeInst.Op.cacop
+      io.out.info.exeSel          := ExeInst.Sel.loadStore
+      io.out.info.gprWritePort.en := false.B
+      io.out.info.isHasImm        := true.B
+      io.out.info.imm             := immSext.asUInt
+      io.out.info.code            := rd
+    }
     is(Inst.preld) {
       io.out.isMatched              := true.B
       io.out.info.exeOp             := ExeInst.Op.preld

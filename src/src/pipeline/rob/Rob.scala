@@ -120,6 +120,7 @@ class Rob(
       ) {
 
         // commit
+        // TODO: refactor with forbidParallelCommit
         if (idx == 0) {
           io.commitStore.valid := commit.ready &&
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
@@ -131,6 +132,8 @@ class Rob(
           deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
         } else {
           deqPort.ready := commit.ready &&
+            !io.commits(idx - 1).bits.instInfo.forbidParallelCommit &&
+            !deqPort.bits.wbPort.instInfo.forbidParallelCommit &&
             deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
             !deqPort.bits.wbPort.instInfo.store.get.en.orR &&
             !deqPort.bits.wbPort.instInfo.load.get.en.orR &&

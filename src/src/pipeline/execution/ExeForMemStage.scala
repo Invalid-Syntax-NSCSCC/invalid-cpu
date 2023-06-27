@@ -13,6 +13,8 @@ import spec._
 
 import scala.collection.immutable
 import memory.bundles.TlbMaintenanceNdPort
+import pipeline.memory.bundles.CacheMaintenanceInstNdPort
+import pipeline.memory.enums.CacheMaintenanceTargetType
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
@@ -31,9 +33,12 @@ class ExeForMemStage
       Some(new ExeForMemPeerPort)
     ) {
 
-  isComputed                 := true.B
-  resultOutReg.valid         := isComputed && selectedIn.instInfo.isValid
-  resultOutReg.bits.instInfo := selectedIn.instInfo
+  isComputed        := true.B
+  resultOutReg.bits := AddrTransNdPort.default
+
+  resultOutReg.valid               := isComputed && selectedIn.instInfo.isValid
+  resultOutReg.bits.instInfo       := selectedIn.instInfo
+  resultOutReg.bits.instInfo.vaddr := resultOutReg.bits.memRequest.addr
 
   // write-back information fallback
   resultOutReg.bits.gprAddr := selectedIn.gprWritePort.addr
@@ -77,7 +82,6 @@ class ExeForMemStage
     */
 
   val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
-  resultOutReg.bits.instInfo.vaddr := loadStoreAddr
 
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
@@ -172,6 +176,40 @@ class ExeForMemStage
         )
       )
     )
+  }
+
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.cacop) {
+      resultOutReg.bits.memRequest.addr := selectedIn.leftOperand + selectedIn.rightOperand
+
+      switch(selectedIn.code(2, 0)) {
+        is(0.U) {
+          resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.inst
+          resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+        }
+        is(1.U) {
+          resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.data
+          resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+          resultOutReg.bits.instInfo.forbidParallelCommit      := true.B
+        }
+        is(2.U) {
+          resultOutReg.bits.cacheMaintenance.control.isL2Valid := true.B
+          resultOutReg.bits.instInfo.forbidParallelCommit      := true.B
+        }
+      }
+
+      switch(selectedIn.code(4, 3)) {
+        is(0.U) {
+          resultOutReg.bits.cacheMaintenance.control.isInit := true.B
+        }
+        is(1.U) {
+          resultOutReg.bits.cacheMaintenance.control.isCoherentByIndex := true.B
+        }
+        is(2.U) {
+          resultOutReg.bits.cacheMaintenance.control.isCoherentByHit := true.B
+        }
+      }
+    }
   }
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
