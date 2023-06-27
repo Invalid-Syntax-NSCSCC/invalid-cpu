@@ -127,8 +127,9 @@ class CoreCpuTop extends Module {
   val pc      = Module(new Pc)
 
   // PC
-  pc.io.newPc  := cu.io.newPc
-  pc.io.isNext := frontend.io.isNextPc
+  pc.io.newPc           := cu.io.newPc
+  pc.io.isNext          := frontend.io.isNextPc
+  pc.io.interruptWakeUp := csr.io.hasInterrupt
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
