@@ -45,6 +45,7 @@ class Cu(
 
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
+    val idleFlush     = Output(Bool())
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
@@ -245,11 +246,11 @@ class Cu(
     hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
     false.B
   )
+  io.idleFlush := idleFlush
 
   // select new pc
-  io.newPc.en := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en || cacopFlush || idleFlush
-  io.newPc.isIdle := idleFlush && !hasException && !isTlbMaintenance
-  io.newPc.isTlb  := isTlbMaintenance
+  io.newPc.en    := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en || cacopFlush || idleFlush
+  io.newPc.isTlb := isTlbMaintenance
   io.newPc.pcAddr := Mux(
     hasException,
     Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),

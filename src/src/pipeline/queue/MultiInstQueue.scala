@@ -20,7 +20,8 @@ class MultiInstQueue(
   val issueNum:    Int = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new Bundle {
-    val isFlush      = Input(Bool())
+    val isFlush = Input(Bool())
+
     val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
@@ -28,6 +29,9 @@ class MultiInstQueue(
       issueNum,
       Decoupled(new FetchInstDecodeNdPort)
     )
+
+    val idleBlocking    = Input(Bool())
+    val interruptWakeUp = Input(Bool())
   })
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
@@ -46,13 +50,20 @@ class MultiInstQueue(
     )
   )
 
+  val isIdle = RegInit(false.B)
+  when(io.interruptWakeUp) {
+    isIdle := false.B
+  }.elsewhen(io.idleBlocking) {
+    isIdle := true.B
+  }
+
   // fall back
   instQueue.io.enqueuePorts.zipWithIndex.foreach {
     case (enq, idx) =>
-      enq.valid := io.enqueuePorts.valid
+      enq.valid := io.enqueuePorts.valid && !isIdle
       enq.bits  := io.enqueuePorts.bits(idx)
   }
-  io.enqueuePorts.ready := instQueue.io.enqueuePorts.map(_.ready).reduce(_ && _)
+  io.enqueuePorts.ready := instQueue.io.enqueuePorts.map(_.ready).reduce(_ && _) && !isIdle
   instQueue.io.isFlush  := io.isFlush
 
   // Decode
