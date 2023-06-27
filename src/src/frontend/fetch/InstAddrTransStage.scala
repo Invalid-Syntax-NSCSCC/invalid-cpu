@@ -3,10 +3,16 @@ package frontend.fetch
 import chisel3._
 import chisel3.util._
 import memory.enums.TlbMemType
-import pipeline.mem.AddrTransPeerPort
-import pipeline.mem.enums.AddrTransType
+import memory.bundles.TlbTransPort
+import pipeline.memory.enums.AddrTransType
+import frontend.bundles.FetchCsrNdPort
 import spec.Value.Csr
 import spec.Width
+
+class InstAddrTransPeerPort extends Bundle {
+  val csr      = Input(new FetchCsrNdPort)
+  val tlbTrans = Flipped(new TlbTransPort)
+}
 
 class InstAddrTransStage extends Module {
   val io = IO(new Bundle {
@@ -14,7 +20,7 @@ class InstAddrTransStage extends Module {
     val isPcUpdate = Input(Bool())
     val pc         = Input(UInt(Width.Mem.addr))
     val out        = Decoupled(new InstReqNdPort)
-    val peer       = new AddrTransPeerPort
+    val peer       = new InstAddrTransPeerPort
   })
 
   val peer = io.peer
@@ -22,13 +28,24 @@ class InstAddrTransStage extends Module {
   val outReg = RegInit(InstReqNdPort.default)
   val isAdef = WireDefault(io.pc(1, 0).orR) // pc not aline
   io.out.bits  := outReg
-  io.out.valid := outReg.translatedMemReq.isValid || isAdef // still send to backend
+  io.out.valid := true.B // still send to backend
 
   val isLastSent = RegNext(true.B, true.B)
 
   // Fallback output
   outReg.pc                       := io.pc
   outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !isAdef
+  outReg.exception.valid          := isAdef
+  outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
+
+  // Handle exception
+  def handleException(): Unit = {
+      outReg.exception.valid := isAdef || peer.tlbTrans.exception.valid
+      //exception priority: pif > ppi > adef > tlbr  bitsValue 0 as highest priority
+      when(peer.tlbTrans.exception.valid && peer.tlbTrans.exception.bits < spec.Csr.ExceptionIndex.adef) {
+        outReg.exception.bits := peer.tlbTrans.exception.valid  
+      }
+  }
 
   // DMW mapping
   val directMapVec = Wire(
@@ -79,20 +96,22 @@ class InstAddrTransStage extends Module {
     is(AddrTransType.pageTableMapping) {
       translatedAddr := peer.tlbTrans.physAddr
       outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
-        !peer.tlbTrans.exception.valid &&
-        !isAdef
+        !peer.tlbTrans.exception.valid && !isAdef
+        
+      handleException()
     }
   }
 
   // Can use cache
-  switch(peer.csr.crmd.datm) {
-    is(Csr.Crmd.Datm.suc) {
-      outReg.translatedMemReq.isCached := false.B
-    }
-    is(Csr.Crmd.Datm.cc) {
-      outReg.translatedMemReq.isCached := true.B
-    }
-  }
+  outReg.translatedMemReq.isCached := true.B // Always cached
+//  switch(peer.csr.crmd.datf) {
+//    is(Csr.Crmd.Datm.suc) {
+//      outReg.translatedMemReq.isCached := false.B
+//    }
+//    is(Csr.Crmd.Datm.cc) {
+//      outReg.translatedMemReq.isCached := true.B
+//    }
+//  }
 
   // If next stage not ready, then wait until ready
   when(!io.out.ready && !io.isFlush) {

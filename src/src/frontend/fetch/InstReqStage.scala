@@ -9,6 +9,7 @@ import spec.{Csr, Width}
 class InstReqNdPort extends Bundle {
   val translatedMemReq = new ICacheRequestNdPort
   val pc               = UInt(Width.Mem.addr)
+  val exception        = Valid(UInt(Width.Csr.exceptionIndex))
 }
 
 object InstReqNdPort {
@@ -16,8 +17,7 @@ object InstReqNdPort {
 }
 
 class InstReqPeerPort extends Bundle {
-  val memReq    = Flipped(new ICacheRequestHandshakePort)
-  val exception = Flipped(Valid(UInt(Width.Csr.exceptionIndex)))
+  val memReq = Flipped(new ICacheRequestHandshakePort)
 }
 
 class InstReqStage
@@ -30,15 +30,12 @@ class InstReqStage
   val peer = io.peer.get
   val out  = resultOutReg.bits
 
-  val isAdef    = WireDefault(selectedIn.pc(1, 0).orR) //  pc is not aline
-  val tlbExcp   = WireDefault(peer.exception.valid)
-  val excpValid = WireDefault(isAdef || tlbExcp)
+  val excpValid = WireDefault(selectedIn.exception.valid)
 
   // Fallback output
-  out.pc              := selectedIn.pc
-  out.isValid         := selectedIn.translatedMemReq.isValid || isAdef
-  out.exception.valid := excpValid
-  out.exception.bits  := Mux(isAdef, Csr.ExceptionIndex.adef, peer.exception.bits)
+  out.pc        := selectedIn.pc
+  out.isValid   := true.B
+  out.exception := selectedIn.exception
 
   // Fallback peer
   peer.memReq.client := selectedIn.translatedMemReq

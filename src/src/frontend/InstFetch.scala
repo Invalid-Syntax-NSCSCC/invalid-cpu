@@ -6,7 +6,7 @@ import frontend.bundles.ICacheAccessPort
 import frontend.fetch._
 import memory.bundles.TlbTransPort
 import pipeline.dispatch.bundles.InstInfoBundle
-import pipeline.mem.bundles.MemCsrNdPort
+import pipeline.memory.bundles.MemCsrNdPort
 import spec._
 
 class InstFetch extends Module {
@@ -48,10 +48,7 @@ class InstFetch extends Module {
   instReqStage.io.isFlush := io.isFlush
   instReqStage.io.in      <> addrTransStage.io.out
   instReqStage.io.peer.foreach { p =>
-    p.memReq          <> io.accessPort.req
-    p.exception.valid := false.B
-    p.exception.bits  := 0.U
-  // TODO connect tlb p.exception := io.tlbTrans.exception
+    p.memReq <> io.accessPort.req
   }
 
   // instResStage

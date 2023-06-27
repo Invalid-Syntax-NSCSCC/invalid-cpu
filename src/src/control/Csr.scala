@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import control.bundles._
 import control.csrBundles._
+import memory.bundles.TlbCsrWriteNdPort
 import spec._
 
 class Csr(
@@ -12,13 +13,16 @@ class Csr(
     extends Module {
   val io = IO(new Bundle {
     // `Cu` -> `Csr`
-    val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
-    val csrMessage = Input(new CuToCsrNdPort)
-    val csrValues  = Output(new CsrValuePort)
+    val tlbWritePort = Flipped(Valid(new TlbCsrWriteNdPort))
+    val writePorts   = Input(Vec(writeNum, new CsrWriteNdPort))
+    val csrMessage   = Input(new CuToCsrNdPort)
+    val csrValues    = Output(new CsrValuePort)
     // `Csr` <-> `RegReadStage`
     val readPorts = Vec(Param.csrReadNum, new CsrReadPort)
     // `Csr` -> `WbStage`
     val hasInterrupt = Output(Bool())
+    // `Csr` -> Cu`
+    val datmfChange = Output(Bool())
   })
 
   // Util: view UInt as Bundle
@@ -352,6 +356,26 @@ class Csr(
     llbctl.in.klo := false.B
   }
 
+  // TLB maintenance write
+  val tlbWrite = io.tlbWritePort.bits
+  when(io.tlbWritePort.valid) {
+    when(tlbWrite.tlbidx.valid) {
+      tlbidx.in := tlbWrite.tlbidx.bits
+    }
+    when(tlbWrite.tlbehi.valid) {
+      tlbehi.in := tlbWrite.tlbehi.bits
+    }
+    when(tlbWrite.tlbeloVec(0).valid) {
+      tlbelo0.in := tlbWrite.tlbeloVec(0).bits
+    }
+    when(tlbWrite.tlbeloVec(1).valid) {
+      tlbelo1.in := tlbWrite.tlbeloVec(1).bits
+    }
+    when(tlbWrite.asId.valid) {
+      asid.in := tlbWrite.asId.bits
+    }
+  }
+
   // 中断
   // la 最高位空出来了一位
   estat.in.is_hardwareInt := io.csrMessage.hardWareInetrrupt
@@ -359,7 +383,10 @@ class Csr(
   val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
 
-  // output
+  // CRMD.DATM change
+  io.datmfChange := (crmd.in.datm =/= crmd.out.datm) || (crmd.in.datf =/= crmd.out.datf)
+
+  // Output
   io.csrValues.crmd      := crmd.out
   io.csrValues.prmd      := prmd.out
   io.csrValues.euen      := euen.out
@@ -389,5 +416,4 @@ class Csr(
   io.csrValues.tlbrentry := tlbrentry.out
   io.csrValues.dmw0      := dmw0.out
   io.csrValues.dmw1      := dmw1.out
-
 }

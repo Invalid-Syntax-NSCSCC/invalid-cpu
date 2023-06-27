@@ -1,4 +1,4 @@
-package pipeline.mem
+package pipeline.memory
 
 import chisel3._
 import chisel3.util._
@@ -6,7 +6,7 @@ import common.enums.ReadWriteSel
 import memory.bundles.MemRequestHandshakePort
 import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.BaseStage
-import pipeline.mem.bundles.{MemRequestNdPort, StoreInfoBundle}
+import pipeline.memory.bundles.{MemRequestNdPort, StoreInfoBundle}
 import spec._
 
 class MemReqNdPort extends Bundle {
@@ -98,6 +98,14 @@ class MemReqStage
           isComputed := false.B
         }
       }
+    }
+
+    // Handle TLB maintenance (instruction passing through)
+    when(!selectedIn.translatedMemReq.isValid) {
+      peer.dCacheReq.client.isValid   := false.B
+      peer.uncachedReq.client.isValid := false.B
+      out.isInstantReq                := false.B
+      isComputed                      := true.B
     }
   }
 

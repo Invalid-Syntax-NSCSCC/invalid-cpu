@@ -21,7 +21,7 @@ class MultiInstQueue(
     extends Module {
   val io = IO(new Bundle {
     val isFlush      = Input(Bool())
-    val enqueuePorts = Vec(issueNum, Flipped(Decoupled(new InstInfoBundle)))
+    val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new InstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
@@ -47,11 +47,13 @@ class MultiInstQueue(
   )
 
   // fall back
-  instQueue.io.enqueuePorts.zip(io.enqueuePorts).foreach {
-    case (dst, src) =>
-      dst <> src
+  instQueue.io.enqueuePorts.zipWithIndex.foreach {
+    case (enq, idx) =>
+      enq.valid := io.enqueuePorts.valid
+      enq.bits  := io.enqueuePorts.bits(idx)
   }
-  instQueue.io.isFlush := io.isFlush
+  io.enqueuePorts.ready := instQueue.io.enqueuePorts.map(_.ready).reduce(_ && _)
+  instQueue.io.isFlush  := io.isFlush
 
   // Decode
   val decodeInstInfos = WireDefault(VecInit(instQueue.io.dequeuePorts.map(_.bits)))
@@ -127,9 +129,10 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
       dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
       dequeuePort.bits.instInfo.exeSel            := selectedDecoder.info.exeSel
-      dequeuePort.bits.instInfo.tlbInfo           := selectedDecoder.info.tlbInfo
+      dequeuePort.bits.instInfo.isTlb             := selectedDecoder.info.isTlb
       dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
 
+      // TODO: Take frontend exceptions into consideration
       dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
       dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
       when(decodeInstInfo.exceptionValid) {

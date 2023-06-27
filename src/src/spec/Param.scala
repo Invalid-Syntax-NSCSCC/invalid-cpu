@@ -15,7 +15,7 @@ object Param {
   val scoreboardChangeNum    = 1 // 3
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
-  val fetchInstMaxNum        = 2 // 单次取指
+  val fetchInstMaxNum        = 1 // 单次取指
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 2 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
@@ -127,6 +127,37 @@ object Param {
       val iCache = 0
       val dCache = 1
     }
+  }
+
+  object BPU {
+    val fetchWidth = 4
+    val ftqSize    = 8
+
+    object TagePredictor {
+      val ghrLength            = 1400
+      val tagComponentNum      = 15
+      val tagComponentTagWidth = 12
+      //        ComponentTableDepth
+      // length = tagComponentNum +1
+      val componentTableDepth =
+        Seq(16384, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
+      val componentCtrWidth      = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+      val componentUsefulWidth   = Seq(0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+      val componentHistoryLength = Seq(0, 6, 10, 18, 25, 35, 55, 69, 105, 155, 230, 354, 479, 642, 1012, 1347)
+
+    }
+
+    object FTB {
+      val nset = 1024
+      val nway = 4
+    }
+
+    object RAS {
+      val entryNum = 32
+    }
+
+    val decodeWidth = 1 // 2 to do
+    val commitWidth = 1 // 2 to do
   }
 
   object SimpleFetchStageState extends ChiselEnum {
