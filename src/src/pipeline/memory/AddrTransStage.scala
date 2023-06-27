@@ -9,7 +9,7 @@ import memory.enums.TlbMemType
 import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
 import pipeline.common.BaseStage
 import pipeline.memory.bundles.{MemCsrNdPort, MemRequestNdPort}
-import pipeline.memory.enums.AddrTransType
+import pipeline.memory.enums.{AddrTransType, CacheMaintenanceType}
 import spec.Value.Csr
 import spec.Width
 import spec.Param.isDiffTest
@@ -17,10 +17,11 @@ import spec.Param.isDiffTest
 import scala.collection.immutable
 
 class AddrTransNdPort extends Bundle {
-  val memRequest     = new MemRequestNdPort
-  val gprAddr        = UInt(Width.Reg.addr)
-  val instInfo       = new InstInfoNdPort
-  val tlbMaintenance = new TlbMaintenanceNdPort
+  val memRequest       = new MemRequestNdPort
+  val gprAddr          = UInt(Width.Reg.addr)
+  val instInfo         = new InstInfoNdPort
+  val tlbMaintenance   = new TlbMaintenanceNdPort
+  val cacheMaintenance = CacheMaintenanceType()
 }
 
 object AddrTransNdPort {
