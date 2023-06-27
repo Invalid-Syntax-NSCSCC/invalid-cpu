@@ -208,9 +208,8 @@ class Cu(
   )
 
   io.csrMessage.ertnFlush := ertnFlush
-  // TODO: Expand change monitor from DATM/F to both DMW and CRMD
-  io.frontendFlush := RegNext(hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest, false.B)
-  io.backendFlush  := RegNext(hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest, false.B)
+  io.frontendFlush        := RegNext(hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest, false.B)
+  io.backendFlush         := RegNext(hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest, false.B)
 
   // select new pc
   io.newPc.en     := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en
