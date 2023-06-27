@@ -172,13 +172,14 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
-    val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
-    when(isIdle) {
-      branchSetPort.isIdle := true.B
-      branchSetPort.en     := branchEnableFlag
-      branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
-      branchEnableFlag     := false.B
-    }.elsewhen(isErtn) {
+    // val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
+    // when(isIdle) {
+    //   branchSetPort.isIdle := true.B
+    //   branchSetPort.en     := branchEnableFlag
+    //   branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
+    //   branchEnableFlag     := false.B
+    // }.else
+    when(isErtn) {
       branchSetPort.en     := branchEnableFlag
       branchSetPort.pcAddr := io.peer.get.csr.era.pc
       branchEnableFlag     := false.B
