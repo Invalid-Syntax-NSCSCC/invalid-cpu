@@ -207,7 +207,7 @@ class DCache(
 
   val currentMemAddr = WireDefault(
     Mux(
-      io.maintenancePort.client.isL1Valid,
+      io.maintenancePort.client.control.isL1Valid,
       io.maintenancePort.client.addr,
       io.accessPort.req.client.addr
     )
@@ -285,7 +285,7 @@ class DCache(
     is(State.ready) {
       // Stage 1 and Stage 2.a: Read BRAM and cache query in two cycles
 
-      io.accessPort.req.isReady  := !io.maintenancePort.client.isL1Valid // Fallback: Ready for request
+      io.accessPort.req.isReady  := !io.maintenancePort.client.control.isL1Valid // Fallback: Ready for request
       io.maintenancePort.isReady := true.B // Fallback: Ready for request
 
       // Step 1: BRAM read request
@@ -440,19 +440,19 @@ class DCache(
       setCountDownReg  := (Param.Count.DCache.setLen - 1).U
       dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
 
-      when(io.maintenancePort.client.isL1Valid) {
+      when(io.maintenancePort.client.control.isL1Valid) {
         isNeedWbReg           := true.B
         isWriteBackReqSentReg := false.B
 
-        when(io.maintenancePort.client.isInit) {
+        when(io.maintenancePort.client.control.isInit) {
           // Next Stage: Maintenance for all sets (no write-back)
           nextState := State.maintenanceInit
         }
-        when(io.maintenancePort.client.isCoherentByIndex) {
+        when(io.maintenancePort.client.control.isCoherentByIndex) {
           // Next Stage: Maintenance for all sets
           nextState := State.maintenanceAll
         }
-        when(io.maintenancePort.client.isCoherentByHit) {
+        when(io.maintenancePort.client.control.isCoherentByHit) {
           // Next Stage: Maintenance only for hit
           nextState := State.maintenanceHit
         }
