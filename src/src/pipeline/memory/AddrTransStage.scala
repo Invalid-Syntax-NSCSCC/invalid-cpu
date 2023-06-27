@@ -94,6 +94,8 @@ class AddrTransStage
     when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && peer.tlbTrans.exception.valid) {
       out.instInfo.exceptionPos    := ExceptionPos.backend
       out.instInfo.exceptionRecord := exceptionIndex
+
+      tlbBlockingReg := true.B
     }
   }
 
@@ -117,6 +119,7 @@ class AddrTransStage
     )
   )
   peer.tlbTrans.virtAddr := selectedIn.memRequest.addr
+  peer.tlbTrans.isValid  := false.B
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := selectedIn.memRequest.addr
@@ -125,6 +128,7 @@ class AddrTransStage
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
+      peer.tlbTrans.isValid        := selectedIn.memRequest.isValid
       translatedAddr               := peer.tlbTrans.physAddr
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
