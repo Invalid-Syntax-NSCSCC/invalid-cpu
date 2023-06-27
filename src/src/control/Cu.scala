@@ -29,8 +29,8 @@ class Cu(
     // `Cu` -> `Csr`, Should TLB maintenance write
     val tlbCsrWriteValid = Output(new Bool)
     // `Csr` -> `Cu`
-    val datmfChange = Input(Bool())
-    val csrValues   = Input(new CsrValuePort)
+    val csrFlushRequest = Input(Bool())
+    val csrValues       = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
     val branchExe = Input(new PcSetPort)
     // `Rob` -> `Cu`
@@ -209,17 +209,17 @@ class Cu(
 
   io.csrMessage.ertnFlush := ertnFlush
   // TODO: Expand change monitor from DATM/F to both DMW and CRMD
-  io.frontendFlush := RegNext(hasException || io.branchExe.en || isTlbMaintenance || io.datmfChange, false.B)
-  io.backendFlush  := RegNext(hasException || io.branchCommit || isTlbMaintenance || io.datmfChange, false.B)
+  io.frontendFlush := RegNext(hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest, false.B)
+  io.backendFlush  := RegNext(hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest, false.B)
 
   // select new pc
-  io.newPc.en     := isTlbMaintenance || io.datmfChange || hasException || io.branchExe.en
+  io.newPc.en     := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en
   io.newPc.isIdle := io.branchExe.en && io.branchExe.isIdle && !hasException && !isTlbMaintenance
   io.newPc.isTlb  := isTlbMaintenance
   io.newPc.pcAddr := Mux(
     hasException,
     Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
-    Mux(isTlbMaintenance || io.datmfChange, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
+    Mux(isTlbMaintenance || io.csrFlushRequest, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
   )
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&

@@ -295,7 +295,7 @@ class CoreCpuTop extends Module {
   cu.io.branchCommit := rob.io.branchCommit
 
   cu.io.hardWareInetrrupt := io.intrpt
-  cu.io.datmfChange       := csr.io.datmfChange
+  cu.io.csrFlushRequest   := csr.io.csrFlushRequest
 
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
