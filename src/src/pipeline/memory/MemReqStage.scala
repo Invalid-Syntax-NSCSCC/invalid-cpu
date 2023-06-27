@@ -59,6 +59,8 @@ class MemReqStage
   peer.commitStore.ready                := false.B
   peer.dCacheMaintenance.client.control := CacheMaintenanceControlNdPort.default
   peer.iCacheMaintenance.client.control := CacheMaintenanceControlNdPort.default
+  peer.dCacheMaintenance.client.addr    := selectedIn.translatedMemReq.addr
+  peer.iCacheMaintenance.client.addr    := selectedIn.translatedMemReq.addr
 
   // Store queue
   val storeIn = Wire(Decoupled(new StoreInfoBundle))
@@ -120,8 +122,6 @@ class MemReqStage
       selectedIn.cacheMaintenance.control.isCoherentByIndex ||
       selectedIn.cacheMaintenance.control.isCoherentByHit
     when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
-      peer.dCacheMaintenance.client.addr := selectedIn.translatedMemReq.addr
-      peer.iCacheMaintenance.client.addr := selectedIn.translatedMemReq.addr
       switch(selectedIn.cacheMaintenance.target) {
         is(CacheMaintenanceTargetType.data) {
           peer.dCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
