@@ -185,7 +185,7 @@ class Cu(
       io.csrMessage.badVAddrSet.en := true.B
       io.csrMessage.badVAddrSet.addr := Mux(
         selectExceptionPos === ExceptionPos.backend,
-        selectInstInfo.load.get.vaddr,
+        selectInstInfo.vaddr,
         selectInstInfo.pc
       )
     }

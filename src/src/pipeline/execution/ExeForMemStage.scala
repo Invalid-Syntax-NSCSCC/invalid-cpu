@@ -36,8 +36,9 @@ class ExeForMemStage
   isComputed        := true.B
   resultOutReg.bits := AddrTransNdPort.default
 
-  resultOutReg.valid         := isComputed && selectedIn.instInfo.isValid
-  resultOutReg.bits.instInfo := selectedIn.instInfo
+  resultOutReg.valid               := isComputed && selectedIn.instInfo.isValid
+  resultOutReg.bits.instInfo       := selectedIn.instInfo
+  resultOutReg.bits.instInfo.vaddr := resultOutReg.bits.memRequest.addr
 
   // write-back information fallback
   resultOutReg.bits.gprAddr := selectedIn.gprWritePort.addr
@@ -81,7 +82,6 @@ class ExeForMemStage
     */
 
   val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
-  resultOutReg.bits.instInfo.vaddr := loadStoreAddr
 
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
@@ -180,7 +180,6 @@ class ExeForMemStage
 
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.cacop) {
-      resultOutReg.bits.instInfo.vaddr  := selectedIn.leftOperand + selectedIn.rightOperand
       resultOutReg.bits.memRequest.addr := selectedIn.leftOperand + selectedIn.rightOperand
 
       switch(selectedIn.code(2, 0)) {
