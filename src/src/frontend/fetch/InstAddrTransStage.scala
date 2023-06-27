@@ -28,13 +28,24 @@ class InstAddrTransStage extends Module {
   val outReg = RegInit(InstReqNdPort.default)
   val isAdef = WireDefault(io.pc(1, 0).orR) // pc not aline
   io.out.bits  := outReg
-  io.out.valid := outReg.translatedMemReq.isValid || isAdef // still send to backend
+  io.out.valid := true.B // still send to backend
 
   val isLastSent = RegNext(true.B, true.B)
 
   // Fallback output
   outReg.pc                       := io.pc
   outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !isAdef
+  outReg.exception.valid          := isAdef
+  outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
+
+  // Handle exception
+  def handleException(): Unit = {
+      outReg.exception.valid := isAdef || peer.tlbTrans.exception.valid
+      //exception priority: pif > ppi > adef > tlbr  bitsValue 0 as highest priority
+      when(peer.tlbTrans.exception.valid && peer.tlbTrans.exception.bits < spec.Csr.ExceptionIndex.adef) {
+        outReg.exception.bits := peer.tlbTrans.exception.valid  
+      }
+  }
 
   // DMW mapping
   val directMapVec = Wire(
@@ -85,8 +96,9 @@ class InstAddrTransStage extends Module {
     is(AddrTransType.pageTableMapping) {
       translatedAddr := peer.tlbTrans.physAddr
       outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
-        !peer.tlbTrans.exception.valid &&
-        !isAdef
+        !peer.tlbTrans.exception.valid && !isAdef
+        
+      handleException()
     }
   }
 
