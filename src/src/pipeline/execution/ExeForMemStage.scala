@@ -191,9 +191,11 @@ class ExeForMemStage
         is(1.U) {
           resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.data
           resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+          resultOutReg.bits.instInfo.forbidParallelCommit      := true.B
         }
         is(2.U) {
           resultOutReg.bits.cacheMaintenance.control.isL2Valid := true.B
+          resultOutReg.bits.instInfo.forbidParallelCommit      := true.B
         }
       }
 

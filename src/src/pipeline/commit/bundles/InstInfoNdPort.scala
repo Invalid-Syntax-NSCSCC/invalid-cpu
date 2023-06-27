@@ -30,6 +30,8 @@ class InstInfoNdPort extends Bundle {
   val tlbFill = if (isDiffTest) Some(new DifftestTlbFillNdPort) else None
 
   val isTlb = Bool()
+
+  val forbidParallelCommit = Bool()
 }
 
 object InstInfoNdPort {
@@ -50,22 +52,23 @@ object InstInfoNdPort {
     _.load.get -> DifftestLoadNdPort.default,
     _.store.get -> DifftestStoreNdPort.default,
     _.tlbFill.get -> DifftestTlbFillNdPort.default,
-    _.isTlb -> false.B
+    _.isTlb -> false.B,
+    _.forbidParallelCommit -> false.B
   )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
-    instInfo.isValid         := false.B
-    instInfo.needCsr         := false.B
-    instInfo.exceptionRecord := 0.U
-    instInfo.exceptionPos    := ExceptionPos.none
-    instInfo.exeOp           := ExeInst.Op.nop
-    instInfo.exeSel          := ExeInst.Sel.none
-    instInfo.csrWritePort.en := false.B
-    instInfo.load.get.en     := false.B
-    instInfo.store.get.en    := false.B
-    // instInfo.tlbMaintenancePort := TlbMaintenanceNdPort.default
-    instInfo.branchSetPort.en := false.B
-    instInfo.isTlb            := false.B
-    instInfo.isStore          := false.B
+    instInfo.isValid              := false.B
+    instInfo.needCsr              := false.B
+    instInfo.exceptionRecord      := 0.U
+    instInfo.exceptionPos         := ExceptionPos.none
+    instInfo.exeOp                := ExeInst.Op.nop
+    instInfo.exeSel               := ExeInst.Sel.none
+    instInfo.csrWritePort.en      := false.B
+    instInfo.load.get.en          := false.B
+    instInfo.store.get.en         := false.B
+    instInfo.branchSetPort.en     := false.B
+    instInfo.isTlb                := false.B
+    instInfo.isStore              := false.B
+    instInfo.forbidParallelCommit := false.B
   }
 }
