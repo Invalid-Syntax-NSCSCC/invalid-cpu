@@ -145,12 +145,15 @@ class IssueStage(
             if (dst_idx == csrIssuePipelineIndex) {
               when(
                 (in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) ||
-                  in.instInfo.isTlb
+                  in.instInfo.isTlb || (in.instInfo.exeOp === ExeInst.Op.cacop)
               ) {
                 dispatchEn := false.B
               }
             } else if (dst_idx == loadStoreIssuePipelineIndex) {
-              when(in.instInfo.isTlb && (io.peer.get.csrcore =/= ScoreboardState.free)) {
+              when(
+                (in.instInfo.isTlb || (in.instInfo.exeOp === ExeInst.Op.cacop)) &&
+                  (io.peer.get.csrcore =/= ScoreboardState.free)
+              ) {
                 dispatchEn := false.B
               }
             } else {

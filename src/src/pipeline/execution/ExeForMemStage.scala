@@ -13,6 +13,7 @@ import spec._
 
 import scala.collection.immutable
 import memory.bundles.TlbMaintenanceNdPort
+import pipeline.memory.enums.CacheMaintenanceType
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
@@ -172,6 +173,18 @@ class ExeForMemStage
         )
       )
     )
+  }
+
+  resultOutReg.bits.cacheMaintenance := CacheMaintenanceType.none
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.cacop) {
+      resultOutReg.bits.instInfo.vaddr := selectedIn.leftOperand + selectedIn.rightOperand
+      when(selectedIn.code === "b00".U) {
+        resultOutReg.bits.cacheMaintenance := CacheMaintenanceType.l1I
+      }.elsewhen(selectedIn.code === "b01".U) {
+        resultOutReg.bits.cacheMaintenance := CacheMaintenanceType.l1D
+      }
+    }
   }
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr

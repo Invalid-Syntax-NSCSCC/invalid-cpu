@@ -67,6 +67,8 @@ object Inst {
     val ld_bu = i("0010_1010_00")
     val ld_hu = i("0010_1010_01")
 
+    val cacop = i("0000_0110_00")
+
     val preld = i("0010_1010_11")
   }
 
