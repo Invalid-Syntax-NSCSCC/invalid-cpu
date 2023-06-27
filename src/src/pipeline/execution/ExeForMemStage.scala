@@ -13,7 +13,8 @@ import spec._
 
 import scala.collection.immutable
 import memory.bundles.TlbMaintenanceNdPort
-import pipeline.memory.enums.CacheMaintenanceType
+import pipeline.memory.bundles.CacheMaintenanceInstNdPort
+import pipeline.memory.enums.CacheMaintenanceTargetType
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
@@ -32,7 +33,9 @@ class ExeForMemStage
       Some(new ExeForMemPeerPort)
     ) {
 
-  isComputed                 := true.B
+  isComputed        := true.B
+  resultOutReg.bits := AddrTransNdPort.default
+
   resultOutReg.valid         := isComputed && selectedIn.instInfo.isValid
   resultOutReg.bits.instInfo := selectedIn.instInfo
 
@@ -175,14 +178,35 @@ class ExeForMemStage
     )
   }
 
-  resultOutReg.bits.cacheMaintenance := CacheMaintenanceType.none
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.cacop) {
-      resultOutReg.bits.instInfo.vaddr := selectedIn.leftOperand + selectedIn.rightOperand
-      when(selectedIn.code === "b00".U) {
-        resultOutReg.bits.cacheMaintenance := CacheMaintenanceType.l1I
-      }.elsewhen(selectedIn.code === "b01".U) {
-        resultOutReg.bits.cacheMaintenance := CacheMaintenanceType.l1D
+      resultOutReg.bits.instInfo.vaddr  := selectedIn.leftOperand + selectedIn.rightOperand
+      resultOutReg.bits.memRequest.addr := selectedIn.leftOperand + selectedIn.rightOperand
+
+      switch(selectedIn.code(2, 0)) {
+        is(0.U) {
+          resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.inst
+          resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+        }
+        is(1.U) {
+          resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.data
+          resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+        }
+        is(2.U) {
+          resultOutReg.bits.cacheMaintenance.control.isL2Valid := true.B
+        }
+      }
+
+      switch(selectedIn.code(4, 3)) {
+        is(0.U) {
+          resultOutReg.bits.cacheMaintenance.control.isInit := true.B
+        }
+        is(1.U) {
+          resultOutReg.bits.cacheMaintenance.control.isCoherentByIndex := true.B
+        }
+        is(2.U) {
+          resultOutReg.bits.cacheMaintenance.control.isCoherentByHit := true.B
+        }
       }
     }
   }
