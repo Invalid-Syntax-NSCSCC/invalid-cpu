@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import control.bundles._
 import control.csrBundles._
-import memory.bundles.TlbCsrWriteNdPort
+import memory.bundles.{TlbCsrWriteNdPort, TransExceptionCsrNdPort}
 import spec._
 
 class Csr(
@@ -12,11 +12,14 @@ class Csr(
   readNum:  Int = Param.csrReadNum)
     extends Module {
   val io = IO(new Bundle {
-    // `Cu` -> `Csr`
-    val tlbWritePort = Flipped(Valid(new TlbCsrWriteNdPort))
-    val writePorts   = Input(Vec(writeNum, new CsrWriteNdPort))
-    val csrMessage   = Input(new CuToCsrNdPort)
-    val csrValues    = Output(new CsrValuePort)
+    // `Cu` and `Tlb` -> `Csr`
+    val tlbMaintenanceWritePort = Flipped(Valid(new TlbCsrWriteNdPort))
+    // `Cu` and `Tlb` -> `Csr`
+    val tlbExceptionWritePorts = Flipped(Vec(Param.Count.Tlb.transNum, Valid(new TransExceptionCsrNdPort)))
+
+    val writePorts = Input(Vec(writeNum, new CsrWriteNdPort))
+    val csrMessage = Input(new CuToCsrNdPort)
+    val csrValues  = Output(new CsrValuePort)
     // `Csr` <-> `RegReadStage`
     val readPorts = Vec(Param.csrReadNum, new CsrReadPort)
     // `Csr` -> `WbStage`
@@ -356,23 +359,31 @@ class Csr(
     llbctl.in.klo := false.B
   }
 
+  // TLB exception write
+  val tlbExceptionWriteValid = io.tlbExceptionWritePorts.map(_.valid).reduce(_ || _)
+  val tlbExceptionWriteIndex = OHToUInt(io.tlbExceptionWritePorts.map(_.valid))
+  val tlbExceptionWriteBits  = io.tlbExceptionWritePorts(tlbExceptionWriteIndex).bits
+  when(tlbExceptionWriteValid) {
+    tlbehi.in.vppn := tlbExceptionWriteBits.vppn
+  }
+
   // TLB maintenance write
-  val tlbWrite = io.tlbWritePort.bits
-  when(io.tlbWritePort.valid) {
-    when(tlbWrite.tlbidx.valid) {
-      tlbidx.in := tlbWrite.tlbidx.bits
+  val tlbMaintenanceWrite = io.tlbMaintenanceWritePort.bits
+  when(io.tlbMaintenanceWritePort.valid) {
+    when(tlbMaintenanceWrite.tlbidx.valid) {
+      tlbidx.in := tlbMaintenanceWrite.tlbidx.bits
     }
-    when(tlbWrite.tlbehi.valid) {
-      tlbehi.in := tlbWrite.tlbehi.bits
+    when(tlbMaintenanceWrite.tlbehi.valid) {
+      tlbehi.in := tlbMaintenanceWrite.tlbehi.bits
     }
-    when(tlbWrite.tlbeloVec(0).valid) {
-      tlbelo0.in := tlbWrite.tlbeloVec(0).bits
+    when(tlbMaintenanceWrite.tlbeloVec(0).valid) {
+      tlbelo0.in := tlbMaintenanceWrite.tlbeloVec(0).bits
     }
-    when(tlbWrite.tlbeloVec(1).valid) {
-      tlbelo1.in := tlbWrite.tlbeloVec(1).bits
+    when(tlbMaintenanceWrite.tlbeloVec(1).valid) {
+      tlbelo1.in := tlbMaintenanceWrite.tlbeloVec(1).bits
     }
-    when(tlbWrite.asId.valid) {
-      asid.in := tlbWrite.asId.bits
+    when(tlbMaintenanceWrite.asId.valid) {
+      asid.in := tlbMaintenanceWrite.asId.bits
     }
   }
 

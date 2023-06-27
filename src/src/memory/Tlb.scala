@@ -24,29 +24,36 @@ class Tlb extends Module {
       })
       val out = Output(new TlbCsrWriteNdPort)
     }
-    val tlbTransPorts = Vec(Param.Count.Tlb.transNum, new TlbTransPort)
+    val tlbTransPorts          = Vec(Param.Count.Tlb.transNum, new TlbTransPort)
+    val transExceptionCsrPorts = Output(Vec(Param.Count.Tlb.transNum, new TransExceptionCsrNdPort))
 
     val difftest = if (isDiffTest) Some(Output(new DifftestTlbFillNdPort)) else None
   })
 
   // Connection graph:
-  // +-----+ <---- maintenanceInfo <---- AddrTransStage
-  // | TLB | <---> tlbTransPort    <---> Frontend translation
-  // +-----+ <---> tlbTransPort    <---> AddrTransStage
-  //         <---> csr             <---> Csr
+  // +-----+ <---- maintenanceInfo       <---- AddrTransStage
+  // | TLB | <---> tlbTransPort          <---> Frontend translation
+  // +-----+ <---> tlbTransPort          <---> AddrTransStage
+  //         <---> csr                   <---> Csr
+  //         <---> transExceptionCsrPort <---> Csr
 
   val tlbEntryVec = RegInit(VecInit(Seq.fill(Param.Count.Tlb.num)(TlbEntryBundle.default)))
   tlbEntryVec := tlbEntryVec
   val virtAddrLen = Width.Mem._addr
   val physAddrLen = Width.Mem._addr
 
-  val isTlbRefillException = io.csr.in.estat.ecode === Csr.Estat.tlbr.ecode
+  val isInTlbRefillException = io.csr.in.estat.ecode === Csr.Estat.tlbr.ecode
 
   val csrOutReg = RegInit(TlbCsrWriteNdPort.default)
   csrOutReg := csrOutReg
+  val transExceptionCsrRegs = RegInit(VecInit(Seq.fill(Param.Count.Tlb.transNum)(TransExceptionCsrNdPort.default)))
+  transExceptionCsrRegs.foreach(reg => reg := reg)
 
   // Fallback
-  io.csr.out := csrOutReg // CSR write information is given in next cycle
+  io.csr.out := csrOutReg // Maintenance CSR write information is given in next cycle
+  io.transExceptionCsrPorts.zip(transExceptionCsrRegs).foreach {
+    case (port, reg) => port := reg // Exception CSR write information is given in next cycle
+  }
   io.tlbTransPorts.foreach { port =>
     port.exception.valid := false.B
     port.exception.bits  := DontCare
@@ -74,79 +81,80 @@ class Tlb extends Module {
       vaddr(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1)
   )
 
-  io.tlbTransPorts.foreach { transPort =>
-    // Lookup & Maintenance: Search
-    val isFoundVec = VecInit(Seq.fill(Param.Count.Tlb.num)(false.B))
-    tlbEntryVec.zip(isFoundVec).foreach {
-      case (entry, isFound) =>
-        val is4KbPageSize = entry.compare.pageSize === Value.Tlb.Ps._4Kb
-        isFound := entry.compare.isExisted && (
-          entry.compare.isGlobal || (entry.compare.asId === io.csr.in.asId.asid)
-        ) && Mux(
-          io.maintenanceInfo.isSearch,
-          entry.compare.virtPageNum === io.csr.in.tlbehi.vppn,
-          isVirtPageNumMatched(entry.compare, transPort.virtAddr)
-        )
-    }
-    val selectedIndex = OHToUInt(isFoundVec)
-    val selectedEntry = tlbEntryVec(selectedIndex)
-    val selectedPage = Mux(
-      transPort.virtAddr(selectedEntry.compare.pageSize(log2Ceil(virtAddrLen) - 1, 0)) === 0.U,
-      selectedEntry.trans(0),
-      selectedEntry.trans(1)
-    )
-    val isFound = isFoundVec.asUInt.orR
-    when(io.maintenanceInfo.isSearch) {
-      csrOutReg.tlbidx.valid := io.maintenanceInfo.isSearch
-      csrOutReg.tlbidx.bits  := io.csr.in.tlbidx
-      when(isFound) {
-        csrOutReg.tlbidx.bits.index := selectedIndex
-        csrOutReg.tlbidx.bits.ne    := false.B
-      }.otherwise {
-        csrOutReg.tlbidx.bits.ne := true.B
+  io.tlbTransPorts.zip(transExceptionCsrRegs).foreach {
+    case (transPort, exceptionCsrReg) =>
+      // Lookup & Maintenance: Search
+      val isFoundVec = VecInit(Seq.fill(Param.Count.Tlb.num)(false.B))
+      tlbEntryVec.zip(isFoundVec).foreach {
+        case (entry, isFound) =>
+          val is4KbPageSize = entry.compare.pageSize === Value.Tlb.Ps._4Kb
+          isFound := entry.compare.isExisted && (
+            entry.compare.isGlobal || (entry.compare.asId === io.csr.in.asId.asid)
+          ) && Mux(
+            io.maintenanceInfo.isSearch,
+            entry.compare.virtPageNum === io.csr.in.tlbehi.vppn,
+            isVirtPageNumMatched(entry.compare, transPort.virtAddr)
+          )
       }
-    }
-
-    // Translate
-    transPort.physAddr := Mux(
-      selectedEntry.compare.pageSize === Value.Tlb.Ps._4Kb,
-      Cat(
-        selectedPage.physPageNum(Width.Tlb._ppn - 1, 0),
-        transPort.virtAddr(Value.Tlb.Ps._4Kb.litValue - 1, 0)
-      ),
-      Cat(
-        selectedPage.physPageNum(Width.Tlb._ppn - 10 - 1, 0),
-        transPort.virtAddr(Value.Tlb.Ps._4Mb.litValue - 1, 0)
+      val selectedIndex = OHToUInt(isFoundVec)
+      val selectedEntry = tlbEntryVec(selectedIndex)
+      val selectedPage = Mux(
+        transPort.virtAddr(selectedEntry.compare.pageSize(log2Ceil(virtAddrLen) - 1, 0)) === 0.U,
+        selectedEntry.trans(0),
+        selectedEntry.trans(1)
       )
-    )
-
-    // Handle exception
-    when(!isFound) {
-      transPort.exception.valid := true.B
-      transPort.exception.bits  := Csr.ExceptionIndex.tlbr
-    }
-    when(!selectedPage.isValid) {
-      switch(transPort.memType) {
-        is(TlbMemType.load) {
-          transPort.exception.valid := true.B
-          transPort.exception.bits  := Csr.ExceptionIndex.pil
-        }
-        is(TlbMemType.store) {
-          transPort.exception.valid := true.B
-          transPort.exception.bits  := Csr.ExceptionIndex.pis
-        }
-        is(TlbMemType.fetch) {
-          transPort.exception.valid := true.B
-          transPort.exception.bits  := Csr.ExceptionIndex.pif
+      val isFound = isFoundVec.asUInt.orR
+      when(io.maintenanceInfo.isSearch) {
+        csrOutReg.tlbidx.valid := io.maintenanceInfo.isSearch
+        csrOutReg.tlbidx.bits  := io.csr.in.tlbidx
+        when(isFound) {
+          csrOutReg.tlbidx.bits.index := selectedIndex
+          csrOutReg.tlbidx.bits.ne    := false.B
+        }.otherwise {
+          csrOutReg.tlbidx.bits.ne := true.B
         }
       }
-    }.elsewhen(selectedPage.plv < io.csr.in.plv) {
-      transPort.exception.valid := true.B
-      transPort.exception.bits  := Csr.ExceptionIndex.ppi
-    }.elsewhen(!selectedPage.isDirty && transPort.memType === TlbMemType.store) {
-      transPort.exception.valid := true.B
-      transPort.exception.bits  := Csr.ExceptionIndex.pme
-    }
+
+      // Translate
+      transPort.physAddr := Mux(
+        selectedEntry.compare.pageSize === Value.Tlb.Ps._4Kb,
+        Cat(
+          selectedPage.physPageNum(Width.Tlb._ppn - 1, 0),
+          transPort.virtAddr(Value.Tlb.Ps._4Kb.litValue - 1, 0)
+        ),
+        Cat(
+          selectedPage.physPageNum(Width.Tlb._ppn - 10 - 1, 0),
+          transPort.virtAddr(Value.Tlb.Ps._4Mb.litValue - 1, 0)
+        )
+      )
+
+      // Handle exception
+      when(!isFound) {
+        transPort.exception.valid := transPort.isValid
+        transPort.exception.bits  := Csr.ExceptionIndex.tlbr
+      }.elsewhen(!selectedPage.isValid) {
+        transPort.exception.valid := transPort.isValid
+        switch(transPort.memType) {
+          is(TlbMemType.load) {
+            transPort.exception.bits := Csr.ExceptionIndex.pil
+          }
+          is(TlbMemType.store) {
+            transPort.exception.bits := Csr.ExceptionIndex.pis
+          }
+          is(TlbMemType.fetch) {
+            transPort.exception.bits := Csr.ExceptionIndex.pif
+          }
+        }
+      }.elsewhen(selectedPage.plv < io.csr.in.plv) {
+        transPort.exception.valid := transPort.isValid
+        transPort.exception.bits  := Csr.ExceptionIndex.ppi
+      }.elsewhen(!selectedPage.isDirty && transPort.memType === TlbMemType.store) {
+        transPort.exception.valid := transPort.isValid
+        transPort.exception.bits  := Csr.ExceptionIndex.pme
+      }
+      when(transPort.exception.valid) {
+        exceptionCsrReg.vppn := transPort.virtAddr(virtAddrLen - 1, virtAddrLen - Width.Tlb._vppn)
+      }
   }
 
   // Maintenance: Read
@@ -190,7 +198,7 @@ class Tlb extends Module {
     )
   )
   when(io.maintenanceInfo.isWrite || io.maintenanceInfo.isFill) {
-    writeEntry.compare.isExisted := !io.csr.in.tlbidx.ne || isTlbRefillException
+    writeEntry.compare.isExisted := !io.csr.in.tlbidx.ne || isInTlbRefillException
 
     writeEntry.compare.pageSize    := io.csr.in.tlbidx.ps
     writeEntry.compare.virtPageNum := io.csr.in.tlbehi.vppn
