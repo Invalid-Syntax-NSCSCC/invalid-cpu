@@ -379,12 +379,9 @@ class Csr(
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
 
   // crmd / dmw change should flush all pipeline
-  io.csrFlushRequest := ((crmd.in.asUInt =/= crmd.out.asUInt) ||
+  io.csrFlushRequest := (crmd.in.asUInt =/= crmd.out.asUInt) ||
     (dmw0.in.asUInt =/= dmw0.out.asUInt) ||
-    (dmw1.in.asUInt =/= dmw1.out.asUInt))
-  //  &&
-  // !io.csrMessage.ertnFlush &&
-  // !io.csrMessage.exceptionFlush
+    (dmw1.in.asUInt =/= dmw1.out.asUInt)
 
   // Output
   io.csrValues.crmd      := crmd.out
