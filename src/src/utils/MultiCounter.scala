@@ -50,7 +50,7 @@ class MultiCounter(
   counter := incResults(io.inc)
 
   when(io.flush) {
-    io.value := 0.U
-    counter  := 0.U
+    io.value := init.U
+    counter  := init.U
   }
 }
