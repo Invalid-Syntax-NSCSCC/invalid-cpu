@@ -45,6 +45,7 @@ class Cu(
 
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
+    val idleFlush     = Output(Bool())
 
     // <- Out
     val hardWareInetrrupt = Input(UInt(8.W))
@@ -234,24 +235,30 @@ class Cu(
     io.instInfoPorts.head.isValid &&
     io.instInfoPorts.head.forbidParallelCommit
 
+  val idleFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.idle && io.instInfoPorts.head.isValid && !hasException
+
   io.csrMessage.ertnFlush := ertnFlush
   io.frontendFlush := RegNext(
-    hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush,
+    hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
     false.B
   )
   io.backendFlush := RegNext(
-    hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush,
+    hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
     false.B
   )
+  io.idleFlush := idleFlush
 
   // select new pc
-  io.newPc.en     := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en || cacopFlush
-  io.newPc.isIdle := io.branchExe.en && io.branchExe.isIdle && !hasException && !isTlbMaintenance
-  io.newPc.isTlb  := isTlbMaintenance
+  io.newPc.en    := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en || cacopFlush || idleFlush
+  io.newPc.isTlb := isTlbMaintenance
   io.newPc.pcAddr := Mux(
     hasException,
     Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
-    Mux(isTlbMaintenance || io.csrFlushRequest || cacopFlush, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
+    Mux(
+      isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
+      io.instInfoPorts.head.pc + 4.U,
+      io.branchExe.pcAddr
+    )
   )
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&

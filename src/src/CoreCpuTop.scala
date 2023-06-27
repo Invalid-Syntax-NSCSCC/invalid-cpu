@@ -171,7 +171,9 @@ class CoreCpuTop extends Module {
   frontend.io.instEnqueuePort.ready := instQueue.io.enqueuePorts.ready
   instQueue.io.enqueuePorts.bits(0) := frontend.io.instEnqueuePort.bits
 
-  instQueue.io.isFlush := cu.io.frontendFlush
+  instQueue.io.isFlush         := cu.io.frontendFlush
+  instQueue.io.idleBlocking    := cu.io.idleFlush
+  instQueue.io.interruptWakeUp := csr.io.hasInterrupt
 
   // Issue stage
   issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {

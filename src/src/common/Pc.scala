@@ -21,14 +21,11 @@ class Pc(
   io.pc       := pcReg
   io.pcUpdate := pcUpdateReg
 
-  val isIdle = RegInit(false.B)
-
   pcReg := pcReg
   when(io.newPc.en) {
     pcReg       := io.newPc.pcAddr
-    isIdle      := io.newPc.isIdle
     pcUpdateReg := true.B
-  }.elsewhen(io.isNext && !isIdle) {
+  }.elsewhen(io.isNext) {
     // pcReg := pcReg + (4 * issueNum).U
     pcReg       := pcReg + 4.U
     pcUpdateReg := true.B
