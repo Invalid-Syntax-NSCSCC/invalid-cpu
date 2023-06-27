@@ -25,13 +25,13 @@ class InstAddrTransStage extends Module {
 
   val peer = io.peer
 
-  val outReg = RegInit(InstReqNdPort.default)
-  val isAdef = WireDefault(io.pc(1, 0).orR) // pc not aline
+  val outReg           = RegInit(InstReqNdPort.default)
+  val isAdef           = WireDefault(io.pc(1, 0).orR) // pc not aline
   val hasSendException = RegInit(false.B)
 
-  io.out.bits  := outReg
+  io.out.bits := outReg
   io.out.valid := !hasSendException // when has an exception send one exception to backend and stall; otherwise keep send
-  when(io.isFlush){
+  when(io.isFlush) {
     hasSendException := false.B
   }.elsewhen(outReg.exception.valid) {
     hasSendException := true.B
