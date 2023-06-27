@@ -135,6 +135,7 @@ class Rob(
             !deqPort.bits.wbPort.instInfo.store.get.en.orR &&
             !deqPort.bits.wbPort.instInfo.load.get.en.orR &&
             !deqPort.bits.wbPort.instInfo.needCsr &&
+            deqPort.bits.wbPort.instInfo.exeOp =/= ExeInst.Op.cacop &&
             (deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none) &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order

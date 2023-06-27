@@ -230,18 +230,26 @@ class Cu(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
 
+  val cacopFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.cacop
+
   io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush        := RegNext(hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest, false.B)
-  io.backendFlush         := RegNext(hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest, false.B)
+  io.frontendFlush := RegNext(
+    hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush,
+    false.B
+  )
+  io.backendFlush := RegNext(
+    hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush,
+    false.B
+  )
 
   // select new pc
-  io.newPc.en     := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en
+  io.newPc.en     := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en || cacopFlush
   io.newPc.isIdle := io.branchExe.en && io.branchExe.isIdle && !hasException && !isTlbMaintenance
   io.newPc.isTlb  := isTlbMaintenance
   io.newPc.pcAddr := Mux(
     hasException,
     Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
-    Mux(isTlbMaintenance || io.csrFlushRequest, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
+    Mux(isTlbMaintenance || io.csrFlushRequest || cacopFlush, io.instInfoPorts.head.pc + 4.U, io.branchExe.pcAddr)
   )
 
   val is_softwareInt = io.instInfoPorts(0).isValid &&
