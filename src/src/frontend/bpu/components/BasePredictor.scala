@@ -2,6 +2,7 @@ package frontend.bpu.components
 
 import chisel3._
 import chisel3.util._
+import memory.VBRam
 import spec.{Param, Width}
 
 class BasePredictor(
@@ -56,5 +57,27 @@ class BasePredictor(
   }.otherwise {
     updateContent := 0.U(ctrWidth.W)
   }
+// TODO connect bram with one read and one write port
+//  val ctrRam = Module(new VBRam(
+//
+//  ))
+// Table
+// Port A as read port, Port B as write port
+//val phtTable = Module(
+//  new Bram(
+//    dataWidth = ctrWidth,
+//    addrWidth = tableDepthLog
+//  )
+//)
+//  phtTable.io.ena := true.B
+//  phtTable.io.enb := true.B
+//  phtTable.io.wea := false.B
+//  phtTable.io.web := updateValid
+//  phtTable.io.dina := 0.U(ctrWidth.W)
+//  phtTable.io.addra := queryIndex
+//  queryEntry := phtTable.io.douta
+//  phtTable.io.dinb := updateContent
+//  phtTable.io.addrb := updateIndex
+//  phtTable.io.doutb <> DontCare
 
 }
