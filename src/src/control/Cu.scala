@@ -230,7 +230,9 @@ class Cu(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
 
-  val cacopFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.cacop
+  val cacopFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.cacop &&
+    io.instInfoPorts.head.isValid &&
+    io.instInfoPorts.head.forbidParallelCommit
 
   io.csrMessage.ertnFlush := ertnFlush
   io.frontendFlush := RegNext(
