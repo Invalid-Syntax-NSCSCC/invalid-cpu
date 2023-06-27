@@ -122,7 +122,7 @@ class Rob(
         // commit
         if (idx == 0) {
           io.commitStore.valid := commit.ready &&
-            deqPort.bits.wbPort.instInfo.exceptionPos =/= ExceptionPos.none &&
+            deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
             !(io.hasInterrupt || hasInterruptReg) &&
             deqPort.bits.wbPort.instInfo.store.get.en.orR
           io.branchCommit := commit.ready &&
