@@ -102,6 +102,9 @@ class AddrTransStage
   }
 
   // Translate address
+  val isCacheMaintenance = selectedIn.cacheMaintenance.control.isInit ||
+    selectedIn.cacheMaintenance.control.isCoherentByIndex ||
+    selectedIn.cacheMaintenance.control.isCoherentByHit
   val translatedAddr = WireDefault(selectedIn.memRequest.addr)
   if (isDiffTest) {
     out.instInfo.load.get.paddr := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.get.vaddr(1, 0))
@@ -130,7 +133,7 @@ class AddrTransStage
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      peer.tlbTrans.isValid        := selectedIn.memRequest.isValid
+      peer.tlbTrans.isValid        := selectedIn.memRequest.isValid || isCacheMaintenance
       translatedAddr               := peer.tlbTrans.physAddr
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
