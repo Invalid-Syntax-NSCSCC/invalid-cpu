@@ -11,3 +11,7 @@ class CacheMaintenanceControlNdPort extends Bundle {
   val isCoherentByIndex = Bool() // Maintenance for keeping coherent by index
   val isCoherentByHit   = Bool() // Maintenance for keeping coherent only when hit
 }
+
+object CacheMaintenanceControlNdPort {
+  def default = 0.U.asTypeOf(new CacheMaintenanceControlNdPort)
+}

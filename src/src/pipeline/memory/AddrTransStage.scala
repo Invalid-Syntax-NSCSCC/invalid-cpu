@@ -53,6 +53,7 @@ class AddrTransStage
   out.instInfo         := selectedIn.instInfo
   out.gprAddr          := selectedIn.gprAddr
   out.translatedMemReq := selectedIn.memRequest
+  out.cacheMaintenance := selectedIn.cacheMaintenance
   out.isCached         := false.B // Fallback: Uncached
 
   // DMW mapping

@@ -3,10 +3,12 @@ package pipeline.memory
 import chisel3._
 import chisel3.util._
 import common.enums.ReadWriteSel
-import memory.bundles.MemRequestHandshakePort
+import memory.bundles.{CacheMaintenanceControlNdPort, CacheMaintenanceHandshakePort, MemRequestHandshakePort}
 import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.BaseStage
-import pipeline.memory.bundles.{MemRequestNdPort, StoreInfoBundle}
+import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort, StoreInfoBundle}
+import control.enums.ExceptionPos
+import pipeline.memory.enums.CacheMaintenanceTargetType
 import spec._
 
 class MemReqNdPort extends Bundle {
@@ -14,6 +16,7 @@ class MemReqNdPort extends Bundle {
   val isCached         = Bool()
   val gprAddr          = UInt(Width.Reg.addr)
   val instInfo         = new InstInfoNdPort
+  val cacheMaintenance = new CacheMaintenanceInstNdPort
 }
 
 object MemReqNdPort {
@@ -21,9 +24,11 @@ object MemReqNdPort {
 }
 
 class MemReqPeerPort extends Bundle {
-  val dCacheReq   = Flipped(new MemRequestHandshakePort)
-  val uncachedReq = Flipped(new MemRequestHandshakePort)
-  val commitStore = Flipped(Decoupled())
+  val dCacheReq         = Flipped(new MemRequestHandshakePort)
+  val uncachedReq       = Flipped(new MemRequestHandshakePort)
+  val dCacheMaintenance = Flipped(new CacheMaintenanceHandshakePort)
+  val iCacheMaintenance = Flipped(new CacheMaintenanceHandshakePort)
+  val commitStore       = Flipped(Decoupled())
 }
 
 class MemReqStage
@@ -42,16 +47,18 @@ class MemReqStage
   out.isUnsigned   := selectedIn.translatedMemReq.read.isUnsigned
   out.isCached     := selectedIn.isCached
   out.dataMask     := selectedIn.translatedMemReq.mask
-  out.isInstantReq := true.B
+  out.isInstantReq := selectedIn.translatedMemReq.isValid
   out.isRead       := true.B
   out.isPipelined  := true.B
 
   // Fallback peer
-  peer.dCacheReq.client           := selectedIn.translatedMemReq
-  peer.uncachedReq.client         := selectedIn.translatedMemReq
-  peer.dCacheReq.client.isValid   := false.B
-  peer.uncachedReq.client.isValid := false.B
-  peer.commitStore.ready          := false.B
+  peer.dCacheReq.client                 := selectedIn.translatedMemReq
+  peer.uncachedReq.client               := selectedIn.translatedMemReq
+  peer.dCacheReq.client.isValid         := false.B
+  peer.uncachedReq.client.isValid       := false.B
+  peer.commitStore.ready                := false.B
+  peer.dCacheMaintenance.client.control := CacheMaintenanceControlNdPort.default
+  peer.iCacheMaintenance.client.control := CacheMaintenanceControlNdPort.default
 
   // Store queue
   val storeIn = Wire(Decoupled(new StoreInfoBundle))
@@ -106,6 +113,29 @@ class MemReqStage
       peer.uncachedReq.client.isValid := false.B
       out.isInstantReq                := false.B
       isComputed                      := true.B
+    }
+
+    // Handle cache maintenance
+    val isCacheMaintenance = selectedIn.cacheMaintenance.control.isInit ||
+      selectedIn.cacheMaintenance.control.isCoherentByIndex ||
+      selectedIn.cacheMaintenance.control.isCoherentByHit
+    when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
+      peer.dCacheMaintenance.client.addr := selectedIn.translatedMemReq.addr
+      peer.iCacheMaintenance.client.addr := selectedIn.translatedMemReq.addr
+      switch(selectedIn.cacheMaintenance.target) {
+        is(CacheMaintenanceTargetType.data) {
+          peer.dCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
+          when(isCacheMaintenance) {
+            isComputed := peer.dCacheMaintenance.isReady
+          }
+        }
+        is(CacheMaintenanceTargetType.inst) {
+          peer.iCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
+          when(isCacheMaintenance) {
+            isComputed := peer.iCacheMaintenance.isReady
+          }
+        }
+      }
     }
   }
 
