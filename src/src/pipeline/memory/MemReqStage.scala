@@ -100,7 +100,7 @@ class MemReqStage
       }
     }
 
-    // Handle TLB maintenance (instruction passing through)
+    // Handle TLB maintenance and exception (instruction passing through)
     when(!selectedIn.translatedMemReq.isValid) {
       peer.dCacheReq.client.isValid   := false.B
       peer.uncachedReq.client.isValid := false.B
