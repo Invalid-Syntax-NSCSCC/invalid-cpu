@@ -302,9 +302,17 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  csr.io.tlbWritePort.valid := cu.io.tlbCsrWriteValid
-  csr.io.tlbWritePort.bits  := tlb.io.csr.out
-  csr.io.csrMessage         := cu.io.csrMessage
+  csr.io.tlbMaintenanceWritePort.valid := cu.io.tlbMaintenanceCsrWriteValid
+  csr.io.tlbMaintenanceWritePort.bits  := tlb.io.csr.out
+  csr.io.tlbExceptionWritePorts.map(_.valid).zip(cu.io.tlbExceptionCsrWriteValidVec).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+  csr.io.tlbExceptionWritePorts.map(_.bits).zip(tlb.io.transExceptionCsrPorts).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+  csr.io.csrMessage := cu.io.csrMessage
 
   // Debug ports
   io.debug0_wb.pc       := commitStage.io.ins(0).bits.instInfo.pc

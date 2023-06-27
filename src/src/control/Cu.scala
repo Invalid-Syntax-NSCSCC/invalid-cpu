@@ -27,7 +27,9 @@ class Cu(
     // `Cu` -> `Csr`, 硬件写
     val csrMessage = Output(new CuToCsrNdPort)
     // `Cu` -> `Csr`, Should TLB maintenance write
-    val tlbCsrWriteValid = Output(new Bool)
+    val tlbMaintenanceCsrWriteValid = Output(Bool())
+    // `Cu` -> `Csr`, Should TLB exception write
+    val tlbExceptionCsrWriteValidVec = Output(Vec(Param.Count.Tlb.transNum, Bool()))
     // `Csr` -> `Cu`
     val csrFlushRequest = Input(Bool())
     val csrValues       = Input(new CsrValuePort)
@@ -198,7 +200,28 @@ class Cu(
 
   // Handle TLB maintenance
   val isTlbMaintenance = WireDefault(io.instInfoPorts.head.isTlb && io.instInfoPorts.head.isValid && !hasException)
-  io.tlbCsrWriteValid := isTlbMaintenance
+  io.tlbMaintenanceCsrWriteValid := isTlbMaintenance
+
+  // Handle TLB exception
+  io.tlbExceptionCsrWriteValidVec.foreach(_ := false.B)
+  val isTlbException = VecInit(
+    Csr.ExceptionIndex.tlbr,
+    Csr.ExceptionIndex.pil,
+    Csr.ExceptionIndex.pis,
+    Csr.ExceptionIndex.pif,
+    Csr.ExceptionIndex.pme,
+    Csr.ExceptionIndex.ppi
+  ).contains(selectException)
+  when(isTlbException) {
+    switch(selectExceptionPos) {
+      is(ExceptionPos.frontend) {
+        io.tlbExceptionCsrWriteValidVec(1) := true.B
+      }
+      is(ExceptionPos.backend) {
+        io.tlbExceptionCsrWriteValidVec(0) := true.B
+      }
+    }
+  }
 
   /** Flush & jump
     */
