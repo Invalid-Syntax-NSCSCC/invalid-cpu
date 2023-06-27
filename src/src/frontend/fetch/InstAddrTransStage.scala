@@ -43,7 +43,7 @@ class InstAddrTransStage extends Module {
     outReg.exception.valid := isAdef || peer.tlbTrans.exception.valid
     // exception priority: pif > ppi > adef > tlbr  bitsValue 0 as highest priority
     when(peer.tlbTrans.exception.valid && peer.tlbTrans.exception.bits < spec.Csr.ExceptionIndex.adef) {
-      outReg.exception.bits := peer.tlbTrans.exception.valid
+      outReg.exception.bits := peer.tlbTrans.exception.bits
     }
   }
 
