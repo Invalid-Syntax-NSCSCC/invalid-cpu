@@ -235,7 +235,7 @@ class Cu(
     io.instInfoPorts.head.isValid &&
     io.instInfoPorts.head.forbidParallelCommit
 
-  val idleFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.idle && io.instInfoPorts.head.isValid
+  val idleFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.idle && io.instInfoPorts.head.isValid && !hasException
 
   io.csrMessage.ertnFlush := ertnFlush
   io.frontendFlush := RegNext(
