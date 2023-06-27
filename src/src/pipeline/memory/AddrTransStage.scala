@@ -8,8 +8,8 @@ import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
 import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
 import pipeline.common.BaseStage
-import pipeline.memory.bundles.{MemCsrNdPort, MemRequestNdPort}
-import pipeline.memory.enums.{AddrTransType, CacheMaintenanceType}
+import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
+import pipeline.memory.enums.AddrTransType
 import spec.Value.Csr
 import spec.Width
 import spec.Param.isDiffTest
@@ -21,7 +21,7 @@ class AddrTransNdPort extends Bundle {
   val gprAddr          = UInt(Width.Reg.addr)
   val instInfo         = new InstInfoNdPort
   val tlbMaintenance   = new TlbMaintenanceNdPort
-  val cacheMaintenance = CacheMaintenanceType()
+  val cacheMaintenance = new CacheMaintenanceInstNdPort
 }
 
 object AddrTransNdPort {
