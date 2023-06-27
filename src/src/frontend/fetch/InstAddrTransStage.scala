@@ -40,11 +40,11 @@ class InstAddrTransStage extends Module {
 
   // Handle exception
   def handleException(): Unit = {
-      outReg.exception.valid := isAdef || peer.tlbTrans.exception.valid
-      //exception priority: pif > ppi > adef > tlbr  bitsValue 0 as highest priority
-      when(peer.tlbTrans.exception.valid && peer.tlbTrans.exception.bits < spec.Csr.ExceptionIndex.adef) {
-        outReg.exception.bits := peer.tlbTrans.exception.valid  
-      }
+    outReg.exception.valid := isAdef || peer.tlbTrans.exception.valid
+    // exception priority: pif > ppi > adef > tlbr  bitsValue 0 as highest priority
+    when(peer.tlbTrans.exception.valid && peer.tlbTrans.exception.bits < spec.Csr.ExceptionIndex.adef) {
+      outReg.exception.bits := peer.tlbTrans.exception.bits
+    }
   }
 
   // DMW mapping
@@ -84,8 +84,8 @@ class InstAddrTransStage extends Module {
   val translatedAddr = WireDefault(io.pc)
   outReg.translatedMemReq.addr := translatedAddr
   peer.tlbTrans.memType        := TlbMemType.fetch
-
-  peer.tlbTrans.virtAddr := io.pc
+  peer.tlbTrans.virtAddr       := io.pc
+  peer.tlbTrans.isValid        := false.B
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := io.pc
@@ -94,10 +94,11 @@ class InstAddrTransStage extends Module {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      translatedAddr := peer.tlbTrans.physAddr
+      peer.tlbTrans.isValid := true.B
+      translatedAddr        := peer.tlbTrans.physAddr
       outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
         !peer.tlbTrans.exception.valid && !isAdef
-        
+
       handleException()
     }
   }
