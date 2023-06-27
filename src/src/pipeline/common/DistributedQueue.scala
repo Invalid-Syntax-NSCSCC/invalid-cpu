@@ -49,7 +49,7 @@ class DistributedQueue[ElemT <: Data](
   storeOuts.foreach(_.ready := false.B)
 
   val enq_ptr = Module(new MultiCounter(channelNum, enqMaxNum))
-  val deq_ptr = Module(new MultiCounter(channelNum, enqMaxNum))
+  val deq_ptr = Module(new MultiCounter(channelNum, deqMaxNum))
   enq_ptr.io.flush := io.isFlush
   deq_ptr.io.flush := io.isFlush
   io.enq_ptr       := enq_ptr.io.value
