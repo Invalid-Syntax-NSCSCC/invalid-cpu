@@ -194,6 +194,7 @@ class CoreCpuTop extends Module {
   }
   issueStage.io.peer.get.csrcore     := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
+  issueStage.io.peer.get.plv         := csr.io.csrValues.crmd.plv
 
   // Scoreboards
   csrScoreBoard.io.freePort    := commitStage.io.csrFreePort
