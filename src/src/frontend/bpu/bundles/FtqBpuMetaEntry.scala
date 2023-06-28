@@ -6,7 +6,8 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import frontend.bpu.components.Bundles.TageMetaPort
 
-class BpuFtqMetaPort(
+class FtqBpuMetaEntry(
+  addr:    Int = spec.wordLength,
   ftbNway: Int = Param.BPU.FTB.nway)
     extends Bundle {
   val valid       = Bool()
@@ -15,8 +16,8 @@ class BpuFtqMetaPort(
   val bpuMeta     = new TageMetaPort
 }
 
-object BpuFtqMetaPort {
-  def default = (new BpuFtqMetaPort).Lit(
+object FtqBpuMetaEntry {
+  def default = (new FtqBpuMetaEntry).Lit(
     _.valid -> false.B,
     _.ftbHit -> false.B,
     _.ftbHitIndex -> 0.U(log2Ceil(Param.BPU.FTB.nway).W),

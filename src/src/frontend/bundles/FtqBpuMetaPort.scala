@@ -3,6 +3,7 @@ import spec._
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import frontend.bpu.components.Bundles.TageMetaPort
 
 class FtqBpuMetaPort(
   ftbNway: Int = Param.BPU.FTB.nway,
