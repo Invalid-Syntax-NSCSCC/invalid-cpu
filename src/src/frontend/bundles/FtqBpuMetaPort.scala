@@ -1,9 +1,8 @@
 package frontend.bundles
-import chisel3._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chisel3.util._
-import frontend.bpu.components.Bundles.TageMetaPort
 import spec._
+import chisel3._
+import chisel3.util._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 
 class FtqBpuMetaPort(
   ftbNway: Int = Param.BPU.FTB.nway,

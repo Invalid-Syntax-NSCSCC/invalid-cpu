@@ -1,8 +1,9 @@
 package frontend.bpu.components.Bundles
 
+import spec._
 import chisel3._
 import chisel3.util._
-import spec._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 
 class TageMetaPort(
   tagComponentNum:      Int = Param.BPU.TagePredictor.tagComponentNum,
