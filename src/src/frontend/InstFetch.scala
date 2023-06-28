@@ -13,14 +13,14 @@ class InstFetch extends Module {
   val io = IO(new Bundle {
     val pc       = Input(UInt(Width.Reg.data))
     val pcUpdate = Input(Bool())
-    val isNextPc = Output(Bool())
+    val isPcNext = Output(Bool())
 
     // <-> Frontend  <->ICache
     val accessPort = Flipped(new ICacheAccessPort)
 
     // <-> Frontend <-> Instrution queue
     val isFlush         = Input(Bool())
-    val instEnqueuePort = Decoupled(new InstInfoBundle)
+    val instDequeuePort = Decoupled(new InstInfoBundle)
 
     // <-> Frontend <-> Tlb
     val tlbTrans = Flipped(new TlbTransPort)
@@ -54,10 +54,10 @@ class InstFetch extends Module {
   // instResStage
   instResStage.io.isFlush := io.isFlush
   instResStage.io.in      <> instReqStage.io.out
-  io.instEnqueuePort      <> instResStage.io.out
+  io.instDequeuePort      <> instResStage.io.out
   instResStage.io.peer.foreach { p =>
     p.memRes <> io.accessPort.res
   }
 
-  io.isNextPc := instReqStage.io.in.ready && isFirstSentReg
+  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg
 }

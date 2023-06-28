@@ -11,7 +11,7 @@ import spec._
 class SimpleFetchStage extends Module {
   val io = IO(new Bundle {
     val pc                 = Input(UInt(Width.Reg.data))
-    val isNextPc           = Output(Bool())
+    val isPcNext           = Output(Bool())
     val axiMasterInterface = new AxiMasterInterface
     val instEnqueuePort    = Decoupled(new InstInfoBundle)
     // val pipelineControlPort = Input(new PipelineControlNdPort)
@@ -33,8 +33,8 @@ class SimpleFetchStage extends Module {
   val nextState = WireInit(State.idle)
   val stateReg  = RegNext(nextState, State.idle)
 
-  val isNextPcReg = RegInit(false.B)
-  io.isNextPc := isNextPcReg
+  val isPcNextReg = RegInit(false.B)
+  io.isPcNext := isPcNextReg
   val axiReadRequestReg = RegInit(false.B)
   axiMaster.io.newRequest := axiReadRequestReg
   val axiAddrReg = RegInit(0.U(Width.Axi.addr))
@@ -43,7 +43,7 @@ class SimpleFetchStage extends Module {
   val lastPcReg = RegInit(zeroWord)
 
   // Fallback
-  isNextPcReg              := false.B
+  isPcNextReg              := false.B
   axiReadRequestReg        := false.B
   axiAddrReg               := axiAddrReg
   io.instEnqueuePort.valid := false.B
@@ -60,7 +60,7 @@ class SimpleFetchStage extends Module {
       ) {
         nextState := State.waitInst
 
-        isNextPcReg       := true.B
+        isPcNextReg       := true.B
         axiReadRequestReg := true.B
         axiAddrReg        := io.pc
         lastPcReg         := io.pc

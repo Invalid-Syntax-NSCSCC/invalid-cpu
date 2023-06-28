@@ -2,7 +2,7 @@ package pipeline.commit.bundles
 
 import chisel3._
 import chisel3.experimental.BundleLiterals._
-import common.bundles.PcSetPort
+import common.bundles.PcSetNdPort
 import control.bundles.CsrWriteNdPort
 import control.enums.ExceptionPos
 import spec.Param.isDiffTest
@@ -23,7 +23,7 @@ class InstInfoNdPort extends Bundle {
   val exeSel = UInt(Param.Width.exeSel)
   val robId  = UInt(Param.Width.Rob.id)
 
-  val branchSetPort = Output(new PcSetPort)
+  val branchSetPort = Output(new PcSetNdPort)
 
   val load    = if (isDiffTest) Some(new DifftestLoadNdPort) else None
   val store   = if (isDiffTest) Some(new DifftestStoreNdPort) else None
@@ -48,7 +48,7 @@ object InstInfoNdPort {
     _.isStore -> false.B,
     _.vaddr -> zeroWord,
     _.needCsr -> false.B,
-    _.branchSetPort -> PcSetPort.default,
+    _.branchSetPort -> PcSetNdPort.default,
     _.load.get -> DifftestLoadNdPort.default,
     _.store.get -> DifftestStoreNdPort.default,
     _.tlbFill.get -> DifftestTlbFillNdPort.default,

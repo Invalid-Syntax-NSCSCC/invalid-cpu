@@ -16,9 +16,9 @@ class Frontend extends Module {
     // <-> Frontend <-> Instrution queue
     val pc              = Input(UInt(Width.Reg.data))
     val pcUpdate        = Input(Bool())
-    val isNextPc        = Output(Bool())
+    val isPcNext        = Output(Bool())
     val isFlush         = Input(Bool())
-    val instEnqueuePort = Decoupled(new InstInfoBundle)
+    val instDequeuePort = Decoupled(new InstInfoBundle)
 
     // TODO mul FetchNum
     //     // val instEnqueuePorts = Vec(Param.Count.frontend.instFetchNum, Flipped(Decoupled(new InstInfoBundle)))
@@ -31,11 +31,11 @@ class Frontend extends Module {
 
   val instFetch = Module(new InstFetch)
   instFetch.io.accessPort      <> io.accessPort
-  instFetch.io.instEnqueuePort <> io.instEnqueuePort
+  instFetch.io.instDequeuePort <> io.instDequeuePort
   instFetch.io.isFlush         := io.isFlush
   instFetch.io.pc              := io.pc
   instFetch.io.pcUpdate        := io.pcUpdate
-  io.isNextPc                  := instFetch.io.isNextPc
+  io.isPcNext                  := instFetch.io.isPcNext
   instFetch.io.csr             := io.csr
   instFetch.io.tlbTrans        <> io.tlbTrans
 }

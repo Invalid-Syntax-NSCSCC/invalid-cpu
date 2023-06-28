@@ -128,7 +128,7 @@ class CoreCpuTop extends Module {
 
   // PC
   pc.io.newPc  := cu.io.newPc
-  pc.io.isNext := frontend.io.isNextPc
+  pc.io.isNext := frontend.io.isPcNext
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
@@ -167,11 +167,12 @@ class CoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // Instruction queue
-  instQueue.io.enqueuePorts.valid   := frontend.io.instEnqueuePort.valid
-  frontend.io.instEnqueuePort.ready := instQueue.io.enqueuePorts.ready
-  instQueue.io.enqueuePorts.bits(0) := frontend.io.instEnqueuePort.bits
+  instQueue.io.enqueuePorts.valid   := frontend.io.instDequeuePort.valid
+  frontend.io.instDequeuePort.ready := instQueue.io.enqueuePorts.ready
+  instQueue.io.enqueuePorts.bits(0) := frontend.io.instDequeuePort.bits
 
-  instQueue.io.isFlush         := cu.io.frontendFlush
+  instQueue.io.isFrontendFlush := cu.io.frontendFlush
+  instQueue.io.isBackendFlush  := cu.io.backendFlush
   instQueue.io.idleBlocking    := cu.io.idleFlush
   instQueue.io.interruptWakeUp := csr.io.hasInterrupt
 
