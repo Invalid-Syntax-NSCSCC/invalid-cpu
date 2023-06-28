@@ -46,8 +46,7 @@ class InstAddrTransStage extends Module {
   // Handle exception
   def handleException(): Unit = {
     outReg.exception.valid := isAdef || peer.tlbTrans.exception.valid
-    // exception priority: pif > ppi > adef > tlbr  bitsValue 0 as highest priority
-    when(peer.tlbTrans.exception.valid && peer.tlbTrans.exception.bits < spec.Csr.ExceptionIndex.adef) {
+    when(peer.tlbTrans.exception.valid && !isAdef) {
       outReg.exception.bits := peer.tlbTrans.exception.bits
     }
   }
