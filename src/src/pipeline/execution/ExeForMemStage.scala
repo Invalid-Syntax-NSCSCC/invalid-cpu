@@ -181,6 +181,7 @@ class ExeForMemStage
   when(isLoadStore) {
     resultOutReg.bits.instInfo.forbidParallelCommit := true.B
   }
+  resultOutReg.bits.instInfo.isStore := memWriteEn && !isAle
 
   val cacopAddr = WireDefault(selectedIn.leftOperand + selectedIn.rightOperand)
   val isCacop   = WireDefault(selectedIn.exeOp === ExeInst.Op.cacop)

@@ -159,7 +159,8 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.isTlb             := selectedDecoder.info.isTlb
       dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
 
-      // TODO: Take frontend exceptions into consideration
+      dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needCsr
+
       dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
       dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
       when(decodeInstInfo.exceptionValid) {
