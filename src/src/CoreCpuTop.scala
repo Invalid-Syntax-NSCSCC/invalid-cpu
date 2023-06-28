@@ -13,6 +13,7 @@ import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
 import spec.Param.isDiffTest
+import control.NewCu
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -107,7 +108,7 @@ class CoreCpuTop extends Module {
   val exePassWbStages  = Seq(exePassWbStage_1, exePassWbStage_2)
   val commitStage      = Module(new CommitStage)
   val rob              = Module(new Rob)
-  val cu               = Module(new Cu)
+  val cu               = Module(new NewCu)
   val csr              = Module(new Csr)
   val stableCounter    = Module(new StableCounter)
 
