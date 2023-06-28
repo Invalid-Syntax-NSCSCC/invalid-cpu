@@ -151,7 +151,7 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
       val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
-      dequeuePort.bits.instInfo.isValid := decodeInstInfo.pcAddr =/= 0.U // TODO: Check if it can change to isMatched (see whether commit or not)
+      dequeuePort.bits.instInfo.isValid           := true.B
       dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
       dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
       dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
