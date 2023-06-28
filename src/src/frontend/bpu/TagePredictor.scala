@@ -3,10 +3,10 @@ package frontend.bpu
 import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles.{BpuFtqMetaPort, TagePredictorUpdateInfoPort}
-import frontend.bpu.components.Bundles.TageMetaPort
+import frontend.bpu.components.Bundles.TageMeta
+import spec._
 import frontend.bpu.components._
 import frontend.bpu.utils.Lfsr
-import spec._
 
 // TAGE predictor
 // This is the main predictor
@@ -209,7 +209,7 @@ class TagePredictor(
   io.predictBranchTaken := takens(predPredictionId)
 
   // Meta
-  val queryMetaPort = new TageMetaPort()
+  val queryMetaPort = new TageMeta
   queryMetaPort.tagPredictorUsefulBits := tagUsefuls
   queryMetaPort.tagPredictorHitIndex   := tagHitIndexs
   queryMetaPort.tagPredictorQueryTag   := tagQueryTags
