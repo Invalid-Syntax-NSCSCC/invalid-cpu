@@ -80,15 +80,14 @@ class ExeForMemStage
   /** MemAccess
     */
 
-  val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
-
+  val loadStoreAddr      = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
+  val isAtomicStoreValid = io.peer.get.csr.llbctl.rollb && selectedIn.exeOp === ExeInst.Op.sc
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
       .contains(selectedIn.exeOp)
   )
   val memWriteEn = WireDefault(
-    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w, ExeInst.Op.sc)
-      .contains(selectedIn.exeOp)
+    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w).contains(selectedIn.exeOp) || isAtomicStoreValid
   )
   val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp))
 
@@ -130,6 +129,8 @@ class ExeForMemStage
     }
   }
 
+  resultOutReg.bits.isAtomicStore := selectedIn.exeOp === ExeInst.Op.sc
+
   if (isDiffTest) {
     resultOutReg.bits.instInfo.load.get.en := Mux(
       isAle,
@@ -149,8 +150,7 @@ class ExeForMemStage
       0.U,
       Cat(
         0.U(4.W),
-        io.peer.get.csr.llbctl.wcllb &&
-          selectedIn.exeOp === ExeInst.Op.sc,
+        isAtomicStoreValid,
         selectedIn.exeOp === ExeInst.Op.st_w,
         selectedIn.exeOp === ExeInst.Op.st_h,
         selectedIn.exeOp === ExeInst.Op.st_b
@@ -219,6 +219,6 @@ class ExeForMemStage
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
-  resultOutReg.bits.instInfo.isStore       := resultOutReg.bits.instInfo.store.get.en.orR
+  resultOutReg.bits.instInfo.isStore       := memWriteEn && !isAle
   resultOutReg.bits.instInfo.vaddr         := Mux(isCacop, cacopAddr, loadStoreAddr)
 }

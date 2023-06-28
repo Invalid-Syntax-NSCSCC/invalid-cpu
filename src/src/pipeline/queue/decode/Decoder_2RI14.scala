@@ -66,6 +66,8 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprReadPorts(0).addr := rj
       outInfo.gprReadPorts(1).en   := true.B
       outInfo.gprReadPorts(1).addr := rd
+      outInfo.gprWritePort.en      := true.B
+      outInfo.gprWritePort.addr    := rd
       outInfo.loadStoreImm         := immSext.asUInt
     }
     // csr读写指令
