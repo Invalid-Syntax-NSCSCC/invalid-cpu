@@ -31,9 +31,7 @@ class InstAddrTransStage extends Module {
 
   io.out.bits := outReg
   io.out.valid := !hasSendException // when has an exception send one exception to backend and stall; otherwise keep send
-  when(io.isFlush) {
-    hasSendException := false.B
-  }.elsewhen(outReg.exception.valid) {
+  when(outReg.exception.valid) {
     hasSendException := true.B
   }
 
@@ -128,8 +126,15 @@ class InstAddrTransStage extends Module {
   }
 
   // Handle flush
+  val isLastFlushReg = RegNext(io.isFlush, false.B)
   when(io.isFlush) {
+    outReg.exception.valid               := false.B
+    outReg.translatedMemReq.isValid      := false.B
     io.out.bits.translatedMemReq.isValid := false.B
     isLastSent                           := true.B
+    hasSendException                     := false.B
+  }
+  when(isLastFlushReg) {
+    io.out.valid := false.B
   }
 }

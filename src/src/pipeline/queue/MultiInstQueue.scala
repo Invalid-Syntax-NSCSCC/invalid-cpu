@@ -20,7 +20,8 @@ class MultiInstQueue(
   val issueNum:    Int = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new Bundle {
-    val isFlush = Input(Bool())
+    val isFrontendFlush = Input(Bool())
+    val isBackendFlush  = Input(Bool())
 
     val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new InstInfoBundle)))
 
@@ -57,14 +58,14 @@ class MultiInstQueue(
     isIdle := true.B
   }
 
-  // fall back
+  // Fallback
   instQueue.io.enqueuePorts.zipWithIndex.foreach {
     case (enq, idx) =>
       enq.valid := io.enqueuePorts.valid && !isIdle
       enq.bits  := io.enqueuePorts.bits(idx)
   }
   io.enqueuePorts.ready := instQueue.io.enqueuePorts.map(_.ready).reduce(_ && _) && !isIdle
-  instQueue.io.isFlush  := io.isFlush
+  instQueue.io.isFlush  := io.isFrontendFlush
 
   // Decode
   val decodeInstInfos = WireDefault(VecInit(instQueue.io.dequeuePorts.map(_.bits)))
@@ -115,7 +116,18 @@ class MultiInstQueue(
       FetchInstDecodeNdPort.default
     )
   )
-  resultQueue.io.isFlush := io.isFlush
+  resultQueue.io.isFlush := io.isFrontendFlush
+
+  val isBlockDequeueReg = RegInit(false.B)
+  isBlockDequeueReg := Mux(
+    io.isBackendFlush,
+    false.B,
+    Mux(
+      io.isFrontendFlush,
+      true.B,
+      isBlockDequeueReg
+    )
+  )
 
   resultQueue.io.enqueuePorts.zip(instQueue.io.dequeuePorts).foreach {
     case (dst, src) =>
@@ -126,6 +138,10 @@ class MultiInstQueue(
   io.dequeuePorts.zip(resultQueue.io.dequeuePorts).foreach {
     case (dst, src) =>
       dst <> src
+      when(isBlockDequeueReg) {
+        dst.valid := false.B
+        src.ready := false.B
+      }
   }
 
   resultQueue.io.enqueuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {

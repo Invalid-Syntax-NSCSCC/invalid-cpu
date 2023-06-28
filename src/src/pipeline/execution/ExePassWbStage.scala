@@ -3,7 +3,7 @@ package pipeline.execution
 import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.util._
-import common.bundles.{PcSetPort, RfAccessInfoNdPort}
+import common.bundles.{PcSetNdPort, RfAccessInfoNdPort}
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import pipeline.commit.WbNdPort
@@ -48,7 +48,7 @@ object ExeNdPort {
 
 class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
-  val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetPort)) else None
+  val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetNdPort)) else None
   val csrScoreboardChangePort = if (supportBranchCsr) Some(Output(new ScoreboardChangeNdPort)) else None
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
@@ -160,7 +160,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     val csrScoreboardChangePort = io.peer.get.csrScoreboardChangePort.get
 
     // branch set
-    branchSetPort    := PcSetPort.default
+    branchSetPort    := PcSetNdPort.default
     branchSetPort.en := alu.io.result.jumpBranchInfo.en && branchEnableFlag
     when(alu.io.result.jumpBranchInfo.en) {
       branchEnableFlag := false.B
