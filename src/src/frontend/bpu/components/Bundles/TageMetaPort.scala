@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 
-class TageMeta(
+class TageMetaPort(
   tagComponentNum:      Int = Param.BPU.TagePredictor.tagComponentNum,
   tagComponentTagWidth: Int = Param.BPU.TagePredictor.tagComponentTagWidth)
     extends Bundle {
@@ -19,7 +19,7 @@ class TageMeta(
   val tagPredictorUsefulBits = Vec(tagComponentNum, UInt(3.W))
 }
 
-object TageMeta {
+object TageMetaPort {
   val tagComponentNum      = Param.BPU.TagePredictor.tagComponentNum
   val tagComponentTagWidth = Param.BPU.TagePredictor.tagComponentTagWidth
   def default              = 0.U.asTypeOf(new TageMetaPort)

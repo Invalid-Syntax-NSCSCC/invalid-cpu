@@ -158,6 +158,17 @@ object Param {
 
     val decodeWidth = 1 // 2 to do
     val commitWidth = 1 // 2 to do
+    object BranchType {
+      var count = 0
+      private def next = {
+        count += 1
+        count.U
+      }
+      val cond   = 0.U
+      val call   = next
+      val ret    = next
+      val uncond = next
+    }
   }
 
   object SimpleFetchStageState extends ChiselEnum {

@@ -2,6 +2,7 @@ package frontend.bpu.components
 
 import chisel3._
 import chisel3.util._
+import frontend.bpu.utils.Bram
 import memory.VBRam
 import spec.{Param, Width}
 
@@ -63,21 +64,21 @@ class BasePredictor(
 //  ))
 // Table
 // Port A as read port, Port B as write port
-//val phtTable = Module(
-//  new Bram(
-//    dataWidth = ctrWidth,
-//    addrWidth = tableDepthLog
-//  )
-//)
-//  phtTable.io.ena := true.B
-//  phtTable.io.enb := true.B
-//  phtTable.io.wea := false.B
-//  phtTable.io.web := updateValid
-//  phtTable.io.dina := 0.U(ctrWidth.W)
-//  phtTable.io.addra := queryIndex
-//  queryEntry := phtTable.io.douta
-//  phtTable.io.dinb := updateContent
-//  phtTable.io.addrb := updateIndex
-//  phtTable.io.doutb <> DontCare
+  val phtTable = Module(
+    new Bram(
+      dataWidth     = ctrWidth,
+      dataDepthExp2 = tableDepthLog
+    )
+  )
+  phtTable.io.ena   := true.B
+  phtTable.io.enb   := true.B
+  phtTable.io.wea   := false.B
+  phtTable.io.web   := io.updateValid
+  phtTable.io.dina  := 0.U(ctrWidth.W)
+  phtTable.io.addra := queryIndex
+  queryEntry        := phtTable.io.douta
+  phtTable.io.dinb  := updateContent
+  phtTable.io.addrb := updateIndex
+  phtTable.io.doutb <> DontCare
 
 }

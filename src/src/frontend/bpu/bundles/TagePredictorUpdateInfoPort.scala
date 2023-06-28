@@ -3,14 +3,14 @@ import spec._
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import frontend.bpu.components.Bundles.TageMeta
+import frontend.bpu.components.Bundles.TageMetaPort
 
 class TagePredictorUpdateInfoPort extends Bundle {
   val valid          = Bool()
   val predictCorrect = Bool()
   val branchTaken    = Bool()
   val isConditional  = Bool()
-  val bpuMeta        = new TageMeta
+  val bpuMeta        = new TageMetaPort
 }
 
 object TagePredictorUpdateInfoPort {
@@ -19,6 +19,6 @@ object TagePredictorUpdateInfoPort {
     _.predictCorrect -> true.B,
     _.branchTaken -> true.B,
     _.isConditional -> true.B,
-    _.bpuMeta -> TageMeta.default
+    _.bpuMeta -> TageMetaPort.default
   )
 }
