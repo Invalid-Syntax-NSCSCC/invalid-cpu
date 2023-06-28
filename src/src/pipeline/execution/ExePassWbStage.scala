@@ -152,8 +152,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     }
   }
 
-  resultOutReg.bits.instInfo.branchSetPort := PcSetPort.default
-
   if (supportBranchCsr) {
 
     val branchEnableFlag = RegInit(true.B)
@@ -172,20 +170,18 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
-    // val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
-    // when(isIdle) {
-    //   branchSetPort.isIdle := true.B
-    //   branchSetPort.en     := branchEnableFlag
-    //   branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
-    //   branchEnableFlag     := false.B
-    // }.else
+    val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
     when(isErtn) {
       branchSetPort.en     := branchEnableFlag
       branchSetPort.pcAddr := io.peer.get.csr.era.pc
       branchEnableFlag     := false.B
     }
 
-    resultOutReg.bits.instInfo.branchSetPort := branchSetPort
+    when(branchSetPort.en || isIdle) {
+      resultOutReg.bits.instInfo.forbidParallelCommit := true.B
+    }
+
+    resultOutReg.bits.instInfo.branchSuccess := branchSetPort.en
 
     when(io.isFlush) {
       branchEnableFlag := true.B

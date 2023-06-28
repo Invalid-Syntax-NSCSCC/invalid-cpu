@@ -125,25 +125,25 @@ class Rob(
           io.commitStore.valid := commit.ready &&
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
             !(io.hasInterrupt || hasInterruptReg) &&
-            deqPort.bits.wbPort.instInfo.store.get.en.orR
+            deqPort.bits.wbPort.instInfo.isStore
           io.branchCommit := commit.ready &&
-            deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch &&
-            deqPort.bits.wbPort.instInfo.branchSetPort.en
+            // deqPort.bits.wbPort.instInfo.exeSel === ExeInst.Sel.jumpBranch &&
+            deqPort.bits.wbPort.instInfo.branchSuccess
           deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
         } else {
           deqPort.ready := commit.ready &&
             !io.commits(idx - 1).bits.instInfo.forbidParallelCommit &&
             !deqPort.bits.wbPort.instInfo.forbidParallelCommit &&
-            deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
-            !deqPort.bits.wbPort.instInfo.store.get.en.orR &&
-            !deqPort.bits.wbPort.instInfo.load.get.en.orR &&
-            !deqPort.bits.wbPort.instInfo.needCsr &&
+            // deqPort.bits.wbPort.instInfo.exeSel =/= ExeInst.Sel.jumpBranch &&
+            // !deqPort.bits.wbPort.instInfo.store.get.en.orR &&
+            // !deqPort.bits.wbPort.instInfo.load.get.en.orR &&
+            // !deqPort.bits.wbPort.instInfo.needCsr &&
             (deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none) &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
             (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none) &&
-            !io.commits(idx - 1).bits.instInfo.branchSetPort.en &&
-            !io.commits(idx - 1).bits.instInfo.needCsr &&
+            // !io.commits(idx - 1).bits.instInfo.branchSetPort.en &&
+            // !io.commits(idx - 1).bits.instInfo.needCsr &&
             !hasInterruptReg &&
             !io.hasInterrupt
         }
