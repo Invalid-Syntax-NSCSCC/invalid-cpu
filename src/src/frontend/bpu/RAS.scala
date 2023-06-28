@@ -14,12 +14,12 @@ class RAS(
   val io = IO(new Bundle {
     val push     = Input(Bool())
     val pop      = Input(Bool())
-    val callAddr = Input(UInt(spec.Width.Mem.addr))
-    val topAddr  = Output(UInt(spec.Width.Mem.addr))
+    val callAddr = Input(UInt(addrWidth.W))
+    val topAddr  = Output(UInt(addrWidth.W))
   })
   // Data structure
   // use a Vec to act as a stack
-  val lutram = RegInit(VecInit(Seq.fill(entryNum)(0.U(spec.Width.Mem.addr))))
+  val lutram = RegInit(VecInit(Seq.fill(addrWidth)(0.U((entryNum.U)))))
 
   // Signal defines
   val newIndex  = WireInit(0.U(pointerWidth.W))
@@ -27,11 +27,11 @@ class RAS(
 
   // Index
   newIndex  := readIndex + io.push - io.pop
-  readIndex := newIndex
+  readIndex := RegNext(newIndex)
 
   // Data
   when(io.push) {
-    lutram(newIndex) := io.callAddr
+    lutram(newIndex) := RegNext(io.callAddr)
   }
 
   // Output
