@@ -11,7 +11,7 @@ import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param}
 
 // Note. Exception只从第0个提交
-class Cu(
+class NewCu(
   writeNum:  Int = Param.csrWriteNum,
   commitNum: Int = Param.commitNum)
     extends Module {
@@ -226,7 +226,7 @@ class Cu(
   /** Flush & jump
     */
 
-  val ertnFlush = WireDefault(
+  val isErtn = WireDefault(
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
   )
 
@@ -236,25 +236,31 @@ class Cu(
 
   val idleFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.idle && io.instInfoPorts.head.isValid && !hasException
 
-  io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush := hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush
+  io.csrMessage.ertnFlush := isErtn // TODO: Make ERTN jump gracefully like branch instruction
+  io.frontendFlush :=
+    hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isErtn
   io.backendFlush := RegNext(
-    hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
+    hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isErtn,
     false.B
   )
   io.idleFlush := idleFlush
 
   // select new pc
-  io.newPc       := PcSetNdPort.default
-  io.newPc.en    := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en || cacopFlush || idleFlush
+  io.newPc := PcSetNdPort.default
+  io.newPc.en :=
+    isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en || cacopFlush || idleFlush || isErtn
   io.newPc.isTlb := isTlbMaintenance
   io.newPc.pcAddr := Mux(
-    hasException,
-    Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
+    isErtn,
+    io.csrValues.era.pc,
     Mux(
-      isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
-      io.instInfoPorts.head.pc + 4.U,
-      io.branchExe.pcAddr
+      hasException,
+      Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
+      Mux(
+        isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
+        io.instInfoPorts.head.pc + 4.U,
+        io.branchExe.pcAddr
+      )
     )
   )
 
@@ -265,7 +271,7 @@ class Cu(
 
   io.difftest match {
     case Some(dt) =>
-      dt.cmt_ertn       := RegNext(ertnFlush)
+      dt.cmt_ertn       := RegNext(isErtn)
       dt.cmt_excp_flush := RegNext(hasException)
     case _ =>
   }
