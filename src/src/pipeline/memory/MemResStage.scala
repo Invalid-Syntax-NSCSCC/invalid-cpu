@@ -9,14 +9,16 @@ import pipeline.common.BaseStage
 import spec._
 
 class MemResNdPort extends Bundle {
-  val isPipelined  = Bool()
-  val isInstantReq = Bool()
-  val isCached     = Bool()
-  val isUnsigned   = Bool()
-  val isRead       = Bool()
-  val dataMask     = UInt((Width.Mem._data / byteLength).W)
-  val gprAddr      = UInt(Width.Reg.addr)
-  val instInfo     = new InstInfoNdPort
+  val isAtomicStore           = Bool()
+  val isAtomicStoreSuccessful = Bool()
+  val isPipelined             = Bool()
+  val isInstantReq            = Bool()
+  val isCached                = Bool()
+  val isUnsigned              = Bool()
+  val isRead                  = Bool()
+  val dataMask                = UInt((Width.Mem._data / byteLength).W)
+  val gprAddr                 = UInt(Width.Reg.addr)
+  val instInfo                = new InstInfoNdPort
 }
 
 object MemResNdPort {
@@ -39,7 +41,7 @@ class MemResStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.gprWrite.en   := selectedIn.isRead && selectedIn.isInstantReq
+  out.gprWrite.en   := (selectedIn.isRead && selectedIn.isInstantReq) || selectedIn.isAtomicStore
   out.gprWrite.addr := selectedIn.gprAddr
   out.instInfo      := selectedIn.instInfo
 
@@ -70,6 +72,10 @@ class MemResStage
   unsignedReadData := readDataLookup(_.asUInt)
   when(selectedIn.isRead && selectedIn.isInstantReq) {
     out.gprWrite.data := Mux(selectedIn.isUnsigned, unsignedReadData, signedReadData.asUInt)
+  }
+
+  when(selectedIn.isAtomicStore) {
+    out.gprWrite.data := selectedIn.isAtomicStoreSuccessful.asUInt
   }
 
   val isLastHasReq = RegNext(false.B, false.B)

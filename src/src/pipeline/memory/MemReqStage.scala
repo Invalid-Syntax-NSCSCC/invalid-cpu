@@ -12,11 +12,13 @@ import pipeline.memory.enums.CacheMaintenanceTargetType
 import spec._
 
 class MemReqNdPort extends Bundle {
-  val translatedMemReq = new MemRequestNdPort
-  val isCached         = Bool()
-  val gprAddr          = UInt(Width.Reg.addr)
-  val instInfo         = new InstInfoNdPort
-  val cacheMaintenance = new CacheMaintenanceInstNdPort
+  val isAtomicStore           = new Bool()
+  val isAtomicStoreSuccessful = new Bool()
+  val translatedMemReq        = new MemRequestNdPort
+  val isCached                = Bool()
+  val gprAddr                 = UInt(Width.Reg.addr)
+  val instInfo                = new InstInfoNdPort
+  val cacheMaintenance        = new CacheMaintenanceInstNdPort
 }
 
 object MemReqNdPort {
@@ -42,14 +44,16 @@ class MemReqStage
   val out  = resultOutReg.bits
 
   // Fallback output
-  out.instInfo     := selectedIn.instInfo
-  out.gprAddr      := selectedIn.gprAddr
-  out.isUnsigned   := selectedIn.translatedMemReq.read.isUnsigned
-  out.isCached     := selectedIn.isCached
-  out.dataMask     := selectedIn.translatedMemReq.mask
-  out.isInstantReq := selectedIn.translatedMemReq.isValid
-  out.isRead       := true.B
-  out.isPipelined  := true.B
+  out.instInfo                := selectedIn.instInfo
+  out.gprAddr                 := selectedIn.gprAddr
+  out.isUnsigned              := selectedIn.translatedMemReq.read.isUnsigned
+  out.isCached                := selectedIn.isCached
+  out.dataMask                := selectedIn.translatedMemReq.mask
+  out.isInstantReq            := selectedIn.translatedMemReq.isValid
+  out.isAtomicStore           := selectedIn.isAtomicStore
+  out.isAtomicStoreSuccessful := selectedIn.isAtomicStoreSuccessful
+  out.isRead                  := true.B
+  out.isPipelined             := true.B
 
   // Fallback peer
   peer.dCacheReq.client                 := selectedIn.translatedMemReq
@@ -99,12 +103,14 @@ class MemReqStage
       is(ReadWriteSel.write) {
         out.isInstantReq := false.B
 
-        // Whether last memory request is submitted and not committing store
-        when(io.out.ready) {
-          storeIn.valid := true.B
-          isComputed    := storeIn.ready
-        }.otherwise {
-          isComputed := false.B
+        when(!selectedIn.isAtomicStore || selectedIn.isAtomicStoreSuccessful) {
+          // Whether last memory request is submitted and not committing store
+          when(io.out.ready) {
+            storeIn.valid := true.B
+            isComputed    := storeIn.ready
+          }.otherwise {
+            isComputed := false.B
+          }
         }
       }
     }

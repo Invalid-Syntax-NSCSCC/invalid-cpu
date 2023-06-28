@@ -17,6 +17,7 @@ import spec.Param.isDiffTest
 import scala.collection.immutable
 
 class AddrTransNdPort extends Bundle {
+  val isAtomicStore    = Bool()
   val memRequest       = new MemRequestNdPort
   val gprAddr          = UInt(Width.Reg.addr)
   val instInfo         = new InstInfoNdPort
@@ -50,11 +51,13 @@ class AddrTransStage
   tlbBlockingReg := tlbBlockingReg
 
   // Fallback output
-  out.instInfo         := selectedIn.instInfo
-  out.gprAddr          := selectedIn.gprAddr
-  out.translatedMemReq := selectedIn.memRequest
-  out.cacheMaintenance := selectedIn.cacheMaintenance
-  out.isCached         := false.B // Fallback: Uncached
+  out.instInfo                := selectedIn.instInfo
+  out.gprAddr                 := selectedIn.gprAddr
+  out.translatedMemReq        := selectedIn.memRequest
+  out.cacheMaintenance        := selectedIn.cacheMaintenance
+  out.isAtomicStore           := selectedIn.isAtomicStore
+  out.isAtomicStoreSuccessful := selectedIn.memRequest.isValid
+  out.isCached                := false.B // Fallback: Uncached
 
   // DMW mapping
   val directMapVec = Wire(
