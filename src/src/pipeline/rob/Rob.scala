@@ -136,10 +136,8 @@ class Rob(
           deqPort.ready := commit.ready &&
             !io.commits(idx - 1).bits.instInfo.forbidParallelCommit &&
             !deqPort.bits.wbPort.instInfo.forbidParallelCommit &&
-            // (deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none) &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
-            // (io.commits(idx - 1).bits.instInfo.exceptionPos === ExceptionPos.none) &&
             !hasInterruptReg &&
             !io.hasInterrupt
         }
