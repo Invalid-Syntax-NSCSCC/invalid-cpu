@@ -287,7 +287,11 @@ class IssueStage(
         io.peer.get.csrReadPort.en   := deqPort.bits.regReadPort.preExeInstInfo.csrReadEn
         io.peer.get.csrReadPort.addr := deqPort.bits.regReadPort.preExeInstInfo.csrAddr
         when(deqPort.bits.regReadPort.preExeInstInfo.csrReadEn) {
-          out.bits.csrData := io.peer.get.csrReadPort.data
+          out.bits.csrData := Mux(
+            deqPort.bits.regReadPort.preExeInstInfo.csrAddr(31),
+            0.U,
+            io.peer.get.csrReadPort.data
+          )
         }
       }
 
