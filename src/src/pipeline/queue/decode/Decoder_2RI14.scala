@@ -56,7 +56,7 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprReadPorts(0).addr := rj
       outInfo.gprWritePort.en      := rdIsNotZero // true.B
       outInfo.gprWritePort.addr    := rd
-      outInfo.loadStoreImm         := immSext.asUInt
+      outInfo.loadStoreImm         := immSext.asUInt << 2
     }
     is(Inst.sc) {
       io.out.isMatched             := true.B
@@ -68,7 +68,7 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprReadPorts(1).addr := rd
       outInfo.gprWritePort.en      := true.B
       outInfo.gprWritePort.addr    := rd
-      outInfo.loadStoreImm         := immSext.asUInt
+      outInfo.loadStoreImm         := immSext.asUInt << 2
     }
     // csr读写指令
     is(Inst.csr_) {
