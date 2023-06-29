@@ -129,7 +129,19 @@ module core_top (
     wire    [31:0]  regs[31:0]          ;
 `endif
 
-    assign wid = 4'd0;
+    // Fit with AXI 3
+    reg [3:0] awid_last;
+    always @* begin
+        if (~aresetn) begin
+            awid_last <= 4'b0;
+        end else if (awvalid) begin
+            awid_last <= awid;
+        end else begin
+            awid_last <= awid_last;
+        end
+    end
+    assign wid = awvalid ? awid : awid_last;
+
     CoreCpuTop coreCpuTop (
         .clock                  (aclk       ),
         .reset                  (!aresetn   ),
