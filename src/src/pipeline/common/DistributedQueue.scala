@@ -28,6 +28,11 @@ class DistributedQueue[ElemT <: Data](
     val deq_ptr       = Output(UInt(log2Ceil(channelNum).W))
   })
 
+  // Fallback
+  io.dequeuePorts.foreach(_ <> DontCare)
+  io.enqueuePorts.foreach(_.ready := false.B)
+  io.dequeuePorts.foreach(_.valid := false.B)
+
   val storeIns = Wire(Vec(channelNum, (DecoupledIO(elemNdFactory))))
   val storeOuts = VecInit(storeIns.zipWithIndex.map {
     case (in, idx) =>

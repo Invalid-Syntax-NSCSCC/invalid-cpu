@@ -2,17 +2,14 @@ BUILD_DIR = ./build
 
 export PATH := $(abspath ./utils):$(PATH)
 
-all: verilog
+all: clean verilog
 
 test:
 	./millw -i __.test
 
 verilog:
-	mkdir -p $(BUILD_DIR)
-	./millw -i __.test.runMain Elaborate -td $(BUILD_DIR)
-	# sh scripts/modify_verilog.sh $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/final
-	cp $(BUILD_DIR)/CoreCpuTop.v $(BUILD_DIR)/final/
+	./millw -i __.test.runMain Elaborate
 	cp -f ./verilog/* $(BUILD_DIR)/final/
 
 chiplab:
