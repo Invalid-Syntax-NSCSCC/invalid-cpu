@@ -182,11 +182,11 @@ class Cu(
   }
 
   // llbit control
-  val line0Is_ll = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.ll)
-  val line0Is_sc = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.sc)
-  io.csrMessage.llbitSet.en := (line0Is_ll || line0Is_sc) && !isException
+  val isLoadLinked       = WireDefault(majorInstInfo.exeOp === ExeInst.Op.ll)
+  val isStoreConditional = WireDefault(majorInstInfo.exeOp === ExeInst.Op.sc)
+  io.csrMessage.llbitSet.en := (isLoadLinked || isStoreConditional) && !isException
   // ll -> 1, sc -> 0
-  io.csrMessage.llbitSet.setValue := line0Is_ll
+  io.csrMessage.llbitSet.setValue := isLoadLinked
 
   // Handle TLB maintenance
   val isTlbMaintenance = majorInstInfo.isTlb && majorInstInfo.isValid && !isException
