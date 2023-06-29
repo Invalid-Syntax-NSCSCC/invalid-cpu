@@ -364,7 +364,7 @@ class Csr(
   val tlbExceptionWriteIndex = OHToUInt(io.tlbExceptionWritePorts.map(_.valid))
   val tlbExceptionWriteBits  = io.tlbExceptionWritePorts(tlbExceptionWriteIndex).bits
   when(tlbExceptionWriteValid) {
-    tlbehi.in.vppn := tlbExceptionWriteBits.vppn
+    tlbehi.in.vppn := io.csrMessage.badVAddrSet.addr(31, 13) // tlbExceptionWriteBits.vppn
   }
 
   // TLB maintenance write

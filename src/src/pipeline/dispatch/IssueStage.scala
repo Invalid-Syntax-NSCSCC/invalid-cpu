@@ -285,7 +285,7 @@ class IssueStage(
       out.bits.jumpBranchAddr := deqPort.bits.regReadPort.preExeInstInfo.jumpBranchAddr
       if (idx == Param.csrIssuePipelineIndex) {
         io.peer.get.csrReadPort.en   := deqPort.bits.regReadPort.preExeInstInfo.csrReadEn
-        io.peer.get.csrReadPort.addr := deqPort.bits.regReadPort.preExeInstInfo.csrAddr
+        io.peer.get.csrReadPort.addr := deqPort.bits.regReadPort.preExeInstInfo.csrAddr(13, 0)
         when(deqPort.bits.regReadPort.preExeInstInfo.csrReadEn) {
           out.bits.csrData := Mux(
             deqPort.bits.regReadPort.preExeInstInfo.csrAddr(31),
