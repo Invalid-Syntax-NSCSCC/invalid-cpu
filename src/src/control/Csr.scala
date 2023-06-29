@@ -332,7 +332,7 @@ class Csr(
   }
 
   // estat
-  estat.in.is_hardwareInt := io.csrMessage.hardWareInetrrupt
+  estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
   when(io.csrMessage.exceptionFlush) {
     estat.in.ecode    := io.csrMessage.ecodeBundle.ecode
     estat.in.esubcode := io.csrMessage.ecodeBundle.esubcode
@@ -364,7 +364,7 @@ class Csr(
   val tlbExceptionWriteIndex = OHToUInt(io.tlbExceptionWritePorts.map(_.valid))
   val tlbExceptionWriteBits  = io.tlbExceptionWritePorts(tlbExceptionWriteIndex).bits
   when(tlbExceptionWriteValid) {
-    tlbehi.in.vppn := tlbExceptionWriteBits.vppn
+    tlbehi.in.vppn := io.csrMessage.badVAddrSet.addr(31, 13) // tlbExceptionWriteBits.vppn
   }
 
   // TLB maintenance write
@@ -389,7 +389,7 @@ class Csr(
 
   // 中断
   // la 最高位空出来了一位
-  estat.in.is_hardwareInt := io.csrMessage.hardWareInetrrupt
+  estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
 
   val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)

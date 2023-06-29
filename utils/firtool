@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ARGS='-O=release --dedup --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --disable-all-randomization --split-verilog -o build/final/'
+ARGS='-O=release --dedup --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --disable-all-randomization --lowering-options disallowLocalVariables --split-verilog -o build/final/'
 
 # Workaround
 for arg do

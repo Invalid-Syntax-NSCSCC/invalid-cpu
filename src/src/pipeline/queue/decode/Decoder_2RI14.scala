@@ -56,7 +56,7 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprReadPorts(0).addr := rj
       outInfo.gprWritePort.en      := rdIsNotZero // true.B
       outInfo.gprWritePort.addr    := rd
-      outInfo.loadStoreImm         := immSext.asUInt
+      outInfo.loadStoreImm         := immSext.asUInt << 2
     }
     is(Inst.sc) {
       io.out.isMatched             := true.B
@@ -68,13 +68,13 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprReadPorts(1).addr := rd
       outInfo.gprWritePort.en      := true.B
       outInfo.gprWritePort.addr    := rd
-      outInfo.loadStoreImm         := immSext.asUInt
+      outInfo.loadStoreImm         := immSext.asUInt << 2
     }
     // csr读写指令
     is(Inst.csr_) {
-      io.out.isMatched  := csrAddrValid
+      io.out.isMatched  := true.B
       outInfo.exeSel    := ExeInst.Sel.none
-      outInfo.csrAddr   := csrAddr
+      outInfo.csrAddr   := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
       outInfo.csrReadEn := true.B
       outInfo.needCsr   := true.B
       when(rj === "b00000".U) { // csrrd csr -> rd
@@ -87,7 +87,7 @@ class Decoder_2RI14 extends Decoder {
         outInfo.gprReadPorts(0).addr := rd
         outInfo.gprWritePort.en      := rdIsNotZero
         outInfo.gprWritePort.addr    := rd
-        outInfo.csrWriteEn           := true.B
+        outInfo.csrWriteEn           := csrAddrValid
       }.otherwise {
         outInfo.exeOp                := ExeInst.Op.csrxchg
         outInfo.gprReadPorts(0).en   := true.B
@@ -96,7 +96,7 @@ class Decoder_2RI14 extends Decoder {
         outInfo.gprReadPorts(1).addr := rj
         outInfo.gprWritePort.en      := rdIsNotZero
         outInfo.gprWritePort.addr    := rd
-        outInfo.csrWriteEn           := true.B
+        outInfo.csrWriteEn           := csrAddrValid
       }
     }
   }

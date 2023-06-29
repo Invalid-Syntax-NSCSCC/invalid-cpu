@@ -78,17 +78,18 @@ class MemResStage
     out.gprWrite.data := selectedIn.isAtomicStoreSuccessful.asUInt
   }
 
-  val isLastHasReq = RegNext(false.B, false.B)
+  val isLastHasUnfinishedReq = RegNext(false.B, false.B)
 
   when(selectedIn.instInfo.isValid) {
     // Whether memory access complete
     when(selectedIn.isInstantReq) {
       when(selectedIn.isCached) {
-        isComputed := peer.dCacheRes.isComplete
+        isComputed             := peer.dCacheRes.isComplete
+        isLastHasUnfinishedReq := !peer.dCacheRes.isComplete
       }.otherwise {
-        isComputed := peer.uncachedRes.isComplete
+        isComputed             := peer.uncachedRes.isComplete
+        isLastHasUnfinishedReq := !peer.uncachedRes.isComplete
       }
-      isLastHasReq := true.B
     }
 
     // Submit result
@@ -98,7 +99,7 @@ class MemResStage
   val shouldDiscardReg = RegInit(false.B)
   shouldDiscardReg := shouldDiscardReg
 
-  when(io.isFlush && isLastHasReq && !(peer.dCacheRes.isComplete || peer.uncachedRes.isComplete)) {
+  when(io.isFlush && isLastHasUnfinishedReq && !(peer.dCacheRes.isComplete || peer.uncachedRes.isComplete)) {
     shouldDiscardReg := true.B
   }
 

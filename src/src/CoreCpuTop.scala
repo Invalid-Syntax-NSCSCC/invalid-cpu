@@ -2,7 +2,7 @@ import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
 import common.{Pc, RegFile}
-import control.{Csr, Cu, StableCounter}
+import control.{Csr, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
@@ -13,6 +13,7 @@ import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
 import spec.Param.isDiffTest
+import control.Cu
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -293,7 +294,7 @@ class CoreCpuTop extends Module {
   cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
   cu.io.branchCommit := rob.io.branchCommit
 
-  cu.io.hardWareInetrrupt := io.intrpt
+  cu.io.hardwareInterrupt := io.intrpt
   cu.io.csrFlushRequest   := csr.io.csrFlushRequest
 
   // CSR
