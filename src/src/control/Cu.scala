@@ -38,13 +38,8 @@ class Cu(
     val branchCommit = Input(Bool())
     // `Cu` -> `Pc`
     val newPc = Output(new PcSetNdPort)
-    <<<<<<< HEAD
     // `CsrScoreBoard` -> `Cu`
     val csrWriteInfo = Input(new CsrWriteNdPort)
-    =======
-    // `Cu` <-> `StableCounter`
-    val stableCounterReadPort = Flipped(new StableCounterReadPort)
-    >>>>>>>.ded5cb5(fix: clutters in CU)
 
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
@@ -68,11 +63,6 @@ class Cu(
   val majorInstInfo = io.instInfoPorts.head
   val isException   = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
-  <<<<<<<.HEAD(=======)
-  // Stable counter
-  io.stableCounterReadPort.exeOp := majorInstInfo.exeOp
-
-  >>>>>>>.ded5cb5(fix: clutters in CU)
   // Write GPR
   io.gprWritePassThroughPorts.out.zip(io.gprWritePassThroughPorts.in).foreach {
     case (dst, src) =>
@@ -80,35 +70,16 @@ class Cu(
   }
   when(isException) {
     io.gprWritePassThroughPorts.out.foreach(_.en := false.B)
-    <<<<<<<.HEAD(=======)
-  }.elsewhen(io.stableCounterReadPort.isMatch) {
-    io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
-    >>>>>>>.ded5cb5(fix: clutters in CU)
   }
 
   // Hardware interrupt
   io.csrMessage.hardwareInterrupt := io.hardwareInterrupt
 
   // CSR write by instruction
-  <<<<<<<.HEAD(
-    io.csrWritePorts.head.en
-  )                          := majorInstInfo.isCsrWrite && majorInstInfo.isValid && !isException && io.csrWriteInfo.en
+  io.csrWritePorts.head.en   := majorInstInfo.isCsrWrite && majorInstInfo.isValid && !isException && io.csrWriteInfo.en
   io.csrWritePorts.head.addr := io.csrWriteInfo.addr
   io.csrWritePorts.head.data := io.csrWriteInfo.data
 
-  // CSR write by exception
-
-  =======
-  io.csrWritePorts.zip(io.instInfoPorts).foreach {
-    case (dst, src) =>
-      dst.en   := src.csrWritePort.en && src.isValid && !isException
-      dst.addr := src.csrWritePort.addr
-      dst.data := src.csrWritePort.data
-  }
-
-  // CSR write by exception
-
-  >>>>>>>.ded5cb5(fix: clutters in CU)
   io.csrMessage.exceptionFlush := isException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
@@ -200,24 +171,15 @@ class Cu(
   }
 
   // llbit control
-  <<<<<<< HEAD
   val isLoadLinked       = WireDefault(majorInstInfo.exeOp === ExeInst.Op.ll)
   val isStoreConditional = WireDefault(majorInstInfo.exeOp === ExeInst.Op.sc)
   io.csrMessage.llbitSet.en := (isLoadLinked || isStoreConditional) && majorInstInfo.isValid && !isException
-  =======
-  val line0Is_ll = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.ll)
-  val line0Is_sc = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.sc)
-  io.csrMessage.llbitSet.en := (line0Is_ll || line0Is_sc) && !isException
-  >>>>>>>.ded5cb5(fix: clutters in CU)
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := isLoadLinked
 
   // Handle TLB maintenance
   val isTlbMaintenance = majorInstInfo.isTlb && majorInstInfo.isValid && !isException
-  <<<<<<<.HEAD(io.tlbMaintenanceCsrWriteValid) := RegNext(isTlbMaintenance, false.B)
-  =======
-  io.tlbMaintenanceCsrWriteValid := isTlbMaintenance
-  >>>>>>>.ded5cb5(fix: clutters in CU)
+  io.tlbMaintenanceCsrWriteValid := RegNext(isTlbMaintenance, false.B)
 
   // Handle TLB exception
   io.tlbExceptionCsrWriteValidVec.foreach(_ := false.B)
