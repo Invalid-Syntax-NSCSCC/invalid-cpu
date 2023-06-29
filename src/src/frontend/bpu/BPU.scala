@@ -118,7 +118,7 @@ class BPU(
 
   // debug
   val bpuPc         = RegInit(0.U(addr.W))
-  val ftbBranchType = RegInit(0.U(2.W))
+  val ftbBranchType = RegInit(0.U(Param.BPU.BranchType.width.W))
   bpuPc         := io.bpuFtqPort.ftqP0.startPc
   ftbBranchType := ftbEntryReg.branchType
 

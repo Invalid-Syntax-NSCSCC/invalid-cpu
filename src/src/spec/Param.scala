@@ -168,6 +168,8 @@ object Param {
       val call   = next
       val ret    = next
       val uncond = next
+
+      def width = log2Ceil(count + 1)
     }
   }
 
