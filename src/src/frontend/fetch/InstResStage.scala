@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import memory.bundles.MemResponseNdPort
 import pipeline.common.BaseStage
-import pipeline.dispatch.bundles.InstInfoBundle
+import pipeline.dispatch.bundles.FetchInstInfoBundle
 import spec.Width
 
 class InstResNdPort extends Bundle {
@@ -22,13 +22,13 @@ class InstResPeerPort extends Bundle {
 }
 
 class InstEnqueuePort extends Bundle {
-  val instInfo = new InstInfoBundle
+  val instInfo = new FetchInstInfoBundle
 }
 
 class InstResStage
     extends BaseStage(
       new InstResNdPort,
-      new InstInfoBundle,
+      new FetchInstInfoBundle,
       InstResNdPort.default,
       Some(new InstResPeerPort)
     ) {

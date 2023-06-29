@@ -5,7 +5,7 @@ import chisel3.util._
 import control.enums.ExceptionPos
 import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.DistributedQueue
-import pipeline.dispatch.bundles.InstInfoBundle
+import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode._
 import spec._
@@ -23,7 +23,7 @@ class MultiInstQueue(
     val isFrontendFlush = Input(Bool())
     val isBackendFlush  = Input(Bool())
 
-    val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new InstInfoBundle)))
+    val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new FetchInstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
@@ -46,8 +46,8 @@ class MultiInstQueue(
       issueNum,
       channelNum,
       queueLength / channelNum,
-      new InstInfoBundle,
-      InstInfoBundle.default
+      new FetchInstInfoBundle,
+      FetchInstInfoBundle.default
     )
   )
 

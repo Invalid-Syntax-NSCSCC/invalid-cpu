@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import control.bundles.PipelineControlNdPort
 import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.dispatch.bundles.InstInfoBundle
+import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode._
 import spec._
@@ -13,7 +13,7 @@ class InstQueue(val queueLength: Int = Param.instQueueLength) extends Module {
   val io = IO(new Bundle {
     // val isFlush     = Input(Bool())
     val pipelineControlPort = Input(new PipelineControlNdPort)
-    val enqueuePort         = Flipped(Decoupled(new InstInfoBundle))
+    val enqueuePort         = Flipped(Decoupled(new FetchInstInfoBundle))
 
     // `InstQueue` -> `IssueStage`
     // val dequeuePort = Decoupled(new InstInfoBundle)
@@ -26,7 +26,7 @@ class InstQueue(val queueLength: Int = Param.instQueueLength) extends Module {
   // val queue =
   // Queue(io.enqueuePort, entries = queueLength, pipe = false, flow = true, flush = Some(io.pipelineControlPort.flush))
 
-  val ram       = RegInit(VecInit(Seq.fill(queueLength)(InstInfoBundle.default)))
+  val ram       = RegInit(VecInit(Seq.fill(queueLength)(FetchInstInfoBundle.default)))
   val enq_ptr   = Counter(queueLength)
   val deq_ptr   = Counter(queueLength)
   val maybeFull = RegInit(false.B)

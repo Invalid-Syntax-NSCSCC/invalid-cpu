@@ -3,7 +3,7 @@ package frontend
 import chisel3._
 import chisel3.util._
 import frontend.bundles.ICacheAccessPort
-import pipeline.dispatch.bundles.InstInfoBundle
+import pipeline.dispatch.bundles.FetchInstInfoBundle
 import spec.Param.{NaiiveFetchStageState => State}
 import spec._
 
@@ -17,10 +17,10 @@ class InstFetchStage extends Module {
 
     // <-> Frontend <-> Instrution queue
     val isFlush         = Input(Bool())
-    val instEnqueuePort = Decoupled(new InstInfoBundle)
+    val instEnqueuePort = Decoupled(new FetchInstInfoBundle)
   })
 
-  io.instEnqueuePort.bits := InstInfoBundle.default
+  io.instEnqueuePort.bits := FetchInstInfoBundle.default
 
   io.instEnqueuePort.bits.pcAddr := io.pc
   io.instEnqueuePort.bits.inst   := io.accessPort.res.read.data
