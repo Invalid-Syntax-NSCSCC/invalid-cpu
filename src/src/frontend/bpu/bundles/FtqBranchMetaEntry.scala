@@ -13,5 +13,5 @@ class FtqBranchMetaEntry(
 }
 
 object FtqBranchMetaEntry {
-  def default = 0.U.asTypeOf(FtqBranchMetaEntry)
+  def default = 0.U.asTypeOf(new FtqBranchMetaEntry)
 }
