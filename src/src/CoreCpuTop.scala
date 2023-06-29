@@ -2,7 +2,7 @@ import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
 import common.{Pc, RegFile}
-import control.{Csr, Cu, StableCounter}
+import control.{Csr, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
@@ -13,7 +13,7 @@ import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
 import spec.Param.isDiffTest
-import control.NewCu
+import control.Cu
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -108,7 +108,7 @@ class CoreCpuTop extends Module {
   val exePassWbStages  = Seq(exePassWbStage_1, exePassWbStage_2)
   val commitStage      = Module(new CommitStage)
   val rob              = Module(new Rob)
-  val cu               = Module(new NewCu)
+  val cu               = Module(new Cu)
   val csr              = Module(new Csr)
   val stableCounter    = Module(new StableCounter)
 
