@@ -55,7 +55,7 @@ class Lfsr(
       feedbackInput(i) := value(indicies(i))
     }
     // XNOR of taps and range extension to include all ones
-    feedback := (~(feedbackInput.xorR)) ^ (value(width - 2, 0).orR)
+    feedback := (!(feedbackInput.xorR)) ^ (value(width - 2, 0).orR)
   }
 
   when(io.en) {

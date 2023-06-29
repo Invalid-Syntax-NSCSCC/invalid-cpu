@@ -2,7 +2,7 @@ package frontend.bpu.components
 
 import chisel3._
 import chisel3.util._
-import frontend.bpu.components.Bundles.FtbEntryPort
+import frontend.bpu.components.Bundles.FtbEntryNdPort
 import frontend.bpu.utils.{Bram, Lfsr}
 import spec._
 import utils.BiPriorityMux
@@ -26,7 +26,7 @@ class FTB(
   val io = IO(new Bundle {
     // Query
     val queryPc        = Input(UInt(addr.W))
-    val queryEntryPort = Flipped(Decoupled(new FtbEntryPort))
+    val queryEntryPort = Output(new FtbEntryNdPort)
     val hitIndex       = Output(UInt(nway.W))
     val hit            = Output(Bool())
 
@@ -35,11 +35,11 @@ class FTB(
     val updateWayIndex  = Input(UInt(nway.W))
     val updateValid     = Input(Bool())
     val updateDirty     = Input(Bool())
-    val updateEntryPort = Decoupled(new FtbEntryPort)
+    val updateEntryPort = Input(new FtbEntryNdPort)
   })
 
   // Signals definition
-  val wayQueryEntryRegs = Vec(nway, new FtbEntryPort)
+  val wayQueryEntryRegs = Vec(nway, new FtbEntryNdPort)
   val wayHit            = WireDefault(0.U(nway.W))
   val wayHitIndex       = WireDefault(0.U(nwayWidth.W))
 
@@ -48,7 +48,7 @@ class FTB(
   val queryTagBuffer = WireDefault(0.U((addrWidth - nsetWidth).W))
   // Update
   val updateIndex     = WireDefault(0.U(nsetWidth.W))
-  val updateEntryPort = Reg(new FtbEntryPort)
+  val updateEntryPort = Reg(new FtbEntryNdPort)
   val updateWE        = WireDefault(0.U(nway.W))
   val randomR         = WireDefault(0.U(16.W))
 
@@ -100,7 +100,7 @@ class FTB(
   Seq
     .range(0, nway)
     .map(wayIdx => {
-      val bram = Module(new Bram(dataWidth = FtbEntryPort.bitsLength, dataDepthExp2 = nsetWidth))
+      val bram = Module(new Bram(dataWidth = FtbEntryNdPort.bitsLength, dataDepthExp2 = nsetWidth))
       bram.io.ena               := true.B
       bram.io.enb               := true.B
       bram.io.wea               := false.B

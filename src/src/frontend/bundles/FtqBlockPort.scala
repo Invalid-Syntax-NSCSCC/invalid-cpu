@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 class FtqBlockPort(
-  fetchWidth: Int = 4)
+  fetchWidth: Int = Param.fetchInstMaxNum)
     extends Bundle {
   val valid            = Output(Bool())
   val isCrossCacheline = Output(Bool())
@@ -16,7 +16,7 @@ class FtqBlockPort(
 }
 
 object FtqBlockPort {
-  val fetchWidth = 4
+  val fetchWidth = Param.fetchInstMaxNum
   def default = (new FtqBlockPort).Lit(
     _.valid -> false.B,
     _.isCrossCacheline -> false.B,
