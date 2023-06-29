@@ -16,26 +16,26 @@ class InstAddrTransPeerPort extends Bundle {
 
 class InstAddrTransStage extends Module {
   val io = IO(new Bundle {
-    val isFlush    = Input(Bool())
-    val isPcUpdate = Input(Bool())
-    val pc         = Input(UInt(Width.Mem.addr))
-    val out        = Decoupled(new InstReqNdPort)
-    val peer       = new InstAddrTransPeerPort
+    val isFlush       = Input(Bool())
+    val isPcUpdate    = Input(Bool())
+    val pc            = Input(UInt(Width.Mem.addr))
+    val isBlockPcNext = Output(Bool())
+    val out           = Decoupled(new InstReqNdPort)
+    val peer          = new InstAddrTransPeerPort
   })
 
   val peer = io.peer
 
-  val outReg           = RegInit(InstReqNdPort.default)
   val isAdef           = WireDefault(io.pc(1, 0).orR) // PC is not aligned
-  val hasSendException = RegInit(false.B)
+  val outReg           = RegInit(InstReqNdPort.default)
+  val hasSentException = RegInit(false.B)
+  hasSentException := hasSentException
+  val isLastSent    = RegNext(true.B, true.B)
+  val isOutputValid = RegNext(io.isPcUpdate || !isLastSent, false.B)
 
-  io.out.bits := outReg
-  io.out.valid := !hasSendException // when has an exception send one exception to backend and stall; otherwise keep send
-  when(outReg.exception.valid) {
-    hasSendException := true.B
-  }
-
-  val isLastSent = RegNext(true.B, true.B)
+  io.out.valid     := isOutputValid
+  io.out.bits      := outReg
+  io.isBlockPcNext := hasSentException
 
   // Fallback output
   outReg.pc                       := io.pc
@@ -45,9 +45,13 @@ class InstAddrTransStage extends Module {
 
   // Handle exception
   def handleException(): Unit = {
-    outReg.exception.valid := isAdef || peer.tlbTrans.exception.valid
+    val isExceptionValid = isAdef || peer.tlbTrans.exception.valid
+    outReg.exception.valid := isExceptionValid
     when(peer.tlbTrans.exception.valid && !isAdef) {
       outReg.exception.bits := peer.tlbTrans.exception.bits
+    }
+    when(isExceptionValid) {
+      hasSentException := true.B
     }
   }
 
@@ -131,7 +135,7 @@ class InstAddrTransStage extends Module {
     outReg.translatedMemReq.isValid      := false.B
     io.out.bits.translatedMemReq.isValid := false.B
     isLastSent                           := true.B
-    hasSendException                     := false.B
+    hasSentException                     := false.B
   }
   when(isLastFlushReg) {
     io.out.valid := false.B

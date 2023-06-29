@@ -26,7 +26,6 @@ class InstFetch extends Module {
     val tlbTrans = Flipped(new TlbTransPort)
     // <-> Frontend <-> csr
     val csr = Input(new MemCsrNdPort)
-
   })
 
   val isFirstSentReg = RegInit(false.B)
@@ -59,5 +58,5 @@ class InstFetch extends Module {
     p.memRes <> io.accessPort.res
   }
 
-  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg
+  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg && !addrTransStage.io.isBlockPcNext
 }
