@@ -36,6 +36,11 @@ class Decoder_3R extends Decoder {
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
 
+  io.out.info.issueEn.zipWithIndex.foreach {
+    case (en, idx) =>
+      en := (idx == Param.csrIssuePipelineIndex).B
+  }
+
   switch(opcode) {
     is(Inst.idle) {
       io.out.isMatched := true.B
@@ -45,6 +50,10 @@ class Decoder_3R extends Decoder {
       outInfo.exeSel          := ExeInst.Sel.jumpBranch
     }
     is(Inst.invtlb) {
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
       when(invtlbOp <= 6.U) {
         io.out.isMatched          := true.B
         outInfo.exeOp             := ExeInst.Op.invtlb

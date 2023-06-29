@@ -47,6 +47,11 @@ class Decoder_2RI16 extends Decoder {
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
 
+  io.out.info.issueEn.zipWithIndex.foreach {
+    case (en, idx) =>
+      en := (idx == Param.jumpBranchPipelineIndex).B
+  }
+
   switch(opcode) {
     is(Inst.b_) {
       outInfo.gprReadPorts(0).en   := false.B

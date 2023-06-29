@@ -16,6 +16,11 @@ class Decoder_2R extends Decoder {
 
   io.out.info.isHasImm := false.B
 
+  io.out.info.issueEn.zipWithIndex.foreach {
+    case (en, idx) =>
+      en := (idx == Param.csrIssuePipelineIndex).B
+  }
+
   switch(opcode) {
     is(Inst.rdcnt_id_vl) {
       io.out.isMatched    := true.B

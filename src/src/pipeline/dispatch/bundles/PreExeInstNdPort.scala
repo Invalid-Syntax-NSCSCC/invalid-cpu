@@ -37,6 +37,8 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 
   val needCsr = Bool()
   val isTlb   = Bool()
+
+  val issueEn = Vec(Param.pipelineNum, Bool())
   // TODO: Signals in this port is not sufficient
 }
 
@@ -52,6 +54,7 @@ object PreExeInstNdPort {
     _.jumpBranchAddr -> zeroWord,
     _.csrReadEn -> false.B,
     _.csrWriteEn -> false.B,
-    _.isTlb -> false.B
+    _.isTlb -> false.B,
+    _.issueEn -> Vec.Lit(Seq.fill(Param.pipelineNum)(false.B): _*)
   )
 }

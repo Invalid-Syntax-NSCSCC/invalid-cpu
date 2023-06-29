@@ -41,6 +41,11 @@ class Decoder_2RI12 extends Decoder {
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
 
+  io.out.info.issueEn.zipWithIndex.foreach {
+    case (en, idx) =>
+      en := (idx != Param.loadStoreIssuePipelineIndex).B
+  }
+
   switch(opcode) {
     is(Inst.slti) {
       io.out.isMatched   := true.B
@@ -85,6 +90,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.ld_h) {
       io.out.isMatched         := true.B
@@ -92,6 +101,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.ld_w) {
       io.out.isMatched         := true.B
@@ -99,6 +112,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.ld_bu) {
       io.out.isMatched         := true.B
@@ -106,6 +123,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.ld_hu) {
       io.out.isMatched         := true.B
@@ -113,6 +134,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.st_b) {
       io.out.isMatched                 := true.B
@@ -124,6 +149,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.st_h) {
       io.out.isMatched                 := true.B
@@ -135,6 +164,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.st_w) {
       io.out.isMatched                 := true.B
@@ -146,6 +179,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.cacop) {
       io.out.isMatched            := true.B
@@ -155,6 +192,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.isHasImm        := true.B
       io.out.info.imm             := immSext.asUInt
       io.out.info.code            := rd
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.loadStoreIssuePipelineIndex).B
+      }
     }
     is(Inst.preld) {
       io.out.isMatched              := true.B

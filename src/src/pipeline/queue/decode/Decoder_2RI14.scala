@@ -47,6 +47,11 @@ class Decoder_2RI14 extends Decoder {
   io.out.info.imm            := DontCare
   io.out.info.jumpBranchAddr := DontCare
 
+  io.out.info.issueEn.zipWithIndex.foreach {
+    case (en, idx) =>
+      en := (idx == Param.loadStoreIssuePipelineIndex).B
+  }
+
   switch(opcode) {
     is(Inst.ll) {
       io.out.isMatched             := true.B
@@ -77,6 +82,10 @@ class Decoder_2RI14 extends Decoder {
       outInfo.csrAddr   := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
       outInfo.csrReadEn := true.B
       outInfo.needCsr   := true.B
+      io.out.info.issueEn.zipWithIndex.foreach {
+        case (en, idx) =>
+          en := (idx == Param.csrIssuePipelineIndex).B
+      }
       when(rj === "b00000".U) { // csrrd csr -> rd
         outInfo.exeOp             := ExeInst.Op.csrrd
         outInfo.gprWritePort.en   := rdIsNotZero // true.B
