@@ -294,7 +294,7 @@ class CoreCpuTop extends Module {
   cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
   cu.io.branchCommit := rob.io.branchCommit
 
-  cu.io.hardWareInetrrupt := io.intrpt
+  cu.io.hardwareInterrupt := io.intrpt
   cu.io.csrFlushRequest   := csr.io.csrFlushRequest
 
   // CSR
