@@ -5,50 +5,39 @@ import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
 import chisel3.experimental.Param
-import frontend.bundles.{BackendCommitPort, FtqBlockPort, FtqBpuMetaPort}
+import frontend.bundles.{BackendCommitPort, BpuFtqPort, FtqBlockPort, FtqBpuMetaPort}
 
 class FetchTargetQueen(
   val queueSize: Int = Param.BPU.ftqSize,
   val issueNum:  Int = Param.issueInstInfoMaxNum)
     extends Module {
+  // parameter
+  val ptrWidth = log2Ceil(queueSize)
+
   val io = IO(new Bundle {
-    // <-> Frontend
+    // <-> Frontend flush control
     val backendFlush      = Input(Bool())
-    val backendFlushFtqId = Input(UInt(log2Ceil(queueSize).W))
+    val backendFlushFtqId = Input(UInt(ptrWidth.W))
     val instFetchFlush    = Input(Bool())
-    val instFetchFtqId    = Input(UInt(log2Ceil(queueSize).W))
+    val instFetchFtqId    = Input(UInt(ptrWidth.W))
 
     // <-> BPU
-    val bpuP0           = Input(new FtqBlockPort)
-    val bpuP1           = Input(new FtqBlockPort)
-    val bpuMeta         = Input(new BpuFtqMetaPort)
-    val mainBpuRedirect = Input(Bool())
-    val bpuQueueFull    = Output(Bool())
-    val bpuMetaO        = Output(new FtqBpuMetaPort)
+    val bpuFtqPort = new BpuFtqPort
 
     // <-> Backend
-    val backendFtqMetaUpdateValid       = Input(Bool())
-    val backendFtqMetaUpdateFtbDirty    = Input(Bool())
-    val backendFtqMetaUpdateJumpTarget  = Input(UInt(spec.Width.Mem.addr))
-    val backendFtqMetaUpdateFallThrough = Input(UInt(spec.Width.Mem.addr))
-    val backendFtqUpdateMetaId          = Input(UInt(log2Ceil(queueSize).W))
-    val backendCommitBitMask            = Input(UInt(issueNum.W))
-    val backendCommitBlockBitmask       = Input(UInt(issueNum.W))
-    val backendCommitFtqId              = Input(UInt(log2Ceil(issueNum).W))
-    val backendCommitMeta               = Input(new BackendCommitPort)
+    val backendCommitPort = Input(new BackendCommitPort())
 
     // <-> Ex query port
-    val exQueryAddr = Input(UInt(queueSize.W))
+    val exQueryAddr = Input(UInt(ptrWidth.W))
     val exQueryPc   = Output(UInt(spec.Width.Mem.addr))
 
     // <-> IFU
     val ifuPort             = Output(new FtqBlockPort)
     val ifuFrontendRedirect = Output(Bool())
-    val ifuFtqId            = Output(UInt(queueSize.W))
+    val ifuFtqId            = Output(UInt(ptrWidth.W))
     val ifuAccept           = Input(Bool()) // Must return in the same cycle
   })
-  // parameter
-  val ptrWidth = log2Ceil(queueSize)
+
   // Signals
   val queueFull                = WireDefault(false.B)
   val queueFullDelay           = RegInit(false.B)
@@ -62,7 +51,7 @@ class FetchTargetQueen(
   val bpuPtr      = RegInit(0.U(ptrWidth.W))
   val ifuPtr      = RegInit(0.U(ptrWidth.W))
   val commPtr     = RegInit(0.U(ptrWidth.W))
-  val bpuPtrPlus1 = WireDefault(0.U(log2Ceil(queueSize).W))
+  val bpuPtrPlus1 = WireDefault(0.U(ptrWidth.W))
   bpuPtrPlus1 := bpuPtr + 1.U
 
   // Queue data structure
@@ -76,11 +65,11 @@ class FetchTargetQueen(
   val ftqBranchMetaVec  = Vec(queueSize, new FtqBranchMetaEntry)
 
   val backendCommitNum = WireInit(0.U(log2Ceil(issueNum).W))
-  backendCommitNum := io.backendCommitBitMask.asBools.map(_.asUInt).reduce(_ +& _)
+  backendCommitNum := io.backendCommitPort.commitBitMask.asBools.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
   ifuSendReq               := ftqVec(ifuPtr).valid & io.ifuAccept
-  mainBpuRedirectModifyFtq := io.bpuP1.valid
+  mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.valid
   ifuFrontendRedirect      := (bpuPtr === (ifuPtr + 1.U)) & mainBpuRedirectModifyFtq & (ifuSendReq | ifuSendReqDelay)
 
   // queue full
@@ -88,7 +77,7 @@ class FetchTargetQueen(
   queueFullDelay           := RegNext(queueFull)
   ifuSendReqDelay          := RegNext(ifuSendReq)
   ifuFrontendRedirectDelay := RegNext(ifuFrontendRedirect)
-  mainBpuRedirectDelay     := RegNext(io.mainBpuRedirect)
+  mainBpuRedirectDelay     := RegNext(io.bpuFtqPort.mainBpuRedirectValid)
 
   ftqVec := RegNext(ftqNextVec)
 
@@ -101,61 +90,62 @@ class FetchTargetQueen(
   // ptr
   io.ifuFtqId := ifuPtr
   // Backend committed,means that current commPtr block is done
-  commPtr := RegNext(commPtr + backendCommitNum)
+  commPtr := commPtr + backendCommitNum
   // If block is accepted by IF, ifuPtr++
   // IB full should result in FU not accepting FTQ input
   when(io.ifuAccept & ~io.ifuFrontendRedirect) {
-    ifuPtr := RegNext(ifuPtr + 1.U)
+    ifuPtr := ifuPtr + 1.U
   }
 
   // bpu ptr
-  when(io.bpuP0.valid) {
-    bpuPtr := RegNext(bpuPtr + 1)
-  }.elsewhen((io.mainBpuRedirect)) {
+  when(io.bpuFtqPort.ftqP0.valid) {
+    bpuPtr := bpuPtr + 1.U
+  }.elsewhen((io.bpuFtqPort.mainBpuRedirectValid)) {
     // p1 redirect,maintain bpuPtr
-    bpuPtr := RegNext(bpuPtr)
+    bpuPtr := bpuPtr
   }
 
   // if IF predecoder found a redirect
   when(io.instFetchFlush) {
-    ifuPtr := RegNext(io.instFetchFtqId + 1.U)
-    bpuPtr := RegNext(io.instFetchFtqId + 1.U)
+    ifuPtr := io.instFetchFtqId + 1.U
+    bpuPtr := io.instFetchFtqId + 1.U
   }
   // if backend redirect triggered,back to the next block of the redirect block
   // backend may continue to commit older block
   when(io.backendFlush) {
-    ifuPtr := RegNext(io.backendFlushFtqId + 1.U)
-    bpuPtr := RegNext(io.backendFlushFtqId + 1.U)
+    ifuPtr := io.backendFlushFtqId + 1.U
+    bpuPtr := io.backendFlushFtqId + 1.U
   }
 
   // next FTQ
+  // Default no change
   ftqNextVec := ftqVec
 
   // clear out if committed
   for (i <- 0 to issueNum) {
     when(i.U < backendCommitNum) {
-      ftqNextVec(commPtr + 1.U) := 0.U
+      ftqNextVec(commPtr + i.U) := 0.U
     }
   }
 
   // Accept BPU input
   // p0
-  when(io.bpuP0.valid) {
-    ftqNextVec(bpuPtr) := io.bpuP0
+  when(io.bpuFtqPort.ftqP0.valid) {
+    ftqNextVec(bpuPtr) := io.bpuFtqPort.ftqP0
   }
   // p1
-  when(io.bpuP1.valid & ~mainBpuRedirectDelay) {
+  when(io.bpuFtqPort.ftqP1.valid & ~mainBpuRedirectDelay) {
     // If last cycle accepted P0 input
-    ftqNextVec(bpuPtr - 1.U) := io.bpuP1
-  }.elsewhen(io.bpuP1.valid) {
+    ftqNextVec(bpuPtr - 1.U) := io.bpuFtqPort.ftqP1
+  }.elsewhen(io.bpuFtqPort.ftqP1.valid) {
     // else no override
-    ftqNextVec(bpuPtr) := io.bpuP1
+    ftqNextVec(bpuPtr) := io.bpuFtqPort.ftqP1
   }
 
   // if predecoder redirect triggered,clear the committed and predicted entry
   when(io.instFetchFlush) {
     for (i <- 0 to queueSize) {
-      when(i.asUInt - commPtr >= i.asUInt - io.instFetchFtqId) {
+      when(i.U(ptrWidth.W) - commPtr >= i.U(ptrWidth.W) - io.instFetchFtqId) {
         ftqNextVec(i) := 0.U
       }
     }
@@ -163,7 +153,9 @@ class FetchTargetQueen(
   // if backend redirect triggered,clear the committed and predicted entry
   when(io.backendFlush) {
     for (i <- 0 to queueSize) {
-      when(i.U - commPtr >= i.U - io.backendFlushFtqId && i.U =/= io.backendFlushFtqId) {
+      when(
+        i.U(ptrWidth.W) - commPtr >= i.U(ptrWidth.W) - io.backendFlushFtqId && i.U(ptrWidth.W) =/= io.backendFlushFtqId
+      ) {
         ftqNextVec(i) := 0.U
       }
     }
@@ -185,45 +177,48 @@ class FetchTargetQueen(
   io.exQueryPc := ftqVec(io.exQueryAddr).startPc
 
   // -> BPU
-  io.bpuQueueFull := queueFull
+  io.bpuFtqPort.ftqFull := queueFull
 
   // training meta to BPU
-  when(io.backendCommitBlockBitmask(0) & io.backendCommitMeta.isBranch) {
+  io.bpuFtqPort.ftqTrainMeta := FtqBpuMetaPort.default
+  when(io.backendCommitPort.commitBlockBitmask(0) & io.backendCommitPort.commitMeta.isBranch) {
     // Update when a branch is committed, defined as:
     // 1. Must be last in block, which means either a known branch or a mispredicted branch.
     // 2. Exception introduced block commit is not considered a branch update.
-    io.bpuMetaO.valid       := true.B
-    io.bpuMetaO.ftbHit      := ftqBpuMetaVec(io.backendCommitFtqId).ftbHit
-    io.bpuMetaO.ftbHitIndex := ftqBpuMetaVec(io.backendCommitFtqId).ftbHitIndex
-    io.bpuMetaO.ftbDirty    := ftqBranchMetaVec(io.backendCommitFtqId).ftbDirty
+    io.bpuFtqPort.ftqTrainMeta.valid       := true.B
+    io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaVec(io.backendCommitPort.commitFtqId).ftbHit
+    io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaVec(io.backendCommitPort.commitFtqId).ftbHitIndex
+    io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaVec(io.backendCommitPort.commitFtqId).ftbDirty
     // Must use accuraate decoded info passed from backend
-    io.bpuMetaO.isBranch       := io.backendCommitMeta.isBranch
-    io.bpuMetaO.branchType     := io.backendCommitMeta.branchType
-    io.bpuMetaO.isTaken        := io.backendCommitMeta.isTaken
-    io.bpuMetaO.predictedTaken := io.backendCommitMeta.predictedTaken
+    io.bpuFtqPort.ftqTrainMeta.isBranch       := io.backendCommitPort.commitMeta.isBranch
+    io.bpuFtqPort.ftqTrainMeta.branchType     := io.backendCommitPort.commitMeta.branchType
+    io.bpuFtqPort.ftqTrainMeta.isTaken        := io.backendCommitPort.commitMeta.isTaken
+    io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.backendCommitPort.commitMeta.predictedTaken
 
-    io.bpuMetaO.startPc            := ftqVec(io.backendCommitFtqId).startPc
-    io.bpuMetaO.isCrossCacheline   := ftqVec(io.backendCommitFtqId).isCrossCacheline
-    io.bpuMetaO.bpuMeta            := ftqBpuMetaVec(io.backendCommitFtqId).bpuMeta
-    io.bpuMetaO.jumpTargetAddress  := ftqBranchMetaVec(io.backendCommitFtqId).jumpTargetAddress
-    io.bpuMetaO.fallThroughAddress := ftqBranchMetaVec(io.backendCommitFtqId).fallThroughAddress
+    io.bpuFtqPort.ftqTrainMeta.startPc           := ftqVec(io.backendCommitPort.commitFtqId).startPc
+    io.bpuFtqPort.ftqTrainMeta.isCrossCacheline  := ftqVec(io.backendCommitPort.commitFtqId).isCrossCacheline
+    io.bpuFtqPort.ftqTrainMeta.bpuMeta           := ftqBpuMetaVec(io.backendCommitPort.commitFtqId).bpuMeta
+    io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress := ftqBranchMetaVec(io.backendCommitPort.commitFtqId).jumpTargetAddress
+    io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaVec(
+      io.backendCommitPort.commitFtqId
+    ).fallThroughAddress
   }
 
   // Bpu meta ram
   // If last cycle accepted p1 input
-  when(io.bpuP1.valid & ~mainBpuRedirectDelay) {
+  when(io.bpuFtqPort.ftqP1.valid & ~mainBpuRedirectDelay) {
     bpuMetaWriteValid             := true.B
     bpuMetaWritePtr               := bpuPtr - 1.U
-    bpuMetaWriteEntry.ftbHit      := io.bpuMeta.ftbHit
-    bpuMetaWriteEntry.ftbHitIndex := io.bpuMeta.ftbHitIndex
-    bpuMetaWriteEntry.bpuMeta     := io.bpuMeta.bpuMeta
-  }.elsewhen(io.bpuP1.valid) {
+    bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
+    bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
+    bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
+  }.elsewhen(io.bpuFtqPort.ftqP1.valid) {
     bpuMetaWriteValid             := true.B
     bpuMetaWritePtr               := bpuPtr
-    bpuMetaWriteEntry.ftbHit      := io.bpuMeta.ftbHit
-    bpuMetaWriteEntry.ftbHitIndex := io.bpuMeta.ftbHitIndex
-    bpuMetaWriteEntry.bpuMeta     := io.bpuMeta.bpuMeta
-  }.elsewhen(io.bpuP0.valid) {
+    bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
+    bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
+    bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
+  }.elsewhen(io.bpuFtqPort.ftqP0.valid) {
     // if not provided by BPU,clear meta
     bpuMetaWriteValid := true.B
     bpuMetaWritePtr   := bpuPtr
@@ -237,13 +232,17 @@ class FetchTargetQueen(
   // P1
   // maintain BPU meta info
   when(bpuMetaWriteValid) {
-    ftqBpuMetaVec(bpuMetaWritePtr) := RegNext(bpuMetaWriteEntry)
+    ftqBpuMetaVec(bpuMetaWritePtr) := bpuMetaWriteEntry
   }
   // update pc from backend
-  when(io.backendFtqMetaUpdateValid) {
-    ftqBranchMetaVec(io.backendFtqUpdateMetaId).jumpTargetAddress  := io.backendFtqMetaUpdateJumpTarget
-    ftqBranchMetaVec(io.backendFtqUpdateMetaId).fallThroughAddress := io.backendFtqMetaUpdateFallThrough
-    ftqBranchMetaVec(io.backendFtqUpdateMetaId).ftbDirty           := io.backendFtqMetaUpdateFtbDirty
+  when(io.backendCommitPort.ftqMetaUpdateValid) {
+    ftqBranchMetaVec(
+      io.backendCommitPort.ftqUpdateMetaId
+    ).jumpTargetAddress := io.backendCommitPort.ftqMetaUpdateJumpTarget
+    ftqBranchMetaVec(
+      io.backendCommitPort.ftqUpdateMetaId
+    ).fallThroughAddress                                            := io.backendCommitPort.ftqMetaUpdateFallThrough
+    ftqBranchMetaVec(io.backendCommitPort.ftqUpdateMetaId).ftbDirty := io.backendCommitPort.ftqMetaUpdateFtbDirty
   }
 
 }
