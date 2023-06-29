@@ -171,13 +171,8 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
-    when(isErtn) {
-      branchSetPort.en     := branchEnableFlag
-      branchSetPort.pcAddr := io.peer.get.csr.era.pc
-      branchEnableFlag     := false.B
-    }
 
-    when(branchSetPort.en || isIdle) {
+    when(branchSetPort.en || isIdle || isErtn) {
       resultOutReg.bits.instInfo.forbidParallelCommit := true.B
     }
 

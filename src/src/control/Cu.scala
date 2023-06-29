@@ -39,7 +39,6 @@ class Cu(
     val branchCommit = Input(Bool())
     // `Cu` -> `Pc`
     val newPc = Output(new PcSetNdPort)
-
     // `Cu` <-> `StableCounter`
     val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
@@ -48,7 +47,7 @@ class Cu(
     val idleFlush     = Output(Bool())
 
     // <- Out
-    val hardWareInetrrupt = Input(UInt(8.W))
+    val hardwareInterrupt = Input(UInt(8.W))
 
     val difftest = if (isDiffTest) {
       Some(Output(new Bundle {
@@ -58,58 +57,49 @@ class Cu(
     } else None
   })
 
-  /** Exception
-    */
+  // Fallback
   io.csrMessage := CuToCsrNdPort.default
 
-  val hasException = WireDefault(io.instInfoPorts(0).exceptionPos =/= ExceptionPos.none) && io.instInfoPorts(0).isValid
+  // Values
+  val majorInstInfo = io.instInfoPorts.head
+  val isException   = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
-  /** stable counter
-    */
-  io.stableCounterReadPort.exeOp := io.instInfoPorts(0).exeOp
+  // Stable counter
+  io.stableCounterReadPort.exeOp := majorInstInfo.exeOp
 
-  /** Write Regfile
-    */
-  // temp
+  // Write GPR
   io.gprWritePassThroughPorts.out.zip(io.gprWritePassThroughPorts.in).foreach {
     case (dst, src) =>
       dst := src
   }
-  when(hasException) {
-    io.gprWritePassThroughPorts.out.foreach(_ := RfWriteNdPort.default)
+  when(isException) {
+    io.gprWritePassThroughPorts.out.foreach(_.en := false.B)
   }.elsewhen(io.stableCounterReadPort.isMatch) {
     io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
   }
 
-  /** CSR
-    */
+  // Hardware interrupt
+  io.csrMessage.hardwareInterrupt := io.hardwareInterrupt
 
-  io.csrMessage.hardWareInetrrupt := io.hardWareInetrrupt
-
-  // csr write by inst
+  // CSR write by instruction
   io.csrWritePorts.zip(io.instInfoPorts).foreach {
     case (dst, src) =>
-      dst.en   := src.csrWritePort.en && src.isValid && !hasException
+      dst.en   := src.csrWritePort.en && src.isValid && !isException
       dst.addr := src.csrWritePort.addr
       dst.data := src.csrWritePort.data
   }
 
-  /** csr write by exception
-    */
+  // CSR write by exception
 
-  io.csrMessage.exceptionFlush := hasException
+  io.csrMessage.exceptionFlush := isException
   // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
   // 使用时仍需判断是否有exception
-  val selectInstInfo     = WireDefault(io.instInfoPorts(0))
-  val selectException    = WireDefault(selectInstInfo.exceptionRecord)
-  val selectExceptionPos = WireDefault(selectInstInfo.exceptionPos)
   // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
-  val isTlbRefillException = selectException === Csr.ExceptionIndex.tlbr
 
   // select era, ecodeBundle
-  when(hasException) {
-    io.csrMessage.era := selectInstInfo.pc
-    switch(selectException) {
+  when(isException) {
+    io.csrMessage.era := majorInstInfo.pc
+    switch(majorInstInfo.exceptionRecord) {
       is(Csr.ExceptionIndex.int) {
         io.csrMessage.ecodeBundle := Csr.Estat.int
       }
@@ -162,13 +152,13 @@ class Cu(
   }
 
   // TLB refill exception
-  io.csrMessage.tlbRefillException := isTlbRefillException
+  io.csrMessage.tlbRefillException := isException && majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr
 
   // badv
-  when(hasException) {
-    when(selectException === Csr.ExceptionIndex.adef) {
+  when(isException) {
+    when(majorInstInfo.exceptionRecord === Csr.ExceptionIndex.adef) {
       io.csrMessage.badVAddrSet.en   := true.B
-      io.csrMessage.badVAddrSet.addr := selectInstInfo.pc
+      io.csrMessage.badVAddrSet.addr := majorInstInfo.pc
     }.elsewhen(
       VecInit(
         Csr.ExceptionIndex.tlbr,
@@ -180,26 +170,26 @@ class Cu(
         Csr.ExceptionIndex.pif,
         Csr.ExceptionIndex.pme,
         Csr.ExceptionIndex.ppi
-      ).contains(selectException)
+      ).contains(majorInstInfo.exceptionRecord)
     ) {
       io.csrMessage.badVAddrSet.en := true.B
       io.csrMessage.badVAddrSet.addr := Mux(
-        selectExceptionPos === ExceptionPos.backend,
-        selectInstInfo.vaddr,
-        selectInstInfo.pc
+        majorInstInfo.exceptionPos === ExceptionPos.backend,
+        majorInstInfo.vaddr,
+        majorInstInfo.pc
       )
     }
   }
 
   // llbit control
-  val line0Is_ll = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.ll)
-  val line0Is_sc = WireDefault(io.instInfoPorts(0).exeOp === ExeInst.Op.sc)
-  io.csrMessage.llbitSet.en := line0Is_ll || line0Is_sc
+  val isLoadLinked       = WireDefault(majorInstInfo.exeOp === ExeInst.Op.ll)
+  val isStoreConditional = WireDefault(majorInstInfo.exeOp === ExeInst.Op.sc)
+  io.csrMessage.llbitSet.en := (isLoadLinked || isStoreConditional) && !isException
   // ll -> 1, sc -> 0
-  io.csrMessage.llbitSet.setValue := line0Is_ll
+  io.csrMessage.llbitSet.setValue := isLoadLinked
 
   // Handle TLB maintenance
-  val isTlbMaintenance = WireDefault(io.instInfoPorts.head.isTlb && io.instInfoPorts.head.isValid && !hasException)
+  val isTlbMaintenance = majorInstInfo.isTlb && majorInstInfo.isValid && !isException
   io.tlbMaintenanceCsrWriteValid := isTlbMaintenance
 
   // Handle TLB exception
@@ -211,9 +201,9 @@ class Cu(
     Csr.ExceptionIndex.pif,
     Csr.ExceptionIndex.pme,
     Csr.ExceptionIndex.ppi
-  ).contains(selectException)
+  ).contains(majorInstInfo.exceptionRecord) && isException
   when(isTlbException) {
-    switch(selectExceptionPos) {
+    switch(majorInstInfo.exceptionPos) {
       is(ExceptionPos.frontend) {
         io.tlbExceptionCsrWriteValidVec(1) := true.B
       }
@@ -226,35 +216,44 @@ class Cu(
   /** Flush & jump
     */
 
-  val ertnFlush = WireDefault(
+  val isExceptionReturn =
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
-  )
 
-  val cacopFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.cacop &&
-    io.instInfoPorts.head.isValid &&
-    io.instInfoPorts.head.forbidParallelCommit
+  val cacopFlush = majorInstInfo.exeOp === ExeInst.Op.cacop &&
+    majorInstInfo.isValid &&
+    majorInstInfo.forbidParallelCommit
 
-  val idleFlush = io.instInfoPorts.head.exeOp === ExeInst.Op.idle && io.instInfoPorts.head.isValid && !hasException
+  val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 
-  io.csrMessage.ertnFlush := ertnFlush
-  io.frontendFlush := hasException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush
+  io.csrMessage.ertnFlush := isExceptionReturn // TODO: Make ERTN jump gracefully like branch instruction
+  io.frontendFlush :=
+    isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn
   io.backendFlush := RegNext(
-    hasException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
+    isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
     false.B
   )
   io.idleFlush := idleFlush
 
-  // select new pc
-  io.newPc       := PcSetNdPort.default
-  io.newPc.en    := isTlbMaintenance || io.csrFlushRequest || hasException || io.branchExe.en || cacopFlush || idleFlush
+  // Select new pc
+  io.newPc := PcSetNdPort.default
+  io.newPc.en :=
+    isTlbMaintenance || io.csrFlushRequest || isException || io.branchExe.en || cacopFlush || idleFlush || isExceptionReturn
   io.newPc.isTlb := isTlbMaintenance
   io.newPc.pcAddr := Mux(
-    hasException,
-    Mux(isTlbRefillException, io.csrValues.tlbrentry.asUInt, io.csrValues.eentry.asUInt),
+    isExceptionReturn,
+    io.csrValues.era.pc,
     Mux(
-      isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
-      io.instInfoPorts.head.pc + 4.U,
-      io.branchExe.pcAddr
+      isException,
+      Mux(
+        majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
+        io.csrValues.tlbrentry.asUInt,
+        io.csrValues.eentry.asUInt
+      ),
+      Mux(
+        isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
+        majorInstInfo.pc + 4.U,
+        io.branchExe.pcAddr
+      )
     )
   )
 
@@ -265,8 +264,8 @@ class Cu(
 
   io.difftest match {
     case Some(dt) =>
-      dt.cmt_ertn       := RegNext(ertnFlush)
-      dt.cmt_excp_flush := RegNext(hasException)
+      dt.cmt_ertn       := RegNext(isExceptionReturn)
+      dt.cmt_excp_flush := RegNext(isException)
     case _ =>
   }
 }
