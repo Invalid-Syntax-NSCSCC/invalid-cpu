@@ -5,12 +5,12 @@ import chisel3.util._
 import utils.MultiCounter
 
 class DistributedQueue[ElemT <: Data](
-  enqMaxNum:     Int,
-  deqMaxNum:     Int,
-  channelNum:    Int,
-  channelLength: Int,
-  elemNdFactory: => ElemT,
-  blankElem:     => ElemT)
+  enqMaxNum:      Int,
+  deqMaxNum:      Int,
+  channelNum:     Int,
+  channelLength:  Int,
+  elemNdFactory:  => ElemT,
+  useSyncReadMem: Boolean = true)
     extends Module {
 
   require(channelNum >= enqMaxNum)
