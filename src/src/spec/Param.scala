@@ -187,47 +187,47 @@ object Param {
     }
   }
 
-  object BPU {
-    val fetchWidth = 4
-    val ftqSize    = 8
+  // object BPU {
+  //   val fetchWidth = 4
+  //   val ftqSize    = 8
 
-    object TagePredictor {
-      val ghrLength            = 1400
-      val tagComponentNum      = 15
-      val tagComponentTagWidth = 12
-      //        ComponentTableDepth
-      // length = tagComponentNum +1
-      val componentTableDepth =
-        Seq(16384, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
-      val componentCtrWidth      = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
-      val componentUsefulWidth   = Seq(0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
-      val componentHistoryLength = Seq(0, 6, 10, 18, 25, 35, 55, 69, 105, 155, 230, 354, 479, 642, 1012, 1347)
+  //   object TagePredictor {
+  //     val ghrLength            = 1400
+  //     val tagComponentNum      = 15
+  //     val tagComponentTagWidth = 12
+  //     //        ComponentTableDepth
+  //     // length = tagComponentNum +1
+  //     val componentTableDepth =
+  //       Seq(16384, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
+  //     val componentCtrWidth      = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+  //     val componentUsefulWidth   = Seq(0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+  //     val componentHistoryLength = Seq(0, 6, 10, 18, 25, 35, 55, 69, 105, 155, 230, 354, 479, 642, 1012, 1347)
 
-    }
+  //   }
 
-    object FTB {
-      val nset = 1024
-      val nway = 4
-    }
+  //   object FTB {
+  //     val nset = 1024
+  //     val nway = 4
+  //   }
 
-    object RAS {
-      val entryNum = 32
-    }
+  //   object RAS {
+  //     val entryNum = 32
+  //   }
 
-    val decodeWidth = 1 // 2 to do
-    val commitWidth = 1 // 2 to do
-    object BranchType {
-      var count = 0
-      private def next = {
-        count += 1
-        count.U
-      }
-      val cond   = 0.U
-      val call   = next
-      val ret    = next
-      val uncond = next
-    }
-  }
+  //   val decodeWidth = 1 // 2 to do
+  //   val commitWidth = 1 // 2 to do
+  //   object BranchType {
+  //     var count = 0
+  //     private def next = {
+  //       count += 1
+  //       count.U
+  //     }
+  //     val cond   = 0.U
+  //     val call   = next
+  //     val ret    = next
+  //     val uncond = next
+  //   }
+  // }
 
   object SimpleFetchStageState extends ChiselEnum {
     val idle, requestInst, waitInst = Value
