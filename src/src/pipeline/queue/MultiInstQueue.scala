@@ -34,7 +34,7 @@ class MultiInstQueue(
     val isFrontendFlush = Input(Bool())
     val isBackendFlush  = Input(Bool())
 
-    val enqueuePort = Flipped(Decoupled(new InstQueueEnqNdPort))
+    val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new FetchInstInfoBundle)))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(

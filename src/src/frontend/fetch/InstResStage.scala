@@ -7,6 +7,7 @@ import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.InstQueueEnqNdPort
 import spec.{Param, Width}
+import spec.Width
 
 class InstResNdPort extends Bundle {
   val isValid   = Bool()
@@ -29,7 +30,7 @@ class InstEnqueuePort extends Bundle {
 class InstResStage
     extends BaseStage(
       new InstResNdPort,
-      new InstQueueEnqNdPort,
+      new FetchInstInfoBundle,
       InstResNdPort.default,
       Some(new InstResPeerPort)
     ) {
