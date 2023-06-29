@@ -128,7 +128,7 @@ class CoreCpuTop extends Module {
 
   // PC
   pc.io.newPc  := cu.io.newPc
-  pc.io.isNext := frontend.io.isNextPc
+  pc.io.isNext := frontend.io.isPcNext
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
@@ -141,18 +141,11 @@ class CoreCpuTop extends Module {
   val uncachedAgent = Module(new UncachedAgent)
   val tlb           = Module(new Tlb)
 
-  // TODO: Finish cache maintanence connection
-  dCache.io.maintenancePort                  <> DontCare
-  dCache.io.maintenancePort.client.isL1Valid := false.B
-  iCache.io.maintenancePort                  <> DontCare
-  iCache.io.maintenancePort.client.isL1Valid := false.B
-
   // Connection for memory related modules
   crossbar.io.slave(1) <> dCache.io.axiMasterPort
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
   // TLB connection
-  // TODO: Maintenance and CSR write
   tlb.io.csr.in.asId        := csr.io.csrValues.asid
   tlb.io.csr.in.plv         := csr.io.csrValues.crmd.plv
   tlb.io.csr.in.tlbidx      := csr.io.csrValues.tlbidx
@@ -174,11 +167,14 @@ class CoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // Instruction queue
-  instQueue.io.enqueuePorts.valid   := frontend.io.instEnqueuePort.valid
-  frontend.io.instEnqueuePort.ready := instQueue.io.enqueuePorts.ready
-  instQueue.io.enqueuePorts.bits(0) := frontend.io.instEnqueuePort.bits
+  instQueue.io.enqueuePorts.valid   := frontend.io.instDequeuePort.valid
+  frontend.io.instDequeuePort.ready := instQueue.io.enqueuePorts.ready
+  instQueue.io.enqueuePorts.bits(0) := frontend.io.instDequeuePort.bits
 
-  instQueue.io.isFlush := cu.io.frontendFlush
+  instQueue.io.isFrontendFlush := cu.io.frontendFlush
+  instQueue.io.isBackendFlush  := cu.io.backendFlush
+  instQueue.io.idleBlocking    := cu.io.idleFlush
+  instQueue.io.interruptWakeUp := csr.io.hasInterrupt
 
   // Issue stage
   issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
@@ -198,6 +194,7 @@ class CoreCpuTop extends Module {
   }
   issueStage.io.peer.get.csrcore     := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
+  issueStage.io.peer.get.plv         := csr.io.csrValues.crmd.plv
 
   // Scoreboards
   csrScoreBoard.io.freePort    := commitStage.io.csrFreePort
@@ -235,8 +232,10 @@ class CoreCpuTop extends Module {
   memReqStage.io.isFlush := cu.io.backendFlush
   memReqStage.io.in      <> addrTransStage.io.out
   memReqStage.io.peer.foreach { p =>
-    p.dCacheReq   <> dCache.io.accessPort.req
-    p.uncachedReq <> uncachedAgent.io.accessPort.req
+    p.dCacheReq         <> dCache.io.accessPort.req
+    p.uncachedReq       <> uncachedAgent.io.accessPort.req
+    p.dCacheMaintenance <> dCache.io.maintenancePort
+    p.iCacheMaintenance <> iCache.io.maintenancePort
   }
 
   memResStage.io.isFlush := cu.io.backendFlush

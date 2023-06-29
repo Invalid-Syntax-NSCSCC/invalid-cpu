@@ -3,7 +3,7 @@ package pipeline.execution
 import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.util._
-import common.bundles.{PcSetPort, RfAccessInfoNdPort}
+import common.bundles.{PcSetNdPort, RfAccessInfoNdPort}
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import pipeline.commit.WbNdPort
@@ -26,6 +26,7 @@ class ExeNdPort extends Bundle {
   def loadStoreImm      = jumpBranchAddr
   def csrData           = jumpBranchAddr
   def tlbInvalidateInst = jumpBranchAddr
+  def code              = jumpBranchAddr
 
   // GPR write (writeback)
   val gprWritePort = new RfAccessInfoNdPort
@@ -47,7 +48,7 @@ object ExeNdPort {
 
 class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
-  val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetPort)) else None
+  val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetNdPort)) else None
   val csrScoreboardChangePort = if (supportBranchCsr) Some(Output(new ScoreboardChangeNdPort)) else None
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
@@ -151,8 +152,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     }
   }
 
-  resultOutReg.bits.instInfo.branchSetPort := PcSetPort.default
-
   if (supportBranchCsr) {
 
     val branchEnableFlag = RegInit(true.B)
@@ -161,7 +160,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     val csrScoreboardChangePort = io.peer.get.csrScoreboardChangePort.get
 
     // branch set
-    branchSetPort    := PcSetPort.default
+    branchSetPort    := PcSetNdPort.default
     branchSetPort.en := alu.io.result.jumpBranchInfo.en && branchEnableFlag
     when(alu.io.result.jumpBranchInfo.en) {
       branchEnableFlag := false.B
@@ -172,18 +171,17 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
-    when(isIdle) {
-      branchSetPort.isIdle := true.B
-      branchSetPort.en     := branchEnableFlag
-      branchSetPort.pcAddr := selectedIn.instInfo.pc + 4.U
-      branchEnableFlag     := false.B
-    }.elsewhen(isErtn) {
+    when(isErtn) {
       branchSetPort.en     := branchEnableFlag
       branchSetPort.pcAddr := io.peer.get.csr.era.pc
       branchEnableFlag     := false.B
     }
 
-    resultOutReg.bits.instInfo.branchSetPort := branchSetPort
+    when(branchSetPort.en || isIdle) {
+      resultOutReg.bits.instInfo.forbidParallelCommit := true.B
+    }
+
+    resultOutReg.bits.instInfo.branchSuccess := branchSetPort.en
 
     when(io.isFlush) {
       branchEnableFlag := true.B

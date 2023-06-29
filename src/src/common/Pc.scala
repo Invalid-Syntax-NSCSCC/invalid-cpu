@@ -13,28 +13,23 @@ class Pc(
     val pcUpdate = Output(Bool())
     val isNext   = Input(Bool())
     // 异常处理 + 分支跳转
-    val newPc = Input(new PcSetPort)
+    val newPc = Input(new PcSetNdPort)
   })
 
   val pcReg       = RegInit(spec.Pc.init)
   val pcUpdateReg = RegInit(false.B)
   io.pc       := pcReg
-  io.pcUpdate := pcUpdateReg
-
-  val isIdle = RegInit(false.B)
+  io.pcUpdate := pcUpdateReg && !io.newPc.en
 
   pcReg := pcReg
   when(io.newPc.en) {
     pcReg       := io.newPc.pcAddr
-    isIdle      := io.newPc.isIdle
     pcUpdateReg := true.B
-  }.elsewhen(io.isNext && !isIdle) {
-    // pcReg := pcReg + (4 * issueNum).U
+  }.elsewhen(io.isNext) {
     pcReg       := pcReg + 4.U
     pcUpdateReg := true.B
   }.otherwise {
     pcReg       := pcReg
     pcUpdateReg := false.B
   }
-
 }

@@ -13,6 +13,8 @@ import spec._
 
 import scala.collection.immutable
 import memory.bundles.TlbMaintenanceNdPort
+import pipeline.memory.bundles.CacheMaintenanceInstNdPort
+import pipeline.memory.enums.CacheMaintenanceTargetType
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
@@ -31,7 +33,9 @@ class ExeForMemStage
       Some(new ExeForMemPeerPort)
     ) {
 
-  isComputed                 := true.B
+  isComputed        := true.B
+  resultOutReg.bits := AddrTransNdPort.default
+
   resultOutReg.valid         := isComputed && selectedIn.instInfo.isValid
   resultOutReg.bits.instInfo := selectedIn.instInfo
 
@@ -76,20 +80,19 @@ class ExeForMemStage
   /** MemAccess
     */
 
-  val loadStoreAddr = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
-  resultOutReg.bits.instInfo.vaddr := loadStoreAddr
-
+  val loadStoreAddr      = WireDefault(selectedIn.leftOperand + selectedIn.loadStoreImm)
+  val isAtomicStoreValid = io.peer.get.csr.llbctl.rollb && selectedIn.exeOp === ExeInst.Op.sc
   val memReadEn = WireDefault(
     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
       .contains(selectedIn.exeOp)
   )
   val memWriteEn = WireDefault(
-    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w, ExeInst.Op.sc)
-      .contains(selectedIn.exeOp)
+    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w).contains(selectedIn.exeOp) || isAtomicStoreValid
   )
   val memLoadUnsigned = WireDefault(VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp))
 
-  resultOutReg.bits.memRequest.isValid         := (memReadEn || memWriteEn) && !isAle
+  val isLoadStore = (memReadEn || memWriteEn) && !isAle
+  resultOutReg.bits.memRequest.isValid         := isLoadStore
   resultOutReg.bits.memRequest.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
   resultOutReg.bits.memRequest.write.data      := selectedIn.rightOperand
   resultOutReg.bits.memRequest.read.isUnsigned := memLoadUnsigned
@@ -126,6 +129,8 @@ class ExeForMemStage
     }
   }
 
+  resultOutReg.bits.isAtomicStore := selectedIn.exeOp === ExeInst.Op.sc
+
   if (isDiffTest) {
     resultOutReg.bits.instInfo.load.get.en := Mux(
       isAle,
@@ -145,8 +150,7 @@ class ExeForMemStage
       0.U,
       Cat(
         0.U(4.W),
-        io.peer.get.csr.llbctl.wcllb &&
-          selectedIn.exeOp === ExeInst.Op.sc,
+        isAtomicStoreValid,
         selectedIn.exeOp === ExeInst.Op.st_w,
         selectedIn.exeOp === ExeInst.Op.st_h,
         selectedIn.exeOp === ExeInst.Op.st_b
@@ -174,7 +178,48 @@ class ExeForMemStage
     )
   }
 
+  when(isLoadStore) {
+    resultOutReg.bits.instInfo.forbidParallelCommit := true.B
+  }
+  resultOutReg.bits.instInfo.isStore := memWriteEn && !isAle
+
+  val cacopAddr = WireDefault(selectedIn.leftOperand + selectedIn.rightOperand)
+  val isCacop   = WireDefault(selectedIn.exeOp === ExeInst.Op.cacop)
+
+  when(isCacop) {
+    resultOutReg.bits.memRequest.addr := cacopAddr
+
+    switch(selectedIn.code(2, 0)) {
+      is(0.U) {
+        resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.inst
+        resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+      }
+      is(1.U) {
+        resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.data
+        resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+        resultOutReg.bits.instInfo.forbidParallelCommit      := true.B
+      }
+      is(2.U) {
+        resultOutReg.bits.cacheMaintenance.control.isL2Valid := true.B
+        resultOutReg.bits.instInfo.forbidParallelCommit      := true.B
+      }
+    }
+
+    switch(selectedIn.code(4, 3)) {
+      is(0.U) {
+        resultOutReg.bits.cacheMaintenance.control.isInit := true.B
+      }
+      is(1.U) {
+        resultOutReg.bits.cacheMaintenance.control.isCoherentByIndex := true.B
+      }
+      is(2.U) {
+        resultOutReg.bits.cacheMaintenance.control.isCoherentByHit := true.B
+      }
+    }
+  }
+
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
-  resultOutReg.bits.instInfo.isStore       := resultOutReg.bits.instInfo.store.get.en.orR
+  resultOutReg.bits.instInfo.isStore       := memWriteEn && !isAle
+  resultOutReg.bits.instInfo.vaddr         := Mux(isCacop, cacopAddr, loadStoreAddr)
 }

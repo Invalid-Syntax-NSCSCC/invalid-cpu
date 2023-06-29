@@ -95,6 +95,8 @@ object ExeInst {
     val tlbfill = next
     val invtlb  = next
 
+    val cacop = next
+
     object Tlb {
       val clrAll          = 0.U(Width.Tlb.op)
       val clrAllAlt       = 1.U(Width.Tlb.op)

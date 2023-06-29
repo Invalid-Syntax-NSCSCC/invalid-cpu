@@ -11,6 +11,7 @@ import pipeline.rob.bundles.{InstWbNdPort, RobReadRequestNdPort, RobReadResultNd
 import pipeline.rob.enums.RobDistributeSel
 import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
 import spec._
+import control.enums.ExceptionPos
 
 // class FetchInstDecodeNdPort extends Bundle {
 //   val decode   = new DecodeOutNdPort
@@ -44,6 +45,8 @@ class IssueStagePeerPort(
 
   // `Cu` -> `IssueStage`
   val branchFlush = Input(Bool())
+
+  val plv = Input(UInt(2.W))
 }
 
 // dispatch & Reservation Stations
@@ -145,12 +148,15 @@ class IssueStage(
             if (dst_idx == csrIssuePipelineIndex) {
               when(
                 (in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) ||
-                  in.instInfo.isTlb
+                  in.instInfo.isTlb || (in.instInfo.exeOp === ExeInst.Op.cacop)
               ) {
                 dispatchEn := false.B
               }
             } else if (dst_idx == loadStoreIssuePipelineIndex) {
-              when(in.instInfo.isTlb && (io.peer.get.csrcore =/= ScoreboardState.free)) {
+              when(
+                (in.instInfo.isTlb || (in.instInfo.exeOp === ExeInst.Op.cacop)) &&
+                  (io.peer.get.csrcore =/= ScoreboardState.free)
+              ) {
                 dispatchEn := false.B
               }
             } else {
@@ -287,6 +293,26 @@ class IssueStage(
 
       out.bits.instInfo       := deqPort.bits.regReadPort.instInfo
       out.bits.instInfo.robId := deqPort.bits.robResult.robId
+
+      when(io.peer.get.plv =/= 0.U) {
+        when(
+          deqPort.bits.regReadPort.preExeInstInfo.isTlb ||
+            VecInit(
+              ExeInst.Op.csrrd,
+              ExeInst.Op.csrwr,
+              ExeInst.Op.csrxchg,
+              ExeInst.Op.ertn,
+              ExeInst.Op.idle,
+              ExeInst.Op.cacop
+            ).contains(deqPort.bits.regReadPort.preExeInstInfo.exeOp)
+        ) {
+          when(deqPort.bits.regReadPort.instInfo.exceptionPos =/= ExceptionPos.none) {
+            out.bits.instInfo.exceptionPos    := ExceptionPos.backend
+            out.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ipe
+          }
+        }
+      }
+
   }
 
   when(io.peer.get.branchFlush) {

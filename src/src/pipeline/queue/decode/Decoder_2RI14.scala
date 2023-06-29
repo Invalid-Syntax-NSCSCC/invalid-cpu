@@ -49,19 +49,25 @@ class Decoder_2RI14 extends Decoder {
 
   switch(opcode) {
     is(Inst.ll) {
-      io.out.isMatched          := true.B
-      outInfo.exeOp             := ExeInst.Op.ll
-      outInfo.exeSel            := ExeInst.Sel.loadStore
-      outInfo.gprWritePort.en   := rdIsNotZero // true.B
-      outInfo.gprWritePort.addr := rd
-      outInfo.loadStoreImm      := immSext.asUInt
+      io.out.isMatched             := true.B
+      outInfo.exeOp                := ExeInst.Op.ll
+      outInfo.exeSel               := ExeInst.Sel.loadStore
+      outInfo.gprReadPorts(0).en   := true.B
+      outInfo.gprReadPorts(0).addr := rj
+      outInfo.gprWritePort.en      := rdIsNotZero // true.B
+      outInfo.gprWritePort.addr    := rd
+      outInfo.loadStoreImm         := immSext.asUInt
     }
     is(Inst.sc) {
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.sc
       outInfo.exeSel               := ExeInst.Sel.loadStore
+      outInfo.gprReadPorts(0).en   := true.B
+      outInfo.gprReadPorts(0).addr := rj
       outInfo.gprReadPorts(1).en   := true.B
       outInfo.gprReadPorts(1).addr := rd
+      outInfo.gprWritePort.en      := true.B
+      outInfo.gprWritePort.addr    := rd
       outInfo.loadStoreImm         := immSext.asUInt
     }
     // csr读写指令

@@ -25,15 +25,13 @@ class InstAddrTransStage extends Module {
 
   val peer = io.peer
 
-  val outReg = RegInit(InstReqNdPort.default)
-  val isAdef = WireDefault(io.pc(1, 0).orR) // pc not aline
+  val outReg           = RegInit(InstReqNdPort.default)
+  val isAdef           = WireDefault(io.pc(1, 0).orR) // PC is not aligned
   val hasSendException = RegInit(false.B)
 
-  io.out.bits  := outReg
+  io.out.bits := outReg
   io.out.valid := !hasSendException // when has an exception send one exception to backend and stall; otherwise keep send
-  when(io.isFlush){
-    hasSendException := false.B
-  }.elsewhen(outReg.exception.valid) {
+  when(outReg.exception.valid) {
     hasSendException := true.B
   }
 
@@ -41,7 +39,7 @@ class InstAddrTransStage extends Module {
 
   // Fallback output
   outReg.pc                       := io.pc
-  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !isAdef
+  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && !isAdef
   outReg.exception.valid          := isAdef
   outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
 
@@ -128,8 +126,15 @@ class InstAddrTransStage extends Module {
   }
 
   // Handle flush
+  val isLastFlushReg = RegNext(io.isFlush, false.B)
   when(io.isFlush) {
+    outReg.exception.valid               := false.B
+    outReg.translatedMemReq.isValid      := false.B
     io.out.bits.translatedMemReq.isValid := false.B
     isLastSent                           := true.B
+    hasSendException                     := false.B
+  }
+  when(isLastFlushReg) {
+    io.out.valid := false.B
   }
 }

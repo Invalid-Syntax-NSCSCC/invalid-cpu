@@ -11,7 +11,7 @@ import spec._
 class NaiiveFetchStage extends Module {
   val io = IO(new Bundle {
     val pc                 = Input(UInt(Width.Reg.data))
-    val isNextPc           = Output(Bool())
+    val isPcNext           = Output(Bool())
     val axiMasterInterface = new AxiMasterInterface
     val instEnqueuePort    = Decoupled(new InstInfoBundle)
     val isFlush            = Input(Bool())
@@ -41,7 +41,7 @@ class NaiiveFetchStage extends Module {
   val isInstValid      = WireInit(axiMaster.io.validOut || isInstValidReg)
 
   // Fallbacks
-  io.isNextPc              := false.B
+  io.isPcNext              := false.B
   axiMaster.io.newRequest  := false.B
   axiMaster.io.addr        := pcReg
   io.instEnqueuePort.valid := false.B
@@ -62,7 +62,7 @@ class NaiiveFetchStage extends Module {
       }.otherwise {
         nextState := State.waitQueue
 
-        io.isNextPc             := true.B
+        io.isPcNext             := true.B
         axiMaster.io.newRequest := true.B
         axiMaster.io.addr       := io.pc
         pc                      := io.pc
