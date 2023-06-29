@@ -2,22 +2,21 @@ package frontend
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.PreDecoderResultNdPort
 import spec.Inst.{_2RI16 => Inst}
-import spec.Width
+import pipeline.dispatch.bundles.InstInfoBundle
+import frontend.bundles.PreDecoderResultNdPort
 
 class PreDecoder extends Module {
   val io = IO(new Bundle {
-    val pc     = Input(UInt(Width.Reg.data))
-    val inst   = Input(UInt(Width.Reg.data))
+    val in     = Input(new InstInfoBundle)
     val result = Output(new PreDecoderResultNdPort)
   })
 
   // fall back
   io.result := PreDecoderResultNdPort.default
 
-  val opcode          = io.inst(31, 26)
-  val imm26Sext       = Cat(io.inst(9, 0), io.inst(25, 10)).asSInt
+  val opcode          = io.in.inst(31, 26)
+  val imm26Sext       = Cat(io.in.inst(9, 0), io.in.inst(25, 10)).asSInt
   val imm26SextShift2 = Wire(SInt(spec.Width.Reg.data))
   imm26SextShift2 := imm26Sext << 2
 
