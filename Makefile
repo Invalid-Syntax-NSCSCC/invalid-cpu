@@ -9,7 +9,7 @@ test:
 
 verilog:
 	mkdir -p $(BUILD_DIR)/final
-	./millw -i __.test.runMain Elaborate
+	./millw -i __.test.runMain Elaborate -td $(BUILD_DIR)
 	cp -f ./verilog/* $(BUILD_DIR)/final/
 
 chiplab:
