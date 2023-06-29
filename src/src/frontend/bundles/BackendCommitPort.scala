@@ -5,7 +5,8 @@ import chisel3.util._
 import spec.Param
 class BackendCommitPort(
   val queueSize: Int = Param.BPU.ftqSize,
-  val issueNum:  Int = Param.issueInstInfoMaxNum) {
+  val issueNum:  Int = Param.issueInstInfoMaxNum)
+    extends Bundle {
   val ftqMetaUpdateValid       = Bool()
   val ftqMetaUpdateFtbDirty    = Bool()
   val ftqMetaUpdateJumpTarget  = UInt(spec.Width.Mem.addr)

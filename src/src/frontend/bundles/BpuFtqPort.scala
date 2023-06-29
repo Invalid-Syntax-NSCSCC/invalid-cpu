@@ -10,11 +10,6 @@ class BpuFtqPort {
   val ftqMeta      = Input(new BpuFtqMetaPort)
   val ftqFull      = Output(Bool())
   val ftqTrainMeta = Output(new FtqBpuMetaPort)
-  val bpuP0        = Input(new FtqBlockPort)
-  val bpuP1        = Input(new FtqBlockPort)
-  val bpuMeta      = Input(new BpuFtqMetaPort)
-  val bpuQueueFull = Output(Bool())
-  val bpuTrainMeta = Output(new FtqBpuMetaPort)
   // pc redirect
   val mainBpuRedirectValid = Input(Bool())
 }
