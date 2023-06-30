@@ -140,7 +140,7 @@ class ICache(
 
   val isCompleteReg = RegInit(false.B)
   isCompleteReg := isCompleteReg
-  val readDataVecReg = RegInit(VecInit(Seq.fill(Param.fetchInstMaxNum)(0.U(Width.Mem.data))))
+  val readDataVecReg = Reg(UInt(Width.Mem.data))
   readDataVecReg := readDataVecReg
 
   io.accessPort.req.isReady := false.B // Fallback: Not ready
@@ -151,7 +151,7 @@ class ICache(
 
   io.accessPort.res.isComplete := isCompleteReg // Fallback: Keep status
 
-  io.accessPort.res.read.dataVec := readDataVecReg // Fallback: Keep data
+  io.accessPort.res.read.data := readDataVecReg // Fallback: Keep data
 
   val currentMemAddr = WireDefault(
     Mux(
