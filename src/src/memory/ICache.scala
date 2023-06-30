@@ -94,7 +94,7 @@ class ICache(
   // RAMs for valid and tag
   val statusTagRams = Seq.fill(Param.Count.ICache.setLen)(
     Module(
-      new VBRam(
+      new VSingleBRam(
         Param.Count.ICache.sizePerRam,
         ICacheStatusTagBundle.width
       )
@@ -104,7 +104,7 @@ class ICache(
   // RAMs for data line
   val dataLineRams = Seq.fill(Param.Count.ICache.setLen)(
     Module(
-      new VBRam(
+      new VSingleBRam(
         Param.Count.ICache.sizePerRam,
         Param.Width.ICache._dataLine
       )
