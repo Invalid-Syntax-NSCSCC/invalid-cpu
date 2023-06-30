@@ -158,7 +158,7 @@ class ICache(
       io.maintenancePort.client.addr,
       Cat(
         io.accessPort.req.client
-          .addr(spec.Width.Mem._addr, Param.Width.ICache._fetchOffset),
+          .addr(spec.Width.Mem._addr-1, Param.Width.ICache._fetchOffset),
         0.U(Param.Width.ICache._fetchOffset.W)
       )
     )
