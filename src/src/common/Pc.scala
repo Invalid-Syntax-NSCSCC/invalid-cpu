@@ -1,6 +1,7 @@
 package common
 
 import chisel3._
+import chisel3.util._
 import common.bundles._
 import spec._
 
@@ -20,13 +21,20 @@ class Pc(
   val pcUpdateReg = RegInit(false.B)
   io.pc       := pcReg
   io.pcUpdate := pcUpdateReg && !io.newPc.en
+  val pcFetchNum = WireDefault(Param.fetchInstMaxNum.U(log2Ceil(Param.fetchInstMaxNum + 1).W))
+  if (Param.fetchInstMaxNum != 1) {
+    when(pcReg(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset) =/= 0.U) {
+      pcFetchNum := Param.fetchInstMaxNum.U - pcReg(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset)
+    }
+  }
+
 
   pcReg := pcReg
   when(io.newPc.en) {
     pcReg       := io.newPc.pcAddr
     pcUpdateReg := true.B
   }.elsewhen(io.isNext) {
-    pcReg       := pcReg + 4.U
+    pcReg       := pcReg + 4.U * pcFetchNum.asUInt
     pcUpdateReg := true.B
   }.otherwise {
     pcReg       := pcReg

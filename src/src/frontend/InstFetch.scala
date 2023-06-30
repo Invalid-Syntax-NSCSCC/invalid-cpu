@@ -7,6 +7,7 @@ import frontend.fetch._
 import memory.bundles.TlbTransPort
 import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.memory.bundles.MemCsrNdPort
+import pipeline.queue.InstQueueEnqPort
 import spec._
 
 class InstFetch extends Module {
@@ -20,7 +21,7 @@ class InstFetch extends Module {
 
     // <-> Frontend <-> Instrution queue
     val isFlush         = Input(Bool())
-    val instDequeuePort = Decoupled(new FetchInstInfoBundle)
+    val instDequeuePort = Decoupled(Flipped(new InstQueueEnqPort))
 
     // <-> Frontend <-> Tlb
     val tlbTrans = Flipped(new TlbTransPort)

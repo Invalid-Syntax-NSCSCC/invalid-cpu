@@ -15,7 +15,7 @@ object Param {
   val scoreboardChangeNum    = 1 // 3
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
-  val fetchInstMaxNum        = 1 // 单次取指
+  val fetchInstMaxNum        = 2 // 单次取指 must be 2,4,8...
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 2 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
@@ -68,11 +68,12 @@ object Param {
     }
 
     object ICache {
-      val _addr       = 16 // TODO: Choose an optimal value (small value is suitible for difftest)
+      val _addr        = 16 // TODO: Choose an optimal value (small value is suitible for difftest)
+      val _instOffset  = log2Ceil(wordLength / byteLength)
       val _fetchOffset = log2Ceil(fetchInstMaxNum) + log2Ceil(wordLength / byteLength)
-      val _byteOffset = log2Ceil(Count.ICache.dataPerLine) + log2Ceil(wordLength / byteLength)
-      val _dataLine   = Count.ICache.dataPerLine * spec.Width.Mem._data
-      val _tag        = spec.Width.Mem._addr - _addr - _byteOffset
+      val _byteOffset  = log2Ceil(Count.ICache.dataPerLine) + log2Ceil(wordLength / byteLength)
+      val _dataLine    = Count.ICache.dataPerLine * spec.Width.Mem._data
+      val _tag         = spec.Width.Mem._addr - _addr - _byteOffset
 
       val addr       = _addr.W
       val byteOffset = _byteOffset.W
