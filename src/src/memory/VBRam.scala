@@ -3,7 +3,7 @@ package memory
 import chisel3._
 import chisel3.util._
 
-class VBRam(size: Int, dataWidth: Int) extends Module {
+class VSingleBRam(size: Int, dataWidth: Int) extends Module {
   val addrWidth = log2Ceil(size)
 
   val io = IO(new Bundle {
@@ -25,6 +25,30 @@ class VBRam(size: Int, dataWidth: Int) extends Module {
   io.dataOut         := blackBox.io.douta
 }
 
+class VTrueDualBRam(size: Int, dataWidth: Int) extends Module {
+  // TODO: customize it as you want
+  val io = IO(new Bundle {
+  })
+
+  val blackBox = Module(new truedual_readfirst_bram(size, dataWidth))
+
+  blackBox.io.addra := DontCare
+  blackBox.io.addrb := DontCare
+  blackBox.io.dina := DontCare
+  blackBox.io.dinb := DontCare
+  blackBox.io.clka := DontCare
+  blackBox.io.wea := DontCare
+  blackBox.io.web := DontCare
+  blackBox.io.ena := DontCare
+  blackBox.io.enb := DontCare
+  blackBox.io.rsta := DontCare
+  blackBox.io.rstb := DontCare
+  blackBox.io.regcea := DontCare
+  blackBox.io.regceb := DontCare
+  DontCare <> blackBox.io.douta
+  DontCare <> blackBox.io.doutb
+}
+
 class single_readfirst_bram(size: Int, dataWidth: Int)
     extends BlackBox(
       Map(
@@ -44,3 +68,31 @@ class single_readfirst_bram(size: Int, dataWidth: Int)
     val douta  = Output(UInt(dataWidth.W))
   })
 }
+
+class truedual_readfirst_bram(size: Int, dataWidth: Int)
+  extends BlackBox(
+    Map(
+      "RAM_WIDTH" -> dataWidth,
+      "RAM_DEPTH" -> size,
+      "RAM_PERFORMANCE" -> "LOW_LATENCY"
+    )
+  ) {
+  val io = IO(new Bundle {
+    val addra  = Input(UInt(log2Ceil(size).W))
+    val addrb  = Input(UInt(log2Ceil(size).W))
+    val dina   = Input(UInt(dataWidth.W))
+    val dinb   = Input(UInt(dataWidth.W))
+    val clka   = Input(Clock())
+    val wea    = Input(Bool())
+    val web    = Input(Bool())
+    val ena    = Input(Bool())
+    val enb    = Input(Bool())
+    val rsta   = Input(Bool())
+    val rstb   = Input(Bool())
+    val regcea = Input(Bool())
+    val regceb = Input(Bool())
+    val douta  = Output(UInt(dataWidth.W))
+    val doutb  = Output(UInt(dataWidth.W))
+  })
+}
+
