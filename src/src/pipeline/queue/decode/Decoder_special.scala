@@ -107,46 +107,51 @@ class Decoder_special extends Decoder {
     is(Inst.ertn) {
       selectIssueEn(DispatchType.csrOrBranch)
 
-      io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.ertn
-      outInfo.exeSel   := ExeInst.Sel.jumpBranch
-      outInfo.needCsr  := true.B
+      io.out.isMatched        := true.B
+      outInfo.exeOp           := ExeInst.Op.ertn
+      outInfo.exeSel          := ExeInst.Sel.jumpBranch
+      outInfo.needCsr         := true.B
+      io.out.info.isPrivilege := true.B
     }
     is(Inst.tlbsrch) {
       selectIssueEn(DispatchType.loadStore)
 
-      io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.tlbsrch
-      outInfo.isTlb    := true.B
-      outInfo.needCsr  := true.B
-      outInfo.exeSel   := ExeInst.Sel.loadStore
+      io.out.isMatched        := true.B
+      outInfo.exeOp           := ExeInst.Op.tlbsrch
+      outInfo.isTlb           := true.B
+      outInfo.needCsr         := true.B
+      outInfo.exeSel          := ExeInst.Sel.loadStore
+      io.out.info.isPrivilege := true.B
     }
     is(Inst.tlbrd) {
       selectIssueEn(DispatchType.loadStore)
 
-      io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.tlbrd
-      outInfo.isTlb    := true.B
-      outInfo.needCsr  := true.B
-      outInfo.exeSel   := ExeInst.Sel.loadStore
+      io.out.isMatched        := true.B
+      outInfo.exeOp           := ExeInst.Op.tlbrd
+      outInfo.isTlb           := true.B
+      outInfo.needCsr         := true.B
+      outInfo.exeSel          := ExeInst.Sel.loadStore
+      io.out.info.isPrivilege := true.B
     }
     is(Inst.tlbwr) {
       selectIssueEn(DispatchType.loadStore)
 
-      io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.tlbwr
-      outInfo.isTlb    := true.B
-      outInfo.needCsr  := true.B
-      outInfo.exeSel   := ExeInst.Sel.loadStore
+      io.out.isMatched        := true.B
+      outInfo.exeOp           := ExeInst.Op.tlbwr
+      outInfo.isTlb           := true.B
+      outInfo.needCsr         := true.B
+      outInfo.exeSel          := ExeInst.Sel.loadStore
+      io.out.info.isPrivilege := true.B
     }
     is(Inst.tlbfill) {
       selectIssueEn(DispatchType.loadStore)
 
-      io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.tlbfill
-      outInfo.isTlb    := true.B
-      outInfo.needCsr  := true.B
-      outInfo.exeSel   := ExeInst.Sel.loadStore
+      io.out.isMatched        := true.B
+      outInfo.exeOp           := ExeInst.Op.tlbfill
+      outInfo.isTlb           := true.B
+      outInfo.needCsr         := true.B
+      outInfo.exeSel          := ExeInst.Sel.loadStore
+      io.out.info.isPrivilege := true.B
     }
   }
 }

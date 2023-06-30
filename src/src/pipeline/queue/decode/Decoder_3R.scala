@@ -45,6 +45,7 @@ class Decoder_3R extends Decoder {
       outInfo.gprWritePort.en := false.B
       outInfo.exeOp           := ExeInst.Op.idle
       outInfo.exeSel          := ExeInst.Sel.jumpBranch
+      io.out.info.isPrivilege := true.B
     }
     is(Inst.invtlb) {
       selectIssueEn(DispatchType.loadStore)
@@ -58,6 +59,7 @@ class Decoder_3R extends Decoder {
         outInfo.tlbInvalidateInst := rd
         outInfo.gprWritePort.en   := false.B
         outInfo.needCsr           := true.B
+        io.out.info.isPrivilege   := true.B
       }
     }
     is(Inst.add_w) {

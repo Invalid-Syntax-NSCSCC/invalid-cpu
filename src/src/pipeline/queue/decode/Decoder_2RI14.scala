@@ -80,15 +80,12 @@ class Decoder_2RI14 extends Decoder {
     is(Inst.csr_) {
       selectIssueEn(DispatchType.csrOrBranch)
 
-      io.out.isMatched  := true.B
-      outInfo.exeSel    := ExeInst.Sel.none
-      outInfo.csrAddr   := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
-      outInfo.csrReadEn := true.B
-      outInfo.needCsr   := true.B
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.csrIssuePipelineIndex).B
-      }
+      io.out.isMatched        := true.B
+      outInfo.exeSel          := ExeInst.Sel.none
+      outInfo.csrAddr         := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
+      outInfo.csrReadEn       := true.B
+      outInfo.needCsr         := true.B
+      io.out.info.isPrivilege := true.B
       when(rj === "b00000".U) { // csrrd csr -> rd
         outInfo.exeOp             := ExeInst.Op.csrrd
         outInfo.gprWritePort.en   := rdIsNotZero // true.B
