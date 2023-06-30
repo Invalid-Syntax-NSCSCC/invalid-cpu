@@ -18,6 +18,7 @@ class Frontend extends Module {
     val pc              = Input(UInt(Width.Reg.data))
     val pcUpdate        = Input(Bool())
     val isPcNext        = Output(Bool())
+
     val isFlush         = Input(Bool())
     val instDequeuePort = Decoupled(new InstQueueEnqNdPort)
 
