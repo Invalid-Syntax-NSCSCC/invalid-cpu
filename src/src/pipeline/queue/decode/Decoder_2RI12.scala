@@ -41,43 +41,50 @@ class Decoder_2RI12 extends Decoder {
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
 
-  io.out.info.issueEn.zipWithIndex.foreach {
-    case (en, idx) =>
-      en := (idx != Param.loadStoreIssuePipelineIndex).B
-  }
-
   switch(opcode) {
     is(Inst.slti) {
+      selectIssueEn(DispatchType.common)
+
       io.out.isMatched   := true.B
       io.out.info.exeOp  := ExeInst.Op.slt
       io.out.info.exeSel := ExeInst.Sel.arithmetic
       io.out.info.imm    := immSext.asUInt
     }
     is(Inst.sltui) {
+      selectIssueEn(DispatchType.common)
+
       io.out.isMatched   := true.B
       io.out.info.exeOp  := ExeInst.Op.sltu
       io.out.info.exeSel := ExeInst.Sel.arithmetic
       io.out.info.imm    := immSext.asUInt
     }
     is(Inst.addi_w) {
+      selectIssueEn(DispatchType.common)
+
       io.out.isMatched   := true.B
       io.out.info.exeOp  := ExeInst.Op.add
       io.out.info.exeSel := ExeInst.Sel.arithmetic
       io.out.info.imm    := immSext.asUInt
     }
     is(Inst.andi) {
+      selectIssueEn(DispatchType.common)
+
       io.out.isMatched   := true.B
       io.out.info.exeOp  := ExeInst.Op.and
       io.out.info.exeSel := ExeInst.Sel.logic
       io.out.info.imm    := immZext
     }
     is(Inst.ori) {
+      selectIssueEn(DispatchType.common)
+
       io.out.isMatched   := true.B
       io.out.info.exeOp  := ExeInst.Op.or
       io.out.info.exeSel := ExeInst.Sel.logic
       io.out.info.imm    := immZext
     }
     is(Inst.xori) {
+      selectIssueEn(DispatchType.common)
+
       io.out.isMatched   := true.B
       io.out.info.exeOp  := ExeInst.Op.xor
       io.out.info.exeSel := ExeInst.Sel.logic
@@ -85,61 +92,53 @@ class Decoder_2RI12 extends Decoder {
     }
     // LoadStore: read0: rj, read1: store reg src, loadStoreImm: offset
     is(Inst.ld_b) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_b
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.ld_h) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_h
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.ld_w) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_w
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.ld_bu) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_bu
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.ld_hu) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_hu
       io.out.info.exeSel       := ExeInst.Sel.loadStore
       io.out.info.isHasImm     := false.B
       io.out.info.loadStoreImm := immSext.asUInt
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.st_b) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_b
       io.out.info.exeSel               := ExeInst.Sel.loadStore
@@ -149,12 +148,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.st_h) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_h
       io.out.info.exeSel               := ExeInst.Sel.loadStore
@@ -164,12 +161,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.st_w) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_w
       io.out.info.exeSel               := ExeInst.Sel.loadStore
@@ -179,12 +174,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.cacop) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched            := true.B
       io.out.info.exeOp           := ExeInst.Op.cacop
       io.out.info.exeSel          := ExeInst.Sel.loadStore
@@ -192,12 +185,10 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.isHasImm        := true.B
       io.out.info.imm             := immSext.asUInt
       io.out.info.code            := rd
-      io.out.info.issueEn.zipWithIndex.foreach {
-        case (en, idx) =>
-          en := (idx == Param.loadStoreIssuePipelineIndex).B
-      }
     }
     is(Inst.preld) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched              := true.B
       io.out.info.exeOp             := ExeInst.Op.preld
       io.out.info.exeSel            := ExeInst.Sel.loadStore

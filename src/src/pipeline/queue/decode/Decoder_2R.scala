@@ -16,13 +16,10 @@ class Decoder_2R extends Decoder {
 
   io.out.info.isHasImm := false.B
 
-  io.out.info.issueEn.zipWithIndex.foreach {
-    case (en, idx) =>
-      en := (idx == Param.csrIssuePipelineIndex).B
-  }
-
   switch(opcode) {
     is(Inst.rdcnt_id_vl) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.isMatched    := true.B
       io.out.info.needCsr := true.B
       when(rj.orR) {
@@ -39,6 +36,8 @@ class Decoder_2R extends Decoder {
       }
     }
     is(Inst.rdcnt_vh) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.info.needCsr           := true.B
       io.out.isMatched              := true.B
       io.out.info.gprWritePort.en   := rdIsNotZero

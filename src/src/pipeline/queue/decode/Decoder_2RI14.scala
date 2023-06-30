@@ -47,13 +47,10 @@ class Decoder_2RI14 extends Decoder {
   io.out.info.imm            := DontCare
   io.out.info.jumpBranchAddr := DontCare
 
-  io.out.info.issueEn.zipWithIndex.foreach {
-    case (en, idx) =>
-      en := (idx == Param.loadStoreIssuePipelineIndex).B
-  }
-
   switch(opcode) {
     is(Inst.ll) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.ll
       outInfo.exeSel               := ExeInst.Sel.loadStore
@@ -62,8 +59,11 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprWritePort.en      := rdIsNotZero // true.B
       outInfo.gprWritePort.addr    := rd
       outInfo.loadStoreImm         := immSext.asUInt << 2
+      outInfo.needCsr              := true.B
     }
     is(Inst.sc) {
+      selectIssueEn(DispatchType.loadStore)
+
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.sc
       outInfo.exeSel               := ExeInst.Sel.loadStore
@@ -74,9 +74,12 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprWritePort.en      := true.B
       outInfo.gprWritePort.addr    := rd
       outInfo.loadStoreImm         := immSext.asUInt << 2
+      outInfo.needCsr              := true.B
     }
     // csr读写指令
     is(Inst.csr_) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.isMatched  := true.B
       outInfo.exeSel    := ExeInst.Sel.none
       outInfo.csrAddr   := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
