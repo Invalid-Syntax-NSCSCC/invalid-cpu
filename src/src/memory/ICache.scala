@@ -139,8 +139,8 @@ class ICache(
 
   val isCompleteReg = RegInit(false.B)
   isCompleteReg := isCompleteReg
-  val readDataReg = Reg(UInt(Width.Mem.data))
-  readDataReg := readDataReg
+  val readDataVecReg = Reg(UInt(Width.Mem.data))
+  readDataVecReg := readDataVecReg
 
   io.accessPort.req.isReady := false.B // Fallback: Not ready
 
@@ -150,13 +150,17 @@ class ICache(
 
   io.accessPort.res.isComplete := isCompleteReg // Fallback: Keep status
 
-  io.accessPort.res.read.data := readDataReg // Fallback: Keep data
+  io.accessPort.res.read.data := readDataVecReg // Fallback: Keep data
 
   val currentMemAddr = WireDefault(
     Mux(
       io.maintenancePort.client.control.isL1Valid,
       io.maintenancePort.client.addr,
-      io.accessPort.req.client.addr
+      Cat(
+        io.accessPort.req.client
+          .addr(spec.Width.Mem._addr, Param.Width.ICache._fetchOffset),
+        0.U(Param.Width.ICache._fetchOffset)
+      )
     )
   )
 
@@ -218,7 +222,13 @@ class ICache(
       lastReg.dataLine       := selectedDataLine
 
       // Step 2: Select data by data index from byte offset
-      val selectedData = WireDefault(selectedDataLine(dataIndex))
+      val selectDataVec = WireDefault(VecInit(Seq.fill(Param.fetchInstMaxNum)(0.U(spec.Width.Mem.data))))
+      Seq.range(0, Param.fetchInstMaxNum).map { fetchIndex =>
+        val fetchOffsetIndex = dataIndex + fetchIndex.asUInt(log2Ceil(Param.Count.ICache.dataPerLine).W)
+        val readData         = WireDefault(selectedDataLine(fetchOffsetIndex))
+        selectDataVec(fetchIndex) := readData
+        selectDataVec
+      }
 
       // Step 2: Whether hit or not
       when(isHasReqReg) {
@@ -226,10 +236,10 @@ class ICache(
           // Cache hit
 
           // Step 2: Read result in same cycle output
-          io.accessPort.res.isComplete := true.B
-          io.accessPort.res.read.data  := selectedData
-          isCompleteReg                := true.B
-          readDataReg                  := selectedData
+          io.accessPort.res.isComplete   := true.B
+          io.accessPort.res.read.dataVec := selectDataVec
+          isCompleteReg                  := true.B
+          readDataVecReg                 := selectDataVec
 
           // Next Stage 1
           nextState := State.ready
@@ -325,14 +335,22 @@ class ICache(
           }
 
           // Return read data
-          val dataLine = WireDefault(toDataLine(axiMaster.io.read.res.data))
-          val readData = WireDefault(dataLine(dataIndexFromMemAddr(lastReg.memAddr)))
+          val dataLine       = WireDefault(toDataLine(axiMaster.io.read.res.data))
+          val dataStartIndex = WireDefault(dataIndexFromMemAddr(lastReg.memAddr))
+          val readDataVec    = WireDefault(VecInit(Seq.fill(Param.fetchInstMaxNum)(0.U(spec.Width.Mem.data))))
+          Seq.range(0, Param.fetchInstMaxNum).map { fetchIndex =>
+            val fetchOffsetIndex = dataStartIndex + fetchIndex.asUInt(log2Ceil(Param.Count.ICache.dataPerLine).W)
+            val readData         = WireDefault(dataLine(fetchOffsetIndex))
+            readDataVec(fetchIndex) := readData
+            readDataVec
+          }
+
           // TODO: Add one more cycle for return read data
-          io.accessPort.res.isComplete := true.B
-          io.accessPort.res.isFailed   := axiMaster.io.read.res.isFailed
-          io.accessPort.res.read.data  := readData
-          isCompleteReg                := true.B
-          readDataReg                  := readData
+          io.accessPort.res.isComplete   := true.B
+          io.accessPort.res.isFailed     := axiMaster.io.read.res.isFailed
+          io.accessPort.res.read.dataVec := readDataVec
+          isCompleteReg                  := true.B
+          readDataVecReg                 := readDataVec
           // TODO: `isFailedReg`
 
           // Next Stage 1
