@@ -57,6 +57,7 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprWritePort.en      := rdIsNotZero // true.B
       outInfo.gprWritePort.addr    := rd
       outInfo.loadStoreImm         := immSext.asUInt << 2
+      outInfo.needCsr              := true.B
     }
     is(Inst.sc) {
       io.out.isMatched             := true.B
@@ -69,6 +70,7 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprWritePort.en      := true.B
       outInfo.gprWritePort.addr    := rd
       outInfo.loadStoreImm         := immSext.asUInt << 2
+      outInfo.needCsr              := true.B
     }
     // csr读写指令
     is(Inst.csr_) {

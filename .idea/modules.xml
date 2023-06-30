@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/invalid-cpu.src.test.iml" filepath="$PROJECT_DIR$/.idea/modules/invalid-cpu.src.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/mill-build.iml" filepath="$PROJECT_DIR$/.idea/modules/mill-build.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/src.iml" filepath="$PROJECT_DIR$/.idea/modules/src.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/src.test.iml" filepath="$PROJECT_DIR$/.idea/modules/src.test.iml" />
