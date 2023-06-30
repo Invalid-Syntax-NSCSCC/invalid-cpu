@@ -24,7 +24,7 @@ class Pc(
   val pcFetchNum = WireDefault(Param.fetchInstMaxNum.U(log2Ceil(Param.fetchInstMaxNum + 1).W))
   if (Param.fetchInstMaxNum != 1) {
     when(pcReg(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset) =/= 0.U) {
-      pcFetchNum := Param.fetchInstMaxNum.U - pcReg(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset)
+      pcFetchNum := Param.fetchInstMaxNum.U - pcReg(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset)
     }
   }
 
