@@ -6,7 +6,7 @@ import frontend.bundles.InstMemResponseNdPort
 import memory.bundles.MemResponseNdPort
 import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.FetchInstInfoBundle
-import pipeline.queue.InstQueueEnqPort
+import pipeline.queue.InstQueueEnqNdPort
 import spec.{Param, Width}
 
 class InstResNdPort extends Bundle {
@@ -30,7 +30,7 @@ class InstEnqueuePort extends Bundle {
 class InstResStage
     extends BaseStage(
       new InstResNdPort,
-      new InstQueueEnqPort,
+      new InstQueueEnqNdPort,
       InstResNdPort.default,
       Some(new InstResPeerPort)
     ) {

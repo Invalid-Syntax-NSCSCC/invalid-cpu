@@ -23,9 +23,8 @@ object FetchInstDecodeNdPort {
   def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
 }
 
-class InstQueueEnqPort extends Bundle {
-  val enqInfos = Input(Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle)))
-  val ready    = Output(Bool())
+class InstQueueEnqNdPort extends Bundle {
+  val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
 }
 
 // assert: enqueuePorts总是最低的几位有效
@@ -39,7 +38,7 @@ class MultiInstQueue(
     val isFrontendFlush = Input(Bool())
     val isBackendFlush  = Input(Bool())
 
-    val enqueuePort = new InstQueueEnqPort
+    val enqueuePort = Flipped(Decoupled(new InstQueueEnqNdPort))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
