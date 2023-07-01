@@ -5,12 +5,16 @@ import chisel3.util._
 import control.enums.ExceptionPos
 import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.DistributedQueue
-import pipeline.dispatch.bundles.InstInfoBundle
+import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode._
 import spec._
 import pipeline.dispatch.FetchInstDecodeNdPort
 import pipeline.common.MultiQueue
+
+class InstQueueEnqNdPort extends Bundle {
+  val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
+}
 
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
@@ -23,7 +27,7 @@ class MultiInstQueue(
     val isFrontendFlush = Input(Bool())
     val isBackendFlush  = Input(Bool())
 
-    val enqueuePorts = Flipped(Decoupled(Vec(fetchNum, new InstInfoBundle)))
+    val enqueuePort = Flipped(Decoupled(new InstQueueEnqNdPort))
 
     // `InstQueue` -> `IssueStage`
     val dequeuePorts = Vec(
@@ -60,11 +64,11 @@ class MultiInstQueue(
   // Fallback
   instQueue.io.enqueuePorts.zipWithIndex.foreach {
     case (enq, idx) =>
-      enq.valid := io.enqueuePorts.valid && !isIdle
-      enq.bits  := io.enqueuePorts.bits(idx)
+      enq.valid := io.enqueuePort.bits.enqInfos(idx).valid && io.enqueuePort.ready && !isIdle && io.enqueuePort.valid
+      enq.bits  := io.enqueuePort.bits.enqInfos(idx).bits
   }
-  io.enqueuePorts.ready := instQueue.io.enqueuePorts.map(_.ready).reduce(_ && _) && !isIdle
-  instQueue.io.isFlush  := io.isFrontendFlush
+  io.enqueuePort.ready := instQueue.io.enqueuePorts.map(_.ready).reduce(_ && _) && !isIdle
+  instQueue.io.isFlush := io.isFrontendFlush
 
   // Decode
   val decodeInstInfos = WireDefault(VecInit(instQueue.io.dequeuePorts.map(_.bits)))

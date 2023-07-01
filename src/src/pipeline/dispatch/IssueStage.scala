@@ -40,7 +40,7 @@ class IssueStagePeerPort(
 
   // `IssueStage` <-> `Scoreboard(csr)`
   val csrOccupyPort = Output(new ScoreboardChangeNdPort)
-  val csrcore       = Input(ScoreboardState())
+  val csrScore      = Input(ScoreboardState())
   val csrReadPort   = Flipped(new CsrReadPort)
 
   // `Cu` -> `IssueStage`
@@ -147,15 +147,18 @@ class IssueStage(
             }
             if (dst_idx == csrIssuePipelineIndex) {
               when(
-                (in.instInfo.needCsr && (io.peer.get.csrcore =/= ScoreboardState.free)) ||
+                (in.instInfo.needCsr && (io.peer.get.csrScore =/= ScoreboardState.free)) ||
                   in.instInfo.isTlb || (in.instInfo.exeOp === ExeInst.Op.cacop)
               ) {
                 dispatchEn := false.B
               }
             } else if (dst_idx == loadStoreIssuePipelineIndex) {
               when(
-                (in.instInfo.isTlb || (in.instInfo.exeOp === ExeInst.Op.cacop)) &&
-                  (io.peer.get.csrcore =/= ScoreboardState.free)
+                (in.instInfo.isTlb ||
+                  (in.instInfo.exeOp === ExeInst.Op.cacop) ||
+                  (in.instInfo.exeOp === ExeInst.Op.ll) ||
+                  (in.instInfo.exeOp === ExeInst.Op.sc)) &&
+                  (io.peer.get.csrScore =/= ScoreboardState.free)
               ) {
                 dispatchEn := false.B
               }

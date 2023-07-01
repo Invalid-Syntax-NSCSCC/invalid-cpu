@@ -184,7 +184,7 @@ class Cu(
   // llbit control
   val isLoadLinked       = WireDefault(majorInstInfo.exeOp === ExeInst.Op.ll)
   val isStoreConditional = WireDefault(majorInstInfo.exeOp === ExeInst.Op.sc)
-  io.csrMessage.llbitSet.en := (isLoadLinked || isStoreConditional) && !isException
+  io.csrMessage.llbitSet.en := (isLoadLinked || isStoreConditional) && majorInstInfo.isValid && !isException
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := isLoadLinked
 
@@ -240,15 +240,15 @@ class Cu(
     isTlbMaintenance || io.csrFlushRequest || isException || io.branchExe.en || cacopFlush || idleFlush || isExceptionReturn
   io.newPc.isTlb := isTlbMaintenance
   io.newPc.pcAddr := Mux(
-    isExceptionReturn,
-    io.csrValues.era.pc,
+    isException,
     Mux(
-      isException,
-      Mux(
-        majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
-        io.csrValues.tlbrentry.asUInt,
-        io.csrValues.eentry.asUInt
-      ),
+      majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
+      io.csrValues.tlbrentry.asUInt,
+      io.csrValues.eentry.asUInt
+    ),
+    Mux(
+      isExceptionReturn,
+      io.csrValues.era.pc,
       Mux(
         isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
         majorInstInfo.pc + 4.U,

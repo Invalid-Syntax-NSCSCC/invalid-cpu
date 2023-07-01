@@ -4,15 +4,15 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import spec._
 
-class InstInfoBundle extends Bundle {
+class FetchInstInfoBundle extends Bundle {
   val pcAddr         = UInt(Width.Reg.data)
   val inst           = UInt(Width.inst)
   val exceptionValid = Bool()
   val exception      = UInt(Width.Csr.exceptionIndex)
 }
 
-object InstInfoBundle {
-  def default = (new InstInfoBundle).Lit(
+object FetchInstInfoBundle {
+  def default = (new FetchInstInfoBundle).Lit(
     _.pcAddr -> zeroWord,
     _.inst -> zeroWord,
     _.exceptionValid -> false.B,

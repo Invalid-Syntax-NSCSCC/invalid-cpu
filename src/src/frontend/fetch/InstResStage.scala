@@ -2,10 +2,12 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
+import frontend.bundles.InstMemResponseNdPort
 import memory.bundles.MemResponseNdPort
 import pipeline.common.BaseStage
-import pipeline.dispatch.bundles.InstInfoBundle
-import spec.Width
+import pipeline.dispatch.bundles.FetchInstInfoBundle
+import pipeline.queue.InstQueueEnqNdPort
+import spec.{Param, Width}
 
 class InstResNdPort extends Bundle {
   val isValid   = Bool()
@@ -18,17 +20,17 @@ object InstResNdPort {
 }
 
 class InstResPeerPort extends Bundle {
-  val memRes = Input(new MemResponseNdPort)
+  val memRes = Input(new InstMemResponseNdPort)
 }
 
 class InstEnqueuePort extends Bundle {
-  val instInfo = new InstInfoBundle
+  val instInfo = new FetchInstInfoBundle
 }
 
 class InstResStage
     extends BaseStage(
       new InstResNdPort,
-      new InstInfoBundle,
+      new InstQueueEnqNdPort,
       InstResNdPort.default,
       Some(new InstResPeerPort)
     ) {
@@ -38,10 +40,24 @@ class InstResStage
   val isLastHasReq = RegNext(false.B, false.B)
 
   // Fallback output
-  out.pcAddr         := selectedIn.pc
-  out.inst           := peer.memRes.read.data
-  out.exceptionValid := selectedIn.exception.valid
-  out.exception      := selectedIn.exception.bits
+  out.enqInfos.zipWithIndex.foreach {
+    case (infoBundle, index) =>
+      infoBundle.bits.pcAddr := selectedIn.pc + index.asUInt(Width.Mem.addr) * 4.U
+      if (Param.fetchInstMaxNum == 1) {
+        infoBundle.bits.inst := peer.memRes.read.dataVec(0)
+        infoBundle.valid     := true.B
+      } else {
+        val fetchIndex = WireDefault(
+          selectedIn.pc(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset) + index.asUInt(
+            log2Ceil(Param.fetchInstMaxNum).W
+          )
+        )
+        infoBundle.bits.inst := peer.memRes.read.dataVec(fetchIndex)
+        infoBundle.valid     := fetchIndex >= index.asUInt(log2Ceil(Param.fetchInstMaxNum).W)
+      }
+      infoBundle.bits.exceptionValid := selectedIn.exception.valid
+      infoBundle.bits.exception      := selectedIn.exception.bits
+  }
 
   when(selectedIn.isValid) {
     isComputed         := peer.memRes.isComplete | selectedIn.exception.valid
