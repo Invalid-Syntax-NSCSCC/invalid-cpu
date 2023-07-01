@@ -466,7 +466,10 @@ class DCache(
         // Stage 2.b.1: Send read request
 
         axiMaster.io.read.req.isValid := true.B
-        axiMaster.io.read.req.addr    := lastReg.memAddr
+        axiMaster.io.read.req.addr := Cat(
+          lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset),
+          0.U(Param.Width.DCache.byteOffset)
+        )
 
         when(axiMaster.io.read.req.isReady) {
           // Next Stage 2.b.2

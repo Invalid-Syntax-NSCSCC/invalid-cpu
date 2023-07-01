@@ -191,7 +191,7 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  issueStage.io.peer.get.csrcore     := csrScoreBoard.io.regScore
+  issueStage.io.peer.get.csrScore    := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
   issueStage.io.peer.get.plv         := csr.io.csrValues.crmd.plv
 

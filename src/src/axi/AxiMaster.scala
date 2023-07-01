@@ -29,7 +29,7 @@ class AxiMaster(val Id: Int = 0) extends Module {
 
   // read constants
   io.axi.ar.bits.len   := 0.U // 1 request
-  io.axi.ar.bits.burst := 0.U // burst type does not matter
+  io.axi.ar.bits.burst := 1.U // burst type does not matter
   io.axi.r.ready       := true.B // always ready to receive data
 
   val addrReg   = RegEnable(io.addr, 0.U(Width.Axi.addr), io.newRequest)

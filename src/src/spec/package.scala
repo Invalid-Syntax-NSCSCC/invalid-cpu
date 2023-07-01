@@ -109,6 +109,8 @@ package object spec {
       object Size {
         def get(sizeInBytes: Int) = log2Ceil(sizeInBytes).U(3.W)
 
+        val _1_B   = get(1)
+        val _2_B   = get(2)
         val _4_B   = get(4)
         val _128_B = get(128)
       }
