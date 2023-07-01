@@ -214,18 +214,46 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     val csrScoreboardChangePort = io.peer.get.csrScoreboardChangePort.get
 
     // branch set
-    branchSetPort    := PcSetNdPort.default
-    branchSetPort.en := alu.io.result.jumpBranchInfo.en && branchEnableFlag
-    when(alu.io.result.jumpBranchInfo.en) {
-      branchEnableFlag := false.B
-    }
-    branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
+    branchSetPort                := PcSetNdPort.default
     csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
     csrScoreboardChangePort.addr := DontCare
 
-    val feedbackFtq = io.peer.get.feedbackFtq.get
-    feedbackFtq.ftqMetaUpdateValid := alu.io.isBranch
-    // feedbackFtq.ftqMetaUpdateFtbDirty := alu.io.result.jumpBranchInfo.en
+    val feedbackFtq    = io.peer.get.feedbackFtq.get
+    val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)
+    val inFtqInfo      = WireDefault(selectedIn.instInfo.ftqInfo)
+    val fallThroughPc  = WireDefault(selectedIn.instInfo.pc + 4.U)
+    val ftqQueryPc     = zeroWord // TODO: assign
+
+    // mis predict
+    val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
+    val branchTargeMispredict = (
+      jumpBranchInfo.en &&
+        inFtqInfo.predictBranch &&
+        jumpBranchInfo.pcAddr =/= ftqQueryPc
+    ) || (
+      !jumpBranchInfo.en &&
+        !inFtqInfo.predictBranch &&
+        inFtqInfo.isLastInBlock &&
+        fallThroughPc =/= ftqQueryPc
+    )
+
+    branchSetPort.en := (branchTargeMispredict || branchTargeMispredict) && branchEnableFlag
+    when(branchSetPort.en) {
+      branchEnableFlag := false.B
+    }
+    branchSetPort.pcAddr := Mux(
+      jumpBranchInfo.en,
+      jumpBranchInfo.pcAddr,
+      fallThroughPc
+    )
+
+    // is branch
+    feedbackFtq.ftqMetaUpdateValid := alu.io.isBranch && branchEnableFlag
+    feedbackFtq.ftqMetaUpdateFtbDirty := branchTargeMispredict ||
+      (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
+    feedbackFtq.ftqUpdateMetaId          := inFtqInfo.ftqId
+    feedbackFtq.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+    feedbackFtq.ftqMetaUpdateFallThrough := fallThroughPc
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
