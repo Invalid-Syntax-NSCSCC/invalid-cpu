@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
 import chisel3.experimental.Param
-import frontend.bundles.{BpuFtqPort, CuCommitFtqNdPort, ExeFtqPort, FtqBlockPort, FtqBpuMetaPort}
+import frontend.bundles.{BpuFtqPort, CuCommitFtqPort, ExeFtqPort, FtqBlockPort, FtqBpuMetaPort}
 
 class FetchTargetQueen(
   val queueSize: Int = Param.BPU.ftqSize,
@@ -26,7 +26,7 @@ class FetchTargetQueen(
 
     // <-> Backend
     // <-> Cu commit
-    val cuCommitFtqPort = new CuCommitFtqNdPort
+    val cuCommitFtqPort = new CuCommitFtqPort
     // <-> Ex query port
     val exeFtqPort = new ExeFtqPort
 
@@ -64,7 +64,7 @@ class FetchTargetQueen(
   val ftqBranchMetaVec  = Vec(queueSize, new FtqBranchMetaEntry)
 
   val backendCommitNum = WireInit(0.U(log2Ceil(issueNum).W))
-  backendCommitNum := io.cuCommitFtqPort.BitMask.asBools.map(_.asUInt).reduce(_ +& _)
+  backendCommitNum := io.cuCommitFtqPort.bitMask.asBools.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
   ifuSendReq               := ftqVec(ifuPtr).valid & io.ifuAccept
@@ -182,21 +182,21 @@ class FetchTargetQueen(
   // training meta to BPU
   io.bpuFtqPort.ftqTrainMeta := FtqBpuMetaPort.default
   when(
-    io.cuCommitFtqPort.BlockBitmask(0) & io.cuCommitFtqPort.Meta.isBranch
+    io.cuCommitFtqPort.blockBitmask(0) & io.cuCommitFtqPort.meta.isBranch
   ) {
     // Update when a branch is committed, defined as:
     // 1. Must be last in block, which means either a known branch or a mispredicted branch.
     // 2. Exception introduced block commit is not considered a branch update.
-    val commitFtqId = WireDefault(io.cuCommitFtqPort.FtqId)
+    val commitFtqId = WireDefault(io.cuCommitFtqPort.ftqId)
     io.bpuFtqPort.ftqTrainMeta.valid       := true.B
     io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaVec(commitFtqId).ftbHit
     io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaVec(commitFtqId).ftbHitIndex
     io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaVec(commitFtqId).ftbDirty
     // Must use accuraate decoded info passed from backend
-    io.bpuFtqPort.ftqTrainMeta.isBranch       := io.cuCommitFtqPort.Meta.isBranch
-    io.bpuFtqPort.ftqTrainMeta.branchType     := io.cuCommitFtqPort.Meta.branchType
-    io.bpuFtqPort.ftqTrainMeta.isTaken        := io.cuCommitFtqPort.Meta.isTaken
-    io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.cuCommitFtqPort.Meta.predictedTaken
+    io.bpuFtqPort.ftqTrainMeta.isBranch       := io.cuCommitFtqPort.meta.isBranch
+    io.bpuFtqPort.ftqTrainMeta.branchType     := io.cuCommitFtqPort.meta.branchType
+    io.bpuFtqPort.ftqTrainMeta.isTaken        := io.cuCommitFtqPort.meta.isTaken
+    io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.cuCommitFtqPort.meta.predictedTaken
 
     io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVec(commitFtqId).startPc
     io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVec(commitFtqId).isCrossCacheline

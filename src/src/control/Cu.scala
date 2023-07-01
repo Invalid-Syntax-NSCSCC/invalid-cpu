@@ -8,6 +8,7 @@ import control.enums.ExceptionPos
 import pipeline.commit.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param}
+import frontend.bundles.CuCommitFtqPort
 
 // Note. Exception只从第0个提交
 class Cu(
@@ -44,6 +45,8 @@ class Cu(
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
     val idleFlush     = Output(Bool())
+
+    val ftqPort = Flipped(new CuCommitFtqPort)
 
     // <- Out
     val hardwareInterrupt = Input(UInt(8.W))
@@ -249,6 +252,9 @@ class Cu(
       )
     )
   )
+
+  // BPU training data
+  // io.ftqPort.FtqId
 
   io.difftest match {
     case Some(dt) =>

@@ -12,8 +12,8 @@ import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.ExeInst.Sel
 import spec.Param.isDiffTest
+import frontend.bundles.ExeFtqPort
 import spec._
-import frontend.bundles.ExCommitFtqNdPort
 
 // class ExCommitFtqNdPort(val queueSize: Int = Param.BPU.ftqSize) extends Bundle {
 //   val ftqMetaUpdateValid       = Bool()
@@ -64,7 +64,7 @@ class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
     val era    = new EraBundle
   })
 
-  val feedbackFtq = if (supportBranchCsr) Some(Output(new ExCommitFtqNdPort)) else None
+  val feedbackFtq = if (supportBranchCsr) Some(Flipped(new ExeFtqPort)) else None
 }
 
 // throw exception: 地址未对齐 ale
@@ -222,7 +222,9 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)
     val inFtqInfo      = WireDefault(selectedIn.instInfo.ftqInfo)
     val fallThroughPc  = WireDefault(selectedIn.instInfo.pc + 4.U)
-    val ftqQueryPc     = zeroWord // TODO: assign
+
+    feedbackFtq.queryPcBundle.ftqId := selectedIn.instInfo.ftqInfo.ftqId + 1.U
+    val ftqQueryPc = feedbackFtq.queryPcBundle.pc
 
     // mis predict
     val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
@@ -248,17 +250,17 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     )
 
     // is branch
-    feedbackFtq.ftqMetaUpdateValid := alu.io.isBranch && branchEnableFlag
-    feedbackFtq.ftqMetaUpdateFtbDirty := branchTargeMispredict ||
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := alu.io.isBranch && branchEnableFlag
+    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargeMispredict ||
       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
-    feedbackFtq.ftqUpdateMetaId          := inFtqInfo.ftqId
-    feedbackFtq.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
-    feedbackFtq.ftqMetaUpdateFallThrough := fallThroughPc
+    feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
+    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
 
-    when(branchSetPort.en || isIdle || isErtn) {
+    when(alu.io.isBranch || isIdle || isErtn) {
       resultOutReg.bits.instInfo.forbidParallelCommit := true.B
     }
 
