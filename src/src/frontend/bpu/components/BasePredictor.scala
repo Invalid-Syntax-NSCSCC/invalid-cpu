@@ -3,7 +3,7 @@ package frontend.bpu.components
 import chisel3._
 import chisel3.util._
 import frontend.bpu.utils.Bram
-import memory.VBRam
+import memory.VTrueDualBRam
 import spec.{Param, Width}
 
 class BasePredictor(
@@ -80,5 +80,4 @@ class BasePredictor(
   phtTable.io.dinb  := updateContent
   phtTable.io.addrb := updateIndex
   phtTable.io.doutb <> DontCare
-
 }
