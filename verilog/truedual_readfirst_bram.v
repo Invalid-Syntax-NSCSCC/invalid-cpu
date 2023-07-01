@@ -8,26 +8,27 @@
 //  If a reset or enable is not necessary, it may be tied off or removed from the code.
 module truedual_readfirst_bram #(
   parameter RAM_WIDTH = 88,                       // Specify RAM data width
-  parameter RAM_DEPTH = 1024;                     // Specify RAM depth (number of entries)
-  parameter RAM_PERFORMANCE = "HIGH_PERFORMANCE"; // Select "HIGH_PERFORMANCE" or "LOW_LATENCY" 
-  parameter INIT_FILE = "";                       // Specify name/location of RAM initialization file if using one (leave blank if not)
+  parameter RAM_DEPTH = 1024,                     // Specify RAM depth (number of entries)
+  parameter RAM_PERFORMANCE = "HIGH_PERFORMANCE", // Select "HIGH_PERFORMANCE" or "LOW_LATENCY"
+  parameter INIT_FILE = ""                        // Specify name/location of RAM initialization file if using one (leave blank if not)
 )(
-  input  wire [clogb2(RAM_DEPTH-1)-1:0] addra;  // Port A address bus, width determined from RAM_DEPTH
-  input  wire [clogb2(RAM_DEPTH-1)-1:0] addrb;  // Port B address bus, width determined from RAM_DEPTH
-  input  wire [RAM_WIDTH-1:0] dina;             // Port A RAM input data
-  input  wire [RAM_WIDTH-1:0] dinb;             // Port B RAM input data
-  input  wire clka;                             // Clock
-  input  wire wea;                              // Port A write enable
-  input  wire web;                              // Port B write enable
-  input  wire ena;                              // Port A RAM Enable, for additional power savings, disable port when not in use
-  input  wire enb;                              // Port B RAM Enable, for additional power savings, disable port when not in use
-  input  wire rsta;                             // Port A output reset (does not affect memory contents)
-  input  wire rstb;                             // Port B output reset (does not affect memory contents)
-  input  wire regcea;                           // Port A output register enable
-  input  wire regceb;                           // Port B output register enable
-  output wire [RAM_WIDTH-1:0] douta;            // Port A RAM output data
-  output wire [RAM_WIDTH-1:0] doutb;            // Port B RAM output data
-)
+  input  wire [clogb2(RAM_DEPTH-1)-1:0] addra,  // Port A address bus, width determined from RAM_DEPTH
+  input  wire [clogb2(RAM_DEPTH-1)-1:0] addrb,  // Port B address bus, width determined from RAM_DEPTH
+  input  wire [RAM_WIDTH-1:0] dina,             // Port A RAM input data
+  input  wire [RAM_WIDTH-1:0] dinb,             // Port B RAM input data
+  input  wire clka,                             // Clock
+  input  wire wea,                              // Port A write enable
+  input  wire web,                              // Port B write enable
+  input  wire ena,                              // Port A RAM Enable, for additional power savings, disable port when not in use
+  input  wire enb,                              // Port B RAM Enable, for additional power savings, disable port when not in use
+  input  wire rsta,                             // Port A output reset (does not affect memory contents)
+  input  wire rstb,                             // Port B output reset (does not affect memory contents)
+  input  wire regcea,                           // Port A output register enable
+  input  wire regceb,                           // Port B output register enable
+  output wire [RAM_WIDTH-1:0] douta,            // Port A RAM output data
+  output wire [RAM_WIDTH-1:0] doutb             // Port B RAM output data
+);
+
   reg [RAM_WIDTH-1:0] ram_name [RAM_DEPTH-1:0];
   reg [RAM_WIDTH-1:0] ram_data_a = {RAM_WIDTH{1'b0}};
   reg [RAM_WIDTH-1:0] ram_data_b = {RAM_WIDTH{1'b0}};
