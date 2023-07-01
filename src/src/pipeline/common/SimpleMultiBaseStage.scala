@@ -27,6 +27,7 @@ abstract class SimpleMultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
       useSyncReadMem = false
     )
   )
+  outQueue.io.isFlush := io.isFlush
 
   // Handle output
   io.outs.zip(outQueue.io.dequeuePorts).foreach {
@@ -34,12 +35,13 @@ abstract class SimpleMultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
       dst <> src
   }
 
-  val resultOuts: Vec[DecoupledIO[OutT]] = Vec(outNum, Decoupled(outNdFactory))
+  val resultOuts: Vec[DecoupledIO[OutT]] = outQueue.io.enqueuePorts // Vec(outNum, DecoupledIO(outNdFactory))
 
-  resultOuts.zip(outQueue.io.enqueuePorts).foreach {
-    case (src, dst) =>
-      dst <> src
-  }
+  // resultOuts.zip(outQueue.io.enqueuePorts).foreach {
+  //   case (src, dst) =>
+  //     dst.valid := src.valid
+  //     dst.
+  // }
 
   protected val selectedIns: Vec[InT] = Wire(Vec(inNum, inNdFactory)) // WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
   selectedIns.lazyZip(io.ins).foreach {

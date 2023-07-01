@@ -6,7 +6,7 @@ import control.{Csr, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
-import pipeline.dispatch.{CsrScoreboard, IssueStage}
+import pipeline.dispatch.CsrScoreboard
 import pipeline.execution.{ExeForMemStage, ExePassWbStage}
 import pipeline.memory.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.queue.MultiInstQueue
@@ -14,6 +14,8 @@ import pipeline.rob.Rob
 import spec.Param
 import spec.Param.isDiffTest
 import control.Cu
+import pipeline.dispatch.RenameStage
+import pipeline.dispatch.DispatchStage
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -100,7 +102,8 @@ class CoreCpuTop extends Module {
   val iCache           = Module(new ICache)
   val frontend         = Module(new Frontend)
   val instQueue        = Module(new MultiInstQueue)
-  val issueStage       = Module(new IssueStage)
+  val renameStage      = Module(new RenameStage)
+  val dispatchStage    = Module(new DispatchStage)
   val exeForMemStage   = Module(new ExeForMemStage)
   val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
   val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))
@@ -177,42 +180,49 @@ class CoreCpuTop extends Module {
   instQueue.io.idleBlocking    := cu.io.idleFlush
   instQueue.io.interruptWakeUp := csr.io.hasInterrupt
 
-  // Issue stage
-  issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
+  // rename stage
+  renameStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
     case (dst, src) =>
       dst <> src
   }
-  issueStage.io.isFlush              := cu.io.backendFlush
-  issueStage.io.peer.get.branchFlush := cu.io.frontendFlush
-  issueStage.io.peer.get.robEmptyNum := rob.io.emptyNum
-  issueStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
+  renameStage.io.isFlush              := cu.io.backendFlush
+  renameStage.io.peer.get.branchFlush := cu.io.frontendFlush
+  renameStage.io.peer.get.robEmptyNum := rob.io.emptyNum
+  renameStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
     case (dst, src) =>
       dst := src
   }
-  issueStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
+  renameStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
     case (dst, src) =>
       dst := src
   }
-  issueStage.io.peer.get.csrcore     := csrScoreBoard.io.regScore
-  issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
-  issueStage.io.peer.get.plv         := csr.io.csrValues.crmd.plv
+  renameStage.io.peer.get.plv := csr.io.csrValues.crmd.plv
+
+  // dispatch
+  dispatchStage.io.ins.zip(renameStage.io.outs).foreach {
+    case (dst, src) =>
+      dst <> src
+  }
+  dispatchStage.io.isFlush              := cu.io.backendFlush
+  dispatchStage.io.peer.get.csrcore     := csrScoreBoard.io.regScore
+  dispatchStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
 
   // Scoreboards
   csrScoreBoard.io.freePort    := commitStage.io.csrFreePort
   csrScoreBoard.io.toMemPort   := exeForMemStage.io.peer.get.csrScoreboardChangePort // TODO: check this
-  csrScoreBoard.io.occupyPort  := issueStage.io.peer.get.csrOccupyPort
+  csrScoreBoard.io.occupyPort  := dispatchStage.io.peer.get.csrOccupyPort
   csrScoreBoard.io.isFlush     := cu.io.backendFlush
   csrScoreBoard.io.branchFlush := cu.io.frontendFlush
 
   // Execution stage
-  exeForMemStage.io.in                  <> issueStage.io.outs(Param.loadStoreIssuePipelineIndex)
+  exeForMemStage.io.in                  <> dispatchStage.io.outs(Param.loadStoreIssuePipelineIndex)
   exeForMemStage.io.isFlush             := cu.io.backendFlush
   exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
   exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
   assert(Param.loadStoreIssuePipelineIndex == 0)
   exePassWbStages.zipWithIndex.foreach {
     case (exe, idx) =>
-      exe.io.in                  <> issueStage.io.outs(idx + 1)
+      exe.io.in                  <> dispatchStage.io.outs(idx + 1)
       exe.io.isFlush             := cu.io.backendFlush
       exe.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
       exe.io.peer.get.csr.era    := csr.io.csrValues.era
@@ -256,7 +266,7 @@ class CoreCpuTop extends Module {
         dst <> exePassWbStages(idx - 1).io.out
       }
   }
-  rob.io.requests.zip(issueStage.io.peer.get.requests).foreach {
+  rob.io.requests.zip(renameStage.io.peer.get.requests).foreach {
     case (dst, src) =>
       dst := src
   }
