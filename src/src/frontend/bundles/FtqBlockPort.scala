@@ -21,7 +21,7 @@ object FtqBlockPort {
     _.valid -> false.B,
     _.isCrossCacheline -> false.B,
     _.length -> 0.U(log2Ceil(fetchWidth + 1).W),
-    _.predictTaken -> true.B,
+    _.predictTaken -> false.B,
     _.predictValid -> false.B,
     _.startPc -> 0.U(spec.Width.Mem.addr)
   )

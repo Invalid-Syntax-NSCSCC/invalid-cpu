@@ -40,7 +40,6 @@ class BPU(
     // TODO: use PMU to monitor miss-prediction rate and each component useful rate
   })
   // P1 signals
-  val p1Pc              = RegInit(0.U(addr.W))
   val mainRedirectValid = WireDefault(false.B)
 
   // FTB fetch target buffer
@@ -55,10 +54,8 @@ class BPU(
   // RAS return address stack
   val rasTopAddr = WireDefault(0.U(addr.W))
 
-  val flushDelay   = RegInit(false.B)
-  val ftqFullDelay = RegInit(false.B)
-  flushDelay   := RegNext(io.backendFlush | (mainRedirectValid & ~ftqFullDelay))
-  ftqFullDelay := RegNext(io.bpuFtqPort.ftqFull)
+  val flushDelay   = RegNext((io.backendFlush | (mainRedirectValid & ~ftqFullDelay)), false.B)
+  val ftqFullDelay = RegNext(io.bpuFtqPort.ftqFull, false.B)
 
   ////////////////////////////////////////////////////////////////////////////////////
   // Query logic
@@ -71,7 +68,7 @@ class BPU(
   val isCrossPage = WireDefault(false.B)
 //  isCrossPage := io.pc(11, 0) > "b1111_1111_0000".U // if 4 instr already cross the page limit
   // one instr has 4B; one page addr length 12bits ; when cross page,address add fetchNum result in page's high bits from all 1 to 0
-  isCrossPage := io.pc(11, 0) > Cat(-1.S((10 - log2Ceil(fetchNum)).W).asUInt, 0.U(log2Ceil(fetchNum).W), 0.U(2.W))
+  isCrossPage := io.pc(11, 0) > Cat(-1.S((10 - log2Ceil(fetchNum)).W).asUInt, 0.U(Param.Width.ICache._fetchOffset.W))
   when(io.bpuFtqPort.ftqFull) {
     // todo default 0
     io.bpuFtqPort.ftqP0 := FtqBlockPort.default
@@ -85,21 +82,23 @@ class BPU(
     io.bpuFtqPort.ftqP0.startPc := io.pc
     io.bpuFtqPort.ftqP0.valid   := true.B
     // If cross page, length will be cut,so ensures no cacheline cross
-    io.bpuFtqPort.ftqP0.isCrossCacheline := (io.pc(3, 2) =/= 0.U(2.W)) & ~isCrossPage
-    io.bpuFtqPort.ftqP0.predictTaken     := false.B
-    io.bpuFtqPort.ftqP0.predictValid     := false.B
+    io.bpuFtqPort.ftqP0.isCrossCacheline := (io.pc(Param.Width.ICache._fetchOffset - 1, 2) =/= 0.U(
+      log2Ceil(fetchNum).W
+    )) & ~isCrossPage
+    io.bpuFtqPort.ftqP0.predictTaken := false.B
+    io.bpuFtqPort.ftqP0.predictValid := false.B
   }
 
-  // p1
+  // p1 (the next clock of p0)
   mainRedirectValid := ftbHit && !flushDelay && !ftqFullDelay
-  p1Pc              := RegNext(io.pc)
+  val p1Pc = RegNext(io.pc, 0.U(addr.W))
 
   // p1 FTQ output
   when(mainRedirectValid) {
     // Main BPU generate a redirect in P1
     io.bpuFtqPort.ftqP1.valid := true.B
-    io.bpuFtqPort.ftqP1.isCrossCacheline := ftbEntryReg.fallThroughAddress(2 + log2Ceil(fetchNum), 2) -
-      p1Pc(2 + log2Ceil(fetchNum), 2) // Use 3bit minus to ensure no overflow
+    io.bpuFtqPort.ftqP1.isCrossCacheline := ftbEntryReg.fallThroughAddress(Param.Width.ICache._fetchOffset, 2) -
+      p1Pc(Param.Width.ICache._fetchOffset, 2) // Use 1 + log(fetchNum) bits minus to ensure no overflow
     io.bpuFtqPort.ftqP1.predictValid := true.B
     //  switch ftbEntryReg.BranchType
     switch(ftbEntryReg.branchType) {
@@ -110,7 +109,6 @@ class BPU(
         io.bpuFtqPort.ftqP1.predictTaken := true.B
       }
     }
-
   }.otherwise {
     // default 0
     io.bpuFtqPort.ftqP1 := FtqBlockPort.default
@@ -147,22 +145,24 @@ class BPU(
   ////////////////////////////////////////////////////////////////////
   // Update Logic
   ////////////////////////////////////////////////////////////////////
-  val misPredict        = WireDefault(false.B)
-  val ftbUpdateValid    = WireDefault(false.B)
+  val misPredict        = WireDefault(io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken)
   val tageUpdateInfoReg = new TagePredictorUpdateInfoPort
   val ftbEntryUpdate    = new FtbEntryNdPort
-  val rasPush           = WireDefault(false.B)
-  val rasPop            = WireDefault(false.B)
-  val rasPushAddr       = WireDefault(0.U(addr.W))
-  rasPush := io.bpuFtqPort.ftqTrainMeta.valid & (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.call)
-  rasPushAddr := io.bpuFtqPort.ftqTrainMeta.fallThroughAddress
-  rasPop      := io.bpuFtqPort.ftqTrainMeta.valid & (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.ret)
-  misPredict  := io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken
+  val rasPush = WireDefault(
+    io.bpuFtqPort.ftqTrainMeta.valid & (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.call)
+  )
+  val rasPop = WireDefault(
+    io.bpuFtqPort.ftqTrainMeta.valid & (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.ret)
+  )
+  val rasPushAddr = WireDefault(io.bpuFtqPort.ftqTrainMeta.fallThroughAddress)
+
   // Only following conditions will trigger a FTB update:
   // 1. This is a conditional branch
   // 2. First time a branch jumped
   // 3. A FTB pollution is detected
-  ftbUpdateValid := io.bpuFtqPort.ftqTrainMeta.valid && (misPredict && (!io.bpuFtqPort.ftqTrainMeta.ftbHit) || (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit))
+  val ftbUpdateValid = WireDefault(
+    io.bpuFtqPort.ftqTrainMeta.valid && (misPredict && (!io.bpuFtqPort.ftqTrainMeta.ftbHit) || (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit))
+  )
 
   // Direction preditor update policy
   tageUpdateInfoReg.valid          := io.bpuFtqPort.ftqTrainMeta.valid
@@ -182,16 +182,16 @@ class BPU(
   // assign ftbHit = 0
   val ftbModule = Module(new FTB)
   // query
-  ftbModule.io.queryPc        := io.pc
-  ftbModule.io.queryEntryPort <> ftbEntryReg
-  ftbHit                      := ftbModule.io.hit
-  ftbHitIndex                 := ftbModule.io.hitIndex
+  ftbModule.io.queryPc := io.pc
+  ftbEntryReg          := ftbModule.io.queryEntryPort
+  ftbHit               := ftbModule.io.hit
+  ftbHitIndex          := ftbModule.io.hitIndex
   // update
   ftbModule.io.updatePc        := io.bpuFtqPort.ftqTrainMeta.startPc
   ftbModule.io.updateWayIndex  := io.bpuFtqPort.ftqTrainMeta.ftbHitIndex
   ftbModule.io.updateValid     := ftbUpdateValid
   ftbModule.io.updateDirty     := (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
-  ftbModule.io.updateEntryPort <> ftbEntryUpdate
+  ftbModule.io.updateEntryPort := ftbEntryUpdate
 
   // connect tage Predictor module
   val tagePredictorModule = Module(new TagePredictor)

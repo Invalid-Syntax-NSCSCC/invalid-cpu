@@ -47,19 +47,25 @@ class TaggedPreditor(
     val updateIndex      = Input(UInt(log2Ceil(phtDepth).W))
   })
 
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // Query logic
+  ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Index
   // Fold GHT input to a fix length, the same as index range
   // Using a CSR, described in PPM-Liked essay
   val hashedGhtInput = WireDefault(0.U(phtAddrWidth.W))
-  val queryIndex     = WireDefault(0.U(phtAddrWidth.W))
-  val queryIndexNext = WireDefault(0.U(phtTagWidth.W))
+  // query_index is Fold(GHR) ^ PC[low] ^ PC[high]
+  val queryIndex = WireDefault(io.pc(phtAddrWidth - 1, 0) ^ io.pc(2 * phtAddrWidth - 1, phtAddrWidth) ^ hashedGhtInput)
+  val queryIndexReg = RegNext(queryIndex, 0.U(phtTagWidth.W))
 
   // Tag
   // Generate another hash different from above, as described in PPM-Liked essay
-  val tagHashCsr1  = WireDefault(0.U(phtTagWidth.W))
-  val tagHashCsr2  = WireDefault(0.U((phtTagWidth - 1).W))
-  val queryTag     = WireDefault(0.U(phtTagWidth.W))
-  val queryTagNext = WireDefault(0.U(phtTagWidth.W))
+  val tagHashCsr1 = WireDefault(0.U(phtTagWidth.W))
+  val tagHashCsr2 = WireDefault(0.U((phtTagWidth - 1).W))
+  // query_tag is XORed from pc_i
+  // assign query_tag = pc_i[31:31-PHT_TAG_WIDTH+1];
+  val queryTag    = WireDefault(io.pc(1 + phtTagWidth, 2) ^ tagHashCsr1 ^ Cat(tagHashCsr2, 0.U(1.W)))
+  val queryTagReg = RegNext(queryTag, 0.U(phtTagWidth.W))
 
   // PHT
   // result
@@ -75,23 +81,12 @@ class TaggedPreditor(
 
   val phtUpdateIndex = WireDefault(0.U(phtAddrWidth.W))
 
-  ////////////////////////////////////////////////////////////////////////////////////////////
-  // Query logic
-  ////////////////////////////////////////////////////////////////////////////////////////////
-  // query_index is Fold(GHR) ^ PC[low] ^ PC[high]
-  queryIndexNext := io.pc(0, phtAddrWidth) ^ io.pc(phtAddrWidth, 2 * phtAddrWidth) ^ hashedGhtInput
-  // query_tag is XORed from pc_i
-  // assign query_tag = pc_i[31:31-PHT_TAG_WIDTH+1];
-  queryTagNext := io.pc(2, 2 + phtTagWidth) ^ tagHashCsr1 ^ Cat(tagHashCsr2, 0.U(1.W))
-
-  queryIndex := queryIndexNext
-  queryTag   := queryTagNext
 
   // Output
   io.ctrBits    := phtEntryCtr
   io.usefulBits := phtEntryUseful
-  io.hitIndex   := queryIndex
-  io.queryTag   := queryTag
+  io.hitIndex   := queryIndexReg
+  io.queryTag   := queryTagReg
   io.originTag  := phtEntryTag
   io.taken      := (phtEntryCtr(phtCtrWidth - 1) === 1.U)
   io.tagHit     := (queryTag === phtEntryTag)

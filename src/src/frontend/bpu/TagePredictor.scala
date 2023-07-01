@@ -372,10 +372,7 @@ class TagePredictor(
 
   // counter
   for (i <- 0 to tagComponentNum + 1) {
-    io.perfTagHitCounters(i) := RegNext(
-      io.perfTagHitCounters(i) +
-        Cat(0.U(31.W), (i.U === predPredictionId))
-    )
+    io.perfTagHitCounters(i) := io.perfTagHitCounters(i) + Cat(0.U(31.W), (i.U === predPredictionId))
   }
 
   // todo debug

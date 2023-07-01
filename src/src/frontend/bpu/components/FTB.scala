@@ -21,7 +21,6 @@ class FTB(
   // param
   val nwayWidth = log2Ceil(nway)
   val nsetWidth = log2Ceil(nset)
-  val addrWidth = log2Ceil(addr)
 
   val io = IO(new Bundle {
     // Query
@@ -40,12 +39,11 @@ class FTB(
 
   // Signals definition
   val wayQueryEntryRegs = Vec(nway, new FtbEntryNdPort)
-  val wayHit            = WireDefault(0.U(nway.W))
+  val wayHits        = WireDefault(0.U(nway.W))
   val wayHitIndex       = WireDefault(0.U(nwayWidth.W))
-
   // Query
-  val queryIndex     = WireDefault(0.U(nsetWidth.W))
-  val queryTagBuffer = WireDefault(0.U((addrWidth - nsetWidth).W))
+  val queryIndex  = WireDefault(0.U(nsetWidth.W))
+  val queryTagReg = RegInit(0.U((addr - nsetWidth - 2).W))
   // Update
   val updateIndex     = WireDefault(0.U(nsetWidth.W))
   val updateEntryPort = Reg(new FtbEntryNdPort)
@@ -53,16 +51,18 @@ class FTB(
   val randomR         = WireDefault(0.U(16.W))
 
   // Query logic
-  queryIndex     := io.queryPc(nsetWidth + 1, 2)
-  queryTagBuffer := RegNext(io.queryPc(addrWidth - 1, nwayWidth + 2))
-  for (index <- 0 to nwayWidth) {
-    wayHit(index) := (wayQueryEntryRegs(index).tag === queryTagBuffer) &&
-      wayQueryEntryRegs(index).valid
+  queryIndex  := io.queryPc(nsetWidth + 1, 2)
+  queryTagReg := RegNext(io.queryPc(addr - 1, nwayWidth + 2))
+
+  Seq.range(0, nway).map { wayIndex =>
+    wayHits(wayIndex) := (wayQueryEntryRegs(wayIndex).tag === queryTagReg) &&
+      wayQueryEntryRegs(wayIndex).valid
+    wayHits
   }
 
   // Query output
   io.queryEntryPort := wayQueryEntryRegs(wayHitIndex)
-  io.hit            := wayHit.orR
+  io.hit            := wayHits.orR
   io.hitIndex       := wayHitIndex
 
   // Update logic
@@ -74,19 +74,15 @@ class FTB(
     updateWE(io.updateWayIndex) := io.updateValid
   }.otherwise {
     // Update a new entry in
-    updateEntryPort := io.updateEntryPort
-    updateWE        := 0.U(nway.W)
-    for (wayIdx <- 0 to nway) {
-      when(wayIdx.asUInt(nwayWidth) === randomR(nwayWidth - 1, 0)) {
-        updateWE(wayIdx) := io.updateValid
-      }
-    }
+    updateEntryPort                     := io.updateEntryPort
+    updateWE                            := 0.U(nway.W)
+    updateWE(randomR(nwayWidth - 1, 0)) := io.updateValid
   }
 
-  // hit Priority  todo
-  val isHit         = WireDefault(wayHit.orR)
+  // hit Priority
+  val isHit         = WireDefault(wayHits.orR)
   val biPriorityMux = Module(new BiPriorityMux(num = nway))
-  biPriorityMux.io.inVector := wayHit
+  biPriorityMux.io.inVector := wayHits
   Cat(isHit, wayHitIndex)   := biPriorityMux.io.selectIndices
 
   // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
@@ -105,12 +101,12 @@ class FTB(
       bram.io.enb               := true.B
       bram.io.wea               := false.B
       bram.io.web               := updateWE(wayIdx)
-      bram.io.dina              := DontCare
+      bram.io.dina              <> DontCare
       bram.io.addra             := queryIndex
       wayQueryEntryRegs(wayIdx) := bram.io.douta
       bram.io.dinb              := updateEntryPort
       bram.io.addrb             := updateIndex
-      bram.io.doutb             := DontCare
+      bram.io.doutb             <> DontCare
       bram
     })
 }
