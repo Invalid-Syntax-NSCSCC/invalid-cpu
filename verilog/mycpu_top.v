@@ -5,7 +5,7 @@ module mycpu_top (
     input aclk,
     input aresetn,
 
-    input [5:0] ext_int,  // External interrupt
+    input [7:0] ext_int,  // External interrupt
 
     // AXI interface
     // read request
@@ -82,7 +82,7 @@ module mycpu_top (
     CoreCpuTop coreCpuTop (
         .clock                  (aclk       ),
         .reset                  (!aresetn   ),
-        .io_intrpt              (intrpt     ),
+        .io_intrpt              (ext_int    ),
         .io_axi_ar_ready        (arready    ),
         .io_axi_r_valid         (rvalid     ),
         .io_axi_r_bits_id       (rid        ),
