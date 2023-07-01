@@ -142,7 +142,7 @@ class DCache(
   // RAMs for valid, dirty, and tag
   val statusTagRams = Seq.fill(Param.Count.DCache.setLen)(
     Module(
-      new VBRam(
+      new VSingleBRam(
         Param.Count.DCache.sizePerRam,
         StatusTagBundle.width
       )
@@ -152,7 +152,7 @@ class DCache(
   // RAMs for data line
   val dataLineRams = Seq.fill(Param.Count.DCache.setLen)(
     Module(
-      new VBRam(
+      new VSingleBRam(
         Param.Count.DCache.sizePerRam,
         Param.Width.DCache._dataLine
       )

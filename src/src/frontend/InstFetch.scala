@@ -5,8 +5,9 @@ import chisel3.util._
 import frontend.bundles.ICacheAccessPort
 import frontend.fetch._
 import memory.bundles.TlbTransPort
-import pipeline.dispatch.bundles.InstInfoBundle
+import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.memory.bundles.MemCsrNdPort
+import pipeline.queue.InstQueueEnqNdPort
 import spec._
 
 class InstFetch extends Module {
@@ -20,7 +21,7 @@ class InstFetch extends Module {
 
     // <-> Frontend <-> Instrution queue
     val isFlush         = Input(Bool())
-    val instDequeuePort = Decoupled(new InstInfoBundle)
+    val instDequeuePort = Decoupled(new InstQueueEnqNdPort)
 
     // <-> Frontend <-> Tlb
     val tlbTrans = Flipped(new TlbTransPort)

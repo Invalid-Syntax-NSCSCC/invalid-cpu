@@ -15,7 +15,7 @@ object Param {
   val scoreboardChangeNum    = 1 // 3
   val csrScoreBoardChangeNum = 1
   val instRegReadNum         = 2
-  val fetchInstMaxNum        = 1 // 单次取指
+  val fetchInstMaxNum        = 4 // 单次取指 must be 1,2,4,8... ( less than dataPerLine)
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 2 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
@@ -68,10 +68,12 @@ object Param {
     }
 
     object ICache {
-      val _addr       = 6 // TODO: Choose an optimal value (small value is suitible for difftest)
-      val _byteOffset = log2Ceil(Count.ICache.dataPerLine) + log2Ceil(wordLength / byteLength)
-      val _dataLine   = Count.ICache.dataPerLine * spec.Width.Mem._data
-      val _tag        = spec.Width.Mem._addr - _addr - _byteOffset
+      val _addr        = 6 // TODO: Choose an optimal value (small value is suitible for difftest)
+      val _instOffset  = log2Ceil(wordLength / byteLength)
+      val _fetchOffset = log2Ceil(fetchInstMaxNum) + log2Ceil(wordLength / byteLength)
+      val _byteOffset  = log2Ceil(Count.ICache.dataPerLine) + log2Ceil(wordLength / byteLength)
+      val _dataLine    = Count.ICache.dataPerLine * spec.Width.Mem._data
+      val _tag         = spec.Width.Mem._addr - _addr - _byteOffset
 
       val addr       = _addr.W
       val byteOffset = _byteOffset.W
@@ -158,6 +160,19 @@ object Param {
 
     val decodeWidth = 1 // 2 to do
     val commitWidth = 1 // 2 to do
+    object BranchType {
+      var count = 0
+      private def next = {
+        count += 1
+        count.U
+      }
+      val cond   = 0.U
+      val call   = next
+      val ret    = next
+      val uncond = next
+
+      def width = log2Ceil(count + 1)
+    }
   }
 
   object SimpleFetchStageState extends ChiselEnum {

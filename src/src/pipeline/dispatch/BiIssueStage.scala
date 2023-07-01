@@ -38,7 +38,7 @@ class BiIssueStagePeerPort(
 
   // `IssueStage` <-> `Scoreboard(csr)`
   val csrOccupyPort = Output(new ScoreboardChangeNdPort)
-  val csrScore       = Input(ScoreboardState())
+  val csrScore      = Input(ScoreboardState())
 }
 
 // TODO: deal WAR / WAW data hazard

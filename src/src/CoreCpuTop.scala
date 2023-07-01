@@ -168,9 +168,7 @@ class CoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // Instruction queue
-  instQueue.io.enqueuePorts.valid   := frontend.io.instDequeuePort.valid
-  frontend.io.instDequeuePort.ready := instQueue.io.enqueuePorts.ready
-  instQueue.io.enqueuePorts.bits(0) := frontend.io.instDequeuePort.bits
+  instQueue.io.enqueuePort <> frontend.io.instDequeuePort
 
   instQueue.io.isFrontendFlush := cu.io.frontendFlush
   instQueue.io.isBackendFlush  := cu.io.backendFlush
@@ -193,7 +191,7 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  issueStage.io.peer.get.csrScore     := csrScoreBoard.io.regScore
+  issueStage.io.peer.get.csrScore    := csrScoreBoard.io.regScore
   issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
   issueStage.io.peer.get.plv         := csr.io.csrValues.crmd.plv
 
