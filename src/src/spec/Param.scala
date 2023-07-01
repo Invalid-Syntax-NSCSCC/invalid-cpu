@@ -144,8 +144,9 @@ object Param {
   }
 
   object BPU {
-    val fetchWidth = 4
-    val ftqSize    = 8
+    val fetchWidth  = 4
+    val ftqSize     = 8
+    val ftqPtrWitdh = log2Ceil(ftqSize)
 
     object Width {
       val id = log2Ceil(ftqSize).W

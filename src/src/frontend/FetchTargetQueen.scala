@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
 import chisel3.experimental.Param
-import frontend.bundles.{BackendCommitPort, BpuFtqPort, FtqBlockPort, FtqBpuMetaPort}
+import frontend.bundles.{BpuFtqPort, CuCommitFtqNdPort, ExeFtqPort, FtqBlockPort, FtqBpuMetaPort}
 
 class FetchTargetQueen(
   val queueSize: Int = Param.BPU.ftqSize,
@@ -25,11 +25,10 @@ class FetchTargetQueen(
     val bpuFtqPort = new BpuFtqPort
 
     // <-> Backend
-    val backendCommitPort = Input(new BackendCommitPort())
-
+    // <-> Cu commit
+    val cuCommitFtqPort = new CuCommitFtqNdPort
     // <-> Ex query port
-    val exQueryAddr = Input(UInt(ptrWidth.W))
-    val exQueryPc   = Output(UInt(spec.Width.Mem.addr))
+    val exeFtqPort = new ExeFtqPort
 
     // <-> IFU
     val ifuPort             = Output(new FtqBlockPort)
@@ -65,7 +64,7 @@ class FetchTargetQueen(
   val ftqBranchMetaVec  = Vec(queueSize, new FtqBranchMetaEntry)
 
   val backendCommitNum = WireInit(0.U(log2Ceil(issueNum).W))
-  backendCommitNum := io.backendCommitPort.cuCommitFtqNdBundle.commitBitMask.asBools.map(_.asUInt).reduce(_ +& _)
+  backendCommitNum := io.cuCommitFtqPort.BitMask.asBools.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
   ifuSendReq               := ftqVec(ifuPtr).valid & io.ifuAccept
@@ -173,8 +172,9 @@ class FetchTargetQueen(
   val debugLength = WireDefault(0.U(3.W))
   debugLength := io.ifuPort.length
 
-  // -> Ex
-  io.exQueryPc := ftqVec(io.exQueryAddr).startPc
+  // -> Exe cuCommit query
+  io.exeFtqPort.queryPcBundle.pc      := ftqVec(io.exeFtqPort.queryPcBundle.ftqId).startPc
+  io.cuCommitFtqPort.queryPcBundle.pc := ftqVec(io.cuCommitFtqPort.queryPcBundle.ftqId).startPc
 
   // -> BPU
   io.bpuFtqPort.ftqFull := queueFull
@@ -182,22 +182,21 @@ class FetchTargetQueen(
   // training meta to BPU
   io.bpuFtqPort.ftqTrainMeta := FtqBpuMetaPort.default
   when(
-    io.backendCommitPort.cuCommitFtqNdBundle
-      .commitBlockBitmask(0) & io.backendCommitPort.cuCommitFtqNdBundle.commitMeta.isBranch
+    io.cuCommitFtqPort.BlockBitmask(0) & io.cuCommitFtqPort.Meta.isBranch
   ) {
     // Update when a branch is committed, defined as:
     // 1. Must be last in block, which means either a known branch or a mispredicted branch.
     // 2. Exception introduced block commit is not considered a branch update.
-    val commitFtqId = WireDefault(io.backendCommitPort.cuCommitFtqNdBundle.commitFtqId)
+    val commitFtqId = WireDefault(io.cuCommitFtqPort.FtqId)
     io.bpuFtqPort.ftqTrainMeta.valid       := true.B
     io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaVec(commitFtqId).ftbHit
     io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaVec(commitFtqId).ftbHitIndex
     io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaVec(commitFtqId).ftbDirty
     // Must use accuraate decoded info passed from backend
-    io.bpuFtqPort.ftqTrainMeta.isBranch       := io.backendCommitPort.cuCommitFtqNdBundle.commitMeta.isBranch
-    io.bpuFtqPort.ftqTrainMeta.branchType     := io.backendCommitPort.cuCommitFtqNdBundle.commitMeta.branchType
-    io.bpuFtqPort.ftqTrainMeta.isTaken        := io.backendCommitPort.cuCommitFtqNdBundle.commitMeta.isTaken
-    io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.backendCommitPort.cuCommitFtqNdBundle.commitMeta.predictedTaken
+    io.bpuFtqPort.ftqTrainMeta.isBranch       := io.cuCommitFtqPort.Meta.isBranch
+    io.bpuFtqPort.ftqTrainMeta.branchType     := io.cuCommitFtqPort.Meta.branchType
+    io.bpuFtqPort.ftqTrainMeta.isTaken        := io.cuCommitFtqPort.Meta.isTaken
+    io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.cuCommitFtqPort.Meta.predictedTaken
 
     io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVec(commitFtqId).startPc
     io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVec(commitFtqId).isCrossCacheline
@@ -237,15 +236,15 @@ class FetchTargetQueen(
     ftqBpuMetaVec(bpuMetaWritePtr) := bpuMetaWriteEntry
   }
   // update pc from backend
-  when(io.backendCommitPort.exCommitFtqNdBundle.ftqMetaUpdateValid) {
-    val ftqUpdateMetaId = WireDefault(io.backendCommitPort.exCommitFtqNdBundle.ftqUpdateMetaId)
+  when(io.exeFtqPort.commitBundle.ftqMetaUpdateValid) {
+    val ftqUpdateMetaId = WireDefault(io.exeFtqPort.commitBundle.ftqUpdateMetaId)
     ftqBranchMetaVec(
       ftqUpdateMetaId
-    ).jumpTargetAddress := io.backendCommitPort.exCommitFtqNdBundle.ftqMetaUpdateJumpTarget
+    ).jumpTargetAddress := io.exeFtqPort.commitBundle.ftqMetaUpdateJumpTarget
     ftqBranchMetaVec(
       ftqUpdateMetaId
-    ).fallThroughAddress                       := io.backendCommitPort.exCommitFtqNdBundle.ftqMetaUpdateFallThrough
-    ftqBranchMetaVec(ftqUpdateMetaId).ftbDirty := io.backendCommitPort.exCommitFtqNdBundle.ftqMetaUpdateFtbDirty
+    ).fallThroughAddress                       := io.exeFtqPort.commitBundle.ftqMetaUpdateFallThrough
+    ftqBranchMetaVec(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.commitBundle.ftqMetaUpdateFtbDirty
   }
 
 }
