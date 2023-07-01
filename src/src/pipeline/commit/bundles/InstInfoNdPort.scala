@@ -5,6 +5,8 @@ import control.bundles._
 import control.enums.ExceptionPos
 import spec.Param.isDiffTest
 import spec._
+import pipeline.dispatch.bundles.FtqInfoBundle
+import frontend.bpu.bundles.FtqIfPort
 
 class InstInfoNdPort extends Bundle {
   val isValid         = Bool()
@@ -27,6 +29,7 @@ class InstInfoNdPort extends Bundle {
   val store     = if (isDiffTest) Some(new DifftestStoreNdPort) else None
   val tlbFill   = if (isDiffTest) Some(new DifftestTlbFillNdPort) else None
   val timerInfo = if (isDiffTest) Some(new DifftestTimerNdPort) else None
+  val ftqInfo   = new FtqInfoBundle
 
   val isTlb = Bool()
 

@@ -14,10 +14,13 @@ class Alu extends Module {
     val outputValid = Output(Bool())
     val result      = Output(new AluResultNdPort)
 
+    val isBranch = Output(Bool())
+
     val isFlush = Input(Bool())
   })
 
   io.outputValid := true.B
+  io.isBranch    := false.B
   io.result      := AluResultNdPort.default
 
   def lop = io.aluInst.leftOperand
@@ -83,46 +86,54 @@ class Alu extends Module {
     is(Op.b, Op.bl) {
       jumpBranchInfo.en     := true.B
       jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      io.isBranch           := true.B
     }
     is(Op.jirl) {
       jumpBranchInfo.en     := true.B
       jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr
+      io.isBranch           := true.B
     }
     is(Op.beq) {
       when(lop === rop) {
         jumpBranchInfo.en     := true.B
         jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
+      io.isBranch := true.B
     }
     is(Op.bne) {
       when(lop =/= rop) {
         jumpBranchInfo.en     := true.B
         jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
+      io.isBranch := true.B
     }
     is(Op.blt) {
       when(lop.asSInt < rop.asSInt) {
         jumpBranchInfo.en     := true.B
         jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
+      io.isBranch := true.B
     }
     is(Op.bge) {
       when(lop.asSInt >= rop.asSInt) {
         jumpBranchInfo.en     := true.B
         jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
+      io.isBranch := true.B
     }
     is(Op.bltu) {
       when(lop < rop) {
         jumpBranchInfo.en     := true.B
         jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
+      io.isBranch := true.B
     }
     is(Op.bgeu) {
       when(lop >= rop) {
         jumpBranchInfo.en     := true.B
         jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
       }
+      io.isBranch := true.B
     }
   }
 

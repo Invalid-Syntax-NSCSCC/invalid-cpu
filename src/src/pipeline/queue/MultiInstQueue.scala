@@ -23,10 +23,6 @@ object FetchInstDecodeNdPort {
   def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
 }
 
-class InstQueueEnqNdPort extends Bundle {
-  val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
-}
-
 // assert: enqueuePorts总是最低的几位有效
 class MultiInstQueue(
   val queueLength: Int = Param.instQueueLength,
@@ -170,6 +166,7 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.exeSel  := selectedDecoder.info.exeSel
       dequeuePort.bits.instInfo.isTlb   := selectedDecoder.info.isTlb
       dequeuePort.bits.instInfo.needCsr := selectedDecoder.info.needCsr
+      dequeuePort.bits.instInfo.ftqInfo := decodeInstInfo.ftqInfo
 
       dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needCsr
 

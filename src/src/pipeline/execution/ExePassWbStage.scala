@@ -13,6 +13,15 @@ import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.ExeInst.Sel
 import spec.Param.isDiffTest
 import spec._
+import frontend.bundles.ExCommitFtqNdPort
+
+// class ExCommitFtqNdPort(val queueSize: Int = Param.BPU.ftqSize) extends Bundle {
+//   val ftqMetaUpdateValid       = Bool()
+//   val ftqMetaUpdateFtbDirty    = Bool()
+//   val ftqMetaUpdateJumpTarget  = UInt(spec.Width.Mem.addr)
+//   val ftqMetaUpdateFallThrough = UInt(spec.Width.Mem.addr)
+//   val ftqUpdateMetaId          = UInt(log2Ceil(queueSize).W)
+// }
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -54,6 +63,8 @@ class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
     val llbctl = new LlbctlBundle
     val era    = new EraBundle
   })
+
+  val feedbackFtq = if (supportBranchCsr) Some(Output(new ExCommitFtqNdPort)) else None
 }
 
 // throw exception: 地址未对齐 ale
@@ -211,6 +222,10 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
     csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
     csrScoreboardChangePort.addr := DontCare
+
+    val feedbackFtq = io.peer.get.feedbackFtq.get
+    feedbackFtq.ftqMetaUpdateValid := alu.io.isBranch
+    // feedbackFtq.ftqMetaUpdateFtbDirty := alu.io.result.jumpBranchInfo.en
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)

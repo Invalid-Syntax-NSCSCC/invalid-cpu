@@ -7,6 +7,7 @@ import spec._
 class FetchInstInfoBundle extends Bundle {
   val pcAddr         = UInt(Width.Reg.data)
   val inst           = UInt(Width.inst)
+  val ftqInfo        = new FtqInfoBundle
   val exceptionValid = Bool()
   val exception      = UInt(Width.Csr.exceptionIndex)
 }
@@ -16,6 +17,7 @@ object FetchInstInfoBundle {
     _.pcAddr -> zeroWord,
     _.inst -> zeroWord,
     _.exceptionValid -> false.B,
-    _.exception -> 0.U
+    _.exception -> 0.U,
+    _.ftqInfo -> FtqInfoBundle.default
   )
 }

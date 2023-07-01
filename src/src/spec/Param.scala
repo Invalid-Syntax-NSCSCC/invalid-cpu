@@ -147,6 +147,10 @@ object Param {
     val fetchWidth = 4
     val ftqSize    = 8
 
+    object Width {
+      val id = log2Ceil(ftqSize).W
+    }
+
     object TagePredictor {
       val ghrLength            = 1400
       val tagComponentNum      = 15
