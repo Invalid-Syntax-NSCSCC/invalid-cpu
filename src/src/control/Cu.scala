@@ -254,7 +254,29 @@ class Cu(
   )
 
   // BPU training data
-  // io.ftqPort.FtqId
+  io.ftqPort.ftqId               := majorInstInfo.ftqInfo.ftqId
+  io.ftqPort.meta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch
+  io.ftqPort.meta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
+  io.ftqPort.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
+  io.ftqPort.meta.branchType     := DontCare // TODO: assign
+
+  io.ftqPort.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
+    case ((mask, instInfo), idx) =>
+      if (idx == 0) {
+        instInfo.isValid && (isException || instInfo.ftqInfo.isLastInBlock)
+      } else {
+        instInfo.isValid && instInfo.ftqInfo.isLastInBlock
+      }
+  }
+
+  io.ftqPort.blockBitmask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
+    case ((mask, instInfo), idx) =>
+      if (idx == 0) {
+        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
+      } else {
+        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
+      }
+  }
 
   io.difftest match {
     case Some(dt) =>

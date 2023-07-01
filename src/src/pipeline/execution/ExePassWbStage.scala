@@ -241,7 +241,8 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
     branchSetPort.en := (branchTargeMispredict || branchTargeMispredict) && branchEnableFlag
     when(branchSetPort.en) {
-      branchEnableFlag := false.B
+      branchEnableFlag                                 := false.B
+      resultOutReg.bits.instInfo.ftqInfo.isLastInBlock := true.B
     }
     branchSetPort.pcAddr := Mux(
       jumpBranchInfo.en,
@@ -257,6 +258,9 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
 
+    resultOutReg.bits.instInfo.ftqCommitInfo.isBranch        := alu.io.isBranch
+    resultOutReg.bits.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
+
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
 
@@ -264,7 +268,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       resultOutReg.bits.instInfo.forbidParallelCommit := true.B
     }
 
-    resultOutReg.bits.instInfo.branchSuccess := branchSetPort.en
+    // resultOutReg.bits.instInfo.branchSuccess := branchSetPort.en
 
     when(io.isFlush) {
       branchEnableFlag := true.B

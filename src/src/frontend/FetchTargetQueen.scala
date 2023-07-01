@@ -64,7 +64,7 @@ class FetchTargetQueen(
   val ftqBranchMetaVec  = Vec(queueSize, new FtqBranchMetaEntry)
 
   val backendCommitNum = WireInit(0.U(log2Ceil(issueNum).W))
-  backendCommitNum := io.cuCommitFtqPort.bitMask.asBools.map(_.asUInt).reduce(_ +& _)
+  backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
   ifuSendReq               := ftqVec(ifuPtr).valid & io.ifuAccept
