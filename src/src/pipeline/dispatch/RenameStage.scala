@@ -201,15 +201,18 @@ class RenameStage(
         }
     }
 
+  val deqEns = Wire(Vec(issueNum, Bool()))
+
   // out
-  reservationStation.io.dequeuePorts.zip(resultOuts).foreach {
-    case (rs, out) =>
+  reservationStation.io.dequeuePorts.lazyZip(resultOuts).zipWithIndex.foreach {
+    case ((rs, out), idx) =>
       val deqEn = out.ready && rs.valid &&
         rs.bits.robResult.readResults.forall(
           _.sel === RobDistributeSel.realData
-        )
-      out.valid := deqEn
-      rs.ready  := deqEn
+        ) && deqEns.take(idx).foldLeft(true.B)(_ && _)
+      deqEns(idx) := deqEn
+      out.valid   := deqEn
+      rs.ready    := deqEn
 
       out.bits.exePort.leftOperand  := rs.bits.robResult.readResults(0).result
       out.bits.exePort.rightOperand := rs.bits.robResult.readResults(1).result
