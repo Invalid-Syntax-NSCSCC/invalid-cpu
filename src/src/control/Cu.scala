@@ -260,6 +260,9 @@ class Cu(
   io.ftqPort.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
   io.ftqPort.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
 
+  io.ftqPort.queryPcBundle.ftqId := majorInstInfo.ftqInfo.ftqId
+
+  io.ftqPort.bitMask.foreach(_ := false.B)
   io.ftqPort.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
     case ((mask, instInfo), idx) =>
       if (idx == 0) {
