@@ -206,11 +206,12 @@ class CoreCpuTop extends Module {
   dispatchStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
 
   // Scoreboards
-  csrScoreBoard.io.freePort    := commitStage.io.csrFreePort
-  csrScoreBoard.io.toMemPort   := exeForMemStage.io.peer.get.csrScoreboardChangePort // TODO: check this
-  csrScoreBoard.io.occupyPort  := dispatchStage.io.peer.get.csrOccupyPort
-  csrScoreBoard.io.isFlush     := cu.io.backendFlush
-  csrScoreBoard.io.branchFlush := cu.io.frontendFlush
+  csrScoreBoard.io.freePort := commitStage.io.csrFreePort
+  csrScoreBoard.io.toMemPort.en := exePassWbStage_1.io.peer.get.csrScoreboardChangePort.get.en || exeForMemStage.io.peer.get.csrScoreboardChangePort.en // TODO: check this
+  csrScoreBoard.io.toMemPort.addr := DontCare
+  csrScoreBoard.io.occupyPort     := dispatchStage.io.peer.get.csrOccupyPort
+  csrScoreBoard.io.isFlush        := cu.io.backendFlush
+  csrScoreBoard.io.branchFlush    := cu.io.frontendFlush
 
   // Execution stage
   exeForMemStage.io.in                  <> dispatchStage.io.outs(Param.loadStoreIssuePipelineIndex)
