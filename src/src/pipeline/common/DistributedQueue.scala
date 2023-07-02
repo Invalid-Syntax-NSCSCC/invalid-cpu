@@ -5,12 +5,12 @@ import chisel3.util._
 import utils.MultiCounter
 
 class DistributedQueue[ElemT <: Data](
-  enqMaxNum:     Int,
-  deqMaxNum:     Int,
-  channelNum:    Int,
-  channelLength: Int,
-  elemNdFactory: => ElemT,
-  blankElem:     => ElemT)
+  enqMaxNum:      Int,
+  deqMaxNum:      Int,
+  channelNum:     Int,
+  channelLength:  Int,
+  elemNdFactory:  => ElemT,
+  useSyncReadMem: Boolean = true)
     extends Module {
 
   require(channelNum >= enqMaxNum)
@@ -52,35 +52,38 @@ class DistributedQueue[ElemT <: Data](
   }
 
   storeOuts.foreach(_.ready := false.B)
+  if (channelNum == 1) {
+    storeOuts(0) <> storeIns(0)
+  } else {
+    val enq_ptr = Module(new MultiCounter(channelNum, enqMaxNum))
+    val deq_ptr = Module(new MultiCounter(channelNum, deqMaxNum))
+    enq_ptr.io.flush := io.isFlush
+    deq_ptr.io.flush := io.isFlush
+    io.enq_ptr       := enq_ptr.io.value
+    io.deq_ptr       := deq_ptr.io.value
+    io.enqIncResults.zip(enq_ptr.io.incResults).foreach {
+      case (dst, src) =>
+        dst := src
+    }
+    io.deqIncResults.zip(deq_ptr.io.incResults).foreach {
+      case (dst, src) =>
+        dst := src
+    }
 
-  val enq_ptr = Module(new MultiCounter(channelNum, enqMaxNum))
-  val deq_ptr = Module(new MultiCounter(channelNum, deqMaxNum))
-  enq_ptr.io.flush := io.isFlush
-  deq_ptr.io.flush := io.isFlush
-  io.enq_ptr       := enq_ptr.io.value
-  io.deq_ptr       := deq_ptr.io.value
-  io.enqIncResults.zip(enq_ptr.io.incResults).foreach {
-    case (dst, src) =>
-      dst := src
+    enq_ptr.io.inc := io.enqueuePorts.zipWithIndex.map {
+      case (enqPort, idx) =>
+        // connect
+        enqPort <> storeIns(enq_ptr.io.incResults(idx))
+        // return
+        enqPort.valid && storeIns(enq_ptr.io.incResults(idx)).ready
+    }.map(_.asUInt).reduce(_ +& _)
+
+    deq_ptr.io.inc := io.dequeuePorts.zipWithIndex.map {
+      case (deqPort, idx) =>
+        // connect
+        deqPort <> storeOuts(deq_ptr.io.incResults(idx))
+        // return
+        deqPort.valid && storeOuts(deq_ptr.io.incResults(idx)).ready
+    }.map(_.asUInt).reduce(_ +& _)
   }
-  io.deqIncResults.zip(deq_ptr.io.incResults).foreach {
-    case (dst, src) =>
-      dst := src
-  }
-
-  enq_ptr.io.inc := io.enqueuePorts.zipWithIndex.map {
-    case (enqPort, idx) =>
-      // connect
-      enqPort <> storeIns(enq_ptr.io.incResults(idx))
-      // return
-      enqPort.valid && storeIns(enq_ptr.io.incResults(idx)).ready
-  }.map(_.asUInt).reduce(_ +& _)
-
-  deq_ptr.io.inc := io.dequeuePorts.zipWithIndex.map {
-    case (deqPort, idx) =>
-      // connect
-      deqPort <> storeOuts(deq_ptr.io.incResults(idx))
-      // return
-      deqPort.valid && storeOuts(deq_ptr.io.incResults(idx)).ready
-  }.map(_.asUInt).reduce(_ +& _)
 }

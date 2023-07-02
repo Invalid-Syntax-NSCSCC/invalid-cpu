@@ -60,6 +60,9 @@ class CommitStage(
           val st_paddr      = UInt(32.W)
           val st_data       = UInt(32.W)
 
+          val cnt_inst = Bool()
+          val timer_64 = UInt(64.W)
+
           val valid_1 = Bool()
           val pc_1    = UInt(Width.Reg.data)
           val instr_1 = UInt(Width.Reg.data)
@@ -120,6 +123,9 @@ class CommitStage(
       dt.st_vaddr := RegNext(inBits(0).instInfo.store.get.vaddr)
       dt.st_paddr := RegNext(inBits(0).instInfo.store.get.paddr)
       dt.st_data  := RegNext(inBits(0).instInfo.store.get.data)
+
+      dt.cnt_inst := RegNext(inBits(0).instInfo.timerInfo.get.isCnt)
+      dt.timer_64 := RegNext(inBits(0).instInfo.timerInfo.get.timer64)
 
       dt.valid_1 := false.B
       dt.instr_1 := DontCare

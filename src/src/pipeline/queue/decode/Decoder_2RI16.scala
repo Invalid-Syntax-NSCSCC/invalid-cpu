@@ -49,6 +49,8 @@ class Decoder_2RI16 extends Decoder {
 
   switch(opcode) {
     is(Inst.b_) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       outInfo.gprReadPorts(0).en   := false.B
       outInfo.gprReadPorts(1).en   := false.B
       outInfo.gprReadPorts(0).addr := DontCare
@@ -59,6 +61,8 @@ class Decoder_2RI16 extends Decoder {
       outInfo.jumpBranchAddr       := imm26SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bl) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       outInfo.gprReadPorts(0).en   := false.B
       outInfo.gprReadPorts(1).en   := false.B
       outInfo.gprReadPorts(0).addr := DontCare
@@ -71,6 +75,8 @@ class Decoder_2RI16 extends Decoder {
       outInfo.jumpBranchAddr       := imm26SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.jirl) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       outInfo.gprReadPorts(1).en   := false.B
       outInfo.gprReadPorts(1).addr := DontCare
       outInfo.gprWritePort.en      := rdIsNotZero // true.B
@@ -81,36 +87,48 @@ class Decoder_2RI16 extends Decoder {
       outInfo.jumpBranchAddr       := imm16SextShift2.asUInt
     }
     is(Inst.beq) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.beq
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bne) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bne
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.blt) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.blt
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bge) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bge
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bltu) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bltu
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bgeu) {
+      selectIssueEn(DispatchType.csrOrBranch)
+
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bgeu
       outInfo.exeSel         := ExeInst.Sel.jumpBranch

@@ -39,8 +39,6 @@ class Cu(
     val branchCommit = Input(Bool())
     // `Cu` -> `Pc`
     val newPc = Output(new PcSetNdPort)
-    // `Cu` <-> `StableCounter`
-    val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
@@ -64,9 +62,6 @@ class Cu(
   val majorInstInfo = io.instInfoPorts.head
   val isException   = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
-  // Stable counter
-  io.stableCounterReadPort.exeOp := majorInstInfo.exeOp
-
   // Write GPR
   io.gprWritePassThroughPorts.out.zip(io.gprWritePassThroughPorts.in).foreach {
     case (dst, src) =>
@@ -74,8 +69,6 @@ class Cu(
   }
   when(isException) {
     io.gprWritePassThroughPorts.out.foreach(_.en := false.B)
-  }.elsewhen(io.stableCounterReadPort.isMatch) {
-    io.gprWritePassThroughPorts.out(0).data := io.stableCounterReadPort.output
   }
 
   // Hardware interrupt

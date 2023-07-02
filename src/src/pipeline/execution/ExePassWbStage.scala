@@ -12,6 +12,8 @@ import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.ExeInst.Sel
 import spec._
+import spec.Param.isDiffTest
+import control.bundles.StableCounterReadPort
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -35,21 +37,17 @@ class ExeNdPort extends Bundle {
 }
 
 object ExeNdPort {
-  def default = (new ExeNdPort).Lit(
-    _.exeSel -> ExeInst.Sel.none,
-    _.exeOp -> ExeInst.Op.nop,
-    _.leftOperand -> 0.U,
-    _.rightOperand -> 0.U,
-    _.gprWritePort -> RfAccessInfoNdPort.default,
-    _.jumpBranchAddr -> zeroWord,
-    _.instInfo -> InstInfoNdPort.default
-  )
+  def default = 0.U.asTypeOf(new ExeNdPort)
 }
 
 class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
   val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetNdPort)) else None
   val csrScoreboardChangePort = if (supportBranchCsr) Some(Output(new ScoreboardChangeNdPort)) else None
+
+  // `Exe` <-> `StableCounter`
+  val stableCounterReadPort = if (supportBranchCsr) Some(Flipped(new StableCounterReadPort)) else None
+
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
     val era    = new EraBundle
@@ -153,6 +151,24 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
   }
 
   if (supportBranchCsr) {
+
+    if (isDiffTest) {
+      resultOutReg.bits.instInfo.timerInfo.get.isCnt := VecInit(ExeInst.Op.rdcntvl_w, ExeInst.Op.rdcntvh_w)
+        .contains(selectedIn.exeOp)
+      resultOutReg.bits.instInfo.timerInfo.get.timer64 := io.peer.get.stableCounterReadPort.get.output
+    }
+
+    switch(selectedIn.exeOp) {
+
+      is(ExeInst.Op.rdcntvl_w) {
+        resultOutReg.bits.gprWrite.data := io.peer.get.stableCounterReadPort.get.output(wordLength - 1, 0)
+      }
+
+      is(ExeInst.Op.rdcntvh_w) {
+        resultOutReg.bits.gprWrite.data := io.peer.get.stableCounterReadPort.get
+          .output(doubleWordLength - 1, wordLength)
+      }
+    }
 
     val branchEnableFlag = RegInit(true.B)
 

@@ -6,7 +6,7 @@ import control.{Csr, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
-import pipeline.dispatch.{CsrScoreboard, IssueStage}
+import pipeline.dispatch.CsrScoreboard
 import pipeline.execution.{ExeForMemStage, ExePassWbStage}
 import pipeline.memory.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.queue.MultiInstQueue
@@ -14,6 +14,8 @@ import pipeline.rob.Rob
 import spec.Param
 import spec.Param.isDiffTest
 import control.Cu
+import pipeline.dispatch.RenameStage
+import pipeline.dispatch.DispatchStage
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -100,7 +102,8 @@ class CoreCpuTop extends Module {
   val iCache           = Module(new ICache)
   val frontend         = Module(new Frontend)
   val instQueue        = Module(new MultiInstQueue)
-  val issueStage       = Module(new IssueStage)
+  val renameStage      = Module(new RenameStage)
+  val dispatchStage    = Module(new DispatchStage)
   val exeForMemStage   = Module(new ExeForMemStage)
   val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
   val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))
@@ -175,42 +178,52 @@ class CoreCpuTop extends Module {
   instQueue.io.idleBlocking    := cu.io.idleFlush
   instQueue.io.interruptWakeUp := csr.io.hasInterrupt
 
-  // Issue stage
-  issueStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
+  // rename stage
+  renameStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
     case (dst, src) =>
       dst <> src
   }
-  issueStage.io.isFlush              := cu.io.backendFlush
-  issueStage.io.peer.get.branchFlush := cu.io.frontendFlush
-  issueStage.io.peer.get.robEmptyNum := rob.io.emptyNum
-  issueStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
+  renameStage.io.isFlush              := cu.io.backendFlush
+  renameStage.io.peer.get.branchFlush := cu.io.frontendFlush
+  renameStage.io.peer.get.robEmptyNum := rob.io.emptyNum
+  renameStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
     case (dst, src) =>
       dst := src
   }
-  issueStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
+  renameStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
     case (dst, src) =>
       dst := src
   }
-  issueStage.io.peer.get.csrScore    := csrScoreBoard.io.regScore
-  issueStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
-  issueStage.io.peer.get.plv         := csr.io.csrValues.crmd.plv
+  renameStage.io.peer.get.plv := csr.io.csrValues.crmd.plv
+
+  // dispatch
+  dispatchStage.io.ins.zip(renameStage.io.outs).foreach {
+    case (dst, src) =>
+      dst <> src
+  }
+  dispatchStage.io.isFlush              := cu.io.backendFlush
+  dispatchStage.io.peer.get.csrScore    := csrScoreBoard.io.regScore
+  dispatchStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
 
   // Scoreboards
-  csrScoreBoard.io.freePort    := commitStage.io.csrFreePort
-  csrScoreBoard.io.toMemPort   := exeForMemStage.io.peer.get.csrScoreboardChangePort // TODO: check this
-  csrScoreBoard.io.occupyPort  := issueStage.io.peer.get.csrOccupyPort
-  csrScoreBoard.io.isFlush     := cu.io.backendFlush
-  csrScoreBoard.io.branchFlush := cu.io.frontendFlush
+  csrScoreBoard.io.freePort := commitStage.io.csrFreePort
+  csrScoreBoard.io.toMemPort.en := exePassWbStage_1.io.peer.get.csrScoreboardChangePort.get.en || exeForMemStage.io.peer.get.csrScoreboardChangePort.en // TODO: check this
+  csrScoreBoard.io.toMemPort.addr := DontCare
+  csrScoreBoard.io.occupyPort     := dispatchStage.io.peer.get.csrOccupyPort
+  csrScoreBoard.io.isFlush        := cu.io.backendFlush
+  csrScoreBoard.io.branchFlush    := cu.io.frontendFlush
 
   // Execution stage
-  exeForMemStage.io.in                  <> issueStage.io.outs(Param.loadStoreIssuePipelineIndex)
+  exeForMemStage.io.in                  <> dispatchStage.io.outs(Param.loadStoreIssuePipelineIndex)
   exeForMemStage.io.isFlush             := cu.io.backendFlush
   exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
   exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
+
+  exePassWbStage_1.io.peer.get.stableCounterReadPort.get <> stableCounter.io
   assert(Param.loadStoreIssuePipelineIndex == 0)
   exePassWbStages.zipWithIndex.foreach {
     case (exe, idx) =>
-      exe.io.in                  <> issueStage.io.outs(idx + 1)
+      exe.io.in                  <> dispatchStage.io.outs(idx + 1)
       exe.io.isFlush             := cu.io.backendFlush
       exe.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
       exe.io.peer.get.csr.era    := csr.io.csrValues.era
@@ -254,7 +267,7 @@ class CoreCpuTop extends Module {
         dst <> exePassWbStages(idx - 1).io.out
       }
   }
-  rob.io.requests.zip(issueStage.io.peer.get.requests).foreach {
+  rob.io.requests.zip(renameStage.io.peer.get.requests).foreach {
     case (dst, src) =>
       dst := src
   }
@@ -285,8 +298,7 @@ class CoreCpuTop extends Module {
   cu.io.gprWritePassThroughPorts.in.zip(commitStage.io.gprWritePorts).foreach {
     case (dst, src) => dst := src
   }
-  cu.io.csrValues             := csr.io.csrValues
-  cu.io.stableCounterReadPort <> stableCounter.io
+  cu.io.csrValues := csr.io.csrValues
 
   require(Param.jumpBranchPipelineIndex != 0)
   cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
@@ -339,6 +351,8 @@ class CoreCpuTop extends Module {
       t.cmt_st_vaddr     := w.st_vaddr
       t.cmt_st_paddr     := w.st_paddr
       t.cmt_st_data      := w.st_data
+      t.cmt_cnt_inst     := w.cnt_inst
+      t.cmt_timer_64     := w.timer_64
 
       t.cmt_valid_1 := w.valid_1
       t.cmt_pc_1    := w.pc_1
@@ -352,12 +366,6 @@ class CoreCpuTop extends Module {
     case (Some(t), Some(c)) =>
       t.cmt_ertn       := c.cmt_ertn
       t.cmt_excp_flush := c.cmt_excp_flush
-    case _ =>
-  }
-  (io.diffTest, stableCounter.io.difftest) match {
-    case (Some(t), Some(c)) =>
-      t.cmt_cnt_inst := c.isCnt
-      t.cmt_timer_64 := c.value
     case _ =>
   }
   (io.diffTest, regFile.io.difftest) match {

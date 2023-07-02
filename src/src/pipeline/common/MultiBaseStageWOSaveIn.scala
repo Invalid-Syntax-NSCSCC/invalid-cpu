@@ -6,16 +6,15 @@ import pipeline.common.bundles.MultiBaseStageIo
 import spec._
 
 abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
-  inNdFactory:  => InT,
-  outNdFactory: => OutT,
-  blankIn:      => InT,
-  peerFactory:  => Option[PT] = None,
-  inNum:        Int           = Param.issueInstInfoMaxNum,
-  outNum:       Int           = Param.pipelineNum)
+  inNdFactory:    => InT,
+  outNdFactory:   => OutT,
+  blankIn:        => InT,
+  peerFactory:    => Option[PT] = None,
+  inNum:          Int           = Param.issueInstInfoMaxNum,
+  outNum:         Int           = Param.pipelineNum,
+  outQueueLength: Int           = 1)
     extends Module {
   val io = IO(new MultiBaseStageIo(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
-
-  private val queueSize = 1
 
   protected val resultOutsReg: Vec[ValidIO[OutT]] = RegInit(
     VecInit(Seq.fill(outNum)(0.U.asTypeOf(ValidIO(outNdFactory))))
@@ -30,7 +29,7 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
   private val outQueues = lastResultOuts.map(
     Queue(
       _,
-      entries = queueSize,
+      entries = outQueueLength,
       pipe    = false,
       flow    = true,
       flush   = Some(io.isFlush)

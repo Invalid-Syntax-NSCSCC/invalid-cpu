@@ -3,7 +3,7 @@ package pipeline.commit.bundles
 import chisel3._
 import chisel3.experimental.BundleLiterals._
 import common.bundles.PcSetNdPort
-import control.bundles.CsrWriteNdPort
+import control.bundles._
 import control.enums.ExceptionPos
 import spec.Param.isDiffTest
 import spec._
@@ -26,9 +26,10 @@ class InstInfoNdPort extends Bundle {
 
   val branchSetPort = Output(new PcSetNdPort)
 
-  val load    = if (isDiffTest) Some(new DifftestLoadNdPort) else None
-  val store   = if (isDiffTest) Some(new DifftestStoreNdPort) else None
-  val tlbFill = if (isDiffTest) Some(new DifftestTlbFillNdPort) else None
+  val load      = if (isDiffTest) Some(new DifftestLoadNdPort) else None
+  val store     = if (isDiffTest) Some(new DifftestStoreNdPort) else None
+  val tlbFill   = if (isDiffTest) Some(new DifftestTlbFillNdPort) else None
+  val timerInfo = if (isDiffTest) Some(new DifftestTimerNdPort) else None
 
   val isTlb = Bool()
 
@@ -36,45 +37,7 @@ class InstInfoNdPort extends Bundle {
 }
 
 object InstInfoNdPort {
-  def default = if (isDiffTest)
-    (new InstInfoNdPort).Lit(
-      _.isValid -> false.B,
-      _.pc -> zeroWord,
-      _.inst -> zeroWord,
-      _.exceptionPos -> ExceptionPos.none,
-      _.exceptionRecord -> 0.U,
-      _.csrWritePort -> CsrWriteNdPort.default,
-      _.exeOp -> ExeInst.Op.nop,
-      _.exeSel -> ExeInst.Sel.none,
-      _.robId -> zeroWord,
-      _.isStore -> false.B,
-      _.vaddr -> zeroWord,
-      _.needCsr -> false.B,
-      _.load.get -> DifftestLoadNdPort.default,
-      _.store.get -> DifftestStoreNdPort.default,
-      _.tlbFill.get -> DifftestTlbFillNdPort.default,
-      _.isTlb -> false.B,
-      _.forbidParallelCommit -> false.B,
-      _.branchSuccess -> false.B
-    )
-  else
-    (new InstInfoNdPort).Lit(
-      _.isValid -> false.B,
-      _.pc -> zeroWord,
-      _.inst -> zeroWord,
-      _.exceptionPos -> ExceptionPos.none,
-      _.exceptionRecord -> 0.U,
-      _.csrWritePort -> CsrWriteNdPort.default,
-      _.exeOp -> ExeInst.Op.nop,
-      _.exeSel -> ExeInst.Sel.none,
-      _.robId -> zeroWord,
-      _.isStore -> false.B,
-      _.vaddr -> zeroWord,
-      _.needCsr -> false.B,
-      _.isTlb -> false.B,
-      _.forbidParallelCommit -> false.B,
-      _.branchSuccess -> false.B
-    )
+  def default = 0.U.asTypeOf(new InstInfoNdPort)
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
     instInfo.isValid         := false.B
