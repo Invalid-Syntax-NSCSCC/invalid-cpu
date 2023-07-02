@@ -148,7 +148,6 @@ class MultiInstQueue(
 
   resultQueue.io.enqueuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
     case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
-      dequeuePort.bits.decode        := selectedDecoder
       dequeuePort.bits.instInfo      := InstInfoNdPort.default
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
@@ -170,6 +169,14 @@ class MultiInstQueue(
       }.elsewhen(!isMatched) {
         dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
         dequeuePort.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ine
+      }
+
+      dequeuePort.bits.decode := selectedDecoder
+      when(!isMatched) {
+        dequeuePort.bits.decode.info.issueEn.zipWithIndex.foreach {
+          case (en, idx) =>
+            en := (idx != Param.loadStoreIssuePipelineIndex).B
+        }
       }
   }
 }
