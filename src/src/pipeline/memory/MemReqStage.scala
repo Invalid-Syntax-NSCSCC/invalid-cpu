@@ -124,21 +124,60 @@ class MemReqStage
     }
 
     // Handle cache maintenance
+    val dCacheBitsDelta = Param.Width.DCache._addr + Param.Width.DCache._byteOffset - Param.Width.DCache._indexOffsetMax
+    val iCacheBitsDelta = Param.Width.ICache._addr + Param.Width.ICache._byteOffset - Param.Width.ICache._indexOffsetMax
+    val maxCacheBitsDelta        = dCacheBitsDelta.max(iCacheBitsDelta)
+    val maxCacheMaintenanceCount = Math.pow(2, maxCacheBitsDelta).toInt - 1
+    val isDCacheWorkaround       = dCacheBitsDelta > 0
+    val isICacheWorkaround       = iCacheBitsDelta > 0
+    val cacheMaintenanceCountDownReg = Option.when(isDCacheWorkaround || isICacheWorkaround)(
+      RegInit(maxCacheMaintenanceCount.U)
+    )
+    cacheMaintenanceCountDownReg.foreach(reg => reg := reg)
+
     val isCacheMaintenance = selectedIn.cacheMaintenance.control.isInit ||
       selectedIn.cacheMaintenance.control.isCoherentByIndex ||
       selectedIn.cacheMaintenance.control.isCoherentByHit
+
+    cacheMaintenanceCountDownReg.foreach { reg =>
+      peer.dCacheMaintenance.client.addr := Cat(
+        selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - Param.Width.DCache._tag),
+        reg,
+        selectedIn.translatedMemReq.addr(Param.Width.DCache._indexOffsetMax - 1, 0)
+      )
+      peer.iCacheMaintenance.client.addr := Cat(
+        selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - Param.Width.ICache._tag),
+        reg,
+        selectedIn.translatedMemReq.addr(Param.Width.ICache._indexOffsetMax - 1, 0)
+      )
+    }
+
     when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
       switch(selectedIn.cacheMaintenance.target) {
         is(CacheMaintenanceTargetType.data) {
           peer.dCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
           when(isCacheMaintenance) {
-            isComputed := peer.dCacheMaintenance.isReady
+            if (isDCacheWorkaround) {
+              isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.dCacheMaintenance.isReady
+              when(peer.dCacheMaintenance.isReady) {
+                cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
+              }
+            } else {
+              isComputed := peer.dCacheMaintenance.isReady
+            }
           }
         }
         is(CacheMaintenanceTargetType.inst) {
           peer.iCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
           when(isCacheMaintenance) {
-            isComputed := peer.iCacheMaintenance.isReady
+            if (isICacheWorkaround) {
+              isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.iCacheMaintenance.isReady
+              when(peer.iCacheMaintenance.isReady) {
+                cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
+              }
+            } else {
+              isComputed := peer.iCacheMaintenance.isReady
+            }
           }
         }
       }

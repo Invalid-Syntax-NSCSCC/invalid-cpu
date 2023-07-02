@@ -119,18 +119,7 @@ class UncachedAgent extends Module {
         // Send response
         io.accessPort.res.isComplete := true.B
         io.accessPort.res.read.data  := axiMaster.io.dataOut
-//        io.accessPort.res.read.data := MuxLookup(lastReg.mask, axiMaster.io.dataOut)(
-//          Seq(
-//            "b0001".U(4.W) -> Cat(Seq.fill(4)(axiMaster.io.dataOut(7, 0))),
-//            "b0010".U(4.W) -> Cat(Seq.fill(4)(axiMaster.io.dataOut(15, 8))),
-//            "b0100".U(4.W) -> Cat(Seq.fill(4)(axiMaster.io.dataOut(23, 16))),
-//            "b1000".U(4.W) -> Cat(Seq.fill(4)(axiMaster.io.dataOut(31, 24))),
-//            "b0011".U(4.W) -> Cat(Seq.fill(2)(axiMaster.io.dataOut(15, 0))),
-//            "b1100".U(4.W) -> Cat(Seq.fill(2)(axiMaster.io.dataOut(31, 16))),
-//            "b1111".U(4.W) -> axiMaster.io.dataOut
-//          )
-//        )
-        io.accessPort.res.isFailed := false.B // TODO: The simple AXI master cannot detect failing
+        io.accessPort.res.isFailed   := false.B // TODO: The simple AXI master cannot detect failing
 
         // Next state: Ready for new request
         stateReg := State.ready
