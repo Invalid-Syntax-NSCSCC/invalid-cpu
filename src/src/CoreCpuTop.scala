@@ -202,7 +202,7 @@ class CoreCpuTop extends Module {
       dst <> src
   }
   dispatchStage.io.isFlush              := cu.io.backendFlush
-  dispatchStage.io.peer.get.csrcore     := csrScoreBoard.io.regScore
+  dispatchStage.io.peer.get.csrScore    := csrScoreBoard.io.regScore
   dispatchStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
 
   // Scoreboards

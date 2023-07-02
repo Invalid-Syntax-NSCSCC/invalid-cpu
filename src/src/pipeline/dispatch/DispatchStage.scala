@@ -22,7 +22,7 @@ object DispatchNdPort {
 class DispatchPeerPort extends Bundle {
   // `IssueStage` <-> `Scoreboard(csr)`
   val csrOccupyPort = Output(new ScoreboardChangeNdPort)
-  val csrcore       = Input(ScoreboardState())
+  val csrScore      = Input(ScoreboardState())
   val csrReadPort   = Flipped(new CsrReadPort)
 }
 
@@ -70,7 +70,8 @@ class DispatchStage(
               .take(src_idx)
               .map(_(dst_idx))
               .foldLeft(false.B)(_ || _) &&
-            srcEns.take(src_idx).foldLeft(true.B)(_ && _)
+            srcEns.take(src_idx).foldLeft(true.B)(_ && _) &&
+            !(in.exePort.instInfo.needCsr && io.peer.get.csrScore =/= ScoreboardState.free)
       }
       // select one
       dispatchSel.zip(PriorityEncoderOH(dstReady.reverse).reverse).foreach {
