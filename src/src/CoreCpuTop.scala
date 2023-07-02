@@ -163,6 +163,10 @@ class CoreCpuTop extends Module {
   frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
+  // TODO: Connect frontend
+  <> exePassWbStage_1.io.peer.get.feedbackFtq
+  <> cu.io.ftqPort
+
   // Instruction queue
   instQueue.io.enqueuePort <> frontend.io.instDequeuePort
 
