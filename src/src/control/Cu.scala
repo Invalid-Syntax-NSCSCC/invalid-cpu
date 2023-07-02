@@ -258,7 +258,7 @@ class Cu(
   io.ftqPort.meta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch
   io.ftqPort.meta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
   io.ftqPort.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
-  io.ftqPort.meta.branchType     := DontCare // TODO: assign
+  io.ftqPort.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
 
   io.ftqPort.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
     case ((mask, instInfo), idx) =>

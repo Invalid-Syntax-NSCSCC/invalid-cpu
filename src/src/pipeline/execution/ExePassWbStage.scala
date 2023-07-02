@@ -251,20 +251,20 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     )
 
     // is branch
-    feedbackFtq.commitBundle.ftqMetaUpdateValid := alu.io.isBranch && branchEnableFlag
+    val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargeMispredict ||
       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
 
-    resultOutReg.bits.instInfo.ftqCommitInfo.isBranch        := alu.io.isBranch
     resultOutReg.bits.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
 
-    when(alu.io.isBranch || isIdle || isErtn) {
+    when(isBranchInst || isIdle || isErtn) {
       resultOutReg.bits.instInfo.forbidParallelCommit := true.B
     }
 

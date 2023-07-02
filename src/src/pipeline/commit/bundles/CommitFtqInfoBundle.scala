@@ -1,10 +1,11 @@
 package pipeline.commit.bundles
 
 import chisel3._
+import spec._
 
 class CommitFtqInfoBundle extends Bundle {
   val isBranch        = Bool()
-  val branchType      = UInt(2.W)
+  val branchType      = UInt(Param.BPU.BranchType.width.W)
   val isBranchSuccess = Bool()
 }
 
