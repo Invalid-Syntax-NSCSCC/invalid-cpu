@@ -110,7 +110,7 @@ class FetchTargetQueue(
     bpuPtr := io.instFetchFtqId + 1.U
   }
   // if backend redirect triggered,back to the next block of the redirect block
-  // backend may continue to commit older block
+  // backend may continue to commit older block (flush before exeStage inst;commit after exeStage inst)
   when(io.backendFlush) {
     ifuPtr := io.backendFlushFtqId + 1.U
     bpuPtr := io.backendFlushFtqId + 1.U

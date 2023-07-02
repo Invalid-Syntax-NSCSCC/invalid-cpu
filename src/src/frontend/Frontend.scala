@@ -5,7 +5,7 @@ import chisel3.util._
 import common.Pc
 import common.bundles.PcSetNdPort
 import frontend.bpu.BPU
-import frontend.bundles.ICacheAccessPort
+import frontend.bundles.{CuCommitFtqPort, ExeFtqPort, ICacheAccessPort}
 import memory.bundles.TlbTransPort
 import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.memory.bundles.MemCsrNdPort
@@ -18,10 +18,16 @@ class Frontend extends Module {
     val cuNewPc = Input(new PcSetNdPort)
     val isFlush = Input(Bool())
 
-    // <-> ICache
+    // ftq <-> exe
+    val exeFtqPort = new ExeFtqPort
+
+    // ftq <-> cu
+    val cuCommitFtqPort = new CuCommitFtqPort
+
+    // instFetch <-> ICache
     val accessPort = Flipped(new ICacheAccessPort)
 
-    // <-> Frontend <-> Instrution queues
+    // instFetch <-> Instrution queues
     val instDequeuePort = Decoupled(new InstQueueEnqNdPort)
 
     // instFetch <-> Tlb
@@ -42,9 +48,10 @@ class Frontend extends Module {
 
   // branch predict unit
   // stage 0 send fallback target pc ;
-  // stage 1 when hit(fetch target buffer) => access bram and send predict target pc in next stage ,
-  //                      then quit the fallback target and use the new predict pc(modify ftq);
-  //                       if the pc has send to instFetch, then flush it  (by mainRedirect signal )
+  // stage 1 when hit(fetch target buffer) =>
+  //         access bram and send predict target pc in next stage ,
+  //         quit the fallback target and use the new predict pc(modify ftq);
+  //          if the pc has send to instFetch, then flush it  (by mainRedirect signal )
   val bpu = Module(new BPU())
   bpu.io.pc           := pc.io.pc
   bpu.io.bpuFtqPort   <> ftq.io.bpuFtqPort
@@ -54,9 +61,14 @@ class Frontend extends Module {
   // stage 1
   // act as a fetch buffer
   val ftq = Module(new FetchTargetQueue())
-  // fetchTargetQueue.io.cuCommitFtqPort <>
+  ftq.io.backendFlush    := io.isFlush
+  ftq.io.instFetchFlush  := false.B // TODO add predecoder stage
+  ftq.io.instFetchFtqId  := false.B
+  ftq.io.cuCommitFtqPort <> io.cuCommitFtqPort
+  ftq.io.exeFtqPort      <> io.exeFtqPort
 
   // stage 2-4
+  // TODO reactor instFetch
   val instFetch = Module(new InstFetch)
   instFetch.io.accessPort      <> io.accessPort
   instFetch.io.instDequeuePort <> io.instDequeuePort
