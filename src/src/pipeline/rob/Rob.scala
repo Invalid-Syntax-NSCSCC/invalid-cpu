@@ -173,7 +173,6 @@ class Rob(
 
   /** Distribute for issue stage
     */
-  val enqEnable = WireDefault(true.B)
   queue.io.enqueuePorts
     .lazyZip(io.requests)
     .lazyZip(io.distributeResults)
@@ -182,7 +181,7 @@ class Rob(
     .foreach {
       case ((enq, req, res, rfReadPorts), idx) =>
         // enqueue
-        enq.valid                     := req.en && enqEnable
+        enq.valid                     := req.en
         enq.bits                      := RobInstStoreBundle.default
         enq.bits.isValid              := true.B
         enq.bits.state                := State.busy
@@ -192,7 +191,7 @@ class Rob(
         // distribute rob id
         res       := RobReadResultNdPort.default
         res.robId := queue.io.enqIncResults(idx)
-        when(req.writeRequest.en && req.writeRequest.addr =/= 0.U) {
+        when(req.en && req.writeRequest.en && req.writeRequest.addr =/= 0.U) {
           matchTable(req.writeRequest.addr).locate := RegDataLocateSel.rob
           matchTable(req.writeRequest.addr).robId  := res.robId
         }
