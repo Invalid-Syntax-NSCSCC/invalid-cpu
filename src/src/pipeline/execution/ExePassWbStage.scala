@@ -2,8 +2,7 @@ package pipeline.execution
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PcSetNdPort, RfAccessInfoNdPort}
-import control.bundles.{CsrReadPort, CsrWriteNdPort, StableCounterReadPort}
+import common.bundles._
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import pipeline.commit.WbNdPort
@@ -50,7 +49,7 @@ object ExeNdPort {
 
 class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
-  val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetNdPort)) else None
+  val branchSetPort           = if (supportBranchCsr) Some(Output(new BackendRedirectPcNdPort)) else None
   val csrScoreboardChangePort = if (supportBranchCsr) Some(Output(new ScoreboardChangeNdPort)) else None
   val csrWriteStorePort       = if (supportBranchCsr) Some(Output(Valid(new CsrWriteNdPort))) else None
 
@@ -214,7 +213,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     val csrScoreboardChangePort = io.peer.get.csrScoreboardChangePort.get
 
     // branch set
-    branchSetPort                := PcSetNdPort.default
+    branchSetPort                := BackendRedirectPcNdPort.default
     csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
     csrScoreboardChangePort.addr := DontCare
 
@@ -239,7 +238,8 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
         fallThroughPc =/= ftqQueryPc
     )
 
-    branchSetPort.en := (branchTargeMispredict || branchTargeMispredict) && branchEnableFlag
+    branchSetPort.en    := (branchTargeMispredict || branchTargeMispredict) && branchEnableFlag
+    branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
     when(branchSetPort.en) {
       branchEnableFlag                                 := false.B
       resultOutReg.bits.instInfo.ftqInfo.isLastInBlock := true.B
@@ -267,8 +267,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     when(isBranchInst || isIdle || isErtn) {
       resultOutReg.bits.instInfo.forbidParallelCommit := true.B
     }
-
-    // resultOutReg.bits.instInfo.branchSuccess := branchSetPort.en
 
     when(io.isFlush) {
       branchEnableFlag := true.B

@@ -14,10 +14,7 @@ class Pc(
 
     val ftqFull = Input(Bool())
     // 异常处理 + 分支跳转
-    val cuNewPc = Input(new PcSetNdPort)
-
-    // bpu pc
-    val mainRedirectPc = Input(Valid(UInt(Width.Reg.data)))
+    val newPc = Input(new BackendRedirectPcNdPort)
   })
 
   val pcReg = RegInit(spec.Pc.init)

@@ -2,8 +2,8 @@ package control
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PassThroughPort, PcSetNdPort, RfWriteNdPort}
-import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort}
+import common.bundles.{BackendRedirectPcNdPort, PassThroughPort, RfWriteNdPort}
+import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
 import control.enums.ExceptionPos
 import pipeline.commit.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
@@ -34,13 +34,12 @@ class Cu(
     val csrFlushRequest = Input(Bool())
     val csrValues       = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
-    val branchExe = Input(new PcSetNdPort)
+    val branchExe = Input(new BackendRedirectPcNdPort)
     // `Rob` -> `Cu`
     val branchCommit = Input(Bool())
-    // `Cu` -> `Pc`
-    val newPc = Output(new PcSetNdPort)
     // `CsrScoreBoard` -> `Cu`
     val csrWriteInfo = Input(new CsrWriteNdPort)
+    val newPc        = Output(new BackendRedirectPcNdPort)
 
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
@@ -229,13 +228,18 @@ class Cu(
   io.idleFlush := RegNext(idleFlush)
 
   // Select new pc
-  val newPcReg = RegInit(PcSetNdPort.default)
-  io.newPc := newPcReg
+  io.newPc := BackendRedirectPcNdPort.default
+  io.newPc.en :=
+    isTlbMaintenance || io.csrFlushRequest || isException || io.branchExe.en || cacopFlush || idleFlush || isExceptionReturn
+  // io.newPc.isTlb := isTlbMaintenance
 
-  newPcReg       := PcSetNdPort.default
-  newPcReg.en    := isChangeInstPath
-  newPcReg.isTlb := isTlbMaintenance
-  newPcReg.pcAddr := Mux(
+  io.newPc.ftqId := Mux(
+    isTlbMaintenance || io.csrFlushRequest || isException || cacopFlush || idleFlush || isExceptionReturn,
+    majorInstInfo.pc + 4.U,
+    io.branchExe.ftqId
+  )
+
+  io.newPc.pcAddr := Mux(
     isException,
     Mux(
       majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,

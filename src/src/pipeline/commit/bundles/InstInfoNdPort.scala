@@ -1,6 +1,8 @@
 package pipeline.commit.bundles
 
 import chisel3._
+import chisel3.experimental.BundleLiterals._
+import common.bundles.BackendRedirectPcNdPort
 import control.bundles._
 import control.enums.ExceptionPos
 import spec.Param.isDiffTest
