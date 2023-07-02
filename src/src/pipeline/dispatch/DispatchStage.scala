@@ -71,7 +71,15 @@ class DispatchStage(
               .map(_(dst_idx))
               .foldLeft(false.B)(_ || _) &&
             srcEns.take(src_idx).foldLeft(true.B)(_ && _) &&
-            !(in.exePort.instInfo.needCsr && io.peer.get.csrScore =/= ScoreboardState.free)
+            !(in.exePort.instInfo.needCsr && (io.peer.get.csrScore =/= ScoreboardState.free))
+          if (src_idx > 0) {
+            when(
+              in.exePort.instInfo.needCsr &&
+                selectedIns.take(src_idx).map(_.exePort.instInfo.needCsr).reduce(_ || _)
+            ) {
+              dispatchEn := false.B
+            }
+          }
       }
       // select one
       dispatchSel.zip(PriorityEncoderOH(dstReady.reverse).reverse).foreach {
