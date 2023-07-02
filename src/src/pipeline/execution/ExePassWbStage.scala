@@ -38,15 +38,6 @@ class ExeNdPort extends Bundle {
 
 object ExeNdPort {
   def default = 0.U.asTypeOf(new ExeNdPort)
-  // def default = (new ExeNdPort).Lit(
-  //   _.exeSel -> ExeInst.Sel.none,
-  //   _.exeOp -> ExeInst.Op.nop,
-  //   _.leftOperand -> 0.U,
-  //   _.rightOperand -> 0.U,
-  //   _.gprWritePort -> RfAccessInfoNdPort.default,
-  //   _.jumpBranchAddr -> zeroWord,
-  //   _.instInfo -> InstInfoNdPort.default
-  // )
 }
 
 class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
@@ -171,15 +162,11 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
       is(ExeInst.Op.rdcntvl_w) {
         resultOutReg.bits.gprWrite.data := io.peer.get.stableCounterReadPort.get.output(wordLength - 1, 0)
-        // io.isMatch := true.B
-        // io.output  := timer64(wordLength - 1, 0)
       }
 
       is(ExeInst.Op.rdcntvh_w) {
         resultOutReg.bits.gprWrite.data := io.peer.get.stableCounterReadPort.get
           .output(doubleWordLength - 1, wordLength)
-        // io.isMatch := true.B
-        // io.output  := timer64(doubleWordLength - 1, wordLength)
       }
     }
 

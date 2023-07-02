@@ -38,46 +38,6 @@ class InstInfoNdPort extends Bundle {
 
 object InstInfoNdPort {
   def default = 0.U.asTypeOf(new InstInfoNdPort)
-  // def default = if (isDiffTest)
-  //   (new InstInfoNdPort).Lit(
-  //     _.isValid -> false.B,
-  //     _.pc -> zeroWord,
-  //     _.inst -> zeroWord,
-  //     _.exceptionPos -> ExceptionPos.none,
-  //     _.exceptionRecord -> 0.U,
-  //     _.csrWritePort -> CsrWriteNdPort.default,
-  //     _.exeOp -> ExeInst.Op.nop,
-  //     _.exeSel -> ExeInst.Sel.none,
-  //     _.robId -> zeroWord,
-  //     _.isStore -> false.B,
-  //     _.vaddr -> zeroWord,
-  //     _.needCsr -> false.B,
-  //     _.load.get -> DifftestLoadNdPort.default,
-  //     _.store.get -> DifftestStoreNdPort.default,
-  //     _.tlbFill.get -> DifftestTlbFillNdPort.default,
-  //     _.isTlb -> false.B,
-  //     _.forbidParallelCommit -> false.B,
-  //     _.branchSuccess -> false.B,
-  //     _.timerInfo.get -> DifftestTimerNdPort.default
-  //   )
-  // else
-  //   (new InstInfoNdPort).Lit(
-  //     _.isValid -> false.B,
-  //     _.pc -> zeroWord,
-  //     _.inst -> zeroWord,
-  //     _.exceptionPos -> ExceptionPos.none,
-  //     _.exceptionRecord -> 0.U,
-  //     _.csrWritePort -> CsrWriteNdPort.default,
-  //     _.exeOp -> ExeInst.Op.nop,
-  //     _.exeSel -> ExeInst.Sel.none,
-  //     _.robId -> zeroWord,
-  //     _.isStore -> false.B,
-  //     _.vaddr -> zeroWord,
-  //     _.needCsr -> false.B,
-  //     _.isTlb -> false.B,
-  //     _.forbidParallelCommit -> false.B,
-  //     _.branchSuccess -> false.B
-  //   )
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
     instInfo.isValid         := false.B
