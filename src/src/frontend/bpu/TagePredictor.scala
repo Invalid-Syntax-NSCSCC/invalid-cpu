@@ -40,9 +40,7 @@ class TagePredictor(
   })
 
   // Input
-  // val updateMetaBundle = new TageMetaPort
   val updateMetaBundle = WireDefault(io.updateInfoPort.bpuMeta)
-  //   // val updateMetaBundle := io.updateInfoPort.bpuMeta
 
   // Signals
   // Query
@@ -176,11 +174,13 @@ class TagePredictor(
 
   // Select the longest match provider
   // predPredictionId = 0.U((tagComponentNum + 1).W)
-  for (i <- 0 to tagComponentNum) {
-    when(tagHit(i)) {
-      predPredictionId := (i + 1).U((tagComponentNum + 1).W)
-    }
-  }
+  Seq
+    .range(0, tagComponentNum)
+    .foreach(i =>
+      when(tagHit(i)) {
+        predPredictionId := (i + 1).U((tagComponentNum + 1).W)
+      }
+    )
 
   // Select altpred
   val altpredPool = RegInit(0.U((tagComponentNum + 1).W))
@@ -190,11 +190,13 @@ class TagePredictor(
   }
 
   // altPredPredctionId = 0.U((tagComponentNum + 1).W)
-  for (i <- 0 to tagComponentNum + 1) {
-    when(altpredPool(i)) {
-      altPredPredctionId := i.U((tagComponentNum + 1).W)
-    }
-  }
+  Seq
+    .range(0, tagComponentNum + 1)
+    .foreach(i =>
+      when(altpredPool(i)) {
+        altPredPredctionId := i.U((tagComponentNum + 1).W)
+      }
+    )
 
   // Output logic
   io.predictValid := true.B
@@ -219,9 +221,16 @@ class TagePredictor(
   queryMetaPort.altProviderId          := altPredPredctionId
   queryMetaPort.providerCtrBits(0)     := baseCtr
 
-  for (i <- 1 to tagComponentNum + 1) {
-    queryMetaPort.providerCtrBits(i) := tagCtrs(i)
-  }
+  Seq
+    .range(0, tagComponentNum)
+    .foreach(i =>
+      // skip ctrBitsVec(0)
+      queryMetaPort.providerCtrBits(i + 1) := tagCtrs(i)
+    )
+//  queryMetaPort.providerCtrBits.drop(1).zip(tagCtrs).foreach {
+//    case (dst, src) =>
+//      dst := src
+//  }
 
   io.bpuMetaPort.bpuMeta := queryMetaPort
 

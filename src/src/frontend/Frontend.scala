@@ -32,11 +32,11 @@ class Frontend extends Module {
   val pc = Module(new Pc)
   pc.io.cuNewPc        := io.cuNewPc
   pc.io.mainRedirectPc := bpu.io.mainRedirectPc
-  pc.io.isNext         := instFetch.io.isPcNext
+  pc.io.ftqFull        := ftq.io.bpuFtqPort.ftqFull
 
   // Frontend pipeline structure
   // bpu(branch predict unit) => ftq(fetchTargetQueue) =>
-  // instFetch( instAddressTranslateStage => instMemRequestStage => instMemResultStage) =>
+  // instFetch( addressTranslateStage => instMemRequestStage => instMemResultStage) =>
   // instQueues  (act as middle buffer)
   // => backend
 
@@ -47,13 +47,13 @@ class Frontend extends Module {
   //                       if the pc has send to instFetch, then flush it  (by mainRedirect signal )
   val bpu = Module(new BPU())
   bpu.io.pc           := pc.io.pc
-  bpu.io.bpuFtqPort   <> fetchTargetQueue.io.bpuFtqPort
+  bpu.io.bpuFtqPort   <> ftq.io.bpuFtqPort
   bpu.io.backendFlush := io.isFlush
 
   // fetch Target Pc queue;
   // stage 1
   // act as a fetch buffer
-  val fetchTargetQueue = Module(new FetchTargetQueue())
+  val ftq = Module(new FetchTargetQueue())
   // fetchTargetQueue.io.cuCommitFtqPort <>
 
   // stage 2-4
