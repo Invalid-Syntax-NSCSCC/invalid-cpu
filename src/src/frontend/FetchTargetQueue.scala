@@ -7,7 +7,7 @@ import frontend.bpu.bundles._
 import chisel3.experimental.Param
 import frontend.bundles.{BpuFtqPort, CuCommitFtqPort, ExeFtqPort, FtqBlockPort, FtqBpuMetaPort}
 
-class FetchTargetQueen(
+class FetchTargetQueue(
   val queueSize: Int = Param.BPU.ftqSize,
   val issueNum:  Int = Param.issueInstInfoMaxNum)
     extends Module {
@@ -73,12 +73,12 @@ class FetchTargetQueen(
 
   // queue full
   queueFull                := (bpuPtrPlus1 === commPtr)
-  queueFullDelay           := RegNext(queueFull)
-  ifuSendReqDelay          := RegNext(ifuSendReq)
-  ifuFrontendRedirectDelay := RegNext(ifuFrontendRedirect)
-  mainBpuRedirectDelay     := RegNext(io.bpuFtqPort.mainBpuRedirectValid)
+  queueFullDelay           := (queueFull)
+  ifuSendReqDelay          := (ifuSendReq)
+  ifuFrontendRedirectDelay := (ifuFrontendRedirect)
+  mainBpuRedirectDelay     := (io.bpuFtqPort.mainBpuRedirectValid)
 
-  ftqVec := RegNext(ftqNextVec)
+  ftqVec := ftqNextVec
 
 //  //TODO debug signal
 //  val debugQueuePcVec = Vec(queueSize, spec.Width.Mem._addr)
@@ -121,9 +121,9 @@ class FetchTargetQueen(
   ftqNextVec := ftqVec
 
   // clear out if committed
-  for (i <- 0 to issueNum) {
-    when(i.U < backendCommitNum) {
-      ftqNextVec(commPtr + i.U) := 0.U
+  Seq.range(0, issueNum).foreach { idx =>
+    when(idx.U < backendCommitNum) {
+      ftqNextVec(commPtr + idx.U) := 0.U
     }
   }
 
@@ -143,19 +143,20 @@ class FetchTargetQueen(
 
   // if predecoder redirect triggered,clear the committed and predicted entry
   when(io.instFetchFlush) {
-    for (i <- 0 to queueSize) {
-      when(i.U(ptrWidth.W) - commPtr >= i.U(ptrWidth.W) - io.instFetchFtqId) {
-        ftqNextVec(i) := 0.U
+    Seq.range(0, queueSize).foreach { idx =>
+      when(idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.instFetchFtqId) {
+        ftqNextVec(idx) := 0.U
       }
     }
   }
   // if backend redirect triggered,clear the committed and predicted entry
   when(io.backendFlush) {
-    for (i <- 0 to queueSize) {
+    Seq.range(0, queueSize).foreach { idx =>
       when(
-        i.U(ptrWidth.W) - commPtr >= i.U(ptrWidth.W) - io.backendFlushFtqId && i.U(ptrWidth.W) =/= io.backendFlushFtqId
+        idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.backendFlushFtqId && idx
+          .U(ptrWidth.W) =/= io.backendFlushFtqId
       ) {
-        ftqNextVec(i) := 0.U
+        ftqNextVec(idx) := 0.U
       }
     }
   }

@@ -33,8 +33,7 @@ class BPU(
     val pc = Input(UInt(Width.Reg.data))
 
     // PC
-    val mainRedirectValid = Output(Bool())
-    val mainRedirectPc    = Output(UInt(Width.Reg.data))
+    val mainRedirectPc    = Output(Valid(UInt(Width.Reg.data)))
 
     // PMU
     // TODO: use PMU to monitor miss-prediction rate and each component useful rate
@@ -121,18 +120,18 @@ class BPU(
   ftbBranchType := ftbEntryReg.branchType
 
   // Pc output
-  io.mainRedirectValid               := mainRedirectValid
+  io.mainRedirectPc.valid               := mainRedirectValid
   io.bpuFtqPort.mainBpuRedirectValid := mainRedirectValid
   //  case branchType
   switch(ftbEntryReg.branchType) {
     is(Param.BPU.BranchType.cond) {
-      io.mainRedirectPc := Mux(predictTaken, ftbEntryReg.jumpTargetAddress, ftbEntryReg.fallThroughAddress)
+      io.mainRedirectPc.bits := Mux(predictTaken, ftbEntryReg.jumpTargetAddress, ftbEntryReg.fallThroughAddress)
     }
     is(Param.BPU.BranchType.call, Param.BPU.BranchType.uncond) {
-      io.mainRedirectPc := ftbEntryReg.jumpTargetAddress
+      io.mainRedirectPc.bits := ftbEntryReg.jumpTargetAddress
     }
     is(Param.BPU.BranchType.ret) {
-      io.mainRedirectPc := rasTopAddr
+      io.mainRedirectPc.bits := rasTopAddr
     }
   }
 

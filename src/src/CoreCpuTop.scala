@@ -1,7 +1,7 @@
 import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
-import common.{Pc, RegFile}
+import common.RegFile
 import control.{Csr, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
@@ -126,11 +126,6 @@ class CoreCpuTop extends Module {
   val csrScoreBoard = Module(new CsrScoreboard)
 
   val regFile = Module(new RegFile)
-  val pc      = Module(new Pc)
-
-  // PC
-  pc.io.newPc  := cu.io.newPc
-  pc.io.isNext := frontend.io.isPcNext
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
@@ -162,8 +157,7 @@ class CoreCpuTop extends Module {
   //   inst fetch stage
   frontend.io.isFlush    := cu.io.frontendFlush
   frontend.io.accessPort <> iCache.io.accessPort
-  frontend.io.pc         := pc.io.pc
-  frontend.io.pcUpdate   := pc.io.pcUpdate
+  frontend.io.cuNewPc    := cu.io.newPc
   frontend.io.tlbTrans   <> tlb.io.tlbTransPorts(1)
   frontend.io.csr.crmd   := csr.io.csrValues.crmd
   frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0

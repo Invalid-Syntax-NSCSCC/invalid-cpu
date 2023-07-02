@@ -14,13 +14,16 @@ class Pc(
     val pcUpdate = Output(Bool())
     val isNext   = Input(Bool())
     // 异常处理 + 分支跳转
-    val newPc = Input(new PcSetNdPort)
+    val cuNewPc = Input(new PcSetNdPort)
+
+    // bpu pc
+    val mainRedirectPc = Input(Valid(UInt(Width.Reg.data)))
   })
 
   val pcReg       = RegInit(spec.Pc.init)
   val pcUpdateReg = RegInit(false.B)
   io.pc       := pcReg
-  io.pcUpdate := pcUpdateReg && !io.newPc.en
+  io.pcUpdate := pcUpdateReg && !io.cuNewPc.en
   val pcFetchNum = WireDefault(Param.fetchInstMaxNum.U(log2Ceil(Param.fetchInstMaxNum + 1).W))
   if (Param.fetchInstMaxNum != 1) {
     when(pcReg(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset) =/= 0.U) {
@@ -29,8 +32,11 @@ class Pc(
   }
 
   pcReg := pcReg
-  when(io.newPc.en) {
-    pcReg       := io.newPc.pcAddr
+  when(io.cuNewPc.en) {
+    pcReg       := io.cuNewPc.pcAddr
+    pcUpdateReg := true.B
+  }.elsewhen(io.mainRedirectPc.valid) {
+    pcReg       := io.mainRedirectPc.valid
     pcUpdateReg := true.B
   }.elsewhen(io.isNext) {
     pcReg       := pcReg + 4.U * pcFetchNum.asUInt

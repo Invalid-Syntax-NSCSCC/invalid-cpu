@@ -112,9 +112,9 @@ class TagePredictor(
   // Global History Register
   val ghr = RegInit(0.U(ghrDepth.W))
   when(updateValid) {
-    ghr := RegNext(Cat(ghr(ghrDepth - 2, 0), updateBranchTaken))
+    ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
   }
-  globalHistoryUpdate := RegNext(updateValid)
+  globalHistoryUpdate := updateValid
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Logic
@@ -237,20 +237,13 @@ class TagePredictor(
     updateValid & updateNewEntryFlag &
       updateMetaBundle.useful & ~io.updateInfoPort.predictCorrect
   ) {
-    useAltOnNaCounterTables(updatePc(2, 5)) :=
-      RegNext(Mux(useALtOnNaCounter === 15.U(4.W), 15.U(4.W), useALtOnNaCounter + 1.U))
+    useAltOnNaCounterTables(updatePc(2, 5)) := Mux(useALtOnNaCounter === 15.U(4.W), 15.U(4.W), useALtOnNaCounter + 1.U)
   }.elsewhen(
     updateValid & updateNewEntryFlag &
       updateMetaBundle.useful & io.updateInfoPort.predictCorrect
   ) {
-    useAltOnNaCounterTables(updatePc(2, 5)) := RegNext(
-      Mux(useALtOnNaCounter === 0.U(4.W), 0.U(4.W), useALtOnNaCounter - 1.U)
-    )
+    useAltOnNaCounterTables(updatePc(2, 5)) := Mux(useALtOnNaCounter === 0.U(4.W), 0.U(4.W), useALtOnNaCounter - 1.U)
   }
-
-  // when(useAlt){
-  //   useAC
-  // }
 
   // CTR policy
   // Update on a correct prediction: update the ctr bits of the provider
@@ -278,9 +271,7 @@ class TagePredictor(
   // This block finds the ID of useful == 0 component
   val tagUpdateQueryUsefulsMatch = RegInit(VecInit(Seq.fill(tagComponentNum)(false.B)))
 
-  for (i <- 0 to tagComponentNum) {
-    tagUpdateQueryUsefulsMatch(i) := (tagUpdateQueryUsefuls(i) === 0.U(1.W))
-  }
+  Seq.range(0, tagComponentNum).foreach(i => tagUpdateQueryUsefulsMatch(i) := (tagUpdateQueryUsefuls(i) === 0.U(1.W)))
 
   // Allocation policy, according to TAGE essay
   // Shorter history component has a higher chance of chosen
@@ -351,18 +342,16 @@ class TagePredictor(
         }
       }.otherwise {
         // No slot to allocate, decrease all useful bits of longer history components
-        for (i <- 0 to tagComponentNum) {
-          when(i.U >= updateProviderId - 1.U(1.W)) {
-            tagUpdateUseful(i)    := 1.U(1.W)
-            tagUpdateIncUseful(i) := 0.U(1.W)
-          }
+        Seq.range(0, tagComponentNum).foreach { i =>
+          tagUpdateUseful(i)    := 1.U(1.W)
+          tagUpdateIncUseful(i) := 0.U(1.W)
         }
       } // end otherwise
     } // end otherwise
   } // end update
 
   // generate new tag
-  for (i <- 0 to tagComponentNum) {
+  Seq.range(0, tagComponentNum).foreach { i =>
     tagUpdateNewTags(i) := Mux(
       tagUpdateReallocEntry(i),
       updateMetaBundle.tagPredictorQueryTag(i),
@@ -371,7 +360,7 @@ class TagePredictor(
   }
 
   // counter
-  for (i <- 0 to tagComponentNum + 1) {
+  Seq.range(0, tagComponentNum + 1).foreach { i =>
     io.perfTagHitCounters(i) := io.perfTagHitCounters(i) + Cat(0.U(31.W), (i.U === predPredictionId))
   }
 
