@@ -218,6 +218,8 @@ class CoreCpuTop extends Module {
   exeForMemStage.io.isFlush             := cu.io.backendFlush
   exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
   exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
+
+  exePassWbStage_1.io.peer.get.stableCounterReadPort.get <> stableCounter.io
   assert(Param.loadStoreIssuePipelineIndex == 0)
   exePassWbStages.zipWithIndex.foreach {
     case (exe, idx) =>
@@ -296,8 +298,7 @@ class CoreCpuTop extends Module {
   cu.io.gprWritePassThroughPorts.in.zip(commitStage.io.gprWritePorts).foreach {
     case (dst, src) => dst := src
   }
-  cu.io.csrValues             := csr.io.csrValues
-  cu.io.stableCounterReadPort <> stableCounter.io
+  cu.io.csrValues := csr.io.csrValues
 
   require(Param.jumpBranchPipelineIndex != 0)
   cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
@@ -350,6 +351,8 @@ class CoreCpuTop extends Module {
       t.cmt_st_vaddr     := w.st_vaddr
       t.cmt_st_paddr     := w.st_paddr
       t.cmt_st_data      := w.st_data
+      t.cmt_cnt_inst     := w.cnt_inst
+      t.cmt_timer_64     := w.timer_64
 
       t.cmt_valid_1 := w.valid_1
       t.cmt_pc_1    := w.pc_1
@@ -363,12 +366,6 @@ class CoreCpuTop extends Module {
     case (Some(t), Some(c)) =>
       t.cmt_ertn       := c.cmt_ertn
       t.cmt_excp_flush := c.cmt_excp_flush
-    case _ =>
-  }
-  (io.diffTest, stableCounter.io.difftest) match {
-    case (Some(t), Some(c)) =>
-      t.cmt_cnt_inst := c.isCnt
-      t.cmt_timer_64 := c.value
     case _ =>
   }
   (io.diffTest, regFile.io.difftest) match {
