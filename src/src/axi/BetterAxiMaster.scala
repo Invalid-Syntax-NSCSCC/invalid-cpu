@@ -10,7 +10,7 @@ class BetterAxiMaster(
   val writeSize:        Int,
   val bytesPerTransfer: Int     = 4,
   val id:               Int,
-  isInst:               Boolean = false)
+  val isInst:           Boolean = false)
     extends Module {
   val io = IO(new Bundle {
     val axi = new AxiMasterInterface
@@ -45,8 +45,8 @@ class BetterAxiMaster(
   io.axi <> DontCare
 
   // Only need to use incremental burst
-  io.axi.ar.bits.burst := Value.Axi.Burst.incr
-  io.axi.aw.bits.burst := Value.Axi.Burst.incr
+  io.axi.ar.bits.burst := Value.Axi.Burst.wrap
+  io.axi.aw.bits.burst := Value.Axi.Burst.wrap
 
   // Use the largest possible size per transfer (default: 4 bytes [32 bits])
   // Note: Bytes in transfer is 2^AxSIZE
@@ -67,10 +67,10 @@ class BetterAxiMaster(
   // Set others
   io.axi.ar.bits.id    := id.U
   io.axi.aw.bits.id    := id.U
-  io.axi.ar.bits.lock  := Value.Axi.Lock.normal
-  io.axi.aw.bits.lock  := Value.Axi.Lock.normal
-  io.axi.ar.bits.cache := Value.Axi.Cache.nonBufferable
-  io.axi.aw.bits.cache := Value.Axi.Cache.nonBufferable
+  io.axi.ar.bits.lock  := Value.Axi.Lock.exclusive
+  io.axi.aw.bits.lock  := Value.Axi.Lock.exclusive
+  io.axi.ar.bits.cache := Value.Axi.Cache.bufferable
+  io.axi.aw.bits.cache := Value.Axi.Cache.bufferable
   io.axi.ar.bits.prot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
   io.axi.aw.bits.prot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
   io.axi.w.bits.strb   := io.write.req.mask
