@@ -58,9 +58,10 @@ class BetterAxiMaster(
   // Note: Burst length is AxLEN + 1
   assert(readSize % (bytesPerTransfer * byteLength) == 0)
   assert(writeSize % (bytesPerTransfer * byteLength) == 0)
+  val readLen  = WireDefault((readSize / (bytesPerTransfer * byteLength)).U)
   val writeLen = WireDefault((writeSize / (bytesPerTransfer * byteLength)).U)
   assert(writeLen <= "b_1111_1111".U)
-  io.axi.ar.bits.len := ((readSize / (bytesPerTransfer * byteLength)) - 1).U
+  io.axi.ar.bits.len := readLen - 1.U
   io.axi.aw.bits.len := writeLen - 1.U
 
   // Set others
@@ -80,11 +81,16 @@ class BetterAxiMaster(
   // Size per transfer in bits
   val transferSize = bytesPerTransfer * 8
 
+  // Max burst count
+  val maxBurstCount = readLen - 1.U
+
   // Handle read
 
   val isReadingReg = RegInit(false.B)
   isReadingReg := isReadingReg // Fallback: Keep state
-  val readDataReg  = RegInit(0.U(readSize.W))
+  val readDataReg       = RegInit(0.U(readSize.W))
+  val readBurstCountReg = RegInit(maxBurstCount)
+  readBurstCountReg := readBurstCountReg
   val nextReadData = WireDefault(readDataReg)
   readDataReg := nextReadData // Fallback: Keep data
   val isReadReady = WireDefault(!isReadingReg && io.axi.ar.ready)
@@ -105,9 +111,10 @@ class BetterAxiMaster(
 
   when(io.read.req.isValid && isReadReady) {
     // Accept request
-    isReadFailedNext := false.B
-    isReadingReg     := true.B
-    nextReadData     := 0.U
+    isReadFailedNext  := false.B
+    isReadingReg      := true.B
+    nextReadData      := 0.U
+    readBurstCountReg := maxBurstCount
   }
 
   when(isReadingReg) {
@@ -131,7 +138,9 @@ class BetterAxiMaster(
         }
       }
 
-      when(io.axi.r.bits.last) {
+      readBurstCountReg := readBurstCountReg - 1.U
+
+      when(!readBurstCountReg.orR) {
         // Reading complete
         io.read.res.isValid  := true.B
         io.read.res.data     := nextReadData
