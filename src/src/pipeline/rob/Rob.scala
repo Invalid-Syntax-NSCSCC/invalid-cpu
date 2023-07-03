@@ -9,6 +9,7 @@ import pipeline.common.MultiQueue
 import pipeline.rob.bundles._
 import pipeline.rob.enums.{RegDataLocateSel, RobDistributeSel, RobInstState => State}
 import spec._
+import pipeline.common.DistributedQueuePlus
 
 // assert: commits cannot ready 1 but not 0
 class Rob(
@@ -57,15 +58,28 @@ class Rob(
 
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
 
+  // val queue = Module(
+  //   new MultiQueue(
+  //     robLength,
+  //     issueNum,
+  //     commitNum,
+  //     new RobInstStoreBundle,
+  //     RobInstStoreBundle.default
+  //   )
+  // )
+
   val queue = Module(
-    new MultiQueue(
-      robLength,
+    new DistributedQueuePlus(
       issueNum,
       commitNum,
+      Param.Width.Rob._channelNum,
+      Param.Width.Rob._channelLength,
       new RobInstStoreBundle,
-      RobInstStoreBundle.default
+      RobInstStoreBundle.default,
+      useSyncReadMem = false
     )
   )
+
   queue.io.enqueuePorts.foreach { port =>
     port.valid := false.B
     port.bits  := DontCare
@@ -77,7 +91,7 @@ class Rob(
   }
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.isFlush
-  io.emptyNum      := queue.io.emptyNum
+  io.emptyNum      := VecInit(queue.io.enqueuePorts.map(_.ready.asUInt)).reduceTree(_ +& _)
   io.instWbBroadCasts.zip(io.finishInsts).foreach {
     case (dst, src) =>
       dst.en    := src.valid // && io.robInstValids(src.bits.instInfo.robId)
@@ -91,9 +105,9 @@ class Rob(
   io.finishInsts.foreach { finishInst =>
     finishInst.ready := true.B
     when(finishInst.valid && finishInst.bits.instInfo.isValid) {
-      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
-        case ((elemValid, elem, set), idx) =>
-          when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
+      queue.io.elems.lazyZip(queue.io.setPorts).zipWithIndex.foreach {
+        case ((elem, set), idx) =>
+          when(elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
             set.valid        := true.B
             set.bits.isValid := elem.isValid
             set.bits.state   := State.ready
