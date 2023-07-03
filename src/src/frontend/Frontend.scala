@@ -15,8 +15,9 @@ import spec._
 class Frontend extends Module {
   val io = IO(new Bundle {
     // pc
-    val cuNewPc = Input(new PcSetNdPort)
-    val isFlush = Input(Bool())
+    val cuNewPc    = Input(new BackendRedirectPcNdPort)
+    val isFlush    = Input(Bool())
+    val ftqFlushId = Input(UInt(Param.BPU.ftqPtrWitdh.W))
 
     // ftq <-> exe
     val exeFtqPort = new ExeFtqPort
@@ -64,7 +65,7 @@ class Frontend extends Module {
   // stage 1
   // act as a fetch buffer
   ftq.io.backendFlush      := io.isFlush
-  ftq.io.backendFlushFtqId := 0.U
+  ftq.io.backendFlushFtqId := io.ftqFlushId
   ftq.io.instFetchFlush    := false.B // TODO add predecoder stage
   ftq.io.instFetchFtqId    := false.B
   ftq.io.cuCommitFtqPort   <> io.cuCommitFtqPort

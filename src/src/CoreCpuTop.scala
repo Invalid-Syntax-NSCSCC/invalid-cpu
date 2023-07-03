@@ -156,6 +156,7 @@ class CoreCpuTop extends Module {
   // Frontend
   //   inst fetch stage
   frontend.io.isFlush    := cu.io.frontendFlush
+  frontend.io.ftqFlushId := cu.io.frontendFlushFtqId
   frontend.io.accessPort <> iCache.io.accessPort
   frontend.io.cuNewPc    := cu.io.newPc
   frontend.io.tlbTrans   <> tlb.io.tlbTransPorts(1)
@@ -166,7 +167,6 @@ class CoreCpuTop extends Module {
   // TODO: Connect frontend
   frontend.io.exeFtqPort      <> exePassWbStage_1.io.peer.get.feedbackFtq.get
   frontend.io.cuCommitFtqPort <> cu.io.ftqPort
-
 
   // Instruction queue
   instQueue.io.enqueuePort <> frontend.io.instDequeuePort

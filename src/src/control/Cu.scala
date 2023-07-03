@@ -41,9 +41,10 @@ class Cu(
     val csrWriteInfo = Input(new CsrWriteNdPort)
     val newPc        = Output(new BackendRedirectPcNdPort)
 
-    val frontendFlush = Output(Bool())
-    val backendFlush  = Output(Bool())
-    val idleFlush     = Output(Bool())
+    val frontendFlush      = Output(Bool())
+    val frontendFlushFtqId = Input(UInt(Param.BPU.ftqPtrWitdh.W))
+    val backendFlush       = Output(Bool())
+    val idleFlush          = Output(Bool())
 
     val ftqPort = Flipped(new CuCommitFtqPort)
 
@@ -213,13 +214,18 @@ class Cu(
 
   val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 
-  io.csrMessage.ertnFlush := isExceptionReturn
-  val isChangeInstPath =
-    isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn
-
-  io.frontendFlush := RegNext(
-    isChangeInstPath,
-    false.B
+  io.csrMessage.ertnFlush := isExceptionReturn // TODO: Make ERTN jump gracefully like branch instruction
+  io.frontendFlush :=
+    RegNext(
+      isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
+      false.B
+    )
+  io.frontendFlushFtqId := RegNext(
+    Mux(
+      isException || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
+      majorInstInfo.ftqInfo.ftqId,
+      io.branchExe.ftqId
+    )
   )
   io.backendFlush := RegNext(
     isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
