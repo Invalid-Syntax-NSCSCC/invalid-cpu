@@ -228,7 +228,7 @@ class Cu(
     isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
     false.B
   )
-  io.idleFlush := idleFlush
+  io.idleFlush := RegNext(idleFlush)
 
   // Select new pc
   val newPc = RegInit(PcSetNdPort.default)
