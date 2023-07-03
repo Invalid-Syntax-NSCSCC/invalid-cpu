@@ -1,4 +1,3 @@
-
 //  Xilinx True Dual Port RAM Read First Single Clock
 //  This code implements a parameterizable true dual port memory (both ports can read and write).
 //  The behavior of this RAM is when data is written, the prior memory contents at the write
@@ -6,6 +5,7 @@
 //  not needed during writes or the last read value is desired to be retained,
 //  it is suggested to use a no change RAM as it is more power efficient.
 //  If a reset or enable is not necessary, it may be tied off or removed from the code.
+
 module truedual_readfirst_bram #(
   parameter RAM_WIDTH = 88,                       // Specify RAM data width
   parameter RAM_DEPTH = 1024,                     // Specify RAM depth (number of entries)

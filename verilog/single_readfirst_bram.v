@@ -1,10 +1,10 @@
-  //  Xilinx Single Port Read First RAM
-  //  This code implements a parameterizable single-port read-first memory where when data
-  //  is written to the memory, the output reflects the prior contents of the memory location.
-  //  If the output data is not needed during writes or the last read value is desired to be
-  //  retained, it is suggested to set WRITE_MODE to NO_CHANGE as it is more power efficient.
-  //  If a reset or enable is not necessary, it may be tied off or removed from the code.
-  //  Modify the parameters for the desired RAM characteristics.
+//  Xilinx Single Port Read First RAM
+//  This code implements a parameterizable single-port read-first memory where when data
+//  is written to the memory, the output reflects the prior contents of the memory location.
+//  If the output data is not needed during writes or the last read value is desired to be
+//  retained, it is suggested to set WRITE_MODE to NO_CHANGE as it is more power efficient.
+//  If a reset or enable is not necessary, it may be tied off or removed from the code.
+//  Modify the parameters for the desired RAM characteristics.
 
 module single_readfirst_bram #
 (
