@@ -121,7 +121,8 @@ class ICache(
     new BetterAxiMaster(
       readSize  = Param.Width.ICache._dataLine,
       writeSize = Param.Width.ICache._dataLine,
-      id        = Param.Axi.Id.iCache
+      id        = Param.Axi.Id.iCache,
+      isInst    = true
     )
   )
   axiMaster.io                   <> DontCare
@@ -158,7 +159,7 @@ class ICache(
       io.maintenancePort.client.addr,
       Cat(
         io.accessPort.req.client
-          .addr(spec.Width.Mem._addr-1, Param.Width.ICache._fetchOffset),
+          .addr(spec.Width.Mem._addr - 1, Param.Width.ICache._fetchOffset),
         0.U(Param.Width.ICache._fetchOffset.W)
       )
     )
