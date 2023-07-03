@@ -328,7 +328,7 @@ class CoreCpuTop extends Module {
   // Debug ports
   io.debug0_wb.pc       := commitStage.io.ins(0).bits.instInfo.pc
   io.debug0_wb.inst     := commitStage.io.ins(0).bits.instInfo.inst
-  io.debug0_wb.rf.wen   := commitStage.io.gprWritePorts(0).en
+  io.debug0_wb.rf.wen   := VecInit(Seq.fill(4)(commitStage.io.gprWritePorts(0).en && commitStage.io.ins(0).bits.instInfo.isValid && commitStage.io.ins(0).valid && commitStage.io.ins(0).ready && !cu.io.csrMessage.exceptionFlush)).asUInt
   io.debug0_wb.rf.wnum  := commitStage.io.gprWritePorts(0).addr
   io.debug0_wb.rf.wdata := commitStage.io.gprWritePorts(0).data
 
