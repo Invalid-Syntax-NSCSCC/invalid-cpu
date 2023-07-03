@@ -40,6 +40,8 @@ class CommitStage(
     // `CommitStage` -> `Cu` NO delay
     val isExceptionValid = Output(Bool())
 
+    val hasInterrupt = Input(Bool())
+
     val difftest =
       if (isDiffTest)
         Some(Output(new Bundle {
@@ -73,7 +75,7 @@ class CommitStage(
       else None
   })
 
-  io.ins.foreach(_.ready := true.B)
+  io.ins.foreach(_.ready := !io.hasInterrupt)
 
   val inBits = WireDefault(VecInit(io.ins.map(_.bits)))
 

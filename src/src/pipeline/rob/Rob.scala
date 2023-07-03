@@ -159,12 +159,12 @@ class Rob(
   }
 
   when(io.hasInterrupt) {
-    when(io.commits(0).valid && io.commits(0).ready) {
-      io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
-      io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
-    }.otherwise {
-      hasInterruptReg := true.B
-    }
+    // when(io.commits(0).valid && io.commits(0).ready) {
+    //   io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
+    //   io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
+    // }.otherwise {
+    hasInterruptReg := true.B
+    // }
   }.elsewhen(hasInterruptReg && io.commits(0).valid && io.commits(0).ready) {
     hasInterruptReg                             := false.B
     io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
@@ -241,8 +241,8 @@ class Rob(
     */
 
   when(io.isFlush) {
-    queue.io.enqueuePorts.foreach(_.valid := false.B)
-    io.commits.foreach(_.valid := false.B)
+    // queue.io.enqueuePorts.foreach(_.valid := false.B)
+    // io.commits.foreach(_.valid := false.B)
     matchTable.foreach(_.locate := RegDataLocateSel.regfile)
   }
 }
