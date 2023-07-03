@@ -8,7 +8,6 @@ import control.enums.ExceptionPos
 import spec.Param.isDiffTest
 import spec._
 import pipeline.dispatch.bundles.FtqInfoBundle
-import frontend.bpu.bundles.FtqIfPort
 
 class InstInfoNdPort extends Bundle {
   val isValid         = Bool()

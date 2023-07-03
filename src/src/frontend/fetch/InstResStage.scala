@@ -2,7 +2,7 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.InstMemResponseNdPort
+import frontend.bundles.{FtqBlockBundle, InstMemResponseNdPort}
 import memory.bundles.MemResponseNdPort
 import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.FetchInstInfoBundle
@@ -10,8 +10,8 @@ import pipeline.queue.InstQueueEnqNdPort
 import spec.{Param, Width}
 
 class InstResNdPort extends Bundle {
-  val isValid   = Bool()
-  val pc        = UInt(Width.Mem.addr)
+  val ftqBlock  = new FtqBlockBundle
+  val ftqId     = Input(UInt(Param.BPU.ftqPtrWitdh.W))
   val exception = Valid(UInt(Width.Csr.exceptionIndex))
 }
 
@@ -42,24 +42,30 @@ class InstResStage
   // Fallback output
   out.enqInfos.zipWithIndex.foreach {
     case (infoBundle, index) =>
-      infoBundle.bits.pcAddr := selectedIn.pc + index.asUInt(Width.Mem.addr) * 4.U
+      infoBundle.bits.pcAddr := selectedIn.ftqBlock.startPc + index.asUInt(Width.Mem.addr) * 4.U
       if (Param.fetchInstMaxNum == 1) {
         infoBundle.bits.inst := peer.memRes.read.dataVec(0)
         infoBundle.valid     := true.B
       } else {
         val fetchIndex = WireDefault(
-          selectedIn.pc(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset) + index.asUInt(
-            log2Ceil(Param.fetchInstMaxNum).W
-          )
+          selectedIn.ftqBlock.startPc(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset) + index
+            .asUInt(
+              log2Ceil(Param.fetchInstMaxNum).W
+            )
         )
         infoBundle.bits.inst := peer.memRes.read.dataVec(fetchIndex)
         infoBundle.valid     := fetchIndex >= index.asUInt(log2Ceil(Param.fetchInstMaxNum).W)
       }
-      infoBundle.bits.exceptionValid := selectedIn.exception.valid
-      infoBundle.bits.exception      := selectedIn.exception.bits
+      infoBundle.bits.exceptionValid        := selectedIn.exception.valid
+      infoBundle.bits.exception             := selectedIn.exception.bits
+      infoBundle.bits.ftqInfo.ftqId         := selectedIn.ftqId
+      infoBundle.bits.ftqInfo.predictBranch := selectedIn.ftqBlock.predictTaken
+      infoBundle.bits.ftqInfo.isLastInBlock := (index + 1).asUInt(
+        log2Ceil(Param.fetchInstMaxNum + 1).W
+      ) === selectedIn.ftqBlock.length
   }
 
-  when(selectedIn.isValid) {
+  when(selectedIn.ftqBlock.isValid) {
     isComputed         := peer.memRes.isComplete | selectedIn.exception.valid
     resultOutReg.valid := isComputed
     isLastHasReq       := true.B

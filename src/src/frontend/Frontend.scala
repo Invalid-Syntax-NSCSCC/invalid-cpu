@@ -35,8 +35,12 @@ class Frontend extends Module {
     //  InstFetch <-> csr
     val csr = Input(new MemCsrNdPort)
   })
-  val pc = Module(new Pc)
-  pc.io.cuNewPc        := io.cuNewPc
+  val pc        = Module(new Pc)
+  val bpu       = Module(new BPU)
+  val ftq       = Module(new FetchTargetQueue())
+  val instFetch = Module(new InstFetch)
+
+  pc.io.newPc          := io.cuNewPc
   pc.io.mainRedirectPc := bpu.io.mainRedirectPc
   pc.io.ftqFull        := ftq.io.bpuFtqPort.ftqFull
 
@@ -52,7 +56,6 @@ class Frontend extends Module {
   //         access bram and send predict target pc in next stage ,
   //         quit the fallback target and use the new predict pc(modify ftq);
   //          if the pc has send to instFetch, then flush it  (by mainRedirect signal )
-  val bpu = Module(new BPU())
   bpu.io.pc           := pc.io.pc
   bpu.io.bpuFtqPort   <> ftq.io.bpuFtqPort
   bpu.io.backendFlush := io.isFlush
@@ -60,16 +63,15 @@ class Frontend extends Module {
   // fetch Target Pc queue;
   // stage 1
   // act as a fetch buffer
-  val ftq = Module(new FetchTargetQueue())
-  ftq.io.backendFlush    := io.isFlush
-  ftq.io.instFetchFlush  := false.B // TODO add predecoder stage
-  ftq.io.instFetchFtqId  := false.B
-  ftq.io.cuCommitFtqPort <> io.cuCommitFtqPort
-  ftq.io.exeFtqPort      <> io.exeFtqPort
+  ftq.io.backendFlush      := io.isFlush
+  ftq.io.backendFlushFtqId := 0.U
+  ftq.io.instFetchFlush    := false.B // TODO add predecoder stage
+  ftq.io.instFetchFtqId    := false.B
+  ftq.io.cuCommitFtqPort   <> io.cuCommitFtqPort
+  ftq.io.exeFtqPort        <> io.exeFtqPort
 
   // stage 2-4
-  // TODO reactor instFetch
-  val instFetch = Module(new InstFetch)
+  instFetch.io.ftqIFPort       <> ftq.io.ftqIFPort
   instFetch.io.accessPort      <> io.accessPort
   instFetch.io.instDequeuePort <> io.instDequeuePort
   instFetch.io.isFlush         := io.isFlush

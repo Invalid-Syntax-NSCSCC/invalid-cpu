@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
 import chisel3.experimental.Param
-import frontend.bundles.{BpuFtqPort, CuCommitFtqPort, ExeFtqPort, FtqBlockPort, FtqBpuMetaPort}
+import frontend.bundles.{BpuFtqPort, CuCommitFtqPort, ExeFtqPort, FtqBlockBundle, FtqBpuMetaPort, FtqIFPort}
 
 class FetchTargetQueue(
   val queueSize: Int = Param.BPU.ftqSize,
@@ -31,10 +31,7 @@ class FetchTargetQueue(
     val exeFtqPort = new ExeFtqPort
 
     // <-> IFU
-    val ifuPort             = Output(new FtqBlockPort)
-    val ifuFrontendRedirect = Output(Bool())
-    val ifuFtqId            = Output(UInt(ptrWidth.W))
-    val ifuAccept           = Input(Bool()) // Must return in the same cycle
+    val ftqIFPort = Flipped(new FtqIFPort)
   })
 
   // Signals
@@ -54,8 +51,8 @@ class FetchTargetQueue(
   bpuPtrPlus1 := bpuPtr + 1.U
 
   // Queue data structure
-  val ftqVec     = RegInit(Vec(queueSize, new FtqBlockPort))
-  val ftqNextVec = Vec(queueSize, new FtqBlockPort)
+  val ftqVec     = RegInit(Vec(queueSize, new FtqBlockBundle))
+  val ftqNextVec = Vec(queueSize, new FtqBlockBundle)
   // FTQ meta
   val bpuMetaWriteValid = WireDefault(false.B)
   val bpuMetaWritePtr   = RegInit(0.U(ptrWidth.W))
@@ -67,8 +64,8 @@ class FetchTargetQueue(
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
-  ifuSendReq               := ftqVec(ifuPtr).valid & io.ifuAccept
-  mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.valid
+  ifuSendReq               := ftqVec(ifuPtr).isValid & io.ftqIFPort.ready
+  mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
   ifuFrontendRedirect      := (bpuPtr === (ifuPtr + 1.U)) & mainBpuRedirectModifyFtq & (ifuSendReq | ifuSendReqDelay)
 
   // queue full
@@ -87,17 +84,17 @@ class FetchTargetQueue(
 //  }
 
   // ptr
-  io.ifuFtqId := ifuPtr
+  io.ftqIFPort.ftqId := ifuPtr
   // Backend committed,means that current commPtr block is done
   commPtr := commPtr + backendCommitNum
   // If block is accepted by IF, ifuPtr++
   // IB full should result in FU not accepting FTQ input
-  when(io.ifuAccept & ~io.ifuFrontendRedirect) {
+  when(io.ftqIFPort.ready & ~ifuFrontendRedirect) {
     ifuPtr := ifuPtr + 1.U
   }
 
   // bpu ptr
-  when(io.bpuFtqPort.ftqP0.valid) {
+  when(io.bpuFtqPort.ftqP0.isValid) {
     bpuPtr := bpuPtr + 1.U
   }.elsewhen((io.bpuFtqPort.mainBpuRedirectValid)) {
     // p1 redirect,maintain bpuPtr
@@ -129,14 +126,14 @@ class FetchTargetQueue(
 
   // Accept BPU input
   // p0
-  when(io.bpuFtqPort.ftqP0.valid) {
+  when(io.bpuFtqPort.ftqP0.isValid) {
     ftqNextVec(bpuPtr) := io.bpuFtqPort.ftqP0
   }
   // p1
-  when(io.bpuFtqPort.ftqP1.valid & ~mainBpuRedirectDelay) {
+  when(io.bpuFtqPort.ftqP1.isValid & ~mainBpuRedirectDelay) {
     // If last cycle accepted P0 input
     ftqNextVec(bpuPtr - 1.U) := io.bpuFtqPort.ftqP1
-  }.elsewhen(io.bpuFtqPort.ftqP1.valid) {
+  }.elsewhen(io.bpuFtqPort.ftqP1.isValid) {
     // else no override
     ftqNextVec(bpuPtr) := io.bpuFtqPort.ftqP1
   }
@@ -163,15 +160,15 @@ class FetchTargetQueue(
 
   // Output
   // -> IFU
-  io.ifuPort := ftqVec(ifuPtr)
+  io.ftqIFPort.ftqBlockBundle := ftqVec(ifuPtr)
   // Trigger a IFU flush when:
   // 1. last cycle send rreq to IFU
   // 2. main BPU redirect had modified the FTQ contents
   // 3. modified FTQ block is the rreq sent last cycle
-  io.ifuFrontendRedirect := ifuFrontendRedirect
+  io.ftqIFPort.redirect := ifuFrontendRedirect
   // debug
   val debugLength = WireDefault(0.U(3.W))
-  debugLength := io.ifuPort.length
+  debugLength := io.ftqIFPort.ftqBlockBundle.length
 
   // -> Exe cuCommit query
   io.exeFtqPort.queryPcBundle.pc      := ftqVec(io.exeFtqPort.queryPcBundle.ftqId).startPc
@@ -208,19 +205,19 @@ class FetchTargetQueue(
 
   // Bpu meta ram
   // If last cycle accepted p1 input
-  when(io.bpuFtqPort.ftqP1.valid & ~mainBpuRedirectDelay) {
+  when(io.bpuFtqPort.ftqP1.isValid & ~mainBpuRedirectDelay) {
     bpuMetaWriteValid             := true.B
     bpuMetaWritePtr               := bpuPtr - 1.U
     bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
     bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
     bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
-  }.elsewhen(io.bpuFtqPort.ftqP1.valid) {
+  }.elsewhen(io.bpuFtqPort.ftqP1.isValid) {
     bpuMetaWriteValid             := true.B
     bpuMetaWritePtr               := bpuPtr
     bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
     bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
     bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
-  }.elsewhen(io.bpuFtqPort.ftqP0.valid) {
+  }.elsewhen(io.bpuFtqPort.ftqP0.isValid) {
     // if not provided by BPU,clear meta
     bpuMetaWriteValid := true.B
     bpuMetaWritePtr   := bpuPtr

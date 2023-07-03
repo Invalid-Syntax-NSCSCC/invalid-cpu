@@ -1,14 +1,15 @@
 package frontend.fetch
 
+import chisel3._
 import chisel3.util._
-import chisel3.{Bundle, _}
-import frontend.bundles.{ICacheRequestHandshakePort, ICacheRequestNdPort}
+import frontend.bundles.{FtqBlockBundle, ICacheRequestHandshakePort, ICacheRequestNdPort}
 import pipeline.common.BaseStage
-import spec.Width
+import spec.{Csr, Param, Width}
 
 class InstReqNdPort extends Bundle {
   val translatedMemReq = new ICacheRequestNdPort
-  val pc               = UInt(Width.Mem.addr)
+  val ftqBlock         = new FtqBlockBundle
+  val ftqId            = Input(UInt(Param.BPU.ftqPtrWitdh.W))
   val exception        = Valid(UInt(Width.Csr.exceptionIndex))
 }
 
@@ -17,7 +18,8 @@ object InstReqNdPort {
 }
 
 class InstReqPeerPort extends Bundle {
-  val memReq = Flipped(new ICacheRequestHandshakePort)
+  val memReq      = Flipped(new ICacheRequestHandshakePort)
+  val ftqRedirect = Input(Bool())
 }
 
 class InstReqStage
@@ -33,15 +35,14 @@ class InstReqStage
   val excpValid = WireDefault(selectedIn.exception.valid)
 
   // Fallback output
-  out.pc        := selectedIn.pc
-  out.isValid   := true.B
+  out.ftqBlock  := selectedIn.ftqBlock
   out.exception := selectedIn.exception
 
   // Fallback peer
   peer.memReq.client := selectedIn.translatedMemReq
 
   when(selectedIn.translatedMemReq.isValid && (!excpValid)) {
-    when(io.out.ready) {
+    when(io.out.ready && !peer.ftqRedirect) {
       // Whether memory request is submitted
       isComputed := peer.memReq.isReady
 

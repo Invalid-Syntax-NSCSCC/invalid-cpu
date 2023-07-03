@@ -167,6 +167,7 @@ class CoreCpuTop extends Module {
   frontend.io.exeFtqPort      <> exePassWbStage_1.io.peer.get.feedbackFtq.get
   frontend.io.cuCommitFtqPort <> cu.io.ftqPort
 
+
   // Instruction queue
   instQueue.io.enqueuePort <> frontend.io.instDequeuePort
 

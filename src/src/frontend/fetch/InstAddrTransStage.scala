@@ -2,13 +2,12 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.FetchCsrNdPort
-import memory.bundles.TlbTransPort
 import memory.enums.TlbMemType
+import memory.bundles.TlbTransPort
 import pipeline.memory.enums.AddrTransType
+import frontend.bundles.{FetchCsrNdPort, FtqBlockBundle}
 import spec.Value.Csr
-import spec.Width
-import spec.Param._
+import spec.{Param, Width}
 
 class InstAddrTransPeerPort extends Bundle {
   val csr      = Input(new FetchCsrNdPort)
@@ -18,8 +17,8 @@ class InstAddrTransPeerPort extends Bundle {
 class InstAddrTransStage extends Module {
   val io = IO(new Bundle {
     val isFlush       = Input(Bool())
-    val isPcUpdate    = Input(Bool())
-    val pc            = Input(UInt(Width.Mem.addr))
+    val ftqBlock      = Input(new FtqBlockBundle)
+    val ftqId         = Input(UInt(Param.BPU.ftqPtrWitdh.W))
     val isBlockPcNext = Output(Bool())
     val out           = Decoupled(new InstReqNdPort)
     val peer          = new InstAddrTransPeerPort
@@ -27,20 +26,22 @@ class InstAddrTransStage extends Module {
 
   val peer = io.peer
 
-  val isAdef           = WireDefault(io.pc(1, 0).orR) // PC is not aligned
+  val pc               = WireDefault(io.ftqBlock.startPc)
+  val isAdef           = WireDefault(pc(1, 0).orR) // PC is not aligned
   val outReg           = RegInit(InstReqNdPort.default)
   val hasSentException = RegInit(false.B)
   hasSentException := hasSentException
   val isLastSent    = RegNext(true.B, true.B)
-  val isOutputValid = RegNext(io.isPcUpdate || !isLastSent, false.B)
+  val isOutputValid = RegNext(io.ftqBlock.isValid || !isLastSent, false.B)
 
   io.out.valid     := isOutputValid
   io.out.bits      := outReg
   io.isBlockPcNext := hasSentException
 
   // Fallback output
-  outReg.pc                       := io.pc
-  outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) && io.pc.orR && !isAdef
+  outReg.ftqBlock                 := io.ftqBlock
+  outReg.ftqId                    := io.ftqId
+  outReg.translatedMemReq.isValid := (io.ftqBlock.isValid || !isLastSent) && !isAdef
   outReg.exception.valid          := isAdef
   outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
 
@@ -71,10 +72,10 @@ class InstAddrTransStage extends Module {
     case (target, window) =>
       target.isHit := ((peer.csr.crmd.plv === Csr.Crmd.Plv.high && window.plv0) ||
         (peer.csr.crmd.plv === Csr.Crmd.Plv.low && window.plv3)) &&
-        window.vseg === io.pc(io.pc.getWidth - 1, io.pc.getWidth - 3)
+        window.vseg === pc(pc.getWidth - 1, pc.getWidth - 3)
       target.mappedAddr := Cat(
         window.pseg,
-        io.pc(io.pc.getWidth - 4, 0)
+        pc(pc.getWidth - 4, 0)
       )
   }
 
@@ -92,14 +93,14 @@ class InstAddrTransStage extends Module {
   }
 
   // Translate address
-  val translatedAddr = WireDefault(io.pc)
+  val translatedAddr = WireDefault(pc)
   outReg.translatedMemReq.addr := translatedAddr
   peer.tlbTrans.memType        := TlbMemType.fetch
-  peer.tlbTrans.virtAddr       := io.pc
+  peer.tlbTrans.virtAddr       := pc
   peer.tlbTrans.isValid        := false.B
   switch(transMode) {
     is(AddrTransType.direct) {
-      translatedAddr := io.pc
+      translatedAddr := pc
     }
     is(AddrTransType.directMapping) {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
@@ -107,7 +108,7 @@ class InstAddrTransStage extends Module {
     is(AddrTransType.pageTableMapping) {
       peer.tlbTrans.isValid := true.B
       translatedAddr        := peer.tlbTrans.physAddr
-      outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
+      outReg.translatedMemReq.isValid := (io.ftqBlock.isValid || !isLastSent) &&
         !peer.tlbTrans.exception.valid && !isAdef
 
       handleException()

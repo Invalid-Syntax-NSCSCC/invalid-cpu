@@ -38,8 +38,8 @@ class FTB(
   })
 
   // Signals definition
-  val wayQueryEntryRegs = Vec(nway, new FtbEntryNdPort)
-  val wayHits        = WireDefault(0.U(nway.W))
+  val wayQueryEntryRegs = Wire(Vec(nway, new FtbEntryNdPort))
+  val wayHits           = WireDefault(VecInit(Seq.fill(nway)(false.B)))
   val wayHitIndex       = WireDefault(0.U(nwayWidth.W))
   // Query
   val queryIndex  = WireDefault(0.U(nsetWidth.W))
@@ -54,15 +54,14 @@ class FTB(
   queryIndex  := io.queryPc(nsetWidth + 1, 2)
   queryTagReg := RegNext(io.queryPc(addr - 1, nwayWidth + 2))
 
-  Seq.range(0, nway).map { wayIndex =>
-    wayHits(wayIndex) := (wayQueryEntryRegs(wayIndex).tag === queryTagReg) &&
-      wayQueryEntryRegs(wayIndex).valid
-    wayHits
+  wayHits.zip(wayQueryEntryRegs).foreach {
+    case (isHit, wayEntry) =>
+      isHit := wayEntry.valid && wayEntry.tag === queryTagReg
   }
 
   // Query output
   io.queryEntryPort := wayQueryEntryRegs(wayHitIndex)
-  io.hit            := wayHits.orR
+  io.hit            := wayHits.asUInt.orR
   io.hitIndex       := wayHitIndex
 
   // Update logic
@@ -80,10 +79,7 @@ class FTB(
   }
 
   // hit Priority
-  val isHit         = WireDefault(wayHits.orR)
-  val biPriorityMux = Module(new BiPriorityMux(num = nway))
-  biPriorityMux.io.inVector := wayHits
-  Cat(isHit, wayHitIndex)   := biPriorityMux.io.selectIndices
+  wayHitIndex := PriorityEncoder(wayHits)
 
   // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
   // which is use to generate random number

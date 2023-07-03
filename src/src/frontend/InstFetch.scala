@@ -2,7 +2,7 @@ package frontend
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.ICacheAccessPort
+import frontend.bundles.{FtqIFPort, ICacheAccessPort}
 import frontend.fetch._
 import memory.bundles.TlbTransPort
 import pipeline.dispatch.bundles.FetchInstInfoBundle
@@ -12,9 +12,8 @@ import spec._
 
 class InstFetch extends Module {
   val io = IO(new Bundle {
-    val pc       = Input(UInt(Width.Reg.data))
-    val pcUpdate = Input(Bool())
-    val isPcNext = Output(Bool())
+    // <-> Frontend <-> FetchTargetQueue
+    val ftqIFPort = new FtqIFPort
 
     // <-> Frontend  <->ICache
     val accessPort = Flipped(new ICacheAccessPort)
@@ -29,18 +28,15 @@ class InstFetch extends Module {
     val csr = Input(new MemCsrNdPort)
   })
 
-  val isFirstSentReg = RegInit(false.B)
-  isFirstSentReg := true.B
-
   // InstAddr translate and mem stages
   val addrTransStage = Module(new InstAddrTransStage)
   val instReqStage   = Module(new InstReqStage)
   val instResStage   = Module(new InstResStage)
 
   // addrTransStage
-  addrTransStage.io.isFlush       := io.isFlush
-  addrTransStage.io.isPcUpdate    := io.pcUpdate || !isFirstSentReg
-  addrTransStage.io.pc            := io.pc
+  addrTransStage.io.isFlush       := io.isFlush || (io.ftqIFPort.redirect && io.ftqIFPort.ready)
+  addrTransStage.io.ftqBlock      := io.ftqIFPort.ftqBlockBundle
+  addrTransStage.io.ftqId         := io.ftqIFPort.ftqId
   addrTransStage.io.peer.csr      := io.csr
   addrTransStage.io.peer.tlbTrans <> io.tlbTrans
 
@@ -48,7 +44,8 @@ class InstFetch extends Module {
   instReqStage.io.isFlush := io.isFlush
   instReqStage.io.in      <> addrTransStage.io.out
   instReqStage.io.peer.foreach { p =>
-    p.memReq <> io.accessPort.req
+    p.memReq      <> io.accessPort.req
+    p.ftqRedirect := io.ftqIFPort.redirect
   }
 
   // instResStage
@@ -59,5 +56,5 @@ class InstFetch extends Module {
     p.memRes <> io.accessPort.res
   }
 
-  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg && !addrTransStage.io.isBlockPcNext
+  io.ftqIFPort.ready := instReqStage.io.in.ready && !addrTransStage.io.isBlockPcNext
 }
