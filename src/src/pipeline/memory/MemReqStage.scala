@@ -43,11 +43,20 @@ class MemReqStage
   val peer = io.peer.get
   val out  = resultOutReg.bits
 
+  // Workaround
+  val isUncachedAddressRange = VecInit(
+    "h_1faf".U(16.W),
+    "h_bfaf".U(16.W)
+    // "h_1fd0".U(16.W), // Chiplab only
+    // "h_1fe0".U(16.W) // Chiplab only
+  ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
+  val isTrueCached = selectedIn.isCached && !isUncachedAddressRange
+
   // Fallback output
   out.instInfo                := selectedIn.instInfo
   out.gprAddr                 := selectedIn.gprAddr
   out.isUnsigned              := selectedIn.translatedMemReq.read.isUnsigned
-  out.isCached                := selectedIn.isCached
+  out.isCached                := isTrueCached
   out.dataMask                := selectedIn.translatedMemReq.mask
   out.isInstantReq            := selectedIn.translatedMemReq.isValid
   out.isAtomicStore           := selectedIn.isAtomicStore
@@ -79,7 +88,7 @@ class MemReqStage
   storeIn.bits.addr     := selectedIn.translatedMemReq.addr
   storeIn.bits.data     := selectedIn.translatedMemReq.write.data
   storeIn.bits.mask     := selectedIn.translatedMemReq.mask
-  storeIn.bits.isCached := selectedIn.isCached
+  storeIn.bits.isCached := isTrueCached
   storeOut.ready        := false.B
 
   // Handle pipelined input
@@ -88,7 +97,7 @@ class MemReqStage
       is(ReadWriteSel.read) {
         // Whether last memory request is submitted and no stores in queue and not committing store
         when(io.out.ready && !storeOut.valid) {
-          when(selectedIn.isCached) {
+          when(isTrueCached) {
             peer.dCacheReq.client.isValid := true.B
             isComputed                    := peer.dCacheReq.isReady
           }.otherwise {

@@ -117,11 +117,13 @@ package object spec {
 
       // AXI 3
       object Lock {
-        val normal = 0.U(2.W)
+        val normal    = 0.U(2.W)
+        val exclusive = 1.U(2.W)
       }
 
       object Cache {
         val nonBufferable = 0.U(4.W)
+        val bufferable    = 1.U(4.W)
       }
 
       object Protect {
