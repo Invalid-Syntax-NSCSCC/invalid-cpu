@@ -198,19 +198,19 @@ class MemReqStage
     out.isRead       := false.B
     out.dataMask     := storeOut.bits.mask
 
+    peer.dCacheReq.client.rw           := ReadWriteSel.write
+    peer.dCacheReq.client.addr         := storeOut.bits.addr
+    peer.dCacheReq.client.mask         := storeOut.bits.mask
+    peer.dCacheReq.client.write.data   := storeOut.bits.data
+    peer.uncachedReq.client.rw         := ReadWriteSel.write
+    peer.uncachedReq.client.addr       := storeOut.bits.addr
+    peer.uncachedReq.client.mask       := storeOut.bits.mask
+    peer.uncachedReq.client.write.data := storeOut.bits.data
+
     isComputed := false.B
 
     // Whether can submit memory request instantly
     when(peer.commitStore.ready) {
-      peer.dCacheReq.client.rw           := ReadWriteSel.write
-      peer.dCacheReq.client.addr         := storeOut.bits.addr
-      peer.dCacheReq.client.mask         := storeOut.bits.mask
-      peer.dCacheReq.client.write.data   := storeOut.bits.data
-      peer.uncachedReq.client.rw         := ReadWriteSel.write
-      peer.uncachedReq.client.addr       := storeOut.bits.addr
-      peer.uncachedReq.client.mask       := storeOut.bits.mask
-      peer.uncachedReq.client.write.data := storeOut.bits.data
-
       storeOut.ready     := true.B
       resultOutReg.valid := true.B
 
