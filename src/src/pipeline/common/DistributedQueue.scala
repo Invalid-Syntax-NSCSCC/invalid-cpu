@@ -53,7 +53,9 @@ class DistributedQueue[ElemT <: Data](
 
   storeOuts.foreach(_.ready := false.B)
   if (channelNum == 1) {
-    storeOuts(0) <> storeIns(0)
+    // storeOuts(0) <> storeIns(0)
+    io.enqueuePorts(0) <> storeIns(0)
+    io.dequeuePorts(0) <> storeOuts(0)
   } else {
     val enq_ptr = Module(new MultiCounter(channelNum, enqMaxNum))
     val deq_ptr = Module(new MultiCounter(channelNum, deqMaxNum))
