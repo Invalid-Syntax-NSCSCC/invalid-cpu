@@ -14,11 +14,5 @@ class TagePredictorUpdateInfoPort extends Bundle {
 }
 
 object TagePredictorUpdateInfoPort {
-  def default = (new TagePredictorUpdateInfoPort).Lit(
-    _.valid -> false.B,
-    _.predictCorrect -> true.B,
-    _.branchTaken -> true.B,
-    _.isConditional -> true.B,
-    _.bpuMeta -> TageMetaPort.default
-  )
+  def default = 0.U.asTypeOf(new TagePredictorUpdateInfoPort)
 }

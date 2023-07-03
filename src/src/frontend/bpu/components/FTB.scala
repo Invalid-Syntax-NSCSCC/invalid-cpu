@@ -2,6 +2,7 @@ package frontend.bpu.components
 
 import chisel3._
 import chisel3.util._
+import chisel3.util.random.LFSR
 import frontend.bpu.components.Bundles.FtbEntryNdPort
 import frontend.bpu.utils.{Bram, Lfsr}
 import spec._
@@ -47,8 +48,10 @@ class FTB(
   // Update
   val updateIndex     = WireDefault(0.U(nsetWidth.W))
   val updateEntryPort = Reg(new FtbEntryNdPort)
-  val updateWE        = WireDefault(0.U(nway.W))
-  val randomR         = WireDefault(0.U(16.W))
+  val updateWE        = WireDefault(VecInit(Seq.fill(nway)(false.B)))
+  // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
+  // which is use to generate random number
+  val randomNum = LFSR(width = 16)
 
   // Query logic
   queryIndex  := io.queryPc(nsetWidth + 1, 2)
@@ -68,24 +71,22 @@ class FTB(
   updateIndex := io.updatePc(nsetWidth + 1, 2)
   when(io.updateDirty) {
     // Just override all entry in this group to ensure old entry is cleared
-    updateEntryPort             := io.updateEntryPort
-    updateWE                    := 0.U(nway.W)
-    updateWE(io.updateWayIndex) := io.updateValid
+    updateEntryPort := io.updateEntryPort
+    updateWE.zipWithIndex.foreach {
+      case (en, index) =>
+        en := Mux(index.U === io.updateWayIndex, io.updateValid, false.B)
+    }
   }.otherwise {
     // Update a new entry in
-    updateEntryPort                     := io.updateEntryPort
-    updateWE                            := 0.U(nway.W)
-    updateWE(randomR(nwayWidth - 1, 0)) := io.updateValid
+    updateEntryPort := io.updateEntryPort
+    updateWE.zipWithIndex.foreach {
+      case (en, index) =>
+        en := Mux(index.U === randomNum(nwayWidth - 1, 0), io.updateValid, false.B)
+    }
   }
 
   // hit Priority
   wayHitIndex := PriorityEncoder(wayHits)
-
-  // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
-  // which is use to generate random number
-  val lsfr = new Lfsr(width = 16)
-  lsfr.io.en := true.B
-  randomR    := lsfr.io.value
 
   // TODO use blackbox connect bram
   // bram
@@ -99,8 +100,8 @@ class FTB(
       bram.io.web               := updateWE(wayIdx)
       bram.io.dina              <> DontCare
       bram.io.addra             := queryIndex
-      wayQueryEntryRegs(wayIdx) := bram.io.douta
-      bram.io.dinb              := updateEntryPort
+      wayQueryEntryRegs(wayIdx) := bram.io.douta.asTypeOf(new FtbEntryNdPort)
+      bram.io.dinb              := updateEntryPort.asUInt
       bram.io.addrb             := updateIndex
       bram.io.doutb             <> DontCare
       bram

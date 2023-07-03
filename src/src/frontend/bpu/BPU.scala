@@ -62,8 +62,8 @@ class BPU(
   ////////////////////////////////////////////////////////////////////////////////////
   // Query logic
   ////////////////////////////////////////////////////////////////////////////////////
-  val tageMeta = Wire(new BpuFtqMetaPort)
-  val bpuMeta  = Wire(new BpuFtqMetaPort)
+  val tageMeta = WireDefault(BpuFtqMetaPort.default)
+  val bpuMeta  = WireDefault(BpuFtqMetaPort.default)
 
   // P0
   // FTQ qutput generate
@@ -110,18 +110,16 @@ class BPU(
   // p1 FTQ output
   when(mainRedirectValid) {
     // Main BPU generate a redirect in P1
-    io.bpuFtqPort.ftqP1.isValid := true.B
-    io.bpuFtqPort.ftqP1.isCrossCacheline := (ftbEntry.fallThroughAddress(Param.Width.ICache._fetchOffset, 2) -
+    io.bpuFtqPort.ftqP1.isValid          := true.B
+    io.bpuFtqPort.ftqP1.isCrossCacheline := ftbEntry.isCrossCacheline
+    io.bpuFtqPort.ftqP1.startPc          := p1Pc
+    io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddress(Param.Width.ICache._fetchOffset, 2) -
       p1Pc(Param.Width.ICache._fetchOffset, 2)) // Use 1 + log(fetchNum) bits minus to ensure no overflow
     io.bpuFtqPort.ftqP1.predictValid := true.B
     //  switch ftbEntry.BranchType
-    switch(ftbEntry.branchType) {
-      is(Param.BPU.BranchType.uncond) {
-        io.bpuFtqPort.ftqP1.predictTaken := predictTaken
-      }
-      is(Param.BPU.BranchType.call, Param.BPU.BranchType.ret, Param.BPU.BranchType.cond) {
-        io.bpuFtqPort.ftqP1.predictTaken := true.B
-      }
+    io.bpuFtqPort.ftqP1.predictTaken := true.B // (Param.BPU.BranchType.call, Param.BPU.BranchType.ret, Param.BPU.BranchType.cond)
+    when(ftbEntry.branchType === Param.BPU.BranchType.uncond) {
+      io.bpuFtqPort.ftqP1.predictTaken := predictTaken
     }
   }.otherwise {
     // default 0
@@ -210,13 +208,13 @@ class BPU(
 
   // connect tage Predictor module
   val tagePredictorModule = Module(new TagePredictor)
-  tagePredictorModule.io.pc                 := io.pc
-  tageMeta                                  := tagePredictorModule.io.bpuMetaPort
-  predictTaken                              := tagePredictorModule.io.predictBranchTaken
-  predictValid                              := tagePredictorModule.io.predictValid
-  tagePredictorModule.io.updatePc           := io.bpuFtqPort.ftqTrainMeta.startPc
-  tagePredictorModule.io.updateInfoPort     := tageUpdateInfoReg
-  tagePredictorModule.io.perfTagHitCounters <> DontCare
+  tagePredictorModule.io.pc             := io.pc
+  tageMeta                              := tagePredictorModule.io.bpuMetaPort
+  predictTaken                          := tagePredictorModule.io.predictBranchTaken
+  predictValid                          := tagePredictorModule.io.predictValid
+  tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqTrainMeta.startPc
+  tagePredictorModule.io.updateInfoPort := tageUpdateInfoReg
+//  tagePredictorModule.io.perfTagHitCounters <> DontCare
 
   // connect return address stack module
   val rasModule = Module(new RAS)

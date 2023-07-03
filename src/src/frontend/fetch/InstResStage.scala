@@ -11,7 +11,7 @@ import spec.{Param, Width}
 
 class InstResNdPort extends Bundle {
   val ftqBlock  = new FtqBlockBundle
-  val ftqId     = Input(UInt(Param.BPU.ftqPtrWitdh.W))
+  val ftqId     = UInt(Param.BPU.ftqPtrWitdh.W)
   val exception = Valid(UInt(Width.Csr.exceptionIndex))
 }
 

@@ -51,14 +51,14 @@ class FetchTargetQueue(
   bpuPtrPlus1 := bpuPtr + 1.U
 
   // Queue data structure
-  val ftqVec     = RegInit(Vec(queueSize, new FtqBlockBundle))
-  val ftqNextVec = Vec(queueSize, new FtqBlockBundle)
+  val ftqVec     = RegInit(VecInit(Seq.fill(queueSize)(FtqBlockBundle.default)))
+  val ftqNextVec = Wire(Vec(queueSize, new FtqBlockBundle))
   // FTQ meta
   val bpuMetaWriteValid = WireDefault(false.B)
   val bpuMetaWritePtr   = RegInit(0.U(ptrWidth.W))
-  val bpuMetaWriteEntry = new FtqBpuMetaEntry
-  val ftqBpuMetaVec     = Vec(queueSize, new FtqBpuMetaEntry)
-  val ftqBranchMetaVec  = Vec(queueSize, new FtqBranchMetaEntry)
+  val bpuMetaWriteEntry = WireDefault(FtqBpuMetaEntry.default)
+  val ftqBpuMetaRegs    = RegInit(VecInit(Seq.fill(queueSize)(FtqBpuMetaEntry.default)))
+  val ftqBranchMetaRegs = RegInit(VecInit(Seq.fill(queueSize)(FtqBranchMetaEntry.default)))
 
   val backendCommitNum = WireInit(0.U(log2Ceil(issueNum).W))
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
@@ -75,7 +75,10 @@ class FetchTargetQueue(
   ifuFrontendRedirectDelay := (ifuFrontendRedirect)
   mainBpuRedirectDelay     := (io.bpuFtqPort.mainBpuRedirectValid)
 
-  ftqVec := ftqNextVec
+  ftqVec.zip(ftqNextVec).foreach {
+    case (block, nextBlock) =>
+      block := nextBlock
+  }
 
 //  //TODO debug signal
 //  val debugQueuePcVec = Vec(queueSize, spec.Width.Mem._addr)
@@ -120,7 +123,7 @@ class FetchTargetQueue(
   // clear out if committed
   Seq.range(0, issueNum).foreach { idx =>
     when(idx.U < backendCommitNum) {
-      ftqNextVec(commPtr + idx.U) := 0.U
+      ftqNextVec(commPtr + idx.U) := FtqBlockBundle.default
     }
   }
 
@@ -142,7 +145,7 @@ class FetchTargetQueue(
   when(io.instFetchFlush) {
     Seq.range(0, queueSize).foreach { idx =>
       when(idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.instFetchFtqId) {
-        ftqNextVec(idx) := 0.U
+        ftqNextVec(idx) := FtqBlockBundle.default
       }
     }
   }
@@ -153,7 +156,7 @@ class FetchTargetQueue(
         idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.backendFlushFtqId && idx
           .U(ptrWidth.W) =/= io.backendFlushFtqId
       ) {
-        ftqNextVec(idx) := 0.U
+        ftqNextVec(idx) := FtqBlockBundle.default
       }
     }
   }
@@ -187,9 +190,9 @@ class FetchTargetQueue(
     // 2. Exception introduced block commit is not considered a branch update.
     val commitFtqId = WireDefault(io.cuCommitFtqPort.ftqId)
     io.bpuFtqPort.ftqTrainMeta.valid       := true.B
-    io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaVec(commitFtqId).ftbHit
-    io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaVec(commitFtqId).ftbHitIndex
-    io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaVec(commitFtqId).ftbDirty
+    io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaRegs(commitFtqId).ftbHit
+    io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaRegs(commitFtqId).ftbHitIndex
+    io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaRegs(commitFtqId).ftbDirty
     // Must use accuraate decoded info passed from backend
     io.bpuFtqPort.ftqTrainMeta.isBranch       := io.cuCommitFtqPort.meta.isBranch
     io.bpuFtqPort.ftqTrainMeta.branchType     := io.cuCommitFtqPort.meta.branchType
@@ -198,9 +201,9 @@ class FetchTargetQueue(
 
     io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVec(commitFtqId).startPc
     io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVec(commitFtqId).isCrossCacheline
-    io.bpuFtqPort.ftqTrainMeta.bpuMeta            := ftqBpuMetaVec(commitFtqId).bpuMeta
-    io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaVec(commitFtqId).jumpTargetAddress
-    io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaVec(commitFtqId).fallThroughAddress
+    io.bpuFtqPort.ftqTrainMeta.bpuMeta            := ftqBpuMetaRegs(commitFtqId).bpuMeta
+    io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddress
+    io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddress
   }
 
   // Bpu meta ram
@@ -221,28 +224,28 @@ class FetchTargetQueue(
     // if not provided by BPU,clear meta
     bpuMetaWriteValid := true.B
     bpuMetaWritePtr   := bpuPtr
-    bpuMetaWriteEntry := 0.U
+    bpuMetaWriteEntry := FtqBpuMetaEntry.default
   }.otherwise {
     bpuMetaWriteValid := false.B
     bpuMetaWritePtr   := 0.U
-    bpuMetaWriteEntry := 0.U
+    bpuMetaWriteEntry := FtqBpuMetaEntry.default
   }
 
   // P1
   // maintain BPU meta info
   when(bpuMetaWriteValid) {
-    ftqBpuMetaVec(bpuMetaWritePtr) := bpuMetaWriteEntry
+    ftqBpuMetaRegs(bpuMetaWritePtr) := bpuMetaWriteEntry
   }
   // update pc from backend
   when(io.exeFtqPort.commitBundle.ftqMetaUpdateValid) {
     val ftqUpdateMetaId = WireDefault(io.exeFtqPort.commitBundle.ftqUpdateMetaId)
-    ftqBranchMetaVec(
+    ftqBranchMetaRegs(
       ftqUpdateMetaId
     ).jumpTargetAddress := io.exeFtqPort.commitBundle.ftqMetaUpdateJumpTarget
-    ftqBranchMetaVec(
+    ftqBranchMetaRegs(
       ftqUpdateMetaId
-    ).fallThroughAddress                       := io.exeFtqPort.commitBundle.ftqMetaUpdateFallThrough
-    ftqBranchMetaVec(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.commitBundle.ftqMetaUpdateFtbDirty
+    ).fallThroughAddress                        := io.exeFtqPort.commitBundle.ftqMetaUpdateFallThrough
+    ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.commitBundle.ftqMetaUpdateFtbDirty
   }
 
 }

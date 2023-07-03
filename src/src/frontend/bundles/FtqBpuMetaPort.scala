@@ -30,19 +30,5 @@ class FtqBpuMetaPort(
 }
 
 object FtqBpuMetaPort {
-  def default = (new FtqBpuMetaPort).Lit(
-    _.valid -> false.B,
-    _.ftbHit -> false.B,
-    _.ftbHitIndex -> 0.U(log2Ceil(Param.BPU.FTB.nway).W),
-    _.ftbDirty -> false.B,
-    _.isCrossCacheline -> false.B,
-    _.bpuMeta -> TageMetaPort.default,
-    _.isBranch -> false.B,
-    _.branchType -> 0.U(2.W),
-    _.isTaken -> true.B,
-    _.predictedTaken -> true.B,
-    _.startPc -> 0.U(Width.Mem.addr),
-    _.jumpTargetAddress -> 0.U(Width.Mem.addr),
-    _.fallThroughAddress -> 0.U(Width.Mem.addr)
-  )
+  def default = 0.U.asTypeOf(new FtqBpuMetaPort)
 }

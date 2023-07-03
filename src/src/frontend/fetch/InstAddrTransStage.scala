@@ -26,7 +26,8 @@ class InstAddrTransStage extends Module {
 
   val peer = io.peer
 
-  val pc               = WireDefault(io.ftqBlock.startPc)
+  val pc = WireDefault(0.U(Width.inst))
+  pc := io.ftqBlock.startPc
   val isAdef           = WireDefault(pc(1, 0).orR) // PC is not aligned
   val outReg           = RegInit(InstReqNdPort.default)
   val hasSentException = RegInit(false.B)
