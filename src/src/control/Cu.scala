@@ -42,7 +42,7 @@ class Cu(
     val newPc        = Output(new BackendRedirectPcNdPort)
 
     val frontendFlush      = Output(Bool())
-    val frontendFlushFtqId = Input(UInt(Param.BPU.ftqPtrWitdh.W))
+    val frontendFlushFtqId = Output(UInt(Param.BPU.ftqPtrWitdh.W))
     val backendFlush       = Output(Bool())
     val idleFlush          = Output(Bool())
 
@@ -220,13 +220,14 @@ class Cu(
       isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
       false.B
     )
-  io.frontendFlushFtqId := RegNext(
+  val frontendFlushFtqId = WireDefault(
     Mux(
       isException || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
       majorInstInfo.ftqInfo.ftqId,
       io.branchExe.ftqId
     )
   )
+  io.frontendFlushFtqId := RegNext(frontendFlushFtqId)
   io.backendFlush := RegNext(
     isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
     false.B
