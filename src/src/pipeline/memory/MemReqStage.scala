@@ -46,9 +46,9 @@ class MemReqStage
   // Workaround
   val isUncachedAddressRange = VecInit(
     "h_1faf".U(16.W),
-    "h_bfaf".U(16.W)
-    // "h_1fd0".U(16.W), // Chiplab only
-    // "h_1fe0".U(16.W) // Chiplab only
+    "h_bfaf".U(16.W),
+    "h_1fd0".U(16.W), // Chiplab only
+    "h_1fe0".U(16.W) // Chiplab only
   ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
   val isTrueCached = selectedIn.isCached && !isUncachedAddressRange
 
