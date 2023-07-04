@@ -55,7 +55,7 @@ class FetchTargetQueue(
   val ftqNextVec = Wire(Vec(queueSize, new FtqBlockBundle))
   // FTQ meta
   val bpuMetaWriteValid = WireDefault(false.B)
-  val bpuMetaWritePtr   = RegInit(0.U(ptrWidth.W))
+  val bpuMetaWritePtr   = WireDefault(0.U(ptrWidth.W))
   val bpuMetaWriteEntry = WireDefault(FtqBpuMetaEntry.default)
   val ftqBpuMetaRegs    = RegInit(VecInit(Seq.fill(queueSize)(FtqBpuMetaEntry.default)))
   val ftqBranchMetaRegs = RegInit(VecInit(Seq.fill(queueSize)(FtqBranchMetaEntry.default)))

@@ -234,20 +234,20 @@ class Cu(
   )
   io.idleFlush := RegNext(idleFlush)
 
+
   // Select new pc
-  val newPc = BackendRedirectPcNdPort.default
-  io.newPc := newPc
-  newPc.en :=
+  io.newPc := BackendRedirectPcNdPort.default
+  io.newPc.en :=
     isTlbMaintenance || io.csrFlushRequest || isException || io.branchExe.en || cacopFlush || idleFlush || isExceptionReturn
   // io.newPc.isTlb := isTlbMaintenance
 
-  newPc.ftqId := Mux(
+  io.newPc.ftqId := Mux(
     isTlbMaintenance || io.csrFlushRequest || isException || cacopFlush || idleFlush || isExceptionReturn,
     majorInstInfo.ftqInfo.ftqId,
     io.branchExe.ftqId
   )
 
-  newPc.pcAddr := Mux(
+  io.newPc.pcAddr := Mux(
     isException,
     Mux(
       majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
