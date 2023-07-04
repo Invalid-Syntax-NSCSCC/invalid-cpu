@@ -242,7 +242,7 @@ class Cu(
 
   io.newPc.ftqId := Mux(
     isTlbMaintenance || io.csrFlushRequest || isException || cacopFlush || idleFlush || isExceptionReturn,
-    majorInstInfo.pc + 4.U,
+    majorInstInfo.ftqInfo.ftqId,
     io.branchExe.ftqId
   )
 
