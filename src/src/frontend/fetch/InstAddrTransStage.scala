@@ -26,7 +26,6 @@ class InstAddrTransStage extends Module {
 
   val peer = io.peer
 
-  val isAdef           = WireDefault(io.pc(1, 0).orR) // PC is not aligned
   val outReg           = RegInit(InstReqNdPort.default)
   val hasSentException = RegInit(false.B)
   hasSentException := hasSentException
@@ -36,6 +35,12 @@ class InstAddrTransStage extends Module {
   io.out.valid     := isOutputValid
   io.out.bits      := outReg
   io.isBlockPcNext := hasSentException
+
+  val transMode = WireDefault(AddrTransType.direct) // Fallback: Direct translation
+  val isAdef = WireDefault(
+    io.pc(1, 0).orR ||
+      (io.pc(31).asBool && peer.csr.crmd.plv === Csr.Crmd.Plv.low && transMode === AddrTransType.pageTableMapping)
+  ) // PC is not aligned
 
   // Fallback output
   outReg.pc                       := io.pc
@@ -78,7 +83,6 @@ class InstAddrTransStage extends Module {
   }
 
   // Select a translation mode
-  val transMode                = WireDefault(AddrTransType.direct) // Fallback: Direct translation
   val isDirectMappingWindowHit = VecInit(directMapVec.map(_.isHit)).asUInt.orR
   when(!peer.csr.crmd.da && peer.csr.crmd.pg) {
     when(isDirectMappingWindowHit) {

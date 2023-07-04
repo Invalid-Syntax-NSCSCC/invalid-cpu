@@ -103,7 +103,7 @@ class DCache(
   // Functions for calculation
   def byteOffsetFromMemAddr(addr: UInt) = addr(Param.Width.DCache._byteOffset - 1, 0)
 
-  def dataIndexFromMemAddr(addr: UInt) = addr(Param.Width.ICache._byteOffset - 1, log2Ceil(wordLength / byteLength))
+  def dataIndexFromMemAddr(addr: UInt) = addr(Param.Width.DCache._byteOffset - 1, log2Ceil(wordLength / byteLength))
 
   def queryIndexFromMemAddr(addr: UInt) =
     addr(Param.Width.DCache._byteOffset + Param.Width.DCache._addr - 1, Param.Width.DCache._byteOffset)
@@ -249,13 +249,10 @@ class DCache(
   isNeedWbReg           := isNeedWbReg
 
   // Maintenance write-back info regs
-  val setCountDownReg  = RegInit(0.U(log2Ceil(Param.Count.DCache.setLen).W))
-  val dataCountDownReg = RegInit(0.U(log2Ceil(Param.Count.DCache.dataPerLine).W))
-  setCountDownReg  := setCountDownReg
-  dataCountDownReg := dataCountDownReg
+  val setCountDownReg = RegInit(0.U(log2Ceil(Param.Count.DCache.setLen).W))
+  setCountDownReg := setCountDownReg
 
-  val isSetCountDownZero      = WireDefault(setCountDownReg === 0.U)
-  val isDataCountDownComplete = WireDefault(dataCountDownReg === 0.U)
+  val isSetCountDownZero = WireDefault(setCountDownReg === 0.U)
 
   def handleWb(addr: UInt, data: UInt): Unit = {
     when(!isWriteBackReqSentReg) {
@@ -437,8 +434,7 @@ class DCache(
       }
 
       // Maintenance
-      setCountDownReg  := (Param.Count.DCache.setLen - 1).U
-      dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
+      setCountDownReg := (Param.Count.DCache.setLen - 1).U
 
       when(io.maintenancePort.client.control.isL1Valid) {
         isNeedWbReg           := true.B
@@ -671,8 +667,7 @@ class DCache(
         Cat(
           tagFromMemAddr(lastReg.memAddr),
           queryIndex,
-          dataCountDownReg,
-          0.U(log2Ceil(wordLength / byteLength).W)
+          0.U(Param.Width.DCache._byteOffset.W)
         )
       )
       val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataOut))) // Delay for 1 cycle
@@ -682,22 +677,17 @@ class DCache(
 
       when(last.selectedStatusTag.isDirty) {
         when(isNeedWbReg) {
-          handleWb(writeBackAddr, selectedDataLine(dataCountDownReg))
+          handleWb(writeBackAddr, selectedDataLine)
         }.otherwise {
-          when(isDataCountDownComplete) {
-            statusTagRams.zipWithIndex.foreach {
-              case (ram, index) =>
-                ram.io.isWrite := index.U === lastReg.setIndex
-                ram.io.dataIn  := 0.U
-                ram.io.addr    := queryIndex
-            }
-
-            // Next Stage 1
-            nextState := State.ready
-          }.otherwise {
-            dataCountDownReg := dataCountDownReg - 1.U
-            isNeedWbReg      := true.B
+          statusTagRams.zipWithIndex.foreach {
+            case (ram, index) =>
+              ram.io.isWrite := index.U === lastReg.setIndex
+              ram.io.dataIn  := 0.U
+              ram.io.addr    := queryIndex
           }
+
+          // Next Stage 1
+          nextState := State.ready
         }
       }.otherwise {
         statusTagRams.zipWithIndex.foreach {
@@ -722,8 +712,7 @@ class DCache(
         Cat(
           tagFromMemAddr(reqMemAddr),
           queryIndex,
-          dataCountDownReg,
-          0.U(log2Ceil(wordLength / byteLength).W)
+          0.U(Param.Width.DCache._byteOffset.W)
         )
       )
       val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataOut))) // Delay for 1 cycle
@@ -734,31 +723,25 @@ class DCache(
 
       when(statusTagLines(setCountDownReg).isDirty) {
         when(isNeedWbReg) {
-          handleWb(writeBackAddr, selectedDataLine(dataCountDownReg))
+          handleWb(writeBackAddr, selectedDataLine)
         }.otherwise {
-          when(isDataCountDownComplete) {
-            when(!isSetCountDownZero) {
-              setCountDownReg := setCountDownReg - 1.U
-            }
+          when(!isSetCountDownZero) {
+            setCountDownReg := setCountDownReg - 1.U
+          }
 
-            statusTagRams.zipWithIndex.foreach {
-              case (ram, index) =>
-                ram.io.isWrite := index.U === setCountDownReg
-                ram.io.dataIn  := 0.U
-                ram.io.addr    := queryIndex
-            }
+          statusTagRams.zipWithIndex.foreach {
+            case (ram, index) =>
+              ram.io.isWrite := index.U === setCountDownReg
+              ram.io.dataIn  := 0.U
+              ram.io.addr    := queryIndex
+          }
 
-            dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
-
-            when(isSetCountDownZero) {
-              // Next Stage 1
-              nextState := State.ready
-            }.otherwise {
-              isNeedWbReg := true.B
-            }
+          when(isSetCountDownZero) {
+            // Next Stage 1
+            nextState := State.ready
           }.otherwise {
-            dataCountDownReg := dataCountDownReg - 1.U
-            isNeedWbReg      := true.B
+            isNeedWbReg           := true.B
+            isWriteBackReqSentReg := false.B
           }
         }
       }.otherwise {
@@ -769,14 +752,13 @@ class DCache(
             ram.io.addr    := queryIndex
         }
 
-        dataCountDownReg := (Param.Count.DCache.dataPerLine - 1).U
-
         when(isSetCountDownZero) {
           // Next Stage 1
           nextState := State.ready
         }.otherwise {
-          setCountDownReg := setCountDownReg - 1.U
-          isNeedWbReg     := true.B
+          setCountDownReg       := setCountDownReg - 1.U
+          isNeedWbReg           := true.B
+          isWriteBackReqSentReg := false.B
         }
       }
     }
