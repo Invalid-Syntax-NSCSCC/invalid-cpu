@@ -20,6 +20,12 @@ class DistributedQueue[ElemT <: Data](
     val isFlush      = Input(Bool())
     val enqueuePorts = Vec(enqMaxNum, Flipped(Decoupled(elemNdFactory)))
     val dequeuePorts = Vec(deqMaxNum, Decoupled(elemNdFactory))
+
+    // deq_ptr -> enq_ptr
+    val enqIncResults = Output(Vec(enqMaxNum + 1, UInt(log2Ceil(channelNum).W)))
+    val deqIncResults = Output(Vec(deqMaxNum + 1, UInt(log2Ceil(channelNum).W)))
+    val enq_ptr       = Output(UInt(log2Ceil(channelNum).W))
+    val deq_ptr       = Output(UInt(log2Ceil(channelNum).W))
   })
 
   // Fallback
@@ -47,14 +53,22 @@ class DistributedQueue[ElemT <: Data](
 
   storeOuts.foreach(_.ready := false.B)
   if (channelNum == 1) {
-    // storeOuts(0) <> storeIns(0)
-    io.enqueuePorts(0) <> storeIns(0)
-    io.dequeuePorts(0) <> storeOuts(0)
+    storeOuts(0) <> storeIns(0)
   } else {
     val enq_ptr = Module(new MultiCounter(channelNum, enqMaxNum))
     val deq_ptr = Module(new MultiCounter(channelNum, deqMaxNum))
     enq_ptr.io.flush := io.isFlush
     deq_ptr.io.flush := io.isFlush
+    io.enq_ptr       := enq_ptr.io.value
+    io.deq_ptr       := deq_ptr.io.value
+    io.enqIncResults.zip(enq_ptr.io.incResults).foreach {
+      case (dst, src) =>
+        dst := src
+    }
+    io.deqIncResults.zip(deq_ptr.io.incResults).foreach {
+      case (dst, src) =>
+        dst := src
+    }
 
     enq_ptr.io.inc := io.enqueuePorts.zipWithIndex.map {
       case (enqPort, idx) =>

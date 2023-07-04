@@ -9,7 +9,6 @@ import pipeline.common.MultiQueue
 import pipeline.rob.bundles._
 import pipeline.rob.enums.{RegDataLocateSel, RobDistributeSel, RobInstState => State}
 import spec._
-import pipeline.common.DistributedQueuePlus
 
 // assert: commits cannot ready 1 but not 0
 class Rob(
@@ -58,28 +57,15 @@ class Rob(
 
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
 
-  // val queue = Module(
-  //   new MultiQueue(
-  //     robLength,
-  //     issueNum,
-  //     commitNum,
-  //     new RobInstStoreBundle,
-  //     RobInstStoreBundle.default
-  //   )
-  // )
-
   val queue = Module(
-    new DistributedQueuePlus(
+    new MultiQueue(
+      robLength,
       issueNum,
       commitNum,
-      Param.Width.Rob._channelNum,
-      Param.Width.Rob._channelLength,
       new RobInstStoreBundle,
-      RobInstStoreBundle.default,
-      useSyncReadMem = false
+      RobInstStoreBundle.default
     )
   )
-
   queue.io.enqueuePorts.foreach { port =>
     port.valid := false.B
     port.bits  := DontCare
@@ -91,7 +77,7 @@ class Rob(
   }
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.isFlush
-  io.emptyNum      := VecInit(queue.io.enqueuePorts.map(_.ready.asUInt)).reduceTree(_ +& _)
+  io.emptyNum      := queue.io.emptyNum
   io.instWbBroadCasts.zip(io.finishInsts).foreach {
     case (dst, src) =>
       dst.en    := src.valid // && io.robInstValids(src.bits.instInfo.robId)
@@ -105,9 +91,9 @@ class Rob(
   io.finishInsts.foreach { finishInst =>
     finishInst.ready := true.B
     when(finishInst.valid && finishInst.bits.instInfo.isValid) {
-      queue.io.elems.lazyZip(queue.io.setPorts).zipWithIndex.foreach {
-        case ((elem, set), idx) =>
-          when(elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
+      queue.io.elemValids.lazyZip(queue.io.elems).lazyZip(queue.io.setPorts).zipWithIndex.foreach {
+        case ((elemValid, elem, set), idx) =>
+          when(elemValid && elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
             set.valid        := true.B
             set.bits.isValid := elem.isValid
             set.bits.state   := State.ready
@@ -152,9 +138,8 @@ class Rob(
             !deqPort.bits.wbPort.instInfo.forbidParallelCommit &&
             queue.io.dequeuePorts(idx - 1).valid &&
             queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
-            !hasInterruptReg
-          // &&
-          // !io.hasInterrupt
+            !hasInterruptReg &&
+            !io.hasInterrupt
         }
 
         commit.valid := deqPort.ready
@@ -174,12 +159,12 @@ class Rob(
   }
 
   when(io.hasInterrupt) {
-    // when(io.commits(0).valid && io.commits(0).ready) {
-    //   io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
-    //   io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
-    // }.otherwise {
-    hasInterruptReg := true.B
-    // }
+    when(io.commits(0).valid && io.commits(0).ready) {
+      io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
+      io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
+    }.otherwise {
+      hasInterruptReg := true.B
+    }
   }.elsewhen(hasInterruptReg && io.commits(0).valid && io.commits(0).ready) {
     hasInterruptReg                             := false.B
     io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
@@ -256,8 +241,8 @@ class Rob(
     */
 
   when(io.isFlush) {
-    // queue.io.enqueuePorts.foreach(_.valid := false.B)
-    // io.commits.foreach(_.valid := false.B)
+    queue.io.enqueuePorts.foreach(_.valid := false.B)
+    io.commits.foreach(_.valid := false.B)
     matchTable.foreach(_.locate := RegDataLocateSel.regfile)
   }
 }

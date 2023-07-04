@@ -280,7 +280,6 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  commitStage.io.hasInterrupt := csr.io.hasInterrupt
 
   // Register file (GPR file)
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out

@@ -36,10 +36,8 @@ object Param {
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
     object Rob {
-      val _length        = 16
-      val _channelNum    = 4
-      val _channelLength = _length / _channelNum
-      val id             = log2Ceil(_length).W
+      val _length = 16
+      val id      = log2Ceil(_length).W
     }
 
     object Axi {
