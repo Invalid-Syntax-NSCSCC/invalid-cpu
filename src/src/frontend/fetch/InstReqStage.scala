@@ -36,6 +36,7 @@ class InstReqStage
 
   // Fallback output
   out.ftqBlock  := selectedIn.ftqBlock
+  out.ftqId     := selectedIn.ftqId
   out.exception := selectedIn.exception
 
   // Fallback peer

@@ -238,7 +238,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
         fallThroughPc =/= ftqQueryPc
     )
 
-    branchSetPort.en    := (branchTargeMispredict || branchTargeMispredict) && branchEnableFlag
+    branchSetPort.en    := (branchDirectionMispredict || branchTargeMispredict) && branchEnableFlag
     branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
     when(branchSetPort.en) {
       branchEnableFlag                                 := false.B
