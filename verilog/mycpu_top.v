@@ -1,4 +1,3 @@
-// `include "CoreCpuTop.v"
 `define AXI_DATA_WIDTH 32
 
 module mycpu_top (
@@ -67,7 +66,7 @@ module mycpu_top (
 
     // Fit with AXI 3
     reg [3:0] awid_last;
-    always @* begin
+    always @ (posedge aclk) begin
         if (~aresetn) begin
             awid_last <= 4'b0;
         end else if (awvalid) begin
