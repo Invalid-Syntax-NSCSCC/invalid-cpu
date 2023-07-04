@@ -34,8 +34,8 @@ class Pc(
 
   when(io.cuNewPc.en) {
     // when predict error or pc error => jump
-    pcReg := io.cuNewPc.pcAddr
-  }.elsewhen(io.ftqFull || ftqFullReg) {
+    pcReg := io.newPc.pcAddr
+  }.elsewhen(io.ftqFull) {
     pcReg := pcReg
   }.elsewhen(io.mainRedirectPc.valid) {
     // bpu reditect when it can predict
