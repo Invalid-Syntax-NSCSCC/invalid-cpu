@@ -220,19 +220,25 @@ class Cu(
 
   io.csrMessage.ertnFlush := isExceptionReturn // TODO: Make ERTN jump gracefully like branch instruction
   io.frontendFlush :=
-    isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn
+    RegNext(
+      isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
+      false.B
+    )
   io.backendFlush := RegNext(
     isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
     false.B
   )
-  io.idleFlush := idleFlush
+  io.idleFlush := RegNext(idleFlush)
 
   // Select new pc
-  io.newPc := PcSetNdPort.default
-  io.newPc.en :=
+  val newPc = RegInit(PcSetNdPort.default)
+  io.newPc := newPc
+
+  newPc := PcSetNdPort.default
+  newPc.en :=
     isTlbMaintenance || io.csrFlushRequest || isException || io.branchExe.en || cacopFlush || idleFlush || isExceptionReturn
-  io.newPc.isTlb := isTlbMaintenance
-  io.newPc.pcAddr := Mux(
+  newPc.isTlb := isTlbMaintenance
+  newPc.pcAddr := Mux(
     isException,
     Mux(
       majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
@@ -249,11 +255,6 @@ class Cu(
       )
     )
   )
-
-  val is_softwareInt = io.instInfoPorts(0).isValid &&
-    io.instInfoPorts(0).csrWritePort.en &&
-    (io.instInfoPorts(0).csrWritePort.addr === Csr.Index.estat) &&
-    io.instInfoPorts(0).csrWritePort.data(1, 0).orR
 
   io.difftest match {
     case Some(dt) =>
