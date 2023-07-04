@@ -17,6 +17,7 @@ class InstAddrTransPeerPort extends Bundle {
 class InstAddrTransStage extends Module {
   val io = IO(new Bundle {
     val isFlush       = Input(Bool())
+    val isValid       = Input(Bool())
     val ftqBlock      = Input(new FtqBlockBundle)
     val ftqId         = Input(UInt(Param.BPU.ftqPtrWitdh.W))
     val isBlockPcNext = Output(Bool())
@@ -33,7 +34,7 @@ class InstAddrTransStage extends Module {
   val hasSentException = RegInit(false.B)
   hasSentException := hasSentException
   val isLastSent    = RegNext(true.B, true.B)
-  val isOutputValid = RegNext(io.ftqBlock.isValid || !isLastSent, false.B)
+  val isOutputValid = RegNext((io.isValid && io.ftqBlock.isValid) || !isLastSent, false.B)
 
   io.out.valid     := isOutputValid
   io.out.bits      := outReg
@@ -42,7 +43,7 @@ class InstAddrTransStage extends Module {
   // Fallback output
   outReg.ftqBlock                 := io.ftqBlock
   outReg.ftqId                    := io.ftqId
-  outReg.translatedMemReq.isValid := (io.ftqBlock.isValid || !isLastSent) && !isAdef
+  outReg.translatedMemReq.isValid := ((io.ftqBlock.isValid && io.isValid) || !isLastSent) && !isAdef
   outReg.exception.valid          := isAdef
   outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
 
@@ -138,6 +139,7 @@ class InstAddrTransStage extends Module {
   when(io.isFlush) {
     outReg.exception.valid               := false.B
     outReg.translatedMemReq.isValid      := false.B
+    outReg.ftqBlock := FtqBlockBundle.default
     io.out.bits.translatedMemReq.isValid := false.B
     isLastSent                           := true.B
     hasSentException                     := false.B

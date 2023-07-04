@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
 import chisel3.experimental.Param
-import frontend.bundles.{BpuFtqPort, CuCommitFtqPort, ExeFtqPort, FtqBlockBundle, FtqBpuMetaPort, FtqIFPort}
+import frontend.bundles.{BpuFtqPort, CuCommitFtqPort, ExeFtqPort, FtqBlockBundle, FtqBpuMetaPort, FtqIFNdPort}
 
 class FetchTargetQueue(
   val queueSize: Int = Param.BPU.ftqSize,
@@ -31,7 +31,7 @@ class FetchTargetQueue(
     val exeFtqPort = new ExeFtqPort
 
     // <-> IFU
-    val ftqIFPort = Flipped(new FtqIFPort)
+    val ftqIFPort = Decoupled(new FtqIFNdPort)
   })
 
   // Signals
@@ -64,7 +64,7 @@ class FetchTargetQueue(
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
-  ifuSendReq               := ftqVec(ifuPtr).isValid & io.ftqIFPort.ready
+  ifuSendReq               := ftqVec(ifuPtr).isValid & io.ftqIFPort.ready & !io.backendFlush
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
   ifuFrontendRedirect      := (bpuPtr === (ifuPtr + 1.U)) & mainBpuRedirectModifyFtq & (ifuSendReq | ifuSendReqDelay)
 
@@ -87,7 +87,7 @@ class FetchTargetQueue(
 //  }
 
   // ptr
-  io.ftqIFPort.ftqId := ifuPtr
+  io.ftqIFPort.bits.ftqId := ifuPtr
   // Backend committed,means that current commPtr block is done
   commPtr := commPtr + backendCommitNum
   // If block is accepted by IF, ifuPtr++
@@ -163,15 +163,22 @@ class FetchTargetQueue(
 
   // Output
   // -> IFU
-  io.ftqIFPort.ftqBlockBundle := ftqVec(ifuPtr)
+  //default value
+  io.ftqIFPort.valid:= ifuSendReq
+  io.ftqIFPort.bits.ftqBlockBundle := ftqVec(ifuPtr)
+  when(ifuPtr===bpuMetaWritePtr && bpuMetaWriteValid){
+    // write though
+    io.ftqIFPort.bits.ftqBlockBundle := ftqNextVec(ifuPtr)
+  }
+
   // Trigger a IFU flush when:
   // 1. last cycle send rreq to IFU
   // 2. main BPU redirect had modified the FTQ contents
   // 3. modified FTQ block is the rreq sent last cycle
-  io.ftqIFPort.redirect := ifuFrontendRedirect
+  io.ftqIFPort.bits.redirect := ifuFrontendRedirect
   // debug
   val debugLength = WireDefault(0.U(3.W))
-  debugLength := io.ftqIFPort.ftqBlockBundle.length
+  debugLength := io.ftqIFPort.bits.ftqBlockBundle.length
 
   // -> Exe cuCommit query
   io.exeFtqPort.queryPcBundle.pc      := ftqVec(io.exeFtqPort.queryPcBundle.ftqId).startPc

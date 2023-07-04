@@ -7,8 +7,8 @@ import spec._
 
 // attention: 从cache不一定能一次性全部取出，待修改
 class Pc(
-  val issueNum: Int = Param.issueInstInfoMaxNum)
-    extends Module {
+          val issueNum: Int = Param.issueInstInfoMaxNum)
+  extends Module {
   val io = IO(new Bundle {
     val pc = Output(UInt(Width.Reg.data))
 

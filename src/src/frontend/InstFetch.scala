@@ -2,7 +2,7 @@ package frontend
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.{FtqIFPort, ICacheAccessPort}
+import frontend.bundles.{FtqIFNdPort, ICacheAccessPort}
 import frontend.fetch._
 import memory.bundles.TlbTransPort
 import pipeline.dispatch.bundles.FetchInstInfoBundle
@@ -13,7 +13,7 @@ import spec._
 class InstFetch extends Module {
   val io = IO(new Bundle {
     // <-> Frontend <-> FetchTargetQueue
-    val ftqIFPort = new FtqIFPort
+    val ftqIFPort = Flipped(Decoupled(new FtqIFNdPort))
 
     // <-> Frontend  <->ICache
     val accessPort = Flipped(new ICacheAccessPort)
@@ -34,9 +34,10 @@ class InstFetch extends Module {
   val instResStage   = Module(new InstResStage)
 
   // addrTransStage
-  addrTransStage.io.isFlush       := io.isFlush || (io.ftqIFPort.redirect && io.ftqIFPort.ready)
-  addrTransStage.io.ftqBlock      := io.ftqIFPort.ftqBlockBundle
-  addrTransStage.io.ftqId         := io.ftqIFPort.ftqId
+  addrTransStage.io.isFlush       := io.isFlush || (io.ftqIFPort.bits.redirect && io.ftqIFPort.ready)
+  addrTransStage.io.isValid       := io.ftqIFPort.valid
+  addrTransStage.io.ftqBlock      := io.ftqIFPort.bits.ftqBlockBundle
+  addrTransStage.io.ftqId         := io.ftqIFPort.bits.ftqId
   addrTransStage.io.peer.csr      := io.csr
   addrTransStage.io.peer.tlbTrans <> io.tlbTrans
 
@@ -45,7 +46,7 @@ class InstFetch extends Module {
   instReqStage.io.in      <> addrTransStage.io.out
   instReqStage.io.peer.foreach { p =>
     p.memReq      <> io.accessPort.req
-    p.ftqRedirect := io.ftqIFPort.redirect
+    p.ftqRedirect := io.ftqIFPort.bits.redirect
   }
 
   // instResStage
