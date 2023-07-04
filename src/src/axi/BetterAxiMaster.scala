@@ -67,8 +67,8 @@ class BetterAxiMaster(
   // Set others
   io.axi.ar.bits.id    := id.U
   io.axi.aw.bits.id    := id.U
-  io.axi.ar.bits.lock  := Value.Axi.Lock.exclusive
-  io.axi.aw.bits.lock  := Value.Axi.Lock.exclusive
+  io.axi.ar.bits.lock  := Value.Axi.Lock.normal
+  io.axi.aw.bits.lock  := Value.Axi.Lock.normal
   io.axi.ar.bits.cache := Value.Axi.Cache.bufferable
   io.axi.aw.bits.cache := Value.Axi.Cache.bufferable
   io.axi.ar.bits.prot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
@@ -112,7 +112,7 @@ class BetterAxiMaster(
   when(io.read.req.isValid && isReadReady) {
     // Accept request
     isReadFailedNext  := false.B
-    isReadingReg      := true.B
+    isReadingReg      := true.Be
     nextReadData      := 0.U
     readBurstCountReg := maxBurstCount
   }
