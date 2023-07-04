@@ -278,9 +278,9 @@ class Cu(
   io.ftqPort.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
     case ((mask, instInfo), idx) =>
       if (idx == 0) {
-        instInfo.isValid && (isException || instInfo.ftqInfo.isLastInBlock)
+        mask := instInfo.isValid && (isException || instInfo.ftqInfo.isLastInBlock)
       } else {
-        instInfo.isValid && instInfo.ftqInfo.isLastInBlock
+        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
       }
   }
 
