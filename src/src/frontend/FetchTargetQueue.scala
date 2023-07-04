@@ -92,7 +92,7 @@ class FetchTargetQueue(
   commPtr := commPtr + backendCommitNum
   // If block is accepted by IF, ifuPtr++
   // IB full should result in FU not accepting FTQ input
-  when(io.ftqIFPort.ready & ~ifuFrontendRedirect) {
+  when(ifuSendReq & ~ifuFrontendRedirect) {
     ifuPtr := ifuPtr + 1.U
   }
 
