@@ -112,7 +112,7 @@ class BetterAxiMaster(
   when(io.read.req.isValid && isReadReady) {
     // Accept request
     isReadFailedNext  := false.B
-    isReadingReg      := true.Be
+    isReadingReg      := true.B
     nextReadData      := 0.U
     readBurstCountReg := maxBurstCount
   }
