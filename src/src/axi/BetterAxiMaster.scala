@@ -41,9 +41,6 @@ class BetterAxiMaster(
     }
   })
 
-  // Fallback
-  io.axi <> DontCare
-
   // Only need to use incremental burst
   io.axi.ar.bits.burst := Value.Axi.Burst.wrap
   io.axi.aw.bits.burst := Value.Axi.Burst.wrap
@@ -65,18 +62,27 @@ class BetterAxiMaster(
   io.axi.aw.bits.len := writeLen - 1.U
 
   // Set others
-  io.axi.ar.bits.id    := id.U
-  io.axi.aw.bits.id    := id.U
-  io.axi.ar.bits.lock  := Value.Axi.Lock.normal
-  io.axi.aw.bits.lock  := Value.Axi.Lock.normal
-  io.axi.ar.bits.cache := Value.Axi.Cache.bufferable
-  io.axi.aw.bits.cache := Value.Axi.Cache.bufferable
-  io.axi.ar.bits.prot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
-  io.axi.aw.bits.prot  := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
-  io.axi.w.bits.strb   := io.write.req.mask
-  io.axi.w.valid       := false.B
-  io.axi.r.ready       := false.B
-  io.axi.b.ready       := false.B
+  io.axi.ar.bits.id     := id.U
+  io.axi.aw.bits.id     := id.U
+  io.axi.ar.bits.lock   := Value.Axi.Lock.normal
+  io.axi.aw.bits.lock   := Value.Axi.Lock.normal
+  io.axi.ar.bits.cache  := Value.Axi.Cache.bufferable
+  io.axi.aw.bits.cache  := Value.Axi.Cache.bufferable
+  io.axi.ar.bits.prot   := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
+  io.axi.aw.bits.prot   := Value.Axi.Protect.get(isPrivileged = true, isSecure = true, isInst = isInst)
+  io.axi.w.bits.strb    := io.write.req.mask
+  io.axi.w.bits.last    := false.B
+  io.axi.w.valid        := false.B
+  io.axi.r.ready        := false.B
+  io.axi.b.ready        := false.B
+  io.axi.ar.bits.qos    := 0.U
+  io.axi.ar.bits.region := 0.U
+  io.axi.ar.bits.user   := 0.U
+  io.axi.aw.bits.qos    := 0.U
+  io.axi.aw.bits.region := 0.U
+  io.axi.aw.bits.user   := 0.U
+  io.axi.w.bits.user    := 0.U
+  io.axi.w.bits.data    := DontCare
 
   // Size per transfer in bits
   val transferSize = bytesPerTransfer * 8
