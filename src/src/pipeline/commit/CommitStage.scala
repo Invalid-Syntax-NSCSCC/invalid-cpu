@@ -40,14 +40,16 @@ class CommitStage(
     // `CommitStage` -> `Cu` NO delay
     val isExceptionValid = Output(Bool())
 
+    val hasInterrupt = Input(Bool())
+
     val difftest =
       if (isDiffTest)
         Some(Output(new Bundle {
           val valid         = Bool()
           val pc            = UInt(Width.Reg.data)
           val instr         = UInt(Width.Reg.data)
-          val is_TLBFILL    = Bool() // TODO
-          val TLBFILL_index = UInt(Width.Reg.addr) // TODO
+          val is_TLBFILL    = Bool()
+          val TLBFILL_index = UInt(Width.Reg.addr)
           val wen           = Bool()
           val wdest         = UInt(Width.Reg.addr)
           val wdata         = UInt(Width.Reg.data)
@@ -73,7 +75,7 @@ class CommitStage(
       else None
   })
 
-  io.ins.foreach(_.ready := true.B)
+  io.ins.foreach(_.ready := !io.hasInterrupt)
 
   val inBits = WireDefault(VecInit(io.ins.map(_.bits)))
 
