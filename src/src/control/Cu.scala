@@ -18,8 +18,6 @@ class Cu(
     extends Module {
   val io = IO(new Bundle {
 
-    /** 回写与异常处理
-      */
     // `WbStage` -> `Cu` -> `Regfile`
     val gprWritePassThroughPorts = new PassThroughPort(Vec(commitNum, new RfWriteNdPort))
     val instInfoPorts            = Input(Vec(commitNum, new InstInfoNdPort))
@@ -67,7 +65,7 @@ class Cu(
   // Values
   val majorInstInfo = io.instInfoPorts.head
   io.queryPcPort.ftqId := majorInstInfo.ftqInfo.ftqId
-  val majorPc: UInt     = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
+  val majorPc: UInt = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
   val isException = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
   // Write GPR
@@ -88,13 +86,10 @@ class Cu(
   io.csrWritePorts.head.data := io.csrWriteInfo.data
 
   io.csrMessage.exceptionFlush := isException
-  // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
-  // 使用时仍需判断是否有exception
-  // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
 
   // select era, ecodeBundle
   when(isException) {
-    io.csrMessage.era := majorPc //majorInstInfo.pc
+    io.csrMessage.era := majorPc
     switch(majorInstInfo.exceptionRecord) {
       is(Csr.ExceptionIndex.int) {
         io.csrMessage.ecodeBundle := Csr.Estat.int
@@ -154,7 +149,7 @@ class Cu(
   when(isException) {
     when(majorInstInfo.exceptionRecord === Csr.ExceptionIndex.adef) {
       io.csrMessage.badVAddrSet.en   := true.B
-      io.csrMessage.badVAddrSet.addr := majorPc// majorInstInfo.pc
+      io.csrMessage.badVAddrSet.addr := majorPc
     }.elsewhen(
       VecInit(
         Csr.ExceptionIndex.tlbr,
@@ -173,7 +168,6 @@ class Cu(
         majorInstInfo.exceptionPos === ExceptionPos.backend,
         majorInstInfo.vaddr,
         majorPc
-//        majorInstInfo.pc
       )
     }
   }
@@ -210,8 +204,7 @@ class Cu(
     }
   }
 
-  /** Flush & jump
-    */
+  // Flush & jump
 
   val isExceptionReturn = majorInstInfo.exeOp === ExeInst.Op.ertn && majorInstInfo.isValid && !isException
 
@@ -264,7 +257,6 @@ class Cu(
       io.csrValues.era.pc,
       Mux(
         isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
-//        majorInstInfo.pc + 4.U,
         majorPc + 4.U,
         io.branchExe.pcAddr
       )
