@@ -142,7 +142,7 @@ class DCache(
   // RAMs for valid, dirty, and tag
   val statusTagRams = Seq.fill(Param.Count.DCache.setLen)(
     Module(
-      new VSingleBRam(
+      new VSimpleDualBRam(
         Param.Count.DCache.sizePerRam,
         StatusTagBundle.width
       )
@@ -152,7 +152,7 @@ class DCache(
   // RAMs for data line
   val dataLineRams = Seq.fill(Param.Count.DCache.setLen)(
     Module(
-      new VSingleBRam(
+      new VSimpleDualBRam(
         Param.Count.DCache.sizePerRam,
         Param.Width.DCache._dataLine
       )
@@ -230,6 +230,8 @@ class DCache(
     val dataLine       = Vec(Param.Count.DCache.dataPerLine, UInt(Width.Mem.data))
     val writeData      = UInt(Width.Mem.data)
     val writeMask      = UInt(Width.Mem.data)
+    val isWrite        = Bool()
+    val writeDataLine  = Vec(Param.Count.DCache.dataPerLine, UInt(Width.Mem.data))
   }))
   lastReg := lastReg // Fallback: Keep data
   val last = new Bundle {
@@ -291,10 +293,10 @@ class DCache(
       // Step 1: BRAM read request
       val currentQueryIndex = WireDefault(queryIndexFromMemAddr(currentMemAddr))
       statusTagRams.foreach { ram =>
-        ram.io.addr := currentQueryIndex
+        ram.io.readAddr := currentQueryIndex
       }
       dataLineRams.foreach { ram =>
-        ram.io.addr := currentQueryIndex
+        ram.io.readAddr := currentQueryIndex
       }
       isHasReqReg := io.accessPort.req.client.isValid
 
@@ -316,6 +318,13 @@ class DCache(
       val selectedDataLine      = WireDefault(toDataLine(dataLines(setIndex)))
       val isCacheHit            = WireDefault(isSelectedVec.reduce(_ || _))
 
+      // Step 2: Read pass through (Last Step 2 is write)
+      val isLastMatched = reqMemAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset) ===
+        lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset)
+      when(isLastMatched && lastReg.isWrite) {
+        selectedDataLine := lastReg.writeDataLine
+      }
+
       // Step 2: Save data for later use
       lastReg.memAddr        := reqMemAddr
       lastReg.statusTagLines := statusTagLines
@@ -323,6 +332,7 @@ class DCache(
       lastReg.dataLine       := selectedDataLine
       lastReg.writeData      := reqWriteData
       lastReg.writeMask      := reqWriteMask
+      lastReg.isWrite        := readWriteReqReg === ReadWriteSel.write
 
       // Step 2: Select data by data index from byte offset
       val selectedData = WireDefault(selectedDataLine(dataIndex))
@@ -344,19 +354,17 @@ class DCache(
             }
             is(ReadWriteSel.write) {
               // Step 2: Write to cache (now hit)
-              io.accessPort.req.isReady  := false.B
-              io.maintenancePort.isReady := false.B
-              isHasReqReg                := false.B
 
               val writeStatusTag = WireDefault(selectedStatusTagLine)
 
               // Substitute write data in data line, with mask
-              val oldData = WireDefault(selectedDataLine(dataIndex))
+              val oldData = WireDefault(selectedData)
               val newData = WireDefault(writeWithMask(oldData, reqWriteData, reqWriteMask))
               val writeDataLine = WireDefault(VecInit(selectedDataLine.zipWithIndex.map {
                 case (data, index) =>
                   Mux(index.U === dataIndex, newData, data)
               }))
+              lastReg.writeDataLine := writeDataLine
 
               // Set dirty bit
               writeStatusTag.isDirty := true.B
@@ -364,17 +372,17 @@ class DCache(
               // Write status-tag (especially dirty bit) to RAM
               statusTagRams.zipWithIndex.foreach {
                 case (ram, index) =>
-                  ram.io.isWrite := index.U === setIndex
-                  ram.io.dataIn  := writeStatusTag.asUInt
-                  ram.io.addr    := queryIndex
+                  ram.io.isWrite   := index.U === setIndex
+                  ram.io.dataIn    := writeStatusTag.asUInt
+                  ram.io.writeAddr := queryIndex
               }
 
               // Write to data line RAM
               dataLineRams.zipWithIndex.foreach {
                 case (ram, index) =>
-                  ram.io.isWrite := index.U === setIndex
-                  ram.io.dataIn  := writeDataLine.asUInt
-                  ram.io.addr    := queryIndex
+                  ram.io.isWrite   := index.U === setIndex
+                  ram.io.dataIn    := writeDataLine.asUInt
+                  ram.io.writeAddr := queryIndex
               }
 
               // Mark write as complete
@@ -491,17 +499,17 @@ class DCache(
           // Write status-tag to RAM
           statusTagRams.zipWithIndex.foreach {
             case (ram, index) =>
-              ram.io.isWrite := index.U === lastReg.setIndex
-              ram.io.dataIn  := statusTag.asUInt
-              ram.io.addr    := queryIndex
+              ram.io.isWrite   := index.U === lastReg.setIndex
+              ram.io.dataIn    := statusTag.asUInt
+              ram.io.writeAddr := queryIndex
           }
 
           // Write to data line RAM
           dataLineRams.zipWithIndex.foreach {
             case (ram, index) =>
-              ram.io.isWrite := index.U === lastReg.setIndex
-              ram.io.dataIn  := axiMaster.io.read.res.data
-              ram.io.addr    := queryIndex
+              ram.io.isWrite   := index.U === lastReg.setIndex
+              ram.io.dataIn    := axiMaster.io.read.res.data
+              ram.io.writeAddr := queryIndex
           }
 
           // Return read data
@@ -560,9 +568,9 @@ class DCache(
           // Write status-tag to RAM
           statusTagRams.zipWithIndex.foreach {
             case (ram, index) =>
-              ram.io.isWrite := index.U === lastReg.setIndex
-              ram.io.dataIn  := statusTag.asUInt
-              ram.io.addr    := queryIndex
+              ram.io.isWrite   := index.U === lastReg.setIndex
+              ram.io.dataIn    := statusTag.asUInt
+              ram.io.writeAddr := queryIndex
           }
 
           // Write to data line RAM
@@ -576,9 +584,9 @@ class DCache(
           }))
           dataLineRams.zipWithIndex.foreach {
             case (ram, index) =>
-              ram.io.isWrite := index.U === lastReg.setIndex
-              ram.io.dataIn  := writeDataLine.asUInt
-              ram.io.addr    := queryIndex
+              ram.io.isWrite   := index.U === lastReg.setIndex
+              ram.io.dataIn    := writeDataLine.asUInt
+              ram.io.writeAddr := queryIndex
           }
 
           // Mark write complete (in the same cycle)
@@ -619,9 +627,9 @@ class DCache(
       val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
 
       statusTagRams.foreach { ram =>
-        ram.io.isWrite := true.B
-        ram.io.dataIn  := 0.U
-        ram.io.addr    := queryIndex
+        ram.io.isWrite   := true.B
+        ram.io.dataIn    := 0.U
+        ram.io.writeAddr := queryIndex
       }
 
       // Next Stage 1
@@ -636,7 +644,7 @@ class DCache(
 
       // Step 2: Read data request (for write-back)
       dataLineRams.foreach { ram =>
-        ram.io.addr := queryIndex
+        ram.io.readAddr := queryIndex
       }
 
       // Step 2: Decode
@@ -667,7 +675,7 @@ class DCache(
       val queryIndex = WireDefault(queryIndexFromMemAddr(lastReg.memAddr))
 
       dataLineRams.foreach { ram =>
-        ram.io.addr := queryIndex
+        ram.io.readAddr := queryIndex
       }
 
       val writeBackAddr = WireDefault(
@@ -680,7 +688,7 @@ class DCache(
       val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataOut))) // Delay for 1 cycle
       val selectedDataLine = WireDefault(dataLines(lastReg.setIndex))
 
-      dataLineRams.map(_.io.addr).foreach(_ := queryIndex)
+      dataLineRams.map(_.io.readAddr).foreach(_ := queryIndex)
 
       when(last.selectedStatusTag.isDirty) {
         when(isNeedWbReg) {
@@ -688,9 +696,9 @@ class DCache(
         }.otherwise {
           statusTagRams.zipWithIndex.foreach {
             case (ram, index) =>
-              ram.io.isWrite := index.U === lastReg.setIndex
-              ram.io.dataIn  := 0.U
-              ram.io.addr    := queryIndex
+              ram.io.isWrite   := index.U === lastReg.setIndex
+              ram.io.dataIn    := 0.U
+              ram.io.writeAddr := queryIndex
           }
 
           // Next Stage 1
@@ -699,9 +707,9 @@ class DCache(
       }.otherwise {
         statusTagRams.zipWithIndex.foreach {
           case (ram, index) =>
-            ram.io.isWrite := index.U === lastReg.setIndex
-            ram.io.dataIn  := 0.U
-            ram.io.addr    := queryIndex
+            ram.io.isWrite   := index.U === lastReg.setIndex
+            ram.io.dataIn    := 0.U
+            ram.io.writeAddr := queryIndex
         }
 
         // Next Stage 1
@@ -726,7 +734,7 @@ class DCache(
       val selectedDataLine = WireDefault(dataLines(setCountDownReg))
       val statusTagLines   = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
 
-      dataLineRams.map(_.io.addr).foreach(_ := queryIndex)
+      dataLineRams.map(_.io.readAddr).foreach(_ := queryIndex)
 
       when(statusTagLines(setCountDownReg).isDirty) {
         when(isNeedWbReg) {
@@ -738,9 +746,9 @@ class DCache(
 
           statusTagRams.zipWithIndex.foreach {
             case (ram, index) =>
-              ram.io.isWrite := index.U === setCountDownReg
-              ram.io.dataIn  := 0.U
-              ram.io.addr    := queryIndex
+              ram.io.isWrite   := index.U === setCountDownReg
+              ram.io.dataIn    := 0.U
+              ram.io.writeAddr := queryIndex
           }
 
           when(isSetCountDownZero) {
@@ -754,9 +762,9 @@ class DCache(
       }.otherwise {
         statusTagRams.zipWithIndex.foreach {
           case (ram, index) =>
-            ram.io.isWrite := index.U === setCountDownReg
-            ram.io.dataIn  := 0.U
-            ram.io.addr    := queryIndex
+            ram.io.isWrite   := index.U === setCountDownReg
+            ram.io.dataIn    := 0.U
+            ram.io.writeAddr := queryIndex
         }
 
         when(isSetCountDownZero) {
