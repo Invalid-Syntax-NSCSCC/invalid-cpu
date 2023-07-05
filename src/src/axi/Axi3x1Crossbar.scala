@@ -14,44 +14,6 @@ class Axi3x1Crossbar extends Module {
   blackbox.io.clk := clock
   blackbox.io.rst := reset
 
-  val rSetLock = RegInit(false.B)
-  val rChoose  = RegInit(0.U(2.W))
-  when(
-    (io.slave(0).r.bits.last && io.slave(0).r.valid && io.slave(0).r.ready) ||
-      (io.slave(1).r.bits.last && io.slave(1).r.valid && io.slave(1).r.ready) ||
-      (io.slave(2).r.bits.last && io.slave(2).r.valid && io.slave(2).r.ready)
-  ) {
-    rSetLock := false.B
-  }.elsewhen(!rSetLock && io.slave(0).ar.valid) {
-    rSetLock := true.B
-    rChoose  := 0.U
-  }.elsewhen(!rSetLock && io.slave(1).ar.valid) {
-    rSetLock := true.B
-    rChoose  := 1.U
-  }.elsewhen(!rSetLock && io.slave(2).ar.valid) {
-    rSetLock := true.B
-    rChoose  := 2.U
-  }
-
-  val wSetLock = RegInit(false.B)
-  val wChoose  = RegInit(0.U(2.W))
-  when(
-    (io.slave(0).b.valid && io.slave(0).b.ready) ||
-      (io.slave(0).b.valid && io.slave(0).b.ready) ||
-      (io.slave(0).b.valid && io.slave(0).b.ready)
-  ) {
-    wSetLock := false.B
-  }.elsewhen(!wSetLock && io.slave(0).aw.valid) {
-    wSetLock := true.B
-    wChoose  := 0.U
-  }.elsewhen(!wSetLock && io.slave(1).aw.valid) {
-    wSetLock := true.B
-    wChoose  := 1.U
-  }.elsewhen(!wSetLock && io.slave(2).aw.valid) {
-    wSetLock := true.B
-    wChoose  := 2.U
-  }
-
   blackbox.io.s00_axi_awid    <> io.slave(0).aw.bits.id
   blackbox.io.s00_axi_awaddr  <> io.slave(0).aw.bits.addr
   blackbox.io.s00_axi_awlen   <> io.slave(0).aw.bits.len
@@ -62,7 +24,7 @@ class Axi3x1Crossbar extends Module {
   blackbox.io.s00_axi_awprot  <> io.slave(0).aw.bits.prot
   blackbox.io.s00_axi_awqos   <> io.slave(0).aw.bits.qos
   blackbox.io.s00_axi_awuser  <> io.slave(0).aw.bits.user
-  blackbox.io.s00_axi_awvalid := io.slave(0).aw.valid && wSetLock && wChoose === 0.U
+  blackbox.io.s00_axi_awvalid <> io.slave(0).aw.valid
   blackbox.io.s00_axi_awready <> io.slave(0).aw.ready
   blackbox.io.s00_axi_wdata   <> io.slave(0).w.bits.data
   blackbox.io.s00_axi_wstrb   <> io.slave(0).w.bits.strb
@@ -85,7 +47,7 @@ class Axi3x1Crossbar extends Module {
   blackbox.io.s00_axi_arprot  <> io.slave(0).ar.bits.prot
   blackbox.io.s00_axi_arqos   <> io.slave(0).ar.bits.qos
   blackbox.io.s00_axi_aruser  <> io.slave(0).ar.bits.user
-  blackbox.io.s00_axi_arvalid := io.slave(0).ar.valid && rSetLock && rChoose === 0.U
+  blackbox.io.s00_axi_arvalid <> io.slave(0).ar.valid
   blackbox.io.s00_axi_arready <> io.slave(0).ar.ready
   blackbox.io.s00_axi_rid     <> io.slave(0).r.bits.id
   blackbox.io.s00_axi_rdata   <> io.slave(0).r.bits.data
@@ -105,7 +67,7 @@ class Axi3x1Crossbar extends Module {
   blackbox.io.s01_axi_awprot  <> io.slave(1).aw.bits.prot
   blackbox.io.s01_axi_awqos   <> io.slave(1).aw.bits.qos
   blackbox.io.s01_axi_awuser  <> io.slave(1).aw.bits.user
-  blackbox.io.s01_axi_awvalid := io.slave(1).aw.valid && wSetLock && wChoose === 1.U
+  blackbox.io.s01_axi_awvalid <> io.slave(1).aw.valid
   blackbox.io.s01_axi_awready <> io.slave(1).aw.ready
   blackbox.io.s01_axi_wdata   <> io.slave(1).w.bits.data
   blackbox.io.s01_axi_wstrb   <> io.slave(1).w.bits.strb
@@ -128,7 +90,7 @@ class Axi3x1Crossbar extends Module {
   blackbox.io.s01_axi_arprot  <> io.slave(1).ar.bits.prot
   blackbox.io.s01_axi_arqos   <> io.slave(1).ar.bits.qos
   blackbox.io.s01_axi_aruser  <> io.slave(1).ar.bits.user
-  blackbox.io.s01_axi_arvalid := io.slave(1).ar.valid && rSetLock && rChoose === 1.U
+  blackbox.io.s01_axi_arvalid <> io.slave(1).ar.valid
   blackbox.io.s01_axi_arready <> io.slave(1).ar.ready
   blackbox.io.s01_axi_rid     <> io.slave(1).r.bits.id
   blackbox.io.s01_axi_rdata   <> io.slave(1).r.bits.data
@@ -148,7 +110,7 @@ class Axi3x1Crossbar extends Module {
   blackbox.io.s02_axi_awprot  <> io.slave(2).aw.bits.prot
   blackbox.io.s02_axi_awqos   <> io.slave(2).aw.bits.qos
   blackbox.io.s02_axi_awuser  <> io.slave(2).aw.bits.user
-  blackbox.io.s02_axi_awvalid := io.slave(2).aw.valid && wSetLock && wChoose === 2.U
+  blackbox.io.s02_axi_awvalid <> io.slave(2).aw.valid
   blackbox.io.s02_axi_awready <> io.slave(2).aw.ready
   blackbox.io.s02_axi_wdata   <> io.slave(2).w.bits.data
   blackbox.io.s02_axi_wstrb   <> io.slave(2).w.bits.strb
@@ -171,7 +133,7 @@ class Axi3x1Crossbar extends Module {
   blackbox.io.s02_axi_arprot  <> io.slave(2).ar.bits.prot
   blackbox.io.s02_axi_arqos   <> io.slave(2).ar.bits.qos
   blackbox.io.s02_axi_aruser  <> io.slave(2).ar.bits.user
-  blackbox.io.s02_axi_arvalid := io.slave(2).ar.valid && rSetLock && rChoose === 2.U
+  blackbox.io.s02_axi_arvalid <> io.slave(2).ar.valid
   blackbox.io.s02_axi_arready <> io.slave(2).ar.ready
   blackbox.io.s02_axi_rid     <> io.slave(2).r.bits.id
   blackbox.io.s02_axi_rdata   <> io.slave(2).r.bits.data
@@ -232,8 +194,8 @@ class axi_3x1_crossbar
       Map(
         "ADDR_WIDTH" -> spec.Width.Axi.addr.get,
         "DATA_WIDTH" -> spec.Param.Width.Axi.data.get,
-        "S_ID_WIDTH" -> Param.Width.Axi.slaveId.get,
-        "M_ID_WIDTH" -> Param.Width.Axi.masterId.get,
+        "S_ID_WIDTH" -> 2,
+        "M_ID_WIDTH" -> 4,
         "M00_ADDR_WIDTH" -> 32
       )
     ) {
