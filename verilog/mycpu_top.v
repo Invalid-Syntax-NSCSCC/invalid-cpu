@@ -1,3 +1,4 @@
+`ifndef DIFFTEST_EN
 `define AXI_DATA_WIDTH 32
 
 module mycpu_top (
@@ -129,3 +130,4 @@ module mycpu_top (
     );
 
 endmodule
+`endif
