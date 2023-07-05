@@ -44,10 +44,7 @@ class InstAddrTransStage
   hasSentException := hasSentException
 
   val isBlockPcNext = hasSentException
-  // Handle flush
-  when(io.isFlush) {
-    hasSentException := false.B
-  }
+
 
   // Fallback output
   out.ftqBlock                  := selectedIn.ftqBlockBundle
@@ -117,7 +114,7 @@ class InstAddrTransStage
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      peer.tlbTrans.isValid := true.B
+      peer.tlbTrans.isValid := selectedIn.ftqBlockBundle.isValid
       translatedAddr        := peer.tlbTrans.physAddr
       out.translatedMemReq.isValid := (selectedIn.ftqBlockBundle.isValid) &&
         !peer.tlbTrans.exception.valid && !isAdef
@@ -130,5 +127,10 @@ class InstAddrTransStage
   // Submit result
   when(selectedIn.ftqBlockBundle.isValid) {
     resultOutReg.valid := true.B
+  }
+
+  // Handle flush
+  when(io.isFlush) {
+    hasSentException := false.B
   }
 }
