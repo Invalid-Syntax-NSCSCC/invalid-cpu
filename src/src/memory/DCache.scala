@@ -231,6 +231,7 @@ class DCache(
     val writeData      = UInt(Width.Mem.data)
     val writeMask      = UInt(Width.Mem.data)
     val isWrite        = Bool()
+    val writeDataLine  = Vec(Param.Count.DCache.dataPerLine, UInt(Width.Mem.data))
   }))
   lastReg := lastReg // Fallback: Keep data
   val last = new Bundle {
@@ -317,6 +318,13 @@ class DCache(
       val selectedDataLine      = WireDefault(toDataLine(dataLines(setIndex)))
       val isCacheHit            = WireDefault(isSelectedVec.reduce(_ || _))
 
+      // Step 2: Read pass through (Last Step 2 is write)
+      val isLastMatched = reqMemAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset) ===
+        lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset)
+      when(isLastMatched && lastReg.isWrite) {
+        selectedDataLine := lastReg.writeDataLine
+      }
+
       // Step 2: Save data for later use
       lastReg.memAddr        := reqMemAddr
       lastReg.statusTagLines := statusTagLines
@@ -328,17 +336,6 @@ class DCache(
 
       // Step 2: Select data by data index from byte offset
       val selectedData = WireDefault(selectedDataLine(dataIndex))
-
-      // Step 2: Read pass through (Last Step 2 is write)
-      val oldDataLast = WireDefault(selectedDataLine(dataIndex))
-      val newDataLast = WireDefault(writeWithMask(oldDataLast, lastReg.writeData, lastReg.writeMask))
-      when(
-        reqMemAddr(Width.Mem._addr - 1, log2Ceil(wordLength / byteLength)) ===
-          lastReg.memAddr(Width.Mem._addr - 1, log2Ceil(wordLength / byteLength)) &&
-          lastReg.isWrite
-      ) {
-        selectedData := newDataLast
-      }
 
       // Step 2: Whether hit or not
       when(isHasReqReg) {
@@ -367,6 +364,7 @@ class DCache(
                 case (data, index) =>
                   Mux(index.U === dataIndex, newData, data)
               }))
+              lastReg.writeDataLine := writeDataLine
 
               // Set dirty bit
               writeStatusTag.isDirty := true.B
