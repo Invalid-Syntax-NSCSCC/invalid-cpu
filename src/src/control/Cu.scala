@@ -212,22 +212,26 @@ class Cu(
 
   val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 
+  val refetchFlush =
+    majorInstInfo.isValid &&
+      (isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush)
+
   io.csrMessage.ertnFlush := isExceptionReturn // TODO: Make ERTN jump gracefully like branch instruction
   io.frontendFlush :=
     RegNext(
-      isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
+      isException || io.branchExe.en || refetchFlush || isExceptionReturn,
       false.B
     )
   val frontendFlushFtqId = WireDefault(
     Mux(
-      isException || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
+      isException || refetchFlush || isExceptionReturn,
       majorInstInfo.ftqInfo.ftqId,
       io.branchExe.ftqId
     )
   )
   io.frontendFlushFtqId := RegNext(frontendFlushFtqId)
   io.backendFlush := RegNext(
-    isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
+    isException || io.branchCommit || refetchFlush || isExceptionReturn,
     false.B
   )
   io.idleFlush := RegNext(idleFlush)
@@ -236,11 +240,10 @@ class Cu(
   val newPc = RegInit(BackendRedirectPcNdPort.default)
   io.newPc := newPc
   newPc.en :=
-    isTlbMaintenance || io.csrFlushRequest || isException || io.branchExe.en || cacopFlush || idleFlush || isExceptionReturn
-  // io.newPc.isTlb := isTlbMaintenance
+    refetchFlush || isException || io.branchExe.en || isExceptionReturn
 
   newPc.ftqId := Mux(
-    isTlbMaintenance || io.csrFlushRequest || isException || cacopFlush || idleFlush || isExceptionReturn,
+    refetchFlush || isException || isExceptionReturn,
     majorInstInfo.ftqInfo.ftqId,
     io.branchExe.ftqId
   )
@@ -256,7 +259,7 @@ class Cu(
       isExceptionReturn,
       io.csrValues.era.pc,
       Mux(
-        isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
+        refetchFlush,
         majorPc + 4.U,
         io.branchExe.pcAddr
       )
@@ -279,10 +282,7 @@ class Cu(
       if (idx == 0) {
         mask := instInfo.isValid && (isException ||
           instInfo.ftqInfo.isLastInBlock ||
-          isTlbMaintenance ||
-          io.csrFlushRequest ||
-          cacopFlush ||
-          idleFlush ||
+          refetchFlush ||
           isExceptionReturn)
       } else {
         mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
