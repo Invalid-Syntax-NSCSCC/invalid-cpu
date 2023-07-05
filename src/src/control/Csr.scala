@@ -181,7 +181,7 @@ class Csr(
           euen.in.fpe := writePort.data(0)
         }
         is(spec.Csr.Index.ecfg) {
-          ecfg.in.lie := writePort.data(12, 0)
+          ecfg.in.lie := Cat(writePort.data(12, 11), false.B, Cat(writePort.data(9, 0))) // writePort.data(12, 0)
         }
         is(spec.Csr.Index.estat) {
           estat.in.is_softwareInt := writePort.data(1, 0)
@@ -396,7 +396,7 @@ class Csr(
   // la 最高位空出来了一位
   estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
 
-  val hasInterrupt = ((estat.out.asUInt)(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
+  val hasInterrupt = (estat.out.asUInt(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
 
   // crmd / dmw change should flush all pipeline

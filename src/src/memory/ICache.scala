@@ -169,12 +169,12 @@ class ICache(
   val reqMemAddr  = RegNext(currentMemAddr) // Fallback: Current memory access address
 
   // Keep request and cache query information
-  val lastReg = Reg(new Bundle {
+  val lastReg = RegInit(0.U.asTypeOf(new Bundle {
     val memAddr        = UInt(Width.Mem.addr)
     val statusTagLines = Vec(Param.Count.ICache.setLen, new ICacheStatusTagBundle)
     val setIndex       = UInt(log2Ceil(Param.Count.ICache.setLen).W)
     val dataLine       = Vec(Param.Count.ICache.dataPerLine, UInt(Width.Mem.data))
-  })
+  }))
   lastReg := lastReg // Fallback: Keep data
 
   // Refill state regs
