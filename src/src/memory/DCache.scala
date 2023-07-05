@@ -142,7 +142,7 @@ class DCache(
   // RAMs for valid, dirty, and tag
   val statusTagRams = Seq.fill(Param.Count.DCache.setLen)(
     Module(
-      new VSingleBRam(
+      new BRam(
         Param.Count.DCache.sizePerRam,
         StatusTagBundle.width
       )
@@ -152,7 +152,7 @@ class DCache(
   // RAMs for data line
   val dataLineRams = Seq.fill(Param.Count.DCache.setLen)(
     Module(
-      new VSingleBRam(
+      new BRam(
         Param.Count.DCache.sizePerRam,
         Param.Width.DCache._dataLine
       )
@@ -177,14 +177,17 @@ class DCache(
       id        = Param.Axi.Id.dCache
     )
   )
-  axiMaster.io                   <> DontCare
   io.axiMasterPort               <> axiMaster.io.axi
   axiMaster.io.read.req.isValid  := false.B // Fallback: No request
   axiMaster.io.write.req.isValid := false.B // Fallback: No request
+  axiMaster.io.write.req.mask    := "b_1111".U(Param.Width.Axi.strb)
+  axiMaster.io.read.req.addr     := DontCare
+  axiMaster.io.write.req.addr    := DontCare
+  axiMaster.io.write.req.data    := DontCare
 
   // Random set index
   assert(isPow2(Param.Count.DCache.setLen))
-  val randomNum = LFSR(log2Ceil(Param.Count.DCache.setLen) + 1)
+  val randomNum = LFSR((log2Ceil(Param.Count.DCache.setLen) + 1).max(2))
 
   val stateReg  = RegInit(State.ready)
   val nextState = WireDefault(stateReg)
@@ -235,7 +238,7 @@ class DCache(
       Cat(
         lastReg.statusTagLines(lastReg.setIndex).tag,
         queryIndexFromMemAddr(lastReg.memAddr),
-        byteOffsetFromMemAddr(lastReg.memAddr)
+        0.U(Param.Width.DCache._byteOffset.W)
       )
     )
   }
@@ -405,8 +408,12 @@ class DCache(
             when(!isNotDirtyHit) {
               // Finally, select randomly (using LFSR)
               // Also, don't forget to write back (now there is no invalid and not-dirty)
-              refillSetIndex := randomNum(log2Ceil(Param.Count.DCache.setLen) - 1, 0)
-              isNeedWbReg    := true.B
+              if (Param.Count.DCache.setLen > 1) {
+                refillSetIndex := randomNum(log2Ceil(Param.Count.DCache.setLen) - 1, 0)
+              } else {
+                refillSetIndex := 0.U
+              }
+              isNeedWbReg := true.B
 
               // Save data for later use
               lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
