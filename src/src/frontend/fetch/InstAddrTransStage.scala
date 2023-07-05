@@ -2,62 +2,60 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
+import common.enums.ReadWriteSel
+import control.enums.ExceptionPos
 import memory.enums.TlbMemType
-import memory.bundles.TlbTransPort
+import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import pipeline.memory.enums.AddrTransType
-import frontend.bundles.{FetchCsrNdPort, FtqBlockBundle}
+import frontend.bundles.{FetchCsrNdPort, FtqBlockBundle, FtqIFNdPort}
+import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
+import pipeline.common.BaseStage
+import pipeline.memory.MemReqNdPort
+import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
+import spec.Param.isDiffTest
 import spec.Value.Csr
 import spec.{Param, Width}
+
+import scala.collection.immutable
 
 class InstAddrTransPeerPort extends Bundle {
   val csr      = Input(new FetchCsrNdPort)
   val tlbTrans = Flipped(new TlbTransPort)
 }
+object InstAddTransPeerPort {
+  def default = 0.U.asTypeOf(new InstAddrTransPeerPort)
+}
 
-class InstAddrTransStage extends Module {
-  val io = IO(new Bundle {
-    val isFlush       = Input(Bool())
-    val isValid       = Input(Bool())
-    val ftqBlock      = Input(new FtqBlockBundle)
-    val ftqId         = Input(UInt(Param.BPU.ftqPtrWitdh.W))
-    val isBlockPcNext = Output(Bool())
-    val out           = Decoupled(new InstReqNdPort)
-    val peer          = new InstAddrTransPeerPort
-  })
+class InstAddrTransStage
+    extends BaseStage(
+      new FtqIFNdPort,
+      new InstReqNdPort,
+      FtqIFNdPort.default,
+      Some(new InstAddrTransPeerPort)
+    ) {
 
-  val peer = io.peer
+  val peer = io.peer.get
+  val out  = resultOutReg.bits
 
   val pc = WireDefault(0.U(Width.inst))
-  pc := io.ftqBlock.startPc
+  pc := selectedIn.ftqBlockBundle.startPc
   val isAdef           = WireDefault(pc(1, 0).orR) // PC is not aligned
-  val outReg           = RegInit(InstReqNdPort.default)
   val hasSentException = RegInit(false.B)
   hasSentException := hasSentException
-  val isLastSent    = RegNext(true.B, true.B)
-  val isOutputValid = RegNext((io.isValid && io.ftqBlock.isValid) || !isLastSent, false.B)
 
-  io.out.valid     := isOutputValid
-  io.out.bits      := outReg
-  io.isBlockPcNext := hasSentException
+  val isBlockPcNext = hasSentException
+  // Handle flush
+  when(io.isFlush) {
+    hasSentException := false.B
+  }
 
   // Fallback output
-  outReg.ftqBlock                 := io.ftqBlock
-  outReg.ftqId                    := io.ftqId
-  outReg.translatedMemReq.isValid := ((io.ftqBlock.isValid && io.isValid) || !isLastSent) && !isAdef
-  outReg.exception.valid          := isAdef
-  outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
-
-  // Handle exception
-  def handleException(): Unit = {
-    val isExceptionValid = isAdef || peer.tlbTrans.exception.valid
-    outReg.exception.valid := isExceptionValid
-    when(peer.tlbTrans.exception.valid && !isAdef) {
-      outReg.exception.bits := peer.tlbTrans.exception.bits
-    }
-    when(isExceptionValid) {
-      hasSentException := true.B
-    }
-  }
+  out.ftqBlock                  := selectedIn.ftqBlockBundle
+  out.ftqId                     := selectedIn.ftqId
+  out.translatedMemReq.isValid  := (selectedIn.ftqBlockBundle.isValid) && !isAdef
+  out.translatedMemReq.isCached := true.B // Fallback: isCached
+  out.exception.valid           := isAdef
+  out.exception.bits            := spec.Csr.ExceptionIndex.adef
 
   // DMW mapping
   val directMapVec = Wire(
@@ -69,7 +67,6 @@ class InstAddrTransStage extends Module {
       }
     )
   )
-
   directMapVec.zip(peer.csr.dmw).foreach {
     case (target, window) =>
       target.isHit := ((peer.csr.crmd.plv === Csr.Crmd.Plv.high && window.plv0) ||
@@ -94,12 +91,24 @@ class InstAddrTransStage extends Module {
     }
   }
 
+  // Handle exception
+  def handleException(): Unit = {
+    val isExceptionValid = isAdef || peer.tlbTrans.exception.valid
+    out.exception.valid := isExceptionValid
+    when(peer.tlbTrans.exception.valid && !isAdef) {
+      out.exception.bits := peer.tlbTrans.exception.bits
+    }
+    when(isExceptionValid) {
+      hasSentException := true.B
+    }
+  }
+
   // Translate address
   val translatedAddr = WireDefault(pc)
-  outReg.translatedMemReq.addr := translatedAddr
-  peer.tlbTrans.memType        := TlbMemType.fetch
-  peer.tlbTrans.virtAddr       := pc
-  peer.tlbTrans.isValid        := false.B
+  out.translatedMemReq.addr := translatedAddr
+  peer.tlbTrans.memType     := TlbMemType.fetch
+  peer.tlbTrans.virtAddr    := pc
+  peer.tlbTrans.isValid     := false.B
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := pc
@@ -110,41 +119,16 @@ class InstAddrTransStage extends Module {
     is(AddrTransType.pageTableMapping) {
       peer.tlbTrans.isValid := true.B
       translatedAddr        := peer.tlbTrans.physAddr
-      outReg.translatedMemReq.isValid := (io.ftqBlock.isValid || !isLastSent) &&
+      out.translatedMemReq.isValid := (selectedIn.ftqBlockBundle.isValid) &&
         !peer.tlbTrans.exception.valid && !isAdef
 
       handleException()
     }
   }
+  io.in.ready := inReady && !isBlockPcNext
 
-  // Can use cache
-  outReg.translatedMemReq.isCached := true.B // Always cached
-//  switch(peer.csr.crmd.datf) {
-//    is(Csr.Crmd.Datm.suc) {
-//      outReg.translatedMemReq.isCached := false.B
-//    }
-//    is(Csr.Crmd.Datm.cc) {
-//      outReg.translatedMemReq.isCached := true.B
-//    }
-//  }
-
-  // If next stage not ready, then wait until ready
-  when(!io.out.ready && !io.isFlush) {
-    outReg     := outReg
-    isLastSent := false.B
-  }
-
-  // Handle flush
-  val isLastFlushReg = RegNext(io.isFlush, false.B)
-  when(io.isFlush) {
-    outReg.exception.valid               := false.B
-    outReg.translatedMemReq.isValid      := false.B
-    outReg.ftqBlock := FtqBlockBundle.default
-    io.out.bits.translatedMemReq.isValid := false.B
-    isLastSent                           := true.B
-    hasSentException                     := false.B
-  }
-  when(isLastFlushReg) {
-    io.out.valid := false.B
+  // Submit result
+  when(selectedIn.ftqBlockBundle.isValid) {
+    resultOutReg.valid := true.B
   }
 }

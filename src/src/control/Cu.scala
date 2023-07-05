@@ -234,7 +234,6 @@ class Cu(
   )
   io.idleFlush := RegNext(idleFlush)
 
-
   // Select new pc
   val newPc = RegInit(BackendRedirectPcNdPort.default)
   io.newPc := newPc

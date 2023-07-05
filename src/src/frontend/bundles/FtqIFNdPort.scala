@@ -7,3 +7,7 @@ class FtqIFNdPort extends Bundle {
   val redirect       = Bool()
   val ftqId          = UInt(Param.BPU.ftqPtrWitdh.W)
 }
+
+object FtqIFNdPort {
+  def default = 0.U.asTypeOf(new FtqIFNdPort)
+}

@@ -64,7 +64,7 @@ class FetchTargetQueue(
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
-  ifuSendReq               := ftqVec(ifuPtr).isValid & io.ftqIFPort.ready & !io.backendFlush
+  ifuSendReq               := io.ftqIFPort.bits.ftqBlockBundle.isValid  & io.ftqIFPort.ready & !io.backendFlush
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
   ifuFrontendRedirect      := (bpuPtr === (ifuPtr + 1.U)) & mainBpuRedirectModifyFtq & (ifuSendReq | ifuSendReqDelay)
 
@@ -163,10 +163,10 @@ class FetchTargetQueue(
 
   // Output
   // -> IFU
-  //default value
-  io.ftqIFPort.valid:= ifuSendReq
+  // default value
+  io.ftqIFPort.valid               := ifuSendReq
   io.ftqIFPort.bits.ftqBlockBundle := ftqVec(ifuPtr)
-  when(ifuPtr===bpuMetaWritePtr && bpuMetaWriteValid){
+  when(ifuPtr === bpuMetaWritePtr && bpuMetaWriteValid) {
     // write though
     io.ftqIFPort.bits.ftqBlockBundle := ftqNextVec(ifuPtr)
   }
