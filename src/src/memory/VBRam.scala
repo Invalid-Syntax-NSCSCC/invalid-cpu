@@ -61,8 +61,8 @@ class VSimpleDualBRam(size: Int, dataWidth: Int) extends Module {
 
   val blackBox = Module(new simpledual_readfirst_bram(size, dataWidth))
 
-  blackBox.io.addra  := io.readAddr
-  blackBox.io.addrb  := io.writeAddr
+  blackBox.io.addra  := io.writeAddr
+  blackBox.io.addrb  := io.readAddr
   blackBox.io.dina   := io.dataIn
   blackBox.io.clka   := clock
   blackBox.io.wea    := io.isWrite
