@@ -66,7 +66,9 @@ class Cu(
 
   // Values
   val majorInstInfo = io.instInfoPorts.head
-  val isException   = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
+  io.queryPcPort.ftqId := majorInstInfo.ftqInfo.ftqId
+  val majorPc     = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
+  val isException = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
   // Write GPR
   io.gprWritePassThroughPorts.out.zip(io.gprWritePassThroughPorts.in).foreach {
@@ -276,8 +278,6 @@ class Cu(
   ftqCommitInfo.meta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
   ftqCommitInfo.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
   ftqCommitInfo.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
-
-  io.queryPcPort.ftqId := majorInstInfo.ftqInfo.ftqId
 
   ftqCommitInfo.bitMask.foreach(_ := false.B)
   ftqCommitInfo.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {

@@ -42,7 +42,8 @@ class InstResStage
   // Fallback output
   out.enqInfos.zipWithIndex.foreach {
     case (infoBundle, index) =>
-      infoBundle.bits.pcAddr := selectedIn.ftqBlock.startPc + index.asUInt(Width.Mem.addr) * 4.U
+      infoBundle.bits.pcAddr             := selectedIn.ftqBlock.startPc + index.asUInt(Width.Mem.addr) * 4.U
+      infoBundle.bits.ftqInfo.idxInBlock := index.U
       if (Param.fetchInstMaxNum == 1) {
         infoBundle.bits.inst := peer.memRes.read.dataVec(0)
         infoBundle.valid     := true.B
