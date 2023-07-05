@@ -11,3 +11,7 @@ class CuCommitFtqPort extends Bundle {
   val meta          = Input(new BackendCommitMetaBundle)
   val queryPcBundle = new QueryPcBundle
 }
+
+object CuCommitFtqPort {
+  def default = 0.U.asTypeOf(new CuCommitFtqPort)
+}

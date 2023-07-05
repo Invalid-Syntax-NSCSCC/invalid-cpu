@@ -266,25 +266,34 @@ class Cu(
   )
 
   // BPU training data
-  io.ftqPort.ftqId               := majorInstInfo.ftqInfo.ftqId
-  io.ftqPort.meta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch
-  io.ftqPort.meta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
-  io.ftqPort.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
-  io.ftqPort.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
+  val ftqCommitInfo = RegInit(CuCommitFtqPort.default)
+  io.ftqPort := ftqCommitInfo
 
-  io.ftqPort.queryPcBundle.ftqId := majorInstInfo.ftqInfo.ftqId
+  ftqCommitInfo.ftqId               := majorInstInfo.ftqInfo.ftqId
+  ftqCommitInfo.meta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch
+  ftqCommitInfo.meta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
+  ftqCommitInfo.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
+  ftqCommitInfo.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
 
-  io.ftqPort.bitMask.foreach(_ := false.B)
-  io.ftqPort.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
+  ftqCommitInfo.queryPcBundle.ftqId := majorInstInfo.ftqInfo.ftqId
+
+  ftqCommitInfo.bitMask.foreach(_ := false.B)
+  ftqCommitInfo.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
     case ((mask, instInfo), idx) =>
       if (idx == 0) {
-        mask := instInfo.isValid && (isException || instInfo.ftqInfo.isLastInBlock || io.idleFlush ||isExceptionReturn ) //TODO refetchFlush
+        mask := instInfo.isValid && (isException ||
+          instInfo.ftqInfo.isLastInBlock ||
+          isTlbMaintenance ||
+          io.csrFlushRequest ||
+          cacopFlush ||
+          idleFlush ||
+          isExceptionReturn) // TODO refetchFlush
       } else {
         mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
       }
   }
 
-  io.ftqPort.blockBitmask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
+  ftqCommitInfo.blockBitmask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
     case ((mask, instInfo), idx) =>
       if (idx == 0) {
         mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
