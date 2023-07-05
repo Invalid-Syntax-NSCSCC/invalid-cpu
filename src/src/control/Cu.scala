@@ -216,7 +216,7 @@ class Cu(
     majorInstInfo.isValid &&
       (isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush)
 
-  io.csrMessage.ertnFlush := isExceptionReturn // TODO: Make ERTN jump gracefully like branch instruction
+  io.csrMessage.ertnFlush := isExceptionReturn
   io.frontendFlush :=
     RegNext(
       isException || io.branchExe.en || refetchFlush || isExceptionReturn,
