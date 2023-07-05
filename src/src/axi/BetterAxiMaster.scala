@@ -199,28 +199,32 @@ class BetterAxiMaster(
     }
 
     // Complete transfer
-    when(io.axi.b.valid) {
-      switch(io.axi.b.bits.resp) {
-        is(
-          Value.Axi.Response.Okay,
-          Value.Axi.Response.ExclusiveOkay
-        ) {
-          // Writing complete
-          io.write.res.isComplete := true.B
+    when(writeCountUpReg === (writeLen - 1.U) && io.axi.w.ready) {
+      // Writing complete
+      io.write.res.isComplete := true.B
 
-          isWritingReg := false.B
-        }
-        is(
-          Value.Axi.Response.SlaveErr,
-          Value.Axi.Response.DecodeErr
-        ) {
-          // Writing complete
-          io.write.res.isComplete := true.B
-          io.write.res.isFailed   := true.B
-
-          isWritingReg := false.B
-        }
-      }
+      isWritingReg := false.B
+//      switch(io.axi.b.bits.resp) {
+//        is(
+//          Value.Axi.Response.Okay,
+//          Value.Axi.Response.ExclusiveOkay
+//        ) {
+//          // Writing complete
+//          io.write.res.isComplete := true.B
+//
+//          isWritingReg := false.B
+//        }
+//        is(
+//          Value.Axi.Response.SlaveErr,
+//          Value.Axi.Response.DecodeErr
+//        ) {
+//          // Writing complete
+//          io.write.res.isComplete := true.B
+//          io.write.res.isFailed   := true.B
+//
+//          isWritingReg := false.B
+//        }
+//      }
     }
   }
 }
