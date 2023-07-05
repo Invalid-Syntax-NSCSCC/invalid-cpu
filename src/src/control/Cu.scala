@@ -67,7 +67,7 @@ class Cu(
   // Values
   val majorInstInfo = io.instInfoPorts.head
   io.queryPcPort.ftqId := majorInstInfo.ftqInfo.ftqId
-  val majorPc     = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
+  val majorPc: UInt     = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
   val isException = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
   // Write GPR
@@ -94,7 +94,7 @@ class Cu(
 
   // select era, ecodeBundle
   when(isException) {
-    io.csrMessage.era := majorInstInfo.pc
+    io.csrMessage.era := majorPc //majorInstInfo.pc
     switch(majorInstInfo.exceptionRecord) {
       is(Csr.ExceptionIndex.int) {
         io.csrMessage.ecodeBundle := Csr.Estat.int
@@ -154,7 +154,7 @@ class Cu(
   when(isException) {
     when(majorInstInfo.exceptionRecord === Csr.ExceptionIndex.adef) {
       io.csrMessage.badVAddrSet.en   := true.B
-      io.csrMessage.badVAddrSet.addr := majorInstInfo.pc
+      io.csrMessage.badVAddrSet.addr := majorPc// majorInstInfo.pc
     }.elsewhen(
       VecInit(
         Csr.ExceptionIndex.tlbr,
@@ -172,7 +172,8 @@ class Cu(
       io.csrMessage.badVAddrSet.addr := Mux(
         majorInstInfo.exceptionPos === ExceptionPos.backend,
         majorInstInfo.vaddr,
-        majorInstInfo.pc
+        majorPc
+//        majorInstInfo.pc
       )
     }
   }
@@ -263,7 +264,8 @@ class Cu(
       io.csrValues.era.pc,
       Mux(
         isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
-        majorInstInfo.pc + 4.U,
+//        majorInstInfo.pc + 4.U,
+        majorPc + 4.U,
         io.branchExe.pcAddr
       )
     )
