@@ -223,14 +223,14 @@ class DCache(
   val reqWriteMask    = RegNext(toWriteMaskBits(io.accessPort.req.client.mask)) // Fallback: Current write mask
 
   // Keep request and cache query information
-  val lastReg = Reg(new Bundle {
+  val lastReg = RegInit(0.U.asTypeOf(new Bundle {
     val memAddr        = UInt(Width.Mem.addr)
     val statusTagLines = Vec(Param.Count.DCache.setLen, new StatusTagBundle)
     val setIndex       = UInt(log2Ceil(Param.Count.DCache.setLen).W)
     val dataLine       = Vec(Param.Count.DCache.dataPerLine, UInt(Width.Mem.data))
     val writeData      = UInt(Width.Mem.data)
     val writeMask      = UInt(Width.Mem.data)
-  })
+  }))
   lastReg := lastReg // Fallback: Keep data
   val last = new Bundle {
     val selectedStatusTag = WireDefault(lastReg.statusTagLines(lastReg.setIndex))
