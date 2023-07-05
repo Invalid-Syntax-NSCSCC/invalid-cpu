@@ -246,13 +246,13 @@ class RenameStage(
   }
 
   when(peer.branchFlush) {
-    peer.requests.foreach(_.en := false.B)
+    // peer.requests.foreach(_.en := false.B)
     io.ins.foreach(_.ready := false.B)
     fetchEnableFlag := false.B
   }
 
   when(io.isFlush) {
-    peer.requests.foreach(_.en := false.B)
+    // peer.requests.foreach(_.en := false.B)
     io.ins.foreach(_.ready := false.B)
     fetchEnableFlag := true.B
   }
