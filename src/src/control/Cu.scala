@@ -289,7 +289,7 @@ class Cu(
           io.csrFlushRequest ||
           cacopFlush ||
           idleFlush ||
-          isExceptionReturn) // TODO refetchFlush
+          isExceptionReturn)
       } else {
         mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
       }

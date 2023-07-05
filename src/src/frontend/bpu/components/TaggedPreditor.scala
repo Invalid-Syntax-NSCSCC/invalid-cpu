@@ -3,7 +3,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util._
 import frontend.bpu.utils.{Bram, CsrHash}
-import memory.VTrueDualBRam
+import memory.{VSimpleDualBRam, VTrueDualBRam}
 import spec.{Param, Width}
 
 class TaggedPreditor(
@@ -186,5 +186,17 @@ class TaggedPreditor(
   phtTable.io.dinb  := phtUpdateResult.asUInt
   phtTable.io.addrb := phtUpdateIndex.asUInt
   phtTable.io.doutb <> DontCare
+
+  val phtRam = Module(
+    new VSimpleDualBRam(
+      PhtEntey.width,
+      phtAddrWidth
+    )
+  )
+  phtRam.io.readAddr  := queryIndex.asUInt
+  phtQueryResult      := phtRam.io.dataOut.asTypeOf(new PhtEntey)
+  phtRam.io.isWrite   := io.updateValid
+  phtRam.io.dataIn    := phtUpdateResult.asUInt
+  phtRam.io.writeAddr := phtUpdateIndex.asUInt
 
 }

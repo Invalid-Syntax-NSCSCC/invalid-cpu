@@ -5,6 +5,7 @@ import chisel3.util._
 import chisel3.util.random.LFSR
 import frontend.bpu.components.Bundles.FtbEntryNdPort
 import frontend.bpu.utils.{Bram, Lfsr}
+import memory.VSimpleDualBRam
 import spec._
 import utils.BiPriorityMux
 
@@ -88,22 +89,20 @@ class FTB(
   // hit Priority
   wayHitIndex := PriorityEncoder(wayHits)
 
-  // TODO use blackbox connect bram
-  // bram
-  Seq
-    .range(0, nway)
-    .map(wayIdx => {
-      val bram = Module(new Bram(dataWidth = FtbEntryNdPort.bitsLength, dataDepthExp2 = nsetWidth))
-      bram.io.ena               := true.B
-      bram.io.enb               := true.B
-      bram.io.wea               := false.B
-      bram.io.web               := updateWE(wayIdx)
-      bram.io.dina              <> DontCare
-      bram.io.addra             := queryIndex
-      wayQueryEntryRegs(wayIdx) := bram.io.douta.asTypeOf(new FtbEntryNdPort)
-      bram.io.dinb              := updateEntryPort.asUInt
-      bram.io.addrb             := updateIndex
-      bram.io.doutb             <> DontCare
-      bram
-    })
+  val phtRams = Seq.fill(nway)(
+    Module(
+      new VSimpleDualBRam(
+        FtbEntryNdPort.bitsLength,
+        nsetWidth
+      )
+    )
+  )
+  phtRams.zipWithIndex.foreach {
+    case (ram, index) =>
+      wayQueryEntryRegs(index) := ram.io.dataOut.asTypeOf(new FtbEntryNdPort)
+      ram.io.readAddr          := queryIndex
+      ram.io.isWrite           := updateWE(index)
+      ram.io.dataIn            := updateEntryPort.asUInt
+      ram.io.writeAddr         := updateIndex
+  }
 }

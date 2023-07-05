@@ -45,6 +45,11 @@ class InstAddrTransStage
 
   val isBlockPcNext = hasSentException
 
+  val transMode = WireDefault(AddrTransType.direct) // Fallback: Direct translation
+  val isAdef = WireDefault(
+    pc(1, 0).orR ||
+      (pc(31).asBool && peer.csr.crmd.plv === Csr.Crmd.Plv.low && transMode === AddrTransType.pageTableMapping)
+  ) // PC is not aligned
 
   // Fallback output
   out.ftqBlock                  := selectedIn.ftqBlockBundle
