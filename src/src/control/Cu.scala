@@ -8,7 +8,8 @@ import control.enums.ExceptionPos
 import pipeline.commit.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param}
-import frontend.bundles.CuCommitFtqPort
+import frontend.bundles.CuCommitFtqNdPort
+import frontend.bundles.QueryPcBundle
 
 // Note. Exception只从第0个提交
 class Cu(
@@ -46,7 +47,8 @@ class Cu(
     val backendFlush       = Output(Bool())
     val idleFlush          = Output(Bool())
 
-    val ftqPort = Flipped(new CuCommitFtqPort)
+    val ftqPort     = Output(new CuCommitFtqNdPort)
+    val queryPcPort = Flipped(new QueryPcBundle)
 
     // <- Out
     val hardwareInterrupt = Input(UInt(8.W))
@@ -266,7 +268,7 @@ class Cu(
   )
 
   // BPU training data
-  val ftqCommitInfo = RegInit(CuCommitFtqPort.default)
+  val ftqCommitInfo = RegInit(CuCommitFtqNdPort.default)
   io.ftqPort := ftqCommitInfo
 
   ftqCommitInfo.ftqId               := majorInstInfo.ftqInfo.ftqId
@@ -275,7 +277,7 @@ class Cu(
   ftqCommitInfo.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
   ftqCommitInfo.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
 
-  ftqCommitInfo.queryPcBundle.ftqId := majorInstInfo.ftqInfo.ftqId
+  io.queryPcPort.ftqId := majorInstInfo.ftqInfo.ftqId
 
   ftqCommitInfo.bitMask.foreach(_ := false.B)
   ftqCommitInfo.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {

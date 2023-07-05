@@ -5,7 +5,8 @@ import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
 import chisel3.experimental.Param
-import frontend.bundles.{BpuFtqPort, CuCommitFtqPort, ExeFtqPort, FtqBlockBundle, FtqBpuMetaPort, FtqIFNdPort}
+import frontend.bundles.{BpuFtqPort, CuCommitFtqNdPort, ExeFtqPort, FtqBlockBundle, FtqBpuMetaPort, FtqIFNdPort}
+import frontend.bundles.QueryPcBundle
 
 class FetchTargetQueue(
   val queueSize: Int = Param.BPU.ftqSize,
@@ -26,7 +27,8 @@ class FetchTargetQueue(
 
     // <-> Backend
     // <-> Cu commit
-    val cuCommitFtqPort = new CuCommitFtqPort
+    val cuCommitFtqPort = Input(new CuCommitFtqNdPort)
+    val cuQueryPcBundle = new QueryPcBundle
     // <-> Ex query port
     val exeFtqPort = new ExeFtqPort
 
@@ -37,15 +39,15 @@ class FetchTargetQueue(
   // Signals
   val queueFull                = WireDefault(false.B)
   val queueFullDelay           = RegInit(false.B)
-  val ifSendValid               = WireInit(false.B)
-  val ifSendValidDelay          = RegInit(false.B)
+  val ifSendValid              = WireInit(false.B)
+  val ifSendValidDelay         = RegInit(false.B)
   val mainBpuRedirectDelay     = RegInit(false.B)
   val mainBpuRedirectModifyFtq = WireDefault(false.B)
-  val ifRedirect      = WireDefault(false.B)
-  val ifRedirectDelay = RegInit(false.B)
+  val ifRedirect               = WireDefault(false.B)
+  val ifRedirectDelay          = RegInit(false.B)
 
   val bpuPtr      = RegInit(0.U(ptrWidth.W))
-  val ifPtr      = RegInit(0.U(ptrWidth.W))
+  val ifPtr       = RegInit(0.U(ptrWidth.W))
   val commPtr     = RegInit(0.U(ptrWidth.W))
   val bpuPtrPlus1 = WireDefault(0.U(ptrWidth.W))
   bpuPtrPlus1 := bpuPtr + 1.U
@@ -64,16 +66,16 @@ class FetchTargetQueue(
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
-  ifSendValid               := io.ftqIFPort.bits.ftqBlockBundle.isValid  & io.ftqIFPort.ready & !io.backendFlush
+  ifSendValid              := io.ftqIFPort.bits.ftqBlockBundle.isValid & io.ftqIFPort.ready & !io.backendFlush
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
-  ifRedirect      := (bpuPtr === (ifPtr + 1.U)) & mainBpuRedirectModifyFtq & (ifSendValid | ifSendValidDelay)
+  ifRedirect               := (bpuPtr === (ifPtr + 1.U)) & mainBpuRedirectModifyFtq & (ifSendValid | ifSendValidDelay)
 
   // queue full
-  queueFull                := (bpuPtrPlus1 === commPtr)
-  queueFullDelay           := (queueFull)
-  ifSendValidDelay          := (ifSendValid)
-  ifRedirectDelay := (ifRedirect)
-  mainBpuRedirectDelay     := (io.bpuFtqPort.mainBpuRedirectValid)
+  queueFull            := (bpuPtrPlus1 === commPtr)
+  queueFullDelay       := (queueFull)
+  ifSendValidDelay     := (ifSendValid)
+  ifRedirectDelay      := (ifRedirect)
+  mainBpuRedirectDelay := (io.bpuFtqPort.mainBpuRedirectValid)
 
   ftqVec.zip(ftqNextVec).foreach {
     case (block, nextBlock) =>
@@ -106,13 +108,13 @@ class FetchTargetQueue(
 
   // if IF predecoder found a redirect
   when(io.instFetchFlush) {
-    ifPtr := io.instFetchFtqId + 1.U
+    ifPtr  := io.instFetchFtqId + 1.U
     bpuPtr := io.instFetchFtqId + 1.U
   }
   // if backend redirect triggered,back to the next block of the redirect block
   // backend may continue to commit older block (flush before exeStage inst;commit after exeStage inst)
   when(io.backendFlush) {
-    ifPtr := io.backendFlushFtqId + 1.U
+    ifPtr  := io.backendFlushFtqId + 1.U
     bpuPtr := io.backendFlushFtqId + 1.U
   }
 
@@ -181,8 +183,8 @@ class FetchTargetQueue(
   debugLength := io.ftqIFPort.bits.ftqBlockBundle.length
 
   // -> Exe cuCommit query
-  io.exeFtqPort.queryPcBundle.pc      := ftqVec(io.exeFtqPort.queryPcBundle.ftqId).startPc
-  io.cuCommitFtqPort.queryPcBundle.pc := ftqVec(io.cuCommitFtqPort.queryPcBundle.ftqId).startPc
+  io.exeFtqPort.queryPcBundle.pc := ftqVec(io.exeFtqPort.queryPcBundle.ftqId).startPc
+  io.cuQueryPcBundle.pc          := ftqVec(io.cuQueryPcBundle.ftqId).startPc
 
   // -> BPU
   io.bpuFtqPort.ftqFull := queueFull

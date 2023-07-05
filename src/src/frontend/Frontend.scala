@@ -5,12 +5,13 @@ import chisel3.util._
 import common.Pc
 import common.bundles.PcSetNdPort
 import frontend.bpu.BPU
-import frontend.bundles.{CuCommitFtqPort, ExeFtqPort, ICacheAccessPort}
+import frontend.bundles.{CuCommitFtqNdPort, ExeFtqPort, ICacheAccessPort}
 import memory.bundles.TlbTransPort
 import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.memory.bundles.MemCsrNdPort
 import pipeline.queue.InstQueueEnqNdPort
 import spec._
+import frontend.bundles.QueryPcBundle
 
 class Frontend extends Module {
   val io = IO(new Bundle {
@@ -23,7 +24,8 @@ class Frontend extends Module {
     val exeFtqPort = new ExeFtqPort
 
     // ftq <-> cu
-    val cuCommitFtqPort = new CuCommitFtqPort
+    val cuCommitFtqPort = Input(new CuCommitFtqNdPort)
+    val cuQueryPcBundle = new QueryPcBundle
 
     // instFetch <-> ICache
     val accessPort = Flipped(new ICacheAccessPort)
@@ -68,7 +70,8 @@ class Frontend extends Module {
   ftq.io.backendFlushFtqId := io.ftqFlushId
   ftq.io.instFetchFlush    := false.B // TODO add predecoder stage
   ftq.io.instFetchFtqId    := false.B
-  ftq.io.cuCommitFtqPort   <> io.cuCommitFtqPort
+  ftq.io.cuCommitFtqPort   := io.cuCommitFtqPort
+  ftq.io.cuQueryPcBundle   <> io.cuQueryPcBundle
   ftq.io.exeFtqPort        <> io.exeFtqPort
 
   // stage 2-4
