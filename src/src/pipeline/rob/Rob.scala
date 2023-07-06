@@ -37,6 +37,9 @@ class Rob(
     // `MemReqStage` <-> `Rob`
     val commitStore = Decoupled()
 
+    // `Rob` -> `Tlb`
+    val tlbMaintenanceTrigger = Output(Bool())
+
     val branchCommit = Output(Bool())
 
     // `Csr` -> `Rob`
@@ -125,8 +128,9 @@ class Rob(
 
   val hasInterruptReg = RegInit(false.B)
 
-  io.commitStore.valid := false.B
-  io.branchCommit      := false.B
+  io.tlbMaintenanceTrigger := false.B
+  io.commitStore.valid     := false.B
+  io.branchCommit          := false.B
   io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
     case ((commit, deqPort), idx) =>
       when(
@@ -139,6 +143,10 @@ class Rob(
         // commit
         // TODO: refactor with forbidParallelCommit
         if (idx == 0) {
+          io.tlbMaintenanceTrigger := commit.ready &&
+            deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
+            !(io.hasInterrupt || hasInterruptReg) &&
+            deqPort.bits.wbPort.instInfo.isTlb
           io.commitStore.valid := commit.ready &&
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
             !(io.hasInterrupt || hasInterruptReg) &&

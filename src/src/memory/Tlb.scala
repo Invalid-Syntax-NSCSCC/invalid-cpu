@@ -12,7 +12,8 @@ import spec.Param.isDiffTest
 
 class Tlb extends Module {
   val io = IO(new Bundle {
-    val maintenanceInfo = Input(new TlbMaintenanceNdPort)
+    val maintenanceTrigger = Input(Bool())
+    val maintenanceInfo    = Input(new TlbMaintenanceNdPort)
     val csr = new Bundle {
       val in = Input(new Bundle {
         val plv      = UInt(2.W)
@@ -36,6 +37,7 @@ class Tlb extends Module {
   // +-----+ <---> tlbTransPort          <---> AddrTransStage
   //         <---> csr                   <---> Csr
   //         <---> transExceptionCsrPort <---> Csr
+  //         <---- maintenanceTrigger    <---- Rob
 
   val tlbEntryVec = RegInit(VecInit(Seq.fill(Param.Count.Tlb.num)(TlbEntryBundle.default)))
   tlbEntryVec := tlbEntryVec
@@ -58,9 +60,17 @@ class Tlb extends Module {
     port.exception.valid := false.B
     port.exception.bits  := DontCare
   }
+
+  // Save maintenance information for later trigger
+  val savedMaintenance = RegInit(TlbMaintenanceNdPort.default)
+  savedMaintenance := savedMaintenance
   val isTlbMaintenance =
     io.maintenanceInfo.isSearch || io.maintenanceInfo.isWrite || io.maintenanceInfo.isFill || io.maintenanceInfo.isRead || io.maintenanceInfo.isInvalidate
   when(isTlbMaintenance) {
+    savedMaintenance := io.maintenanceInfo
+  }
+
+  when(io.maintenanceTrigger) {
     csrOutReg.tlbidx.valid := false.B
     csrOutReg.asId.valid   := false.B
     csrOutReg.tlbehi.valid := false.B
@@ -91,7 +101,7 @@ class Tlb extends Module {
           isFound := entry.compare.isExisted && (
             entry.compare.isGlobal || (entry.compare.asId === io.csr.in.asId.asid)
           ) && Mux(
-            io.maintenanceInfo.isSearch,
+            io.maintenanceTrigger && savedMaintenance.isSearch,
             entry.compare.virtPageNum === io.csr.in.tlbehi.vppn,
             isVirtPageNumMatched(entry.compare, transPort.virtAddr)
           )
@@ -104,8 +114,8 @@ class Tlb extends Module {
         selectedEntry.trans(1)
       )
       val isFound = isFoundVec.asUInt.orR
-      when(io.maintenanceInfo.isSearch) {
-        csrOutReg.tlbidx.valid := io.maintenanceInfo.isSearch
+      when(io.maintenanceTrigger && savedMaintenance.isSearch) {
+        csrOutReg.tlbidx.valid := savedMaintenance.isSearch
         csrOutReg.tlbidx.bits  := io.csr.in.tlbidx
         when(isFound) {
           csrOutReg.tlbidx.bits.index := selectedIndex
@@ -159,7 +169,7 @@ class Tlb extends Module {
 
   // Maintenance: Read
   val readEntry = tlbEntryVec(io.csr.in.tlbidx.index)
-  when(io.maintenanceInfo.isRead) {
+  when(io.maintenanceTrigger && savedMaintenance.isRead) {
     csrOutReg.tlbidx.valid := true.B
     csrOutReg.tlbehi.valid := true.B
     csrOutReg.asId.valid   := true.B
@@ -192,12 +202,12 @@ class Tlb extends Module {
   val fillIndex = PriorityEncoder(tlbEntryVec.map(!_.compare.isExisted))
   val writeEntry = tlbEntryVec(
     Mux(
-      io.maintenanceInfo.isWrite,
+      io.maintenanceTrigger && savedMaintenance.isWrite,
       io.csr.in.tlbidx.index,
       fillIndex
     )
   )
-  when(io.maintenanceInfo.isWrite || io.maintenanceInfo.isFill) {
+  when(io.maintenanceTrigger && (savedMaintenance.isWrite || savedMaintenance.isFill)) {
     writeEntry.compare.isExisted := !io.csr.in.tlbidx.ne || isInTlbRefillException
 
     writeEntry.compare.pageSize    := io.csr.in.tlbidx.ps
@@ -218,7 +228,7 @@ class Tlb extends Module {
 
   io.difftest match {
     case Some(dt) =>
-      dt.valid     := io.maintenanceInfo.isFill
+      dt.valid     := io.maintenanceTrigger && savedMaintenance.isFill
       dt.fillIndex := fillIndex
     case None =>
   }
@@ -228,10 +238,10 @@ class Tlb extends Module {
     entry.compare.isExisted := false.B
     entry.trans.foreach(_.isValid := false.B)
   }
-  def isAsIdMatched(entry: TlbEntryBundle) = entry.compare.asId === io.maintenanceInfo.registerAsid
+  def isAsIdMatched(entry: TlbEntryBundle) = entry.compare.asId === savedMaintenance.registerAsid
 
-  when(io.maintenanceInfo.isInvalidate) {
-    switch(io.maintenanceInfo.invalidateInst) {
+  when(io.maintenanceTrigger && savedMaintenance.isInvalidate) {
+    switch(savedMaintenance.invalidateInst) {
       is(clrAll, clrAllAlt) {
         tlbEntryVec.foreach(invalidateEntry)
       }
@@ -261,7 +271,7 @@ class Tlb extends Module {
           when(
             !entry.compare.isGlobal &&
               isAsIdMatched(entry) &&
-              isVirtPageNumMatched(entry.compare, io.maintenanceInfo.virtAddr)
+              isVirtPageNumMatched(entry.compare, savedMaintenance.virtAddr)
           ) {
             invalidateEntry(entry)
           }
@@ -272,7 +282,7 @@ class Tlb extends Module {
           when(
             (entry.compare.isGlobal ||
               isAsIdMatched(entry)) &&
-              isVirtPageNumMatched(entry.compare, io.maintenanceInfo.virtAddr)
+              isVirtPageNumMatched(entry.compare, savedMaintenance.virtAddr)
           ) {
             invalidateEntry(entry)
           }
