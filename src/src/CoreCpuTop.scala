@@ -237,9 +237,6 @@ class CoreCpuTop extends Module {
     p.csr.dmw(0) := csr.io.csrValues.dmw0
     p.csr.dmw(1) := csr.io.csrValues.dmw1
     p.csr.crmd   := csr.io.csrValues.crmd
-    if (isDiffTest) {
-      p.tlbDifftest.get := tlb.io.difftest.get
-    }
   }
 
   memReqStage.io.isFlush := cu.io.backendFlush
@@ -275,6 +272,9 @@ class CoreCpuTop extends Module {
   rob.io.isFlush      := cu.io.backendFlush
   rob.io.hasInterrupt := csr.io.hasInterrupt
   rob.io.commitStore  <> memReqStage.io.peer.get.commitStore
+  if (isDiffTest) {
+    rob.io.tlbDifftest.get := tlb.io.difftest.get
+  }
 
   // commit stage
   commitStage.io.ins.zip(rob.io.commits).foreach {

@@ -33,8 +33,6 @@ class AddrTransPeerPort extends Bundle {
   val csr            = Input(new MemCsrNdPort)
   val tlbTrans       = Flipped(new TlbTransPort)
   val tlbMaintenance = Output(new TlbMaintenanceNdPort)
-
-  val tlbDifftest = if (isDiffTest) Some(Input(new DifftestTlbFillNdPort)) else None
 }
 
 class AddrTransStage
@@ -160,9 +158,6 @@ class AddrTransStage
     tlbBlockingReg := true.B
   }
   io.in.ready := inReady && !tlbBlockingReg
-  if (isDiffTest) {
-    out.instInfo.tlbFill.get := peer.tlbDifftest.get
-  }
 
   // Handle flush (actually is TLB maintenance done)
   when(io.isFlush) {

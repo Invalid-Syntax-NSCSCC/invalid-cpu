@@ -183,7 +183,7 @@ class Cu(
 
   // Handle TLB maintenance
   val isTlbMaintenance = majorInstInfo.isTlb && majorInstInfo.isValid && !isException
-  io.tlbMaintenanceCsrWriteValid := isTlbMaintenance
+  io.tlbMaintenanceCsrWriteValid := RegNext(isTlbMaintenance, false.B)
 
   // Handle TLB exception
   io.tlbExceptionCsrWriteValidVec.foreach(_ := false.B)

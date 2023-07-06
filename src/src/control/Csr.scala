@@ -372,26 +372,6 @@ class Csr(
     tlbehi.in.vppn := io.csrMessage.badVAddrSet.addr(31, 13) // tlbExceptionWriteBits.vppn
   }
 
-  // TLB maintenance write
-  val tlbMaintenanceWrite = io.tlbMaintenanceWritePort.bits
-  when(io.tlbMaintenanceWritePort.valid) {
-    when(tlbMaintenanceWrite.tlbidx.valid) {
-      tlbidx.in := tlbMaintenanceWrite.tlbidx.bits
-    }
-    when(tlbMaintenanceWrite.tlbehi.valid) {
-      tlbehi.in := tlbMaintenanceWrite.tlbehi.bits
-    }
-    when(tlbMaintenanceWrite.tlbeloVec(0).valid) {
-      tlbelo0.in := tlbMaintenanceWrite.tlbeloVec(0).bits
-    }
-    when(tlbMaintenanceWrite.tlbeloVec(1).valid) {
-      tlbelo1.in := tlbMaintenanceWrite.tlbeloVec(1).bits
-    }
-    when(tlbMaintenanceWrite.asId.valid) {
-      asid.in := tlbMaintenanceWrite.asId.bits
-    }
-  }
-
   // 中断
   // la 最高位空出来了一位
   estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
@@ -436,4 +416,29 @@ class Csr(
   io.csrValues.tlbrentry := tlbrentry.out
   io.csrValues.dmw0      := dmw0.out
   io.csrValues.dmw1      := dmw1.out
+
+  // TLB maintenance write
+  val tlbMaintenanceWrite = io.tlbMaintenanceWritePort.bits
+  when(io.tlbMaintenanceWritePort.valid) {
+    when(tlbMaintenanceWrite.tlbidx.valid) {
+      tlbidx.in           := tlbMaintenanceWrite.tlbidx.bits
+      io.csrValues.tlbidx := tlbMaintenanceWrite.tlbidx.bits
+    }
+    when(tlbMaintenanceWrite.tlbehi.valid) {
+      tlbehi.in           := tlbMaintenanceWrite.tlbehi.bits
+      io.csrValues.tlbehi := tlbMaintenanceWrite.tlbehi.bits
+    }
+    when(tlbMaintenanceWrite.tlbeloVec(0).valid) {
+      tlbelo0.in           := tlbMaintenanceWrite.tlbeloVec(0).bits
+      io.csrValues.tlbelo0 := tlbMaintenanceWrite.tlbeloVec(0).bits
+    }
+    when(tlbMaintenanceWrite.tlbeloVec(1).valid) {
+      tlbelo1.in           := tlbMaintenanceWrite.tlbeloVec(1).bits
+      io.csrValues.tlbelo1 := tlbMaintenanceWrite.tlbeloVec(1).bits
+    }
+    when(tlbMaintenanceWrite.asId.valid) {
+      asid.in           := tlbMaintenanceWrite.asId.bits
+      io.csrValues.asid := tlbMaintenanceWrite.asId.bits
+    }
+  }
 }

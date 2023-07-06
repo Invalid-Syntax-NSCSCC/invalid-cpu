@@ -4,12 +4,14 @@ import chisel3._
 import chisel3.util._
 import common.bundles.RfReadPort
 import control.enums.ExceptionPos
+import pipeline.commit.bundles._
 import pipeline.commit.WbNdPort
 import pipeline.common.MultiQueue
 import pipeline.rob.bundles._
 import pipeline.rob.enums.{RegDataLocateSel, RobDistributeSel, RobInstState => State}
 import spec._
 import pipeline.common.DistributedQueuePlus
+import spec.Param._
 
 // assert: commits cannot ready 1 but not 0
 class Rob(
@@ -47,6 +49,8 @@ class Rob(
 
     // `Cu` <-> `Rob`
     val isFlush = Input(Bool())
+
+    val tlbDifftest = if (isDiffTest) Some(Input(new DifftestTlbFillNdPort)) else None
   })
 
   // fall back
@@ -139,6 +143,8 @@ class Rob(
           .map(_.valid)
           .foldLeft(true.B)(_ && _)
       ) {
+        commit.valid := deqPort.ready
+        commit.bits  := deqPort.bits.wbPort
 
         // commit
         // TODO: refactor with forbidParallelCommit
@@ -147,6 +153,11 @@ class Rob(
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
             !(io.hasInterrupt || hasInterruptReg) &&
             deqPort.bits.wbPort.instInfo.isTlb
+
+          if (isDiffTest) {
+            commit.bits.instInfo.tlbFill.get := io.tlbDifftest.get
+          }
+
           io.commitStore.valid := commit.ready &&
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
             !(io.hasInterrupt || hasInterruptReg) &&
@@ -164,9 +175,6 @@ class Rob(
           // &&
           // !io.hasInterrupt
         }
-
-        commit.valid := deqPort.ready
-        commit.bits  := deqPort.bits.wbPort
 
         // change match table
         when(
