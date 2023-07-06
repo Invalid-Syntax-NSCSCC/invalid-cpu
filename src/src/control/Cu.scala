@@ -212,9 +212,7 @@ class Cu(
   val isExceptionReturn =
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
 
-  val cacopFlush = majorInstInfo.exeOp === ExeInst.Op.cacop &&
-    majorInstInfo.isValid &&
-    majorInstInfo.forbidParallelCommit
+  val cacopFlush = majorInstInfo.exeOp === ExeInst.Op.cacop && majorInstInfo.isValid
 
   val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 

@@ -185,7 +185,8 @@ class ExeForMemStage
   val isCacop   = WireDefault(selectedIn.exeOp === ExeInst.Op.cacop)
 
   when(isCacop) {
-    resultOutReg.bits.memRequest.addr := cacopAddr
+    resultOutReg.bits.memRequest.addr               := cacopAddr
+    resultOutReg.bits.instInfo.forbidParallelCommit := true.B
 
     switch(selectedIn.code(2, 0)) {
       is(0.U) {
@@ -195,11 +196,9 @@ class ExeForMemStage
       is(1.U) {
         resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.data
         resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
-        resultOutReg.bits.instInfo.forbidParallelCommit      := true.B
       }
       is(2.U) {
         resultOutReg.bits.cacheMaintenance.control.isL2Valid := true.B
-        resultOutReg.bits.instInfo.forbidParallelCommit      := true.B
       }
     }
 
