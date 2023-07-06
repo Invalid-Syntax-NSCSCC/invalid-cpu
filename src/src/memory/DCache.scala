@@ -333,7 +333,6 @@ class DCache(
       lastReg.dataLine       := selectedDataLine
       lastReg.writeData      := reqWriteData
       lastReg.writeMask      := reqWriteMask
-      lastReg.isWrite        := readWriteReqReg === ReadWriteSel.write
 
       // Step 2: Select data by data index from byte offset
       val selectedData = WireDefault(selectedDataLine(dataIndex))
