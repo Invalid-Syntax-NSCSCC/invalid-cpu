@@ -231,13 +231,13 @@ class Cu(
   io.idleFlush := RegNext(idleFlush)
 
   // Select new pc
-  val newPc = RegInit(PcSetNdPort.default)
-  io.newPc := newPc
+  val newPcReg = RegInit(PcSetNdPort.default)
+  io.newPc := newPcReg
 
-  newPc       := PcSetNdPort.default
-  newPc.en    := isChangeInstPath
-  newPc.isTlb := isTlbMaintenance
-  newPc.pcAddr := Mux(
+  newPcReg       := PcSetNdPort.default
+  newPcReg.en    := isChangeInstPath
+  newPcReg.isTlb := isTlbMaintenance
+  newPcReg.pcAddr := Mux(
     isException,
     Mux(
       majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
