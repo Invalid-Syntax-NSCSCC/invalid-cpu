@@ -64,6 +64,14 @@ class TaggedPreditor(
     val updateIndex      = Input(UInt(log2Ceil(phtDepth).W))
   })
 
+  def toPhtLine(line: UInt) = {
+    val bundle = Wire(new PhtEntey)
+    bundle.counter := line(PhtEntey.width - 1,PhtEntey.width-phtCtrWidth)
+    bundle.tag := line(PhtEntey.width-phtCtrWidth-1 ,phtUsefulWidth)
+    bundle.useful := line(phtUsefulWidth-1,0)
+
+    bundle
+  }
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Query logic
   ////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,36 +173,16 @@ class TaggedPreditor(
   pcHashCsrHash2.io.dataUpdate := io.isGlobalHistoryUpdate
   tagHashCsr2                  := pcHashCsrHash2.io.hash
 
-  // to do  connect bram
-  // connect table
-  // TODO connect bram with one read and one write port
-//  // Table
-//  // Port A as read port, Port B as write port
-  val phtTable = Module(
-    new Bram(
-      dataWidth     = PhtEntey.width,
-      dataDepthExp2 = phtAddrWidth
-    )
-  )
-  phtTable.io.ena   := true.B
-  phtTable.io.enb   := true.B
-  phtTable.io.wea   := false.B
-  phtTable.io.web   := io.updateValid
-  phtTable.io.dina  := 0.U(phtCtrWidth.W)
-  phtTable.io.addra := queryIndex.asUInt
-  phtQueryResult    := phtTable.io.douta.asTypeOf(new PhtEntey)
-  phtTable.io.dinb  := phtUpdateResult.asUInt
-  phtTable.io.addrb := phtUpdateIndex.asUInt
-  phtTable.io.doutb <> DontCare
 
   val phtRam = Module(
     new VSimpleDualBRam(
-      PhtEntey.width,
-      phtAddrWidth
+      phtDepth, //size
+      PhtEntey.width //dataWidth
+
     )
   )
   phtRam.io.readAddr  := queryIndex.asUInt
-  phtQueryResult      := phtRam.io.dataOut.asTypeOf(new PhtEntey)
+  phtQueryResult      := toPhtLine(phtRam.io.dataOut)
   phtRam.io.isWrite   := io.updateValid
   phtRam.io.dataIn    := phtUpdateResult.asUInt
   phtRam.io.writeAddr := phtUpdateIndex.asUInt

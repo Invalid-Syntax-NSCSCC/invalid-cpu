@@ -39,7 +39,7 @@ class Pc(
     pcReg := pcReg
   }.elsewhen(io.mainRedirectPc.valid) {
     // bpu reditect when it can predict
-    pcReg := io.mainRedirectPc.valid
+    pcReg := io.mainRedirectPc.bits
   }.otherwise {
     // sequential pc
     pcReg := pcReg + 4.U * pcFetchNum.asUInt

@@ -39,6 +39,17 @@ class FTB(
     val updateEntryPort = Input(new FtbEntryNdPort)
   })
 
+  def toEntryLine(line: UInt) = {
+    val bundle = Wire(new FtbEntryNdPort)
+    bundle.valid := line(FtbEntryNdPort.width - 1)
+    bundle.isCrossCacheline := line(FtbEntryNdPort.width - 2)
+    bundle.branchType := line(FtbEntryNdPort.width - 3, FtbEntryNdPort.width-2-Param.BPU.BranchType.width)
+    bundle.tag := line(FtbEntryNdPort.width-3-Param.BPU.BranchType.width,spec.Width.Mem._addr*2)
+    bundle.jumpTargetAddress := line(spec.Width.Mem._addr*2-1,spec.Width.Mem._addr)
+    bundle.fallThroughAddress := line(spec.Width.Mem._addr-1,0)
+    bundle
+  }
+
   // Signals definition
   val wayQueryEntry = Wire(Vec(nway ,new FtbEntryNdPort))
   val wayHits           = Wire(Vec(nway,Bool()))
@@ -92,14 +103,14 @@ class FTB(
   val phtRams = Seq.fill(nway)(
     Module(
       new VSimpleDualBRam(
-        FtbEntryNdPort.bitsLength,
-        nsetWidth
+           nset,
+        FtbEntryNdPort.width
       )
     )
   )
   phtRams.zipWithIndex.foreach {
     case (ram, index) =>
-      wayQueryEntry(index) := ram.io.dataOut.asTypeOf(new FtbEntryNdPort)
+      wayQueryEntry(index)      := toEntryLine(ram.io.dataOut)
       ram.io.readAddr          := queryIndex
       ram.io.isWrite           := updateWE(index)
       ram.io.dataIn            := updateEntryPort.asUInt

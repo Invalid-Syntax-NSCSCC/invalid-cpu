@@ -16,7 +16,7 @@ class FtbEntryNdPort extends Bundle {
 }
 
 object FtbEntryNdPort {
-  val bitsLength =
+  val width =
     1 + 1 + 2 + spec.Width.Mem._addr - 2 - log2Ceil(Param.BPU.FTB.nset) + 2 * spec.Width.Mem._addr
   def default = 0.U.asTypeOf(new FtbEntryNdPort)
 }
