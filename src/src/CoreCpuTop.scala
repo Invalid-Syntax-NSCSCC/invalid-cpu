@@ -158,6 +158,7 @@ class CoreCpuTop extends Module {
   tlb.io.csr.in.tlbloVec(1) := csr.io.csrValues.tlbelo1
   tlb.io.csr.in.estat       := csr.io.csrValues.estat
   tlb.io.maintenanceInfo    := addrTransStage.io.peer.get.tlbMaintenance
+  tlb.io.maintenanceTrigger := rob.io.tlbMaintenanceTrigger
 
   // Frontend
   //   inst fetch stage
@@ -236,9 +237,6 @@ class CoreCpuTop extends Module {
     p.csr.dmw(0) := csr.io.csrValues.dmw0
     p.csr.dmw(1) := csr.io.csrValues.dmw1
     p.csr.crmd   := csr.io.csrValues.crmd
-    if (isDiffTest) {
-      p.tlbDifftest.get := tlb.io.difftest.get
-    }
   }
 
   memReqStage.io.isFlush := cu.io.backendFlush
@@ -274,6 +272,9 @@ class CoreCpuTop extends Module {
   rob.io.isFlush      := cu.io.backendFlush
   rob.io.hasInterrupt := csr.io.hasInterrupt
   rob.io.commitStore  <> memReqStage.io.peer.get.commitStore
+  if (isDiffTest) {
+    rob.io.tlbDifftest.get := tlb.io.difftest.get
+  }
 
   // commit stage
   commitStage.io.ins.zip(rob.io.commits).foreach {
@@ -326,9 +327,15 @@ class CoreCpuTop extends Module {
   csr.io.csrMessage := cu.io.csrMessage
 
   // Debug ports
-  io.debug0_wb.pc       := commitStage.io.ins(0).bits.instInfo.pc
-  io.debug0_wb.inst     := commitStage.io.ins(0).bits.instInfo.inst
-  io.debug0_wb.rf.wen   := VecInit(Seq.fill(4)(commitStage.io.gprWritePorts(0).en && commitStage.io.ins(0).bits.instInfo.isValid && commitStage.io.ins(0).valid && commitStage.io.ins(0).ready && !cu.io.csrMessage.exceptionFlush)).asUInt
+  io.debug0_wb.pc   := commitStage.io.ins(0).bits.instInfo.pc
+  io.debug0_wb.inst := commitStage.io.ins(0).bits.instInfo.inst
+  io.debug0_wb.rf.wen := VecInit(
+    Seq.fill(4)(
+      commitStage.io.gprWritePorts(0).en && commitStage.io.ins(0).bits.instInfo.isValid && commitStage.io
+        .ins(0)
+        .valid && commitStage.io.ins(0).ready && !cu.io.csrMessage.exceptionFlush
+    )
+  ).asUInt
   io.debug0_wb.rf.wnum  := commitStage.io.gprWritePorts(0).addr
   io.debug0_wb.rf.wdata := commitStage.io.gprWritePorts(0).data
 

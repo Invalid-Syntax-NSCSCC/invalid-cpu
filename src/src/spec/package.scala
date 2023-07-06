@@ -94,7 +94,7 @@ package object spec {
     object Tlb {
       object Ps {
         val _4Kb = 12.U(Width.Tlb.ps)
-        val _4Mb = 22.U(Width.Tlb.ps)
+        val _4Mb = 21.U(Width.Tlb.ps)
       }
     }
 
