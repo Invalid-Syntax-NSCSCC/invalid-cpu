@@ -196,7 +196,14 @@ class axi_3x1_crossbar
         "DATA_WIDTH" -> spec.Param.Width.Axi.data.get,
         "S_ID_WIDTH" -> 2,
         "M_ID_WIDTH" -> 4,
-        "M00_ADDR_WIDTH" -> 32
+        "M00_ADDR_WIDTH" -> 32,
+        "S00_THREADS" -> 1,
+        "S01_THREADS" -> 1,
+        "S02_THREADS" -> 1,
+        "M00_ISSUE" -> 1,
+        "S00_AR_REG_TYPE" -> 1,
+        "S01_AR_REG_TYPE" -> 1,
+        "S02_AR_REG_TYPE" -> 1
       )
     ) {
   val io = IO(new Bundle {

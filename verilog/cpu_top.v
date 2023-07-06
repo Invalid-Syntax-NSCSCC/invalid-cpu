@@ -1,5 +1,6 @@
 // `include "CoreCpuTop.v"
-parameter AXI_DATA_WIDTH = 32;
+`undef AXI_DATA_WIDTH
+`define AXI_DATA_WIDTH 32
 
 module core_top (
     input aclk,
@@ -21,7 +22,7 @@ module core_top (
     input                                 arready,
     // read back
     input        [                   3:0] rid,
-    input        [    AXI_DATA_WIDTH-1:0] rdata,
+    input        [   `AXI_DATA_WIDTH-1:0] rdata,
     input        [                   1:0] rresp,
     input                                 rlast,
     input                                 rvalid,
@@ -39,8 +40,8 @@ module core_top (
     input                                 awready,
     // write data
     output       [                   3:0] wid,
-    output       [    AXI_DATA_WIDTH-1:0] wdata,
-    output       [(AXI_DATA_WIDTH/8)-1:0] wstrb,
+    output       [   `AXI_DATA_WIDTH-1:0] wdata,
+    output       [(`AXI_DATA_WIDTH/8)-1:0] wstrb,
     output                                wlast,
     output                                wvalid,
     input                                 wready,

@@ -17,7 +17,7 @@ object Param {
   val instRegReadNum         = 2
   val fetchInstMaxNum        = 4 // 单次取指 must be 1,2,4,8... ( less than dataPerLine)
   val issueInstInfoMaxNum    = 2 // 发射数量
-  val commitNum              = 2 // 单次提交数量
+  val commitNum              = 1 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
   val reservationStationDeep = 8 // 保留站深度
   val dispatchOutQueueLength = 4
