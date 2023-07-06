@@ -67,7 +67,7 @@ class FTB(
 
   // Query logic
   queryIndex  := io.queryPc(nsetWidth + 1, 2)
-  queryTagReg := RegNext(io.queryPc(addr - 1, nsetWidth + 2))
+  queryTagReg := io.queryPc(addr - 1, nsetWidth + 2)
 
   wayHits.zip(wayQueryEntry).foreach {
     case (isHit, wayEntry) =>
