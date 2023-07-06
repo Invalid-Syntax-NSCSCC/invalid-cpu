@@ -212,18 +212,18 @@ class Cu(
   val isExceptionReturn =
     io.instInfoPorts.map { instInfo => instInfo.exeOp === ExeInst.Op.ertn && instInfo.isValid }.reduce(_ || _)
 
-  val cacopFlush = majorInstInfo.exeOp === ExeInst.Op.cacop &&
-    majorInstInfo.isValid &&
-    majorInstInfo.forbidParallelCommit
+  val cacopFlush = majorInstInfo.exeOp === ExeInst.Op.cacop && majorInstInfo.isValid
 
   val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 
   io.csrMessage.ertnFlush := isExceptionReturn // TODO: Make ERTN jump gracefully like branch instruction
-  io.frontendFlush :=
-    RegNext(
-      isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
-      false.B
-    )
+  val isChangeInstPath =
+    isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn
+
+  io.frontendFlush := RegNext(
+    isChangeInstPath,
+    false.B
+  )
   io.backendFlush := RegNext(
     isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
     false.B
@@ -231,14 +231,13 @@ class Cu(
   io.idleFlush := RegNext(idleFlush)
 
   // Select new pc
-  val newPc = RegInit(PcSetNdPort.default)
-  io.newPc := newPc
+  val newPcReg = RegInit(PcSetNdPort.default)
+  io.newPc := newPcReg
 
-  newPc := PcSetNdPort.default
-  newPc.en :=
-    isTlbMaintenance || io.csrFlushRequest || isException || io.branchExe.en || cacopFlush || idleFlush || isExceptionReturn
-  newPc.isTlb := isTlbMaintenance
-  newPc.pcAddr := Mux(
+  newPcReg       := PcSetNdPort.default
+  newPcReg.en    := isChangeInstPath
+  newPcReg.isTlb := isTlbMaintenance
+  newPcReg.pcAddr := Mux(
     isException,
     Mux(
       majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
