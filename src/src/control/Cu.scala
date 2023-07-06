@@ -217,11 +217,13 @@ class Cu(
   val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 
   io.csrMessage.ertnFlush := isExceptionReturn // TODO: Make ERTN jump gracefully like branch instruction
-  io.frontendFlush :=
-    RegNext(
-      isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
-      false.B
-    )
+  val isChangeInstPath =
+    isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn
+
+  io.frontendFlush := RegNext(
+    isChangeInstPath,
+    false.B
+  )
   io.backendFlush := RegNext(
     isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
     false.B
@@ -232,9 +234,8 @@ class Cu(
   val newPc = RegInit(PcSetNdPort.default)
   io.newPc := newPc
 
-  newPc := PcSetNdPort.default
-  newPc.en :=
-    isTlbMaintenance || io.csrFlushRequest || isException || io.branchExe.en || cacopFlush || idleFlush || isExceptionReturn
+  newPc       := PcSetNdPort.default
+  newPc.en    := isChangeInstPath
   newPc.isTlb := isTlbMaintenance
   newPc.pcAddr := Mux(
     isException,
