@@ -271,7 +271,7 @@ class Cu(
   io.ftqPort := ftqCommitInfo
 
   ftqCommitInfo.ftqId               := majorInstInfo.ftqInfo.ftqId
-  ftqCommitInfo.meta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch
+  ftqCommitInfo.meta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch && majorInstInfo.isValid
   ftqCommitInfo.meta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
   ftqCommitInfo.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
   ftqCommitInfo.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
