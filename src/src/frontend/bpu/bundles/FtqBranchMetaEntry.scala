@@ -8,8 +8,8 @@ class FtqBranchMetaEntry(
   addr: Int = wordLength)
     extends Bundle {
   val ftbDirty           = Bool()
-  val jumpTargetAddress  = UInt(addr.W)
-  val fallThroughAddress = UInt(addr.W)
+  val jumpTargetAddr  = UInt(addr.W)
+  val fallThroughAddr = UInt(addr.W)
 }
 
 object FtqBranchMetaEntry {

@@ -135,7 +135,7 @@ class BPU(
   // Pc output
   io.mainRedirectPc.valid            := mainRedirectValid
   io.bpuFtqPort.mainBpuRedirectValid := mainRedirectValid
-  io.mainRedirectPc.bits             := spec.Pc.init
+  io.mainRedirectPc.bits             := ftbEntry.jumpTargetAddress
   //  case branchType
   switch(ftbEntry.branchType) {
     is(Param.BPU.BranchType.cond) {
@@ -159,7 +159,7 @@ class BPU(
   // Update Logic
   ////////////////////////////////////////////////////////////////////
   val misPredict        = WireDefault(io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken)
-  val tageUpdateInfoReg = Wire(new TagePredictorUpdateInfoPort)
+  val tageUpdateInfo = Wire(new TagePredictorUpdateInfoPort)
   val ftbEntryUpdate    = Wire(new FtbEntryNdPort)
   val rasPush = WireDefault(
     io.bpuFtqPort.ftqTrainMeta.valid & (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.call)
@@ -178,11 +178,11 @@ class BPU(
   )
 
   // Direction preditor update policy
-  tageUpdateInfoReg.valid          := io.bpuFtqPort.ftqTrainMeta.valid
-  tageUpdateInfoReg.predictCorrect := io.bpuFtqPort.ftqTrainMeta.valid & ~misPredict
-  tageUpdateInfoReg.isConditional  := io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.cond
-  tageUpdateInfoReg.branchTaken    := io.bpuFtqPort.ftqTrainMeta.isTaken
-  tageUpdateInfoReg.bpuMeta        := io.bpuFtqPort.ftqTrainMeta.bpuMeta
+  tageUpdateInfo.valid          := io.bpuFtqPort.ftqTrainMeta.valid
+  tageUpdateInfo.predictCorrect := io.bpuFtqPort.ftqTrainMeta.valid & ~misPredict
+  tageUpdateInfo.isConditional  := io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.cond
+  tageUpdateInfo.branchTaken    := io.bpuFtqPort.ftqTrainMeta.isTaken
+  tageUpdateInfo.bpuMeta        := io.bpuFtqPort.ftqTrainMeta.bpuMeta
 
   ftbEntryUpdate.valid              := ~(io.bpuFtqPort.ftqTrainMeta.ftbDirty & io.bpuFtqPort.ftqTrainMeta.ftbHit)
   ftbEntryUpdate.tag                := io.bpuFtqPort.ftqTrainMeta.startPc(addr - 1, log2Ceil(ftbNset) + 2)
@@ -213,7 +213,7 @@ class BPU(
   predictTaken                          := tagePredictorModule.io.predictBranchTaken
   predictValid                          := tagePredictorModule.io.predictValid
   tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqTrainMeta.startPc
-  tagePredictorModule.io.updateInfoPort := tageUpdateInfoReg
+  tagePredictorModule.io.updateInfoPort := tageUpdateInfo
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 
   // connect return address stack module

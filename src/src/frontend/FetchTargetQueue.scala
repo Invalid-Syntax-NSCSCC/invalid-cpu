@@ -53,7 +53,7 @@ class FetchTargetQueue(
   bpuPtrPlus1 := bpuPtr + 1.U
 
   // Queue data structure
-  val ftqVec     = RegInit(VecInit(Seq.fill(queueSize)(FtqBlockBundle.default)))
+  val ftqVecReg     = RegInit(VecInit(Seq.fill(queueSize)(FtqBlockBundle.default)))
   val ftqNextVec = Wire(Vec(queueSize, new FtqBlockBundle))
   // FTQ meta
   val bpuMetaWriteValid = WireDefault(false.B)
@@ -77,7 +77,7 @@ class FetchTargetQueue(
   ifRedirectDelay      := (ifRedirect)
   mainBpuRedirectDelay := (io.bpuFtqPort.mainBpuRedirectValid)
 
-  ftqVec.zip(ftqNextVec).foreach {
+  ftqVecReg.zip(ftqNextVec).foreach {
     case (block, nextBlock) =>
       block := nextBlock
   }
@@ -120,7 +120,7 @@ class FetchTargetQueue(
 
   // next FTQ
   // Default no change
-  ftqNextVec := ftqVec
+  ftqNextVec := ftqVecReg
 
   // clear out if committed
   Seq.range(0, issueNum).foreach { idx =>
@@ -167,7 +167,7 @@ class FetchTargetQueue(
   // -> IFU
   // default value
   io.ftqIFPort.valid               := ifSendValid
-  io.ftqIFPort.bits.ftqBlockBundle := ftqVec(ifPtr)
+  io.ftqIFPort.bits.ftqBlockBundle := ftqVecReg(ifPtr)
   when(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) {
     // write though
     io.ftqIFPort.bits.ftqBlockBundle := ftqNextVec(ifPtr)
@@ -183,8 +183,8 @@ class FetchTargetQueue(
   debugLength := io.ftqIFPort.bits.ftqBlockBundle.length
 
   // -> Exe cuCommit query
-  io.exeFtqPort.queryPcBundle.pc := ftqVec(io.exeFtqPort.queryPcBundle.ftqId).startPc
-  io.cuQueryPcBundle.pc          := ftqVec(io.cuQueryPcBundle.ftqId).startPc
+  io.exeFtqPort.queryPcBundle.pc := ftqVecReg(io.exeFtqPort.queryPcBundle.ftqId).startPc
+  io.cuQueryPcBundle.pc          := ftqVecReg(io.cuQueryPcBundle.ftqId).startPc
 
   // -> BPU
   io.bpuFtqPort.ftqFull := queueFull
@@ -208,11 +208,11 @@ class FetchTargetQueue(
     io.bpuFtqPort.ftqTrainMeta.isTaken        := io.cuCommitFtqPort.meta.isTaken
     io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.cuCommitFtqPort.meta.predictedTaken
 
-    io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVec(commitFtqId).startPc
-    io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVec(commitFtqId).isCrossCacheline
+    io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVecReg(commitFtqId).startPc
+    io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVecReg(commitFtqId).isCrossCacheline
     io.bpuFtqPort.ftqTrainMeta.bpuMeta            := ftqBpuMetaRegs(commitFtqId).bpuMeta
-    io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddress
-    io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddress
+    io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
+    io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
   }
 
   // Bpu meta ram
@@ -250,10 +250,10 @@ class FetchTargetQueue(
     val ftqUpdateMetaId = WireDefault(io.exeFtqPort.commitBundle.ftqUpdateMetaId)
     ftqBranchMetaRegs(
       ftqUpdateMetaId
-    ).jumpTargetAddress := io.exeFtqPort.commitBundle.ftqMetaUpdateJumpTarget
+    ).jumpTargetAddr := io.exeFtqPort.commitBundle.ftqMetaUpdateJumpTarget
     ftqBranchMetaRegs(
       ftqUpdateMetaId
-    ).fallThroughAddress                        := io.exeFtqPort.commitBundle.ftqMetaUpdateFallThrough
+    ).fallThroughAddr                        := io.exeFtqPort.commitBundle.ftqMetaUpdateFallThrough
     ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.commitBundle.ftqMetaUpdateFtbDirty
   }
 

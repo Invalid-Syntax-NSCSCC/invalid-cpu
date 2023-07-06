@@ -28,27 +28,27 @@ class FTB(
     // Query
     val queryPc        = Input(UInt(addr.W))
     val queryEntryPort = Output(new FtbEntryNdPort)
-    val hitIndex       = Output(UInt(nway.W))
+    val hitIndex       = Output(UInt(nwayWidth.W))
     val hit            = Output(Bool())
 
     // Update signals
     val updatePc        = Input(UInt(addr.W))
-    val updateWayIndex  = Input(UInt(nway.W))
+    val updateWayIndex  = Input(UInt(nwayWidth.W))
     val updateValid     = Input(Bool())
     val updateDirty     = Input(Bool())
     val updateEntryPort = Input(new FtbEntryNdPort)
   })
 
   // Signals definition
-  val wayQueryEntryRegs = Wire(Vec(nway, new FtbEntryNdPort))
-  val wayHits           = WireDefault(VecInit(Seq.fill(nway)(false.B)))
-  val wayHitIndex       = WireDefault(0.U(nwayWidth.W))
+  val wayQueryEntry = Wire(Vec(nway ,new FtbEntryNdPort))
+  val wayHits           = Wire(Vec(nway,Bool()))
+  val wayHitIndex       = Wire(UInt(nwayWidth.W))
   // Query
   val queryIndex  = WireDefault(0.U(nsetWidth.W))
   val queryTagReg = RegInit(0.U((addr - nsetWidth - 2).W))
   // Update
   val updateIndex     = WireDefault(0.U(nsetWidth.W))
-  val updateEntryPort = Reg(new FtbEntryNdPort)
+  val updateEntryPort = WireDefault( FtbEntryNdPort.default)
   val updateWE        = WireDefault(VecInit(Seq.fill(nway)(false.B)))
   // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
   // which is use to generate random number
@@ -56,15 +56,15 @@ class FTB(
 
   // Query logic
   queryIndex  := io.queryPc(nsetWidth + 1, 2)
-  queryTagReg := RegNext(io.queryPc(addr - 1, nwayWidth + 2))
+  queryTagReg := RegNext(io.queryPc(addr - 1, nsetWidth + 2))
 
-  wayHits.zip(wayQueryEntryRegs).foreach {
+  wayHits.zip(wayQueryEntry).foreach {
     case (isHit, wayEntry) =>
       isHit := wayEntry.valid && wayEntry.tag === queryTagReg
   }
 
   // Query output
-  io.queryEntryPort := wayQueryEntryRegs(wayHitIndex)
+  io.queryEntryPort := wayQueryEntry(wayHitIndex)
   io.hit            := wayHits.asUInt.orR
   io.hitIndex       := wayHitIndex
 
@@ -99,7 +99,7 @@ class FTB(
   )
   phtRams.zipWithIndex.foreach {
     case (ram, index) =>
-      wayQueryEntryRegs(index) := ram.io.dataOut.asTypeOf(new FtbEntryNdPort)
+      wayQueryEntry(index) := ram.io.dataOut.asTypeOf(new FtbEntryNdPort)
       ram.io.readAddr          := queryIndex
       ram.io.isWrite           := updateWE(index)
       ram.io.dataIn            := updateEntryPort.asUInt
