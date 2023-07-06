@@ -185,7 +185,7 @@ class Decoder_2RI12 extends Decoder {
       io.out.info.isHasImm        := true.B
       io.out.info.imm             := immSext.asUInt
       io.out.info.code            := rd
-      io.out.info.isPrivilege     := true.B
+      io.out.info.isPrivilege     := rd(4, 1) =/= "b0100".U // (rd =/= 8.U) && (rd =/= 9.U)
     }
     is(Inst.preld) {
       selectIssueEn(DispatchType.loadStore)
