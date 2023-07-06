@@ -87,7 +87,7 @@ class Tlb extends Module {
     compare.pageSize === Value.Tlb.Ps._4Kb,
     compare.virtPageNum(Width.Tlb._vppn - 1, 0) ===
       vaddr(virtAddrLen - 1, Value.Tlb.Ps._4Kb.litValue + 1),
-    compare.virtPageNum(Width.Tlb._vppn - 10 - 1, 0) ===
+    compare.virtPageNum(Width.Tlb._vppn - 1, 9) ===
       vaddr(virtAddrLen - 1, Value.Tlb.Ps._4Mb.litValue + 1)
   )
 
@@ -97,12 +97,11 @@ class Tlb extends Module {
       val isFoundVec = VecInit(Seq.fill(Param.Count.Tlb.num)(false.B))
       tlbEntryVec.zip(isFoundVec).foreach {
         case (entry, isFound) =>
-          val is4KbPageSize = entry.compare.pageSize === Value.Tlb.Ps._4Kb
           isFound := entry.compare.isExisted && (
             entry.compare.isGlobal || (entry.compare.asId === io.csr.in.asId.asid)
           ) && Mux(
             io.maintenanceTrigger && savedMaintenance.isSearch,
-            entry.compare.virtPageNum === io.csr.in.tlbehi.vppn,
+            isVirtPageNumMatched(entry.compare, Cat(io.csr.in.tlbehi.vppn, 0.U((Width.Mem._addr - Width.Tlb._vppn).W))),
             isVirtPageNumMatched(entry.compare, transPort.virtAddr)
           )
       }
