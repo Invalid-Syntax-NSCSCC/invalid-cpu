@@ -233,7 +233,8 @@ class DCache(
     val isWrite        = Bool()
     val writeDataLine  = Vec(Param.Count.DCache.dataPerLine, UInt(Width.Mem.data))
   }))
-  lastReg := lastReg // Fallback: Keep data
+  lastReg         := lastReg // Fallback: Keep data
+  lastReg.isWrite := false.B
   val last = new Bundle {
     val selectedStatusTag = WireDefault(lastReg.statusTagLines(lastReg.setIndex))
     val wbMemAddr = WireDefault(
@@ -355,6 +356,7 @@ class DCache(
             is(ReadWriteSel.write) {
               // Step 2: Write to cache (now hit)
 
+              lastReg.isWrite := true.B
               val writeStatusTag = WireDefault(selectedStatusTagLine)
 
               // Substitute write data in data line, with mask
