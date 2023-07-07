@@ -134,8 +134,8 @@ class AddrTransStage
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      peer.tlbTrans.isValid        := selectedIn.memRequest.isValid || isCacheMaintenance
-      translatedAddr               := peer.tlbTrans.physAddr
+      peer.tlbTrans.isValid := selectedIn.memRequest.isValid || selectedIn.cacheMaintenance.control.isCoherentByHit
+      translatedAddr        := peer.tlbTrans.physAddr
       out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
       handleException()
