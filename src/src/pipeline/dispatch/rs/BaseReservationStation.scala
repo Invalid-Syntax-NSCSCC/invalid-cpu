@@ -21,15 +21,4 @@ class BaseReservationStation(
     val dequeuePorts = Vec(deqMaxNum, Decoupled(new ReservationStationBundle))
     val writebacks   = Input(Vec(Param.pipelineNum, new InstWbNdPort))
   })
-
-//   val queue = Module(
-//     new DistributedQueuePlus(
-//       enqMaxNum,
-//       deqMaxNum,
-//       channelNum,
-//       channelLength,
-//       elemNdFactory,
-//       blankElem
-//     )
-//   )
 }

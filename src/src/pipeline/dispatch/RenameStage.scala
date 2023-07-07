@@ -44,11 +44,6 @@ class RenamePeerPort(
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
 
-  // `IssueStage` <-> `Scoreboard(csr)`
-  // val csrOccupyPort = Output(new ScoreboardChangeNdPort)
-  // val csrcore       = Input(ScoreboardState())
-  // val csrReadPort = Flipped(new CsrReadPort)
-
   // `Cu` -> `IssueStage`
   val branchFlush = Input(Bool())
 
@@ -59,13 +54,6 @@ class RenameStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
   reservationLength: Int = Param.reservationStationDeep)
-//   extends Module {
-// val io = IO(new Bundle {
-//   val ins     = Vec(issueNum, Flipped(Decoupled(new FetchInstDecodeNdPort)))
-//   val outs    = Vec(issueNum, Decoupled(new ExeNdPort))
-//   val peer    = new IssueStagePeerPort
-//   val isFlush = Input(Bool())
-// })
     extends SimpleMultiBaseStage(
       new FetchInstDecodeNdPort,
       new DispatchNdPort,
@@ -89,33 +77,19 @@ class RenameStage(
   }
 
   val reservationStation: BaseReservationStation = Module(
-    new InOrderReservationStation(reservationLength, issueNum, issueNum, 4, 4)
-    // new MultiQueue(
-    //   reservationLength,
-    //   issueNum,
-    //   issueNum,
-    //   new ReservationStationBundle,
-    //   ReservationStationBundle.default,
-    //   writeFirst = false
-    // )
+    new InOrderReservationStation(
+      reservationLength,
+      issueNum,
+      issueNum,
+      Param.Width.Rob._channelNum,
+      Param.Width.Rob._channelLength
+    )
   )
   reservationStation.io.writebacks.zip(io.peer.get.writebacks).foreach {
     case (dst, src) =>
       dst <> src
   }
   reservationStation.io.isFlush := io.isFlush
-  // // fall back
-  // reservationStation.io.enqueuePorts.foreach { port =>
-  //   port.valid := true.B
-  //   port.bits  := DontCare
-  // }
-  // reservationStation.io.dequeuePorts.foreach(_.ready := false.B)
-  // reservationStation.io.setPorts.zip(reservationStation.io.elems).foreach {
-  //   case (dst, src) =>
-  //     dst.valid := false.B
-  //     dst.bits  := src
-  // }
-  // reservationStation.io.isFlush := io.isFlush
 
   // stop fetch when branch
   val fetchEnableFlag = RegInit(true.B)
@@ -163,24 +137,7 @@ class RenameStage(
       case (in, result, rs) =>
         rs.bits.regReadPort.preExeInstInfo := in.decode.info
         rs.bits.regReadPort.instInfo       := in.instInfo
-
-        rs.bits.robResult := result
-        // peer.writebacks.foreach { wb =>
-        //   in.decode.info.gprReadPorts
-        //     .lazyZip(result.readResults)
-        //     .lazyZip(rs.bits.robResult.readResults)
-        //     .foreach {
-        //       case (readPort, robReadResult, dst) =>
-        //         when(
-        //           wb.en && readPort.en &&
-        //             robReadResult.sel === RobDistributeSel.robId &&
-        //             wb.robId === robReadResult.result
-        //         ) {
-        //           dst.sel    := RobDistributeSel.realData
-        //           dst.result := wb.data
-        //         }
-        //     }
-        // }
+        rs.bits.robResult                  := result
 
         // imm
         when(in.decode.info.isHasImm) {
@@ -195,10 +152,6 @@ class RenameStage(
   reservationStation.io.dequeuePorts.lazyZip(resultOuts).zipWithIndex.foreach {
     case ((rs, out), idx) =>
       val deqEn = out.ready && rs.valid && deqEns.take(idx).foldLeft(true.B)(_ && _)
-      // &&
-      // rs.bits.robResult.readResults.forall(
-      //   _.sel === RobDistributeSel.realData
-      // )
       deqEns(idx) := deqEn
       out.valid   := deqEn
       rs.ready    := deqEn

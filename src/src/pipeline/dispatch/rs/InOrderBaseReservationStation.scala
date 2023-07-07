@@ -8,7 +8,6 @@ import pipeline.common.DistributedQueuePlus
 import os.read
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
-import com.sourcegraph.semanticdb_javac.Semanticdb.Tree.SealedValueCase
 
 class InOrderReservationStation(
   queueLength:   Int,
