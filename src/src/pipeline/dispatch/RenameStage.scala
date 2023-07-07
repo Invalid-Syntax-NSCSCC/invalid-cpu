@@ -13,6 +13,8 @@ import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
 import spec._
 import control.enums.ExceptionPos
 import pipeline.common.SimpleMultiBaseStage
+import pipeline.dispatch.rs.InOrderReservationStation
+import pipeline.dispatch.rs.BaseReservationStation
 
 // class IssueReqPeerPort(
 //   issueNum:    Int = Param.issueInstInfoMaxNum,
@@ -42,11 +44,6 @@ class RenamePeerPort(
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
 
-  // `IssueStage` <-> `Scoreboard(csr)`
-  // val csrOccupyPort = Output(new ScoreboardChangeNdPort)
-  // val csrcore       = Input(ScoreboardState())
-  // val csrReadPort = Flipped(new CsrReadPort)
-
   // `Cu` -> `IssueStage`
   val branchFlush = Input(Bool())
 
@@ -57,13 +54,6 @@ class RenameStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
   reservationLength: Int = Param.reservationStationDeep)
-//   extends Module {
-// val io = IO(new Bundle {
-//   val ins     = Vec(issueNum, Flipped(Decoupled(new FetchInstDecodeNdPort)))
-//   val outs    = Vec(issueNum, Decoupled(new ExeNdPort))
-//   val peer    = new IssueStagePeerPort
-//   val isFlush = Input(Bool())
-// })
     extends SimpleMultiBaseStage(
       new FetchInstDecodeNdPort,
       new DispatchNdPort,
@@ -86,26 +76,18 @@ class RenameStage(
     req.writeRequest.addr := DontCare
   }
 
-  val reservationStation = Module(
-    new MultiQueue(
+  val reservationStation: BaseReservationStation = Module(
+    new InOrderReservationStation(
       reservationLength,
       issueNum,
       issueNum,
-      new ReservationStationBundle,
-      ReservationStationBundle.default,
-      writeFirst = false
+      Param.Width.Rob._channelNum,
+      Param.Width.Rob._channelLength
     )
   )
-  // fall back
-  reservationStation.io.enqueuePorts.foreach { port =>
-    port.valid := true.B
-    port.bits  := DontCare
-  }
-  reservationStation.io.dequeuePorts.foreach(_.ready := false.B)
-  reservationStation.io.setPorts.zip(reservationStation.io.elems).foreach {
+  reservationStation.io.writebacks.zip(io.peer.get.writebacks).foreach {
     case (dst, src) =>
-      dst.valid := false.B
-      dst.bits  := src
+      dst <> src
   }
   reservationStation.io.isFlush := io.isFlush
 
@@ -155,24 +137,7 @@ class RenameStage(
       case (in, result, rs) =>
         rs.bits.regReadPort.preExeInstInfo := in.decode.info
         rs.bits.regReadPort.instInfo       := in.instInfo
-
-        rs.bits.robResult := result
-        peer.writebacks.foreach { wb =>
-          in.decode.info.gprReadPorts
-            .lazyZip(result.readResults)
-            .lazyZip(rs.bits.robResult.readResults)
-            .foreach {
-              case (readPort, robReadResult, dst) =>
-                when(
-                  wb.en && readPort.en &&
-                    robReadResult.sel === RobDistributeSel.robId &&
-                    wb.robId === robReadResult.result
-                ) {
-                  dst.sel    := RobDistributeSel.realData
-                  dst.result := wb.data
-                }
-            }
-        }
+        rs.bits.robResult                  := result
 
         // imm
         when(in.decode.info.isHasImm) {
@@ -181,35 +146,12 @@ class RenameStage(
         }
     }
 
-  // commit fill reservation station
-  reservationStation.io.elems
-    .lazyZip(reservationStation.io.elemValids)
-    .lazyZip(reservationStation.io.setPorts)
-    .foreach {
-      case (elem, elemValid, set) =>
-        when(elemValid) {
-          io.peer.get.writebacks.foreach { wb =>
-            elem.robResult.readResults.zip(set.bits.robResult.readResults).foreach {
-              case (readResult, setReadResult) =>
-                when(readResult.sel === RobDistributeSel.robId && wb.en && readResult.result === wb.robId) {
-                  set.valid            := true.B
-                  setReadResult.sel    := RobDistributeSel.realData
-                  setReadResult.result := wb.data
-                }
-            }
-          }
-        }
-    }
-
   val deqEns = Wire(Vec(issueNum, Bool()))
 
   // out
   reservationStation.io.dequeuePorts.lazyZip(resultOuts).zipWithIndex.foreach {
     case ((rs, out), idx) =>
-      val deqEn = out.ready && rs.valid &&
-        rs.bits.robResult.readResults.forall(
-          _.sel === RobDistributeSel.realData
-        ) && deqEns.take(idx).foldLeft(true.B)(_ && _)
+      val deqEn = out.ready && rs.valid && deqEns.take(idx).foldLeft(true.B)(_ && _)
       deqEns(idx) := deqEn
       out.valid   := deqEn
       rs.ready    := deqEn
