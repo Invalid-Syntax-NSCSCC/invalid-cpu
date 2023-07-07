@@ -99,11 +99,11 @@ class FetchTargetQueue(
   }
 
   // bpu ptr
-  when(io.bpuFtqPort.ftqP0.isValid) {
-    bpuPtr := bpuPtr + 1.U
-  }.elsewhen((io.bpuFtqPort.mainBpuRedirectValid)) {
+  when((io.bpuFtqPort.mainBpuRedirectValid)) {
     // p1 redirect,maintain bpuPtr
     bpuPtr := bpuPtr
+  }.elsewhen(io.bpuFtqPort.ftqP0.isValid) {
+    bpuPtr := bpuPtr + 1.U
   }
 
   // if IF predecoder found a redirect

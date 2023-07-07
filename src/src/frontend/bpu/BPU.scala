@@ -113,12 +113,13 @@ class BPU(
     io.bpuFtqPort.ftqP1.isValid          := true.B
     io.bpuFtqPort.ftqP1.isCrossCacheline := ftbEntry.isCrossCacheline
     io.bpuFtqPort.ftqP1.startPc          := p1Pc
+    //when a fetch block has branch inst,cut fetch num
     io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddress(Param.Width.ICache._fetchOffset, 2) -
       p1Pc(Param.Width.ICache._fetchOffset, 2)) // Use 1 + log(fetchNum) bits minus to ensure no overflow
     io.bpuFtqPort.ftqP1.predictValid := true.B
     //  switch ftbEntry.BranchType
     io.bpuFtqPort.ftqP1.predictTaken := true.B // (Param.BPU.BranchType.call, Param.BPU.BranchType.ret, Param.BPU.BranchType.cond)
-    when(ftbEntry.branchType === Param.BPU.BranchType.uncond) {
+    when(ftbEntry.branchType === Param.BPU.BranchType.cond) {
       io.bpuFtqPort.ftqP1.predictTaken := predictTaken
     }
   }.otherwise {
