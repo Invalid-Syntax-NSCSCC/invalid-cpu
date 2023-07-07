@@ -223,7 +223,7 @@ class RenameStage(
       // jumbBranch / memLoadStort / csr
       out.bits.exePort.jumpBranchAddr := rs.bits.regReadPort.preExeInstInfo.jumpBranchAddr
 
-      // TODO: Read Csr Data in issue
+      // Read Csr Data in dispatch
       out.bits.csrReadEn := rs.bits.regReadPort.preExeInstInfo.csrReadEn
 
       out.bits.exePort.instInfo       := rs.bits.regReadPort.instInfo
@@ -232,7 +232,7 @@ class RenameStage(
       when(
         peer.plv =/= 0.U &&
           rs.bits.regReadPort.preExeInstInfo.isPrivilege &&
-          rs.bits.regReadPort.instInfo.exceptionPos =/= ExceptionPos.none
+          rs.bits.regReadPort.instInfo.exceptionPos === ExceptionPos.none
       ) {
         out.bits.exePort.instInfo.exceptionPos    := ExceptionPos.backend
         out.bits.exePort.instInfo.exceptionRecord := Csr.ExceptionIndex.ipe
