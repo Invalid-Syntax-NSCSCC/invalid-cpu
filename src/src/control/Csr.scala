@@ -45,7 +45,16 @@ class Csr(
   // val csr = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
   val csr = RegInit(
     VecInit(
-      Seq("h8".U(wordLength.W)) ++ Seq.fill(Count.csrReg - 1)(zeroWord)
+      // Seq("h8".U(wordLength.W)) ++ Seq.fill(Count.csrReg - 1)(zeroWord)
+      Seq.range(0, Count.csrReg).map { idx =>
+        if (idx == 0) { // crmd
+          "h8".U(wordLength.W)
+        } else if (idx == 12) { // asid
+          "hA0000".U(wordLength.W)
+        } else {
+          zeroWord
+        }
+      }
     )
   )
 
@@ -440,8 +449,4 @@ class Csr(
       io.csrValues.asid := tlbMaintenanceWrite.asId.bits
     }
   }
-
-  // Read only constants
-  asid.in.asidbits           := "h_A".U
-  io.csrValues.asid.asidbits := "h_A".U
 }
