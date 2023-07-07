@@ -8,6 +8,7 @@ import pipeline.common.DistributedQueuePlus
 import os.read
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
+import com.sourcegraph.semanticdb_javac.Semanticdb.Tree.SealedValueCase
 
 class InOrderReservationStation(
   queueLength:   Int,
@@ -67,9 +68,10 @@ class InOrderReservationStation(
   }
 
   queue.io.isFlush := io.isFlush
-  queue.io.setPorts.foreach { set =>
-    set.valid := false.B
-    set.bits  := DontCare
+  queue.io.setPorts.zip(queue.io.elems).foreach {
+    case (set, elem) =>
+      set.valid := false.B
+      set.bits  := elem
   }
 
   // commit fill reservation station
