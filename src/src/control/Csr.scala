@@ -50,7 +50,6 @@ class Csr(
   )
 
   // CRMD 当前模式信息
-
   val crmd = viewUInt(csr(spec.Csr.Index.crmd), new CrmdBundle)
 
   // PRMD 例外前模式信息
@@ -437,8 +436,12 @@ class Csr(
       io.csrValues.tlbelo1 := tlbMaintenanceWrite.tlbeloVec(1).bits
     }
     when(tlbMaintenanceWrite.asId.valid) {
-      asid.in           := tlbMaintenanceWrite.asId.bits
+      asid.in.asid      := tlbMaintenanceWrite.asId.bits.asid
       io.csrValues.asid := tlbMaintenanceWrite.asId.bits
     }
   }
+
+  // Read only constants
+  asid.in.asidbits           := "h_A".U
+  io.csrValues.asid.asidbits := "h_A".U
 }
