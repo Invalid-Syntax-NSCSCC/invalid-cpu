@@ -15,6 +15,7 @@ import control.enums.ExceptionPos
 import pipeline.common.SimpleMultiBaseStage
 import pipeline.dispatch.rs.InOrderReservationStation
 import pipeline.dispatch.rs.BaseReservationStation
+import pipeline.dispatch.rs.OutOfOrderReservationStation
 
 // class IssueReqPeerPort(
 //   issueNum:    Int = Param.issueInstInfoMaxNum,
@@ -77,13 +78,23 @@ class RenameStage(
   }
 
   val reservationStation: BaseReservationStation = Module(
-    new InOrderReservationStation(
-      reservationLength,
-      issueNum,
-      issueNum,
-      Param.Width.Rob._channelNum,
-      Param.Width.Rob._channelLength
-    )
+    if (Param.isOutOfOrderIssue) {
+      new InOrderReservationStation(
+        reservationLength,
+        issueNum,
+        issueNum,
+        Param.Width.Rob._channelNum,
+        Param.Width.Rob._channelLength
+      )
+    } else {
+      new OutOfOrderReservationStation(
+        reservationLength,
+        issueNum,
+        issueNum,
+        Param.Width.Rob._channelNum,
+        Param.Width.Rob._channelLength
+      )
+    }
   )
   reservationStation.io.writebacks.zip(io.peer.get.writebacks).foreach {
     case (dst, src) =>

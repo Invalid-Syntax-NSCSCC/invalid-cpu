@@ -8,7 +8,7 @@ import pipeline.common.DistributedQueuePlus
 import os.read
 import pipeline.dispatch.bundles.ReservationStationBundle
 
-class BaseReservationStation(
+abstract class BaseReservationStation(
   queueLength:   Int,
   enqMaxNum:     Int,
   deqMaxNum:     Int,
