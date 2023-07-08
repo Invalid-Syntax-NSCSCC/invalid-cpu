@@ -128,7 +128,7 @@ class OutOfOrderReservationStation(
     )
   }
 
-  val selectIndices = Wire(Vec(deqMaxNum, Valid(UInt(log2Ceil(deqMaxNum).W))))
+  val selectIndices = Wire(Vec(deqMaxNum, Valid(UInt(log2Ceil(channelNum).W))))
   selectIndices.foreach { selectIndex =>
     selectIndex.valid := false.B
     selectIndex.bits  := DontCare
