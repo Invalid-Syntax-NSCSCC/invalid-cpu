@@ -201,9 +201,9 @@ class axi_3x1_crossbar
         "S01_THREADS" -> 1,
         "S02_THREADS" -> 1,
         "M00_ISSUE" -> 1,
-        "S00_AR_REG_TYPE" -> 1,
-        "S01_AR_REG_TYPE" -> 1,
-        "S02_AR_REG_TYPE" -> 1
+        "S00_AR_REG_TYPE" -> 0,
+        "S01_AR_REG_TYPE" -> 0,
+        "S02_AR_REG_TYPE" -> 0
       )
     ) {
   val io = IO(new Bundle {
