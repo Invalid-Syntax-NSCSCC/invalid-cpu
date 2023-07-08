@@ -54,7 +54,7 @@ class RenamePeerPort(
 class RenameStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
-  reservationLength: Int = Param.reservationStationDeep)
+  reservationLength: Int = Param.Width.ReservationStation._length)
     extends SimpleMultiBaseStage(
       new FetchInstDecodeNdPort,
       new DispatchNdPort,
@@ -83,16 +83,16 @@ class RenameStage(
         reservationLength,
         issueNum,
         issueNum,
-        Param.Width.Rob._channelNum,
-        Param.Width.Rob._channelLength
+        Param.Width.ReservationStation._channelNum,
+        Param.Width.ReservationStation._channelLength
       )
     } else {
       new InOrderReservationStation(
         reservationLength,
         issueNum,
         issueNum,
-        Param.Width.Rob._channelNum,
-        Param.Width.Rob._channelLength
+        Param.Width.ReservationStation._channelNum,
+        Param.Width.ReservationStation._channelLength
       )
     }
   )
