@@ -9,6 +9,7 @@ import pipeline.common.BaseStage
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort, StoreInfoBundle}
 import control.enums.ExceptionPos
 import pipeline.memory.enums.CacheMaintenanceTargetType
+import pipeline.common.LookupQueue
 import spec._
 
 class MemReqNdPort extends Bundle {
@@ -76,14 +77,23 @@ class MemReqStage
   peer.iCacheMaintenance.client.addr    := selectedIn.translatedMemReq.addr
 
   // Store queue
-  val storeIn = Wire(Decoupled(new StoreInfoBundle))
-  val storeOut = Queue(
-    storeIn,
-    entries = Param.Count.Mem.storeQueueLen,
-    pipe    = false,
-    flow    = false,
-    flush   = Some(io.isFlush)
+  val storeQueue = Module(
+    new LookupQueue(
+      new StoreInfoBundle,
+      entries         = Param.Count.Mem.storeQueueLen,
+      lookupInFactory = UInt(Width.Mem.addr),
+      lookupFn        = (in: UInt, entry: StoreInfoBundle) => in(5, 2) === entry.addr(5, 2),
+      pipe            = false,
+      flow            = false,
+      hasFlush        = true
+    )
   )
+  storeQueue.io.lookup.in := selectedIn.translatedMemReq.addr
+  storeQueue.io.queue.flush.foreach(_ := io.isFlush)
+  val storeIn = Wire(Decoupled(new StoreInfoBundle))
+  storeQueue.io.queue.enq <> storeIn
+  val storeOut = Wire(Flipped(Decoupled(new StoreInfoBundle)))
+  storeOut              <> storeQueue.io.queue.deq
   storeIn.valid         := false.B
   storeIn.bits.addr     := selectedIn.translatedMemReq.addr
   storeIn.bits.data     := selectedIn.translatedMemReq.write.data
@@ -96,7 +106,7 @@ class MemReqStage
     switch(selectedIn.translatedMemReq.rw) {
       is(ReadWriteSel.read) {
         // Whether last memory request is submitted and no stores in queue and not committing store
-        when(io.out.ready && !storeOut.valid) {
+        when(io.out.ready && !storeQueue.io.lookup.out) {
           when(isTrueCached) {
             peer.dCacheReq.client.isValid := true.B
             isComputed                    := peer.dCacheReq.isReady
