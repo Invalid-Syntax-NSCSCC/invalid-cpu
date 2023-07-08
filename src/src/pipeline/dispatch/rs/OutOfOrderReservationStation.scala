@@ -69,12 +69,15 @@ class OutOfOrderReservationStation(
   enq_ptr.io.inc := io.enqueuePorts.zipWithIndex.map {
     case (enqPort, idx) =>
       // connect
-      enqPort <> storeIns(enq_ptr.io.incResults(idx))
-      // return
-      enqPort.valid && storeIns(enq_ptr.io.incResults(idx)).ready
-  }.map(_.asUInt).reduce(_ +& _)
+      // forbid when front not ready
+      val enable = enq_ptr.io.incResults.take(idx).map(storeIns(_).ready).foldLeft(true.B)(_ && _)
+      enqPort.ready                              := enable && storeIns(enq_ptr.io.incResults(idx)).ready
+      storeIns(enq_ptr.io.incResults(idx)).valid := enable && enqPort.valid
+      storeIns(enq_ptr.io.incResults(idx)).bits  := enqPort.bits
 
-  // TODO: deq port
+      // return
+      enqPort.valid && storeIns(enq_ptr.io.incResults(idx)).ready && enable
+  }.map(_.asUInt).reduce(_ +& _)
 
   // enable to out
   val deqValids = storeOuts.map { port =>
