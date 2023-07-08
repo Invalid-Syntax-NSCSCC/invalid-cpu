@@ -79,7 +79,7 @@ class RenameStage(
 
   val reservationStation: BaseReservationStation = Module(
     if (Param.isOutOfOrderIssue) {
-      new InOrderReservationStation(
+      new OutOfOrderReservationStation(
         reservationLength,
         issueNum,
         issueNum,
@@ -87,7 +87,7 @@ class RenameStage(
         Param.Width.Rob._channelLength
       )
     } else {
-      new OutOfOrderReservationStation(
+      new InOrderReservationStation(
         reservationLength,
         issueNum,
         issueNum,
