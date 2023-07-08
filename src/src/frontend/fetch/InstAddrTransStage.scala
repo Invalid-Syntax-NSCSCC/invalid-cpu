@@ -21,6 +21,7 @@ import scala.collection.immutable
 class InstAddrTransPeerPort extends Bundle {
   val csr      = Input(new FetchCsrNdPort)
   val tlbTrans = Flipped(new TlbTransPort)
+  val ftqRedirect = Input(Bool())
 }
 object InstAddTransPeerPort {
   def default = 0.U.asTypeOf(new InstAddrTransPeerPort)
@@ -134,8 +135,15 @@ class InstAddrTransStage
     resultOutReg.valid := true.B
   }
 
+  //Handle redirect
+  when(peer.ftqRedirect){
+    // quit result but stage still ready
+    hasSentException := false.B
+    resultOutReg.valid:= false.B
+  }
   // Handle flush
-  when(io.isFlush) {
+  when(io.isFlush ) {
     hasSentException := false.B
   }
+
 }

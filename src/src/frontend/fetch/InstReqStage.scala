@@ -43,7 +43,7 @@ class InstReqStage
   peer.memReq.client := selectedIn.translatedMemReq
 
   when(selectedIn.translatedMemReq.isValid && (!excpValid)) {
-    when(io.out.ready && !peer.ftqRedirect) {
+    when(io.out.ready) {
       // Whether memory request is submitted
       isComputed := peer.memReq.isReady
 

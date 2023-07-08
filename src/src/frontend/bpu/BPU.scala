@@ -107,7 +107,7 @@ class BPU(
   mainRedirectValid := ftbHit && !flushDelay && !ftqFullDelay
   val p1Pc = RegNext(io.pc, 0.U(addr.W))
 
-  // p1 FTQ output
+  // p1git  FTQ output
   when(mainRedirectValid) {
     // Main BPU generate a redirect in P1
     io.bpuFtqPort.ftqP1.isValid          := true.B

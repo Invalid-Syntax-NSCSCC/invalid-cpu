@@ -48,6 +48,7 @@ class FetchTargetQueue(
 
   val bpuPtr      = RegInit(0.U(ptrWidth.W))
   val ifPtr       = RegInit(0.U(ptrWidth.W))
+  val lastIfPtr = RegNext(ifPtr,0.U(ptrWidth.W))
   val commPtr     = RegInit(0.U(ptrWidth.W))
   val bpuPtrPlus1 = WireDefault(0.U(ptrWidth.W))
   bpuPtrPlus1 := bpuPtr + 1.U
@@ -68,7 +69,8 @@ class FetchTargetQueue(
   // IF sent rreq
   ifSendValid              := io.ftqIFPort.bits.ftqBlockBundle.isValid & io.ftqIFPort.ready & !io.backendFlush
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
-  ifRedirect               := (bpuPtr === (ifPtr + 1.U)) & mainBpuRedirectModifyFtq & (ifSendValid | ifSendValidDelay)
+  // last block send dirty block;need to quit
+  ifRedirect               := ((bpuMetaWritePtr === lastIfPtr)&&(bpuMetaWritePtr+1.U === ifPtr)) & mainBpuRedirectModifyFtq & ifSendValidDelay
 
   // queue full
   queueFull            := (bpuPtrPlus1 === commPtr)
@@ -168,9 +170,11 @@ class FetchTargetQueue(
   // default value
   io.ftqIFPort.valid               := ifSendValid
   io.ftqIFPort.bits.ftqBlockBundle := ftqVecReg(ifPtr)
-  when(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) {
+  when(((ifPtr === bpuMetaWritePtr)||(lastIfPtr === bpuMetaWritePtr)) && bpuMetaWriteValid) {
     // write though
-    io.ftqIFPort.bits.ftqBlockBundle := ftqNextVec(ifPtr)
+    // case 1 bpuWrite and if read in the same time
+    // case 2 last if send block was dirty;need to resend
+    io.ftqIFPort.bits.ftqBlockBundle := ftqNextVec(bpuMetaWritePtr)
   }
 
   // Trigger a IFU flush when:

@@ -34,11 +34,12 @@ class InstFetch extends Module {
   val instResStage   = Module(new InstResStage)
 
   // addrTransStage
-  addrTransStage.io.isFlush := io.isFlush || (io.ftqIFPort.bits.redirect && io.ftqIFPort.ready)
+  addrTransStage.io.isFlush := io.isFlush
   addrTransStage.io.in      <> io.ftqIFPort
   addrTransStage.io.peer.foreach { p =>
     p.csr      <> io.csr
     p.tlbTrans <> io.tlbTrans
+    p.ftqRedirect := io.ftqIFPort.bits.redirect
   }
 
   // instReqStage
