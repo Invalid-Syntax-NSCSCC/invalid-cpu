@@ -111,10 +111,10 @@ class OutOfOrderReservationStation(
         _.sel === RobDistributeSel.realData
       )
       when(
-        // TODO: finish it in decode
-        elem.bits.regReadPort.preExeInstInfo.needCsr ||
-          VecInit(ExeInst.Sel.jumpBranch, ExeInst.Sel.loadStore)
-            .contains(elem.bits.regReadPort.preExeInstInfo.exeSel)
+        // elem.bits.regReadPort.preExeInstInfo.needCsr ||
+        //   VecInit(ExeInst.Sel.jumpBranch, ExeInst.Sel.loadStore)
+        //     .contains(elem.bits.regReadPort.preExeInstInfo.exeSel
+        elem.bits.regReadPort.preExeInstInfo.forbidOutOfOrder
       ) {
         if (idx >= enqMaxNum) {
           en := false.B

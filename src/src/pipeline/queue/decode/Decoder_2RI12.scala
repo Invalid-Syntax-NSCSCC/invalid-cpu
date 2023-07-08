@@ -93,6 +93,7 @@ class Decoder_2RI12 extends Decoder {
     // LoadStore: read0: rj, read1: store reg src, loadStoreImm: offset
     is(Inst.ld_b) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_b
@@ -102,6 +103,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.ld_h) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_h
@@ -111,6 +113,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.ld_w) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_w
@@ -120,6 +123,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.ld_bu) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_bu
@@ -129,6 +133,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.ld_hu) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched         := true.B
       io.out.info.exeOp        := ExeInst.Op.ld_hu
@@ -138,6 +143,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.st_b) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_b
@@ -151,6 +157,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.st_h) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_h
@@ -164,6 +171,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.st_w) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_w
@@ -177,6 +185,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.cacop) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched            := true.B
       io.out.info.exeOp           := ExeInst.Op.cacop
@@ -189,6 +198,7 @@ class Decoder_2RI12 extends Decoder {
     }
     is(Inst.preld) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched              := true.B
       io.out.info.exeOp             := ExeInst.Op.preld

@@ -82,6 +82,7 @@ class Decoder_special extends Decoder {
   switch(opcode17) {
     is(Inst.dbar) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.dbar
@@ -92,6 +93,7 @@ class Decoder_special extends Decoder {
     }
     is(Inst.ibar) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.ibar
@@ -106,6 +108,7 @@ class Decoder_special extends Decoder {
   switch(opcode32) {
     is(Inst.ertn) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.ertn
@@ -115,6 +118,7 @@ class Decoder_special extends Decoder {
     }
     is(Inst.tlbsrch) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbsrch
@@ -125,6 +129,7 @@ class Decoder_special extends Decoder {
     }
     is(Inst.tlbrd) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbrd
@@ -135,6 +140,7 @@ class Decoder_special extends Decoder {
     }
     is(Inst.tlbwr) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbwr
@@ -145,6 +151,7 @@ class Decoder_special extends Decoder {
     }
     is(Inst.tlbfill) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbfill

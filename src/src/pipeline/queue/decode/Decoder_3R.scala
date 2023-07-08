@@ -39,6 +39,7 @@ class Decoder_3R extends Decoder {
   switch(opcode) {
     is(Inst.idle) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched := true.B
       outInfo.gprReadPorts.foreach(_.en := false.B)
@@ -49,6 +50,7 @@ class Decoder_3R extends Decoder {
     }
     is(Inst.invtlb) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       when(invtlbOp <= 6.U) {
         io.out.isMatched          := true.B
@@ -223,6 +225,7 @@ class Decoder_3R extends Decoder {
     }
     is(Inst.break_) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.break_
@@ -236,6 +239,7 @@ class Decoder_3R extends Decoder {
     }
     is(Inst.syscall) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.syscall

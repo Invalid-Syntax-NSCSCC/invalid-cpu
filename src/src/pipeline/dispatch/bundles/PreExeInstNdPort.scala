@@ -38,8 +38,9 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   val needCsr = Bool()
   val isTlb   = Bool()
 
-  val issueEn     = Vec(Param.pipelineNum, Bool())
-  val isPrivilege = Bool()
+  val issueEn          = Vec(Param.pipelineNum, Bool())
+  val forbidOutOfOrder = Bool()
+  val isPrivilege      = Bool()
   // TODO: Signals in this port is not sufficient
 }
 

@@ -50,6 +50,7 @@ class Decoder_2RI14 extends Decoder {
   switch(opcode) {
     is(Inst.ll) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.ll
@@ -63,6 +64,7 @@ class Decoder_2RI14 extends Decoder {
     }
     is(Inst.sc) {
       selectIssueEn(DispatchType.loadStore)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.sc
@@ -79,6 +81,7 @@ class Decoder_2RI14 extends Decoder {
     // csr读写指令
     is(Inst.csr_) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched        := true.B
       outInfo.exeSel          := ExeInst.Sel.none
