@@ -89,32 +89,6 @@ class OutOfOrderReservationStation(
     maybeFull := false.B
   }
 
-  // enqueue
-  io.enqueuePorts.lazyZip(enqEn).zipWithIndex.foreach {
-    case ((in, en), idx) =>
-      when(en) {
-        ram(enq_ptr.io.incResults(idx)).bits  := in.bits
-        ram(enq_ptr.io.incResults(idx)).valid := true.B
-
-        io.writebacks.foreach { wb =>
-          in.bits.regReadPort.preExeInstInfo.gprReadPorts
-            .lazyZip(in.bits.robResult.readResults)
-            .lazyZip(ram(enq_ptr.io.incResults(idx)).bits.robResult.readResults)
-            .foreach {
-              case (readPort, robReadResult, dst) =>
-                when(
-                  wb.en && readPort.en &&
-                    robReadResult.sel === RobDistributeSel.robId &&
-                    wb.robId === robReadResult.result
-                ) {
-                  dst.sel    := RobDistributeSel.realData
-                  dst.result := wb.data
-                }
-            }
-        }
-      }
-  }
-
   // dequeue
   // invalidate which are dequeue
   deqEn.zipWithIndex.foreach {
@@ -227,6 +201,32 @@ class OutOfOrderReservationStation(
                 dst.result := wb.data
               }
           }
+      }
+  }
+
+  // enqueue
+  io.enqueuePorts.lazyZip(enqEn).zipWithIndex.foreach {
+    case ((in, en), idx) =>
+      when(en) {
+        ram(enq_ptr.io.incResults(idx)).bits  := in.bits
+        ram(enq_ptr.io.incResults(idx)).valid := true.B
+
+        io.writebacks.foreach { wb =>
+          in.bits.regReadPort.preExeInstInfo.gprReadPorts
+            .lazyZip(in.bits.robResult.readResults)
+            .lazyZip(ram(enq_ptr.io.incResults(idx)).bits.robResult.readResults)
+            .foreach {
+              case (readPort, robReadResult, dst) =>
+                when(
+                  wb.en && readPort.en &&
+                    robReadResult.sel === RobDistributeSel.robId &&
+                    wb.robId === robReadResult.result
+                ) {
+                  dst.sel    := RobDistributeSel.realData
+                  dst.result := wb.data
+                }
+            }
+        }
       }
   }
 
