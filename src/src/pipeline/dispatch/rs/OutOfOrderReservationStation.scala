@@ -132,7 +132,11 @@ class OutOfOrderReservationStation(
   selectedDownViewIndices.zipWithIndex.foreach {
     case (selectIndex, idx) =>
       val preSelect = selectedDownViewIndices.take(idx)
-      val enables   = ramDownViewEnableDeq(idx) && preSelect.map(_ =/= idx.U).foldLeft(true.B)(_ && _)
+      val enables =
+        ramDownViewEnableDeq.zipWithIndex.map {
+          case (en, en_idx) =>
+            en && preSelect.map(_ =/= en_idx.U).foldLeft(true.B)(_ && _)
+        }
       selectIndex := PriorityEncoder(enables)
   }
 
