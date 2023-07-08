@@ -15,6 +15,7 @@ import control.enums.ExceptionPos
 import pipeline.common.SimpleMultiBaseStage
 import pipeline.dispatch.rs.InOrderReservationStation
 import pipeline.dispatch.rs.BaseReservationStation
+import pipeline.dispatch.rs.OutOfOrderReservationStation
 
 // class IssueReqPeerPort(
 //   issueNum:    Int = Param.issueInstInfoMaxNum,
@@ -53,7 +54,7 @@ class RenamePeerPort(
 class RenameStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
-  reservationLength: Int = Param.reservationStationDeep)
+  reservationLength: Int = Param.Width.ReservationStation._length)
     extends SimpleMultiBaseStage(
       new FetchInstDecodeNdPort,
       new DispatchNdPort,
@@ -77,13 +78,23 @@ class RenameStage(
   }
 
   val reservationStation: BaseReservationStation = Module(
-    new InOrderReservationStation(
-      reservationLength,
-      issueNum,
-      issueNum,
-      Param.Width.Rob._channelNum,
-      Param.Width.Rob._channelLength
-    )
+    if (Param.isOutOfOrderIssue) {
+      new OutOfOrderReservationStation(
+        reservationLength,
+        issueNum,
+        issueNum,
+        Param.Width.ReservationStation._channelNum,
+        Param.Width.ReservationStation._channelLength
+      )
+    } else {
+      new InOrderReservationStation(
+        reservationLength,
+        issueNum,
+        issueNum,
+        Param.Width.ReservationStation._channelNum,
+        Param.Width.ReservationStation._channelLength
+      )
+    }
   )
   reservationStation.io.writebacks.zip(io.peer.get.writebacks).foreach {
     case (dst, src) =>

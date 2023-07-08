@@ -6,7 +6,8 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
-  val isDiffTest = true
+  val isDiffTest        = true
+  val isOutOfOrderIssue = true
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
@@ -19,7 +20,7 @@ object Param {
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 1 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
-  val reservationStationDeep = 8 // 保留站深度
+  // val reservationStationDeep = 8 // 保留站深度
   val dispatchOutQueueLength = 4
   val csrReadNum             = 1
   val csrWriteNum            = 1
@@ -34,6 +35,12 @@ object Param {
   object Width {
     val exeSel = log2Ceil(ExeInst.Sel.count + 1).W
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
+
+    object ReservationStation {
+      val _channelNum    = 4
+      val _channelLength = 4
+      val _length        = _channelLength * _channelNum
+    }
 
     object Rob {
       val _length        = 16
