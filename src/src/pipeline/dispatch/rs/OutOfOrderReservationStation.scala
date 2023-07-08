@@ -48,6 +48,13 @@ class OutOfOrderReservationStation(
     )
   )
   queues.foreach(_.io.isFlush := io.isFlush)
+  queues.foreach { queue =>
+    queue.io.setPorts.zip(queue.io.elems).foreach {
+      case (dst, src) =>
+        dst.valid := false.B
+        dst.bits  := src
+    }
+  }
 
   val storeIns  = VecInit(queues.map(_.io.enqueuePorts(0)))
   val storeOuts = VecInit(queues.map(_.io.dequeuePorts(0)))
@@ -67,18 +74,53 @@ class OutOfOrderReservationStation(
   enq_ptr.io.flush := io.isFlush
 
   enq_ptr.io.inc := io.enqueuePorts.zipWithIndex.map {
-    case (enqPort, idx) =>
+    case (in, idx) =>
       // connect
       // forbid when front not ready
       val enable = enq_ptr.io.incResults.take(idx).map(storeIns(_).ready).foldLeft(true.B)(_ && _)
-      enqPort.ready                              := enable && storeIns(enq_ptr.io.incResults(idx)).ready
-      storeIns(enq_ptr.io.incResults(idx)).valid := enable && enqPort.valid
-      storeIns(enq_ptr.io.incResults(idx)).bits  := enqPort.bits
+      in.ready                                   := enable && storeIns(enq_ptr.io.incResults(idx)).ready
+      storeIns(enq_ptr.io.incResults(idx)).valid := enable && in.valid
+      storeIns(enq_ptr.io.incResults(idx)).bits  := in.bits
+
+      io.writebacks.foreach { wb =>
+        in.bits.regReadPort.preExeInstInfo.gprReadPorts
+          .lazyZip(in.bits.robResult.readResults)
+          .lazyZip(storeIns(enq_ptr.io.incResults(idx)).bits.robResult.readResults)
+          .foreach {
+            case (readPort, robReadResult, dst) =>
+              when(
+                wb.en && readPort.en &&
+                  robReadResult.sel === RobDistributeSel.robId &&
+                  wb.robId === robReadResult.result
+              ) {
+                dst.sel    := RobDistributeSel.realData
+                dst.result := wb.data
+              }
+          }
+      }
 
       // return
-      enqPort.valid && storeIns(enq_ptr.io.incResults(idx)).ready && enable
+      in.valid && storeIns(enq_ptr.io.incResults(idx)).ready && enable
   }.map(_.asUInt).reduce(_ +& _)
 
+  // commit fill reservation station
+  queues.foreach { queue =>
+    queue.io.elems
+      .lazyZip(queue.io.setPorts)
+      .foreach {
+        case (elem, set) =>
+          io.writebacks.foreach { wb =>
+            elem.robResult.readResults.zip(set.bits.robResult.readResults).foreach {
+              case (readResult, setReadResult) =>
+                when(readResult.sel === RobDistributeSel.robId && wb.en && readResult.result === wb.robId) {
+                  set.valid            := true.B
+                  setReadResult.sel    := RobDistributeSel.realData
+                  setReadResult.result := wb.data
+                }
+            }
+          }
+      }
+  }
   // enable to out
   val deqValids = storeOuts.map { port =>
     port.valid && port.bits.robResult.readResults.forall(
@@ -104,9 +146,9 @@ class OutOfOrderReservationStation(
 
   io.dequeuePorts.zip(selectIndices).foreach {
     case (out, selectIndex) =>
-      out.valid                   := selectIndex.valid
-      out.bits                    := storeOuts(selectIndex.bits)
-      storeOuts(selectIndex.bits) := out.ready
+      out.valid                         := selectIndex.valid
+      out.bits                          := storeOuts(selectIndex.bits).bits
+      storeOuts(selectIndex.bits).ready := out.ready
   }
 
   // }
