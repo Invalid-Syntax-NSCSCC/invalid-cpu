@@ -46,7 +46,7 @@ class ExeForMemStage
   resultOutReg.bits.gprAddr                     := selectedIn.gprWritePort.addr
   resultOutReg.valid                            := isComputed && selectedIn.instInfo.isValid
 
-  io.peer.get.csrScoreboardChangePort.en   := false.B
+  io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
   io.peer.get.csrScoreboardChangePort.addr := DontCare
 
   // Generate address

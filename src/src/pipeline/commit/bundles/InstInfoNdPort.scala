@@ -17,14 +17,13 @@ class InstInfoNdPort extends Bundle {
   val isStore         = Bool()
   val vaddr           = UInt(Width.Mem.addr)
   val needCsr         = Bool()
-  val csrWritePort    = new CsrWriteNdPort
-  val branchSuccess   = Bool()
+  // val csrWritePort    = new CsrWriteNdPort
+  val isCsrWrite    = Bool()
+  val branchSuccess = Bool()
 
   val exeOp  = UInt(Param.Width.exeOp)
   val exeSel = UInt(Param.Width.exeSel)
   val robId  = UInt(Param.Width.Rob.id)
-
-  val branchSetPort = Output(new PcSetNdPort)
 
   val load      = if (isDiffTest) Some(new DifftestLoadNdPort) else None
   val store     = if (isDiffTest) Some(new DifftestStoreNdPort) else None
@@ -45,7 +44,7 @@ object InstInfoNdPort {
     instInfo.exceptionPos         := ExceptionPos.none
     instInfo.exeOp                := ExeInst.Op.nop
     instInfo.exeSel               := ExeInst.Sel.none
-    instInfo.csrWritePort.en      := false.B
+    instInfo.isCsrWrite           := false.B
     instInfo.isTlb                := false.B
     instInfo.isStore              := false.B
     instInfo.forbidParallelCommit := false.B

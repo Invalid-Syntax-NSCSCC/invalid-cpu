@@ -14,6 +14,8 @@ import spec.ExeInst.Sel
 import spec._
 import spec.Param.isDiffTest
 import control.bundles.StableCounterReadPort
+import control.bundles.CsrWriteNdPort
+import control.bundles.CsrReadPort
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -26,7 +28,7 @@ class ExeNdPort extends Bundle {
   // Branch jump addr
   val jumpBranchAddr    = UInt(Width.Reg.data)
   def loadStoreImm      = jumpBranchAddr
-  def csrData           = jumpBranchAddr
+  def csrAddr           = jumpBranchAddr
   def tlbInvalidateInst = jumpBranchAddr
   def code              = jumpBranchAddr
 
@@ -44,9 +46,12 @@ class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
   val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetNdPort)) else None
   val csrScoreboardChangePort = if (supportBranchCsr) Some(Output(new ScoreboardChangeNdPort)) else None
+  val csrWriteStorePort       = if (supportBranchCsr) Some(Output(Valid(new CsrWriteNdPort))) else None
 
   // `Exe` <-> `StableCounter`
   val stableCounterReadPort = if (supportBranchCsr) Some(Flipped(new StableCounterReadPort)) else None
+
+  val csrReadPort = if (supportBranchCsr) Some(Flipped(new CsrReadPort)) else None
 
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
@@ -104,16 +109,8 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     }
   }
 
-  switch(selectedIn.exeOp) {
-    is(ExeInst.Op.csrrd) {
-      resultOutReg.bits.gprWrite.data := selectedIn.csrData
-    }
-  }
-
   /** CsrWrite
     */
-
-  def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
 
   val isSyscall = selectedIn.exeOp === ExeInst.Op.syscall
   val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
@@ -126,27 +123,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     }.elsewhen(isBreak) {
       resultOutReg.bits.instInfo.exceptionPos    := ExceptionPos.backend
       resultOutReg.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.brk
-    }
-  }
-
-  switch(selectedIn.exeOp) {
-    is(ExeInst.Op.csrwr) {
-      csrWriteData                    := selectedIn.leftOperand
-      resultOutReg.bits.gprWrite.data := selectedIn.csrData
-    }
-    is(ExeInst.Op.csrxchg) {
-      // lop: write value  rop: mask
-      val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
-      selectedIn.leftOperand.asBools
-        .lazyZip(selectedIn.rightOperand.asBools)
-        .lazyZip(selectedIn.csrData.asBools)
-        .lazyZip(gprWriteDataVec)
-        .foreach {
-          case (write, mask, origin, target) =>
-            target := Mux(mask, write, origin)
-        }
-      csrWriteData                    := gprWriteDataVec.asUInt
-      resultOutReg.bits.gprWrite.data := selectedIn.csrData
     }
   }
 
@@ -170,6 +146,60 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       }
     }
 
+    // if (dst_idx == Param.csrIssuePipelineIndex) {
+    // def csrAddr = selectedIn.jumpBranchAddr
+    // when(selectedIn.csrReadEn) {
+    //   io.peer.get.csrReadPort.en   := true.B
+    //   io.peer.get.csrReadPort.addr := csrAddr(13, 0)
+    //   out.bits.csrData := Mux(
+    //     csrAddr(31),
+    //     0.U,
+    //     io.peer.get.csrReadPort.data
+    //   )
+    // }
+    // }
+
+    def csrAddr = selectedIn.csrAddr
+
+    io.peer.get.csrReadPort.get.en   := true.B
+    io.peer.get.csrReadPort.get.addr := csrAddr
+
+    val csrReadData = io.peer.get.csrReadPort.get.data
+
+    def csrWriteStorePort = io.peer.get.csrWriteStorePort.get
+    csrWriteStorePort.valid     := false.B
+    csrWriteStorePort.bits.en   := false.B
+    csrWriteStorePort.bits.addr := csrAddr
+    csrWriteStorePort.bits.data := DontCare
+
+    switch(selectedIn.exeOp) {
+      is(ExeInst.Op.csrrd) {
+        resultOutReg.bits.gprWrite.data := csrReadData
+      }
+      is(ExeInst.Op.csrwr) {
+        io.peer.get.csrWriteStorePort.get.valid   := true.B
+        io.peer.get.csrWriteStorePort.get.bits.en := true.B
+        csrWriteStorePort.bits.data               := selectedIn.leftOperand
+        resultOutReg.bits.gprWrite.data           := csrReadData
+      }
+      is(ExeInst.Op.csrxchg) {
+        io.peer.get.csrWriteStorePort.get.valid   := true.B
+        io.peer.get.csrWriteStorePort.get.bits.en := true.B
+        // lop: write value  rop: mask
+        val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
+        selectedIn.leftOperand.asBools
+          .lazyZip(selectedIn.rightOperand.asBools)
+          .lazyZip(csrReadData.asBools)
+          .lazyZip(gprWriteDataVec)
+          .foreach {
+            case (write, mask, origin, target) =>
+              target := Mux(mask, write, origin)
+          }
+        csrWriteStorePort.bits.data     := gprWriteDataVec.asUInt
+        resultOutReg.bits.gprWrite.data := csrReadData
+      }
+    }
+
     val branchEnableFlag = RegInit(true.B)
 
     val branchSetPort           = io.peer.get.branchSetPort.get
@@ -183,7 +213,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     }
     branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
     csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
-    csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
+    csrScoreboardChangePort.addr := DontCare
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
