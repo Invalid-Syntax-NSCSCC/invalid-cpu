@@ -40,20 +40,20 @@ object InstInfoNdPort {
   def default = 0.U.asTypeOf(new InstInfoNdPort)
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
-    instInfo.isValid         := false.B
-    instInfo.needCsr         := false.B
-    instInfo.exceptionRecord := 0.U
-    instInfo.exceptionPos    := ExceptionPos.none
-    instInfo.exeOp           := ExeInst.Op.nop
-    instInfo.exeSel          := ExeInst.Sel.none
-    instInfo.csrWritePort.en := false.B
-    if (isDiffTest) {
-      instInfo.load.get.en  := false.B
-      instInfo.store.get.en := false.B
-    }
+    instInfo.isValid              := false.B
+    instInfo.needCsr              := false.B
+    instInfo.exceptionPos         := ExceptionPos.none
+    instInfo.exeOp                := ExeInst.Op.nop
+    instInfo.exeSel               := ExeInst.Sel.none
+    instInfo.csrWritePort.en      := false.B
     instInfo.isTlb                := false.B
     instInfo.isStore              := false.B
     instInfo.forbidParallelCommit := false.B
     instInfo.branchSuccess        := false.B
+
+    if (isDiffTest) {
+      instInfo.load.get.en  := false.B
+      instInfo.store.get.en := false.B
+    }
   }
 }

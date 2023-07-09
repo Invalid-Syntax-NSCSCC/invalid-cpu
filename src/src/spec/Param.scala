@@ -20,7 +20,6 @@ object Param {
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 1 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
-  // val reservationStationDeep = 8 // 保留站深度
   val dispatchOutQueueLength = 4
   val csrReadNum             = 1
   val csrWriteNum            = 1
