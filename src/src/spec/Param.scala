@@ -6,23 +6,23 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
-  val isDiffTest = true
+  val isDiffTest        = true
+  val isOutOfOrderIssue = true
 
-  val instQueueLength         = 16
-  val instQueueChannelNum     = 4
-  val regFileReadNum          = 2
-  val regFileWriteNum         = 1
-  val scoreboardChangeNum     = 1 // 3
-  val csrScoreBoardChangeNum  = 1
-  val instRegReadNum          = 2
-  val fetchInstMaxNum         = 4 // 单次取指 must be 1,2,4,8... ( less than dataPerLine)
-  val issueInstInfoMaxNum     = 2 // 发射数量
-  val commitNum               = 1 // 单次提交数量
-  val pipelineNum             = 3 // number of pipeline
-  val reservationStationDepth = 8 // 保留站深度
-  val dispatchOutQueueLength  = 4
-  val csrReadNum              = 1
-  val csrWriteNum             = 1
+  val instQueueLength        = 16
+  val instQueueChannelNum    = 4
+  val regFileReadNum         = 2
+  val regFileWriteNum        = 1
+  val scoreboardChangeNum    = 1 // 3
+  val csrScoreBoardChangeNum = 1
+  val instRegReadNum         = 2
+  val fetchInstMaxNum        = 4 // 单次取指 must be 1,2,4,8... ( less than dataPerLine)
+  val issueInstInfoMaxNum    = 2 // 发射数量
+  val commitNum              = 1 // 单次提交数量
+  val pipelineNum            = 3 // number of pipeline
+  val dispatchOutQueueLength = 4
+  val csrReadNum             = 1
+  val csrWriteNum            = 1
 
   val csrIssuePipelineIndex       = 1 // csr 相关指令在第1条流水线
   val loadStoreIssuePipelineIndex = 0 // load & store相关指令在第0条流水线
@@ -34,6 +34,12 @@ object Param {
   object Width {
     val exeSel = log2Ceil(ExeInst.Sel.count + 1).W
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
+
+    object ReservationStation {
+      val _channelNum    = 4
+      val _channelLength = 4
+      val _length        = _channelLength * _channelNum
+    }
 
     object Rob {
       val _length        = 16

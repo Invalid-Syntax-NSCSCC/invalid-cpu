@@ -19,6 +19,7 @@ class Decoder_2R extends Decoder {
   switch(opcode) {
     is(Inst.rdcnt_id_vl) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched    := true.B
       io.out.info.needCsr := true.B
@@ -37,6 +38,7 @@ class Decoder_2R extends Decoder {
     }
     is(Inst.rdcnt_vh) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.info.needCsr           := true.B
       io.out.isMatched              := true.B

@@ -53,7 +53,7 @@ class IssueStagePeerPort(
 class IssueStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
-  reservationLength: Int = Param.reservationStationDepth)
+  reservationLength: Int = Param.Width.ReservationStation._length)
     extends MultiBaseStageWOSaveIn(
       new FetchInstDecodeNdPort,
       new ExeNdPort,

@@ -50,6 +50,7 @@ class Decoder_2RI16 extends Decoder {
   switch(opcode) {
     is(Inst.b_) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       outInfo.gprReadPorts(0).en   := false.B
       outInfo.gprReadPorts(1).en   := false.B
@@ -62,6 +63,7 @@ class Decoder_2RI16 extends Decoder {
     }
     is(Inst.bl) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       outInfo.gprReadPorts(0).en   := false.B
       outInfo.gprReadPorts(1).en   := false.B
@@ -76,6 +78,7 @@ class Decoder_2RI16 extends Decoder {
     }
     is(Inst.jirl) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       outInfo.gprReadPorts(1).en   := false.B
       outInfo.gprReadPorts(1).addr := DontCare
@@ -88,6 +91,7 @@ class Decoder_2RI16 extends Decoder {
     }
     is(Inst.beq) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.beq
@@ -96,6 +100,7 @@ class Decoder_2RI16 extends Decoder {
     }
     is(Inst.bne) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bne
@@ -104,6 +109,7 @@ class Decoder_2RI16 extends Decoder {
     }
     is(Inst.blt) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.blt
@@ -112,6 +118,7 @@ class Decoder_2RI16 extends Decoder {
     }
     is(Inst.bge) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bge
@@ -120,6 +127,7 @@ class Decoder_2RI16 extends Decoder {
     }
     is(Inst.bltu) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bltu
@@ -128,6 +136,7 @@ class Decoder_2RI16 extends Decoder {
     }
     is(Inst.bgeu) {
       selectIssueEn(DispatchType.csrOrBranch)
+      io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bgeu
