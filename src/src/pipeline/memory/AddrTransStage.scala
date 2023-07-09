@@ -93,7 +93,6 @@ class AddrTransStage
   // Handle exception
   def handleException(): Unit = {
     val exceptionIndex = peer.tlbTrans.exception.bits
-    out.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
     when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && peer.tlbTrans.exception.valid) {
       out.instInfo.exceptionPos    := ExceptionPos.backend
       out.instInfo.exceptionRecord := exceptionIndex

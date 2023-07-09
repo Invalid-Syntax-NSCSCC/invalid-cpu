@@ -53,7 +53,7 @@ class RenamePeerPort(
 class RenameStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
-  reservationLength: Int = Param.reservationStationDeep)
+  reservationLength: Int = Param.reservationStationDepth)
     extends SimpleMultiBaseStage(
       new FetchInstDecodeNdPort,
       new DispatchNdPort,
