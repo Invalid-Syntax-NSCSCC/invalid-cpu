@@ -50,8 +50,6 @@ class ExeForMemStage
     resultOutReg.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ale
   }
 
-  def csrWriteData = resultOutReg.bits.instInfo.csrWritePort.data
-
   resultOutReg.bits.tlbMaintenance := TlbMaintenanceNdPort.default
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.tlbfill) {
@@ -216,7 +214,7 @@ class ExeForMemStage
   }
 
   io.peer.get.csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
-  io.peer.get.csrScoreboardChangePort.addr := selectedIn.instInfo.csrWritePort.addr
+  io.peer.get.csrScoreboardChangePort.addr := DontCare
   resultOutReg.bits.instInfo.isStore       := memWriteEn && !isAle
   resultOutReg.bits.instInfo.vaddr         := Mux(isCacop, cacopAddr, loadStoreAddr)
 }

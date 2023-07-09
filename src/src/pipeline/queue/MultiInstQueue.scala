@@ -9,11 +9,19 @@ import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode._
 import spec._
-import pipeline.dispatch.FetchInstDecodeNdPort
 import pipeline.common.MultiQueue
 
 class InstQueueEnqNdPort extends Bundle {
   val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
+}
+
+class FetchInstDecodeNdPort extends Bundle {
+  val decode   = new DecodeOutNdPort
+  val instInfo = new InstInfoNdPort
+}
+
+object FetchInstDecodeNdPort {
+  def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
 }
 
 // assert: enqueuePorts总是最低的几位有效
@@ -152,13 +160,13 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
       val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
-      dequeuePort.bits.instInfo.isValid           := true.B
-      dequeuePort.bits.instInfo.csrWritePort.en   := selectedDecoder.info.csrWriteEn
-      dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
-      dequeuePort.bits.instInfo.exeOp             := selectedDecoder.info.exeOp
-      dequeuePort.bits.instInfo.exeSel            := selectedDecoder.info.exeSel
-      dequeuePort.bits.instInfo.isTlb             := selectedDecoder.info.isTlb
-      dequeuePort.bits.instInfo.needCsr           := selectedDecoder.info.needCsr
+      dequeuePort.bits.instInfo.isValid    := true.B
+      dequeuePort.bits.instInfo.isCsrWrite := selectedDecoder.info.csrWriteEn
+      // dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
+      dequeuePort.bits.instInfo.exeOp   := selectedDecoder.info.exeOp
+      dequeuePort.bits.instInfo.exeSel  := selectedDecoder.info.exeSel
+      dequeuePort.bits.instInfo.isTlb   := selectedDecoder.info.isTlb
+      dequeuePort.bits.instInfo.needCsr := selectedDecoder.info.needCsr
 
       dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needCsr
 

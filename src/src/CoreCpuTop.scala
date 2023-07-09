@@ -202,17 +202,17 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  dispatchStage.io.isFlush              := cu.io.backendFlush
-  dispatchStage.io.peer.get.csrScore    := csrScoreBoard.io.regScore
-  dispatchStage.io.peer.get.csrReadPort <> csr.io.readPorts(0)
+  dispatchStage.io.isFlush           := cu.io.backendFlush
+  dispatchStage.io.peer.get.csrScore := csrScoreBoard.io.regScore
 
   // Scoreboards
   csrScoreBoard.io.freePort := commitStage.io.csrFreePort
   csrScoreBoard.io.toMemPort.en := exePassWbStage_1.io.peer.get.csrScoreboardChangePort.get.en || exeForMemStage.io.peer.get.csrScoreboardChangePort.en // TODO: check this
-  csrScoreBoard.io.toMemPort.addr := DontCare
-  csrScoreBoard.io.occupyPort     := dispatchStage.io.peer.get.csrOccupyPort
-  csrScoreBoard.io.isFlush        := cu.io.backendFlush
-  csrScoreBoard.io.branchFlush    := cu.io.frontendFlush
+  csrScoreBoard.io.toMemPort.addr    := DontCare
+  csrScoreBoard.io.csrWriteStorePort := exePassWbStage_1.io.peer.get.csrWriteStorePort.get
+  csrScoreBoard.io.occupyPort        := dispatchStage.io.peer.get.csrOccupyPort
+  csrScoreBoard.io.isFlush           := cu.io.backendFlush
+  csrScoreBoard.io.branchFlush       := cu.io.frontendFlush
 
   // Execution stage
   exeForMemStage.io.in                  <> dispatchStage.io.outs(Param.loadStoreIssuePipelineIndex)
@@ -220,6 +220,7 @@ class CoreCpuTop extends Module {
   exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
   exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
 
+  exePassWbStage_1.io.peer.get.csrReadPort.get           <> csr.io.readPorts(0)
   exePassWbStage_1.io.peer.get.stableCounterReadPort.get <> stableCounter.io
   assert(Param.loadStoreIssuePipelineIndex == 0)
   exePassWbStages.zipWithIndex.foreach {
@@ -308,6 +309,7 @@ class CoreCpuTop extends Module {
 
   cu.io.hardwareInterrupt := io.intrpt
   cu.io.csrFlushRequest   := csr.io.csrFlushRequest
+  cu.io.csrWriteInfo      := csrScoreBoard.io.csrWritePort
 
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {

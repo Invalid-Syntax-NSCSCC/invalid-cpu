@@ -4,7 +4,8 @@ import chisel3._
 import chisel3.util._
 import control.bundles.CsrReadPort
 import pipeline.common.{MultiBaseStageWOSaveIn, MultiQueue}
-import pipeline.dispatch.bundles.{ReservationStationBundle, ScoreboardChangeNdPort}
+import pipeline.dispatch.bundles._
+import pipeline.commit.bundles._
 import pipeline.dispatch.enums.ScoreboardState
 import pipeline.execution.ExeNdPort
 import pipeline.rob.bundles.{InstWbNdPort, RobReadRequestNdPort, RobReadResultNdPort}
@@ -13,24 +14,22 @@ import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
 import spec._
 import control.enums.ExceptionPos
 import pipeline.common.SimpleMultiBaseStage
-import pipeline.dispatch.rs.InOrderReservationStation
-import pipeline.dispatch.rs.BaseReservationStation
-import pipeline.dispatch.rs.OutOfOrderReservationStation
+import pipeline.dispatch.rs._
+import pipeline.dispatch._
+import pipeline.queue._
+import chisel3.experimental.BundleLiterals._
 
-// class IssueReqPeerPort(
-//   issueNum:    Int = Param.issueInstInfoMaxNum,
-//   pipelineNum: Int = Param.pipelineNum)
-//     extends Bundle {
+class RegReadNdPort extends Bundle {
+  val preExeInstInfo = new PreExeInstNdPort
+  val instInfo       = new InstInfoNdPort
+}
 
-//   // `IssueStage` <-> `Rob`
-//   val robEmptyNum = Input(UInt(log2Ceil(Param.Width.Rob._length + 1).W))
-//   val requests    = Output(Vec(issueNum, new RobReadRequestNdPort))
-
-//   // `Cu` -> `IssueStage`
-//   val branchFlush = Input(Bool())
-
-//   val plv = Input(UInt(2.W))
-// }
+object RegReadNdPort {
+  def default = (new RegReadNdPort).Lit(
+    _.preExeInstInfo -> PreExeInstNdPort.default,
+    _.instInfo -> InstInfoNdPort.default
+  )
+}
 
 class RenamePeerPort(
   issueNum:    Int = Param.issueInstInfoMaxNum,

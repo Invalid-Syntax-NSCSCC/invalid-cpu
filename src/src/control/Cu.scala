@@ -39,6 +39,8 @@ class Cu(
     val branchCommit = Input(Bool())
     // `Cu` -> `Pc`
     val newPc = Output(new PcSetNdPort)
+    // `CsrScoreBoard` -> `Cu`
+    val csrWriteInfo = Input(new CsrWriteNdPort)
 
     val frontendFlush = Output(Bool())
     val backendFlush  = Output(Bool())
@@ -75,12 +77,9 @@ class Cu(
   io.csrMessage.hardwareInterrupt := io.hardwareInterrupt
 
   // CSR write by instruction
-  io.csrWritePorts.zip(io.instInfoPorts).foreach {
-    case (dst, src) =>
-      dst.en   := src.csrWritePort.en && src.isValid && !isException
-      dst.addr := src.csrWritePort.addr
-      dst.data := src.csrWritePort.data
-  }
+  io.csrWritePorts.head.en   := majorInstInfo.isCsrWrite && majorInstInfo.isValid && !isException && io.csrWriteInfo.en
+  io.csrWritePorts.head.addr := io.csrWriteInfo.addr
+  io.csrWritePorts.head.data := io.csrWriteInfo.data
 
   // CSR write by exception
 
