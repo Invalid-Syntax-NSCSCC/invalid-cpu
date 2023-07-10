@@ -244,7 +244,7 @@ class Rob(
             val isLocateInRobValid = matchTable(reqRead.addr).robResData.valid
 
             val isLocateInPrevWrite        = WireDefault(false.B)
-            val dataLocateInPrevWriteRobId = DontCare
+            val dataLocateInPrevWriteRobId = WireDefault(zeroWord)
 
             // if RAW in the same time request
             val raw = io.requests.take(idx).map(_.bits.writeRequest).map { prevWrite =>
