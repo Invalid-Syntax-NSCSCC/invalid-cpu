@@ -92,6 +92,7 @@ class FetchTargetQueue(
 
   // ptr
   io.ftqIFPort.bits.ftqId := ifPtr
+
   // Backend committed,means that current commPtr block is done
   commPtr := commPtr + backendCommitNum
   // If block is accepted by IF, ifuPtr++
