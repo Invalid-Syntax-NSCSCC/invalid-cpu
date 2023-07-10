@@ -8,7 +8,7 @@ object Param {
 
   val isDiffTest        = false
   val isOutOfOrderIssue = false
-  val isNoPrivilege     = true
+  val isNoPrivilege     = false
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4

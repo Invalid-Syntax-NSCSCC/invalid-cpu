@@ -49,18 +49,6 @@ class InstAddrTransStage extends Module {
   outReg.exception.valid          := isAdef
   outReg.exception.bits           := spec.Csr.ExceptionIndex.adef
 
-  // Handle exception
-  def handleException(): Unit = {
-    val isExceptionValid = isAdef || peer.tlbTrans.exception.valid
-    outReg.exception.valid := isExceptionValid
-    when(peer.tlbTrans.exception.valid && !isAdef) {
-      outReg.exception.bits := peer.tlbTrans.exception.bits
-    }
-    when(isExceptionValid) {
-      hasSentException := true.B
-    }
-  }
-
   // DMW mapping
   val directMapVec = Wire(
     Vec(
@@ -101,7 +89,7 @@ class InstAddrTransStage extends Module {
   outReg.translatedMemReq.addr := translatedAddr
   peer.tlbTrans.memType        := TlbMemType.fetch
   peer.tlbTrans.virtAddr       := io.pc
-  peer.tlbTrans.isValid        := false.B
+  peer.tlbTrans.isValid        := true.B
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := io.pc
@@ -111,12 +99,19 @@ class InstAddrTransStage extends Module {
     }
     is(AddrTransType.pageTableMapping) {
       if (!isNoPrivilege) {
-        peer.tlbTrans.isValid := true.B
-        translatedAddr        := peer.tlbTrans.physAddr
+        translatedAddr := peer.tlbTrans.physAddr
         outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
           !peer.tlbTrans.exception.valid && !isAdef
 
-        handleException()
+        // Handle exception
+        val isExceptionValid = isAdef || peer.tlbTrans.exception.valid
+        outReg.exception.valid := isExceptionValid
+        when(peer.tlbTrans.exception.valid && !isAdef) {
+          outReg.exception.bits := peer.tlbTrans.exception.bits
+        }
+        when(isExceptionValid) {
+          hasSentException := true.B
+        }
       }
     }
   }

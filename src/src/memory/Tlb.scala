@@ -139,10 +139,10 @@ class Tlb extends Module {
 
       // Handle exception
       when(!isFound) {
-        transPort.exception.valid := transPort.isValid
+        transPort.exception.valid := true.B
         transPort.exception.bits  := Csr.ExceptionIndex.tlbr
       }.elsewhen(!selectedPage.isValid) {
-        transPort.exception.valid := transPort.isValid
+        transPort.exception.valid := true.B
         switch(transPort.memType) {
           is(TlbMemType.load) {
             transPort.exception.bits := Csr.ExceptionIndex.pil
@@ -155,13 +155,13 @@ class Tlb extends Module {
           }
         }
       }.elsewhen(selectedPage.plv < io.csr.in.plv) {
-        transPort.exception.valid := transPort.isValid
+        transPort.exception.valid := true.B
         transPort.exception.bits  := Csr.ExceptionIndex.ppi
       }.elsewhen(!selectedPage.isDirty && transPort.memType === TlbMemType.store) {
-        transPort.exception.valid := transPort.isValid
+        transPort.exception.valid := true.B
         transPort.exception.bits  := Csr.ExceptionIndex.pme
       }
-      when(transPort.exception.valid) {
+      when(transPort.exception.valid && transPort.isValid) {
         exceptionCsrReg.vppn := transPort.virtAddr(virtAddrLen - 1, virtAddrLen - Width.Tlb._vppn)
       }
   }

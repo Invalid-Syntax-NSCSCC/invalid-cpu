@@ -93,22 +93,12 @@ class AddrTransStage
     }
   }
 
-  // Handle exception
-  def handleException(): Unit = {
-    val exceptionIndex = peer.tlbTrans.exception.bits
-    when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && peer.tlbTrans.exception.valid) {
-      out.instInfo.exceptionPos    := ExceptionPos.backend
-      out.instInfo.exceptionRecord := exceptionIndex
-
-      tlbBlockingReg := true.B
-    }
-  }
-
   // Translate address
   val isCacheMaintenance = selectedIn.cacheMaintenance.control.isInit ||
     selectedIn.cacheMaintenance.control.isCoherentByIndex ||
     selectedIn.cacheMaintenance.control.isCoherentByHit
-  val translatedAddr = WireDefault(selectedIn.memRequest.addr)
+  val isCanTlbException = selectedIn.memRequest.isValid || selectedIn.cacheMaintenance.control.isCoherentByHit
+  val translatedAddr    = WireDefault(selectedIn.memRequest.addr)
   if (isDiffTest) {
     out.instInfo.load.get.paddr := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.get.vaddr(1, 0))
     out.instInfo.store.get.paddr := Cat(
@@ -127,7 +117,7 @@ class AddrTransStage
     )
   )
   peer.tlbTrans.virtAddr := selectedIn.memRequest.addr
-  peer.tlbTrans.isValid  := false.B
+  peer.tlbTrans.isValid  := !tlbBlockingReg
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := selectedIn.memRequest.addr
@@ -137,11 +127,19 @@ class AddrTransStage
     }
     is(AddrTransType.pageTableMapping) {
       if (!isNoPrivilege) {
-        peer.tlbTrans.isValid := selectedIn.memRequest.isValid || selectedIn.cacheMaintenance.control.isCoherentByHit
-        translatedAddr        := peer.tlbTrans.physAddr
-        out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
+        translatedAddr               := peer.tlbTrans.physAddr
+        out.translatedMemReq.isValid := !peer.tlbTrans.exception.valid && selectedIn.memRequest.isValid
 
-        handleException()
+        // Handle exception
+        val exceptionIndex = peer.tlbTrans.exception.bits
+        when(
+          selectedIn.instInfo.exceptionPos === ExceptionPos.none && peer.tlbTrans.exception.valid && isCanTlbException
+        ) {
+          out.instInfo.exceptionPos    := ExceptionPos.backend
+          out.instInfo.exceptionRecord := exceptionIndex
+
+          tlbBlockingReg := true.B
+        }
       }
     }
   }
@@ -158,10 +156,16 @@ class AddrTransStage
 
   // Handle TLB maintenance
   peer.tlbMaintenance := selectedIn.tlbMaintenance
+  when(tlbBlockingReg) {
+    peer.tlbMaintenance.isFill       := false.B
+    peer.tlbMaintenance.isWrite      := false.B
+    peer.tlbMaintenance.isRead       := false.B
+    peer.tlbMaintenance.isInvalidate := false.B
+    peer.tlbMaintenance.isSearch     := false.B
+  }
   when(selectedIn.instInfo.isTlb) {
     tlbBlockingReg := true.B
   }
-  io.in.ready := inReady && !tlbBlockingReg
   if (isNoPrivilege) {
     peer.tlbMaintenance := DontCare
     io.in.ready         := inReady
@@ -173,7 +177,7 @@ class AddrTransStage
   }
 
   // Submit result
-  when(selectedIn.instInfo.isValid) {
+  when(selectedIn.instInfo.isValid && !tlbBlockingReg) {
     resultOutReg.valid := true.B
   }
 }
