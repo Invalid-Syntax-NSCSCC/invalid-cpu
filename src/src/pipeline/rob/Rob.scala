@@ -164,8 +164,7 @@ class Rob(
             !(io.hasInterrupt || hasInterruptReg) &&
             deqPort.bits.wbPort.instInfo.isStore
           io.branchCommit := commit.ready &&
-            (deqPort.bits.wbPort.instInfo.ftqInfo.predictBranch ^
-              deqPort.bits.wbPort.instInfo.ftqCommitInfo.isBranchSuccess)
+            (deqPort.bits.wbPort.instInfo.ftqCommitInfo.isPredictError)
           deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready) && !isNextTlbMaintenanceTrigger
         } else {
           deqPort.ready := commit.ready &&

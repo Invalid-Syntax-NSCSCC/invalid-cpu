@@ -7,6 +7,7 @@ class CommitFtqInfoBundle extends Bundle {
   val isBranch        = Bool()
   val branchType      = UInt(Param.BPU.BranchType.width.W)
   val isBranchSuccess = Bool()
+  val isPredictError  = Bool()
 }
 
 object CommitFtqInfoBundle {

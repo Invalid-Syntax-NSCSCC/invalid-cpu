@@ -260,6 +260,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
 
     resultOutReg.bits.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
+    resultOutReg.bits.instInfo.ftqCommitInfo.isPredictError  := branchSetPort.en
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
