@@ -108,15 +108,6 @@ class RenameStage(
     case ((in, rs), req) =>
       in.valid && rs.ready && req.ready && fetchEnableFlag
   }
-  // io.ins
-  // .lazyZip(
-  //   reservationStation.io.enqueuePorts
-  // )
-  // .lazyZip(peer.requests)
-  // .map {
-  //   case (in, rs, reqPort) =>
-  //     in.valid && rs.ready && reqPort.ready && fetchEnableFlag
-  // }
 
   io.ins.zip(requestValids).foreach {
     case (in, rValid) =>

@@ -174,17 +174,6 @@ class Rob(
           // &&
           // !io.hasInterrupt
         }
-
-        // change match table
-        // when(
-        //   deqPort.ready &&
-        //     deqPort.bits.wbPort.gprWrite.en &&
-        //     deqPort.bits.wbPort.gprWrite.addr =/= 0.U &&
-        //     matchTable(deqPort.bits.wbPort.gprWrite.addr).locate === RegDataLocateSel.rob &&
-        //     matchTable(deqPort.bits.wbPort.gprWrite.addr).robId === queue.io.deqIncResults(idx)
-        // ) {
-        //   matchTable(deqPort.bits.wbPort.gprWrite.addr).locate := RegDataLocateSel.regfile
-        // }
       }
   }
 
@@ -280,48 +269,6 @@ class Rob(
                 rfReadPort.data
               )
             )
-
-          // when(reqRead.en) {
-          //   when(matchTable(reqRead.addr).locate === RegDataLocateSel.rob) {
-          //     // in rob
-          //     when(matchTable(reqRead.addr).robResData.valid) {
-          //       resRead.sel    := RobDistributeSel.realData
-          //       resRead.result := matchTable(reqRead.addr).robResData.bits
-          //     }.otherwise {
-          //       // busy
-          //       resRead.sel    := RobDistributeSel.robId
-          //       resRead.result := matchTable(reqRead.addr).robId
-          //     }
-          //   }.otherwise {
-          //     // in regfile
-          //     resRead.sel    := RobDistributeSel.realData
-          //     resRead.result := rfReadPort.data
-          //   }
-          //   // if RAW in the same time request
-          //   val raw = io.requests.take(idx).map(_.bits.writeRequest).map { prevWrite =>
-          //     prevWrite.en && (prevWrite.addr === reqRead.addr)
-          //   }
-          //   val selectWrite = PriorityEncoderOH(raw.reverse).reverse
-          //   when(raw.foldLeft(false.B)(_ || _)) {
-          //     io.distributeResults.take(idx).zip(selectWrite).foreach {
-          //       case (prevRes, prevEn) =>
-          //         when(prevEn) {
-          //           resRead.sel    := RobDistributeSel.robId
-          //           resRead.result := prevRes.robId
-          //         }
-          //     }
-          //   }
-          //   when(raw.foldLeft(false.B)(_ || _)) {
-          //     io.distributeResults.take(idx).zip(selectWrite).foreach {
-          //       case (prevRes, prevEn) =>
-          //         when(prevEn) {
-          //           isLocateInPrevWrite := true.B
-          //           resRead.sel         := RobDistributeSel.robId
-          //           resRead.result      := prevRes.robId
-          //         }
-          //     }
-          //   }
-          // }
         }
 
     }
