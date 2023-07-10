@@ -240,46 +240,88 @@ class Rob(
             rfReadPort.en   := true.B
             rfReadPort.addr := reqRead.addr
 
-            when(reqRead.en) {
-              when(matchTable(reqRead.addr).locate === RegDataLocateSel.rob) {
-                // in rob
-                when(matchTable(reqRead.addr).robResData.valid) {
-                  resRead.sel    := RobDistributeSel.realData
-                  resRead.result := matchTable(reqRead.addr).robResData.bits
-                }.otherwise {
-                  // busy
-                  resRead.sel    := RobDistributeSel.robId
-                  resRead.result := matchTable(reqRead.addr).robId
-                }
-                // // in rob
-                // when(queue.io.elems(matchTable(reqRead.addr).robId).state === State.ready) {
-                //   resRead.sel    := RobDistributeSel.realData
-                //   resRead.result := queue.io.elems(matchTable(reqRead.addr).robId).wbPort.gprWrite.data
-                // }.otherwise {
-                //   // busy
-                //   resRead.sel    := RobDistributeSel.robId
-                //   resRead.result := matchTable(reqRead.addr).robId
-                // }
-              }.otherwise {
-                // in regfile
-                resRead.sel    := RobDistributeSel.realData
-                resRead.result := rfReadPort.data
-              }
-              // if RAW in the same time request
-              val raw = io.requests.take(idx).map(_.bits.writeRequest).map { prevWrite =>
-                prevWrite.en && (prevWrite.addr === reqRead.addr)
-              }
-              val selectWrite = PriorityEncoderOH(raw.reverse).reverse
-              when(raw.foldLeft(false.B)(_ || _)) {
-                io.distributeResults.take(idx).zip(selectWrite).foreach {
-                  case (prevRes, prevEn) =>
-                    when(prevEn) {
-                      resRead.sel    := RobDistributeSel.robId
-                      resRead.result := prevRes.robId
-                    }
-                }
+            val isLocateInRob      = matchTable(reqRead.addr).locate === RegDataLocateSel.rob
+            val isLocateInRobValid = matchTable(reqRead.addr).robResData.valid
+
+            val isLocateInPrevWrite        = WireDefault(false.B)
+            val dataLocateInPrevWriteRobId = DontCare
+
+            // if RAW in the same time request
+            val raw = io.requests.take(idx).map(_.bits.writeRequest).map { prevWrite =>
+              prevWrite.en && (prevWrite.addr === reqRead.addr)
+            }
+            val selectWrite = PriorityEncoderOH(raw.reverse).reverse
+            when(raw.foldLeft(false.B)(_ || _)) {
+              io.distributeResults.take(idx).zip(selectWrite).foreach {
+                case (prevRes, prevEn) =>
+                  when(prevEn) {
+                    isLocateInPrevWrite        := true.B
+                    dataLocateInPrevWriteRobId := prevRes.robId
+                  }
               }
             }
+
+            resRead.sel := Mux(
+              reqRead.en && ((isLocateInRob && !isLocateInRobValid) || isLocateInPrevWrite),
+              RobDistributeSel.robId,
+              RobDistributeSel.realData
+            )
+
+            resRead.result := Mux(
+              isLocateInPrevWrite,
+              dataLocateInPrevWriteRobId,
+              Mux(
+                isLocateInRob,
+                Mux(
+                  isLocateInRobValid,
+                  matchTable(reqRead.addr).robResData.bits,
+                  matchTable(reqRead.addr).robId
+                ),
+                rfReadPort.data
+              )
+            )
+
+          // when(reqRead.en) {
+          //   when(matchTable(reqRead.addr).locate === RegDataLocateSel.rob) {
+          //     // in rob
+          //     when(matchTable(reqRead.addr).robResData.valid) {
+          //       resRead.sel    := RobDistributeSel.realData
+          //       resRead.result := matchTable(reqRead.addr).robResData.bits
+          //     }.otherwise {
+          //       // busy
+          //       resRead.sel    := RobDistributeSel.robId
+          //       resRead.result := matchTable(reqRead.addr).robId
+          //     }
+          //   }.otherwise {
+          //     // in regfile
+          //     resRead.sel    := RobDistributeSel.realData
+          //     resRead.result := rfReadPort.data
+          //   }
+          //   // if RAW in the same time request
+          //   val raw = io.requests.take(idx).map(_.bits.writeRequest).map { prevWrite =>
+          //     prevWrite.en && (prevWrite.addr === reqRead.addr)
+          //   }
+          //   val selectWrite = PriorityEncoderOH(raw.reverse).reverse
+          //   when(raw.foldLeft(false.B)(_ || _)) {
+          //     io.distributeResults.take(idx).zip(selectWrite).foreach {
+          //       case (prevRes, prevEn) =>
+          //         when(prevEn) {
+          //           resRead.sel    := RobDistributeSel.robId
+          //           resRead.result := prevRes.robId
+          //         }
+          //     }
+          //   }
+          //   when(raw.foldLeft(false.B)(_ || _)) {
+          //     io.distributeResults.take(idx).zip(selectWrite).foreach {
+          //       case (prevRes, prevEn) =>
+          //         when(prevEn) {
+          //           isLocateInPrevWrite := true.B
+          //           resRead.sel         := RobDistributeSel.robId
+          //           resRead.result      := prevRes.robId
+          //         }
+          //     }
+          //   }
+          // }
         }
 
     }
