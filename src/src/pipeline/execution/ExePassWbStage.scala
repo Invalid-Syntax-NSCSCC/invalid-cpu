@@ -238,7 +238,10 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
         fallThroughPc =/= ftqQueryPc
     )
 
-    branchSetPort.en    := (branchDirectionMispredict || branchTargeMispredict) && branchEnableFlag
+    // is branch
+    val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
+
+    branchSetPort.en    := (branchDirectionMispredict || branchTargeMispredict) && branchEnableFlag && isBranchInst
     branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
     when(branchSetPort.en) {
       branchEnableFlag                                 := false.B
@@ -250,8 +253,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       fallThroughPc
     )
 
-    // is branch
-    val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
     feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargeMispredict ||
       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
