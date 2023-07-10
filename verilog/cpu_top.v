@@ -190,7 +190,9 @@ module core_top (
         .io_debug0_wb_rf_wen(debug0_wb_rf_wen),
         .io_debug0_wb_rf_wnum(debug0_wb_rf_wnum),
         .io_debug0_wb_rf_wdata(debug0_wb_rf_wdata),
-        .io_debug0_wb_inst(debug0_wb_inst),
+        .io_debug0_wb_inst(debug0_wb_inst)
+`ifdef DIFFTEST_EN
+        ,
         .io_diffTest_cmt_valid_0(cmt_valid_0),
         .io_diffTest_cmt_valid_1(cmt_valid_1),
         .io_diffTest_cmt_cnt_inst(cmt_cnt_inst),
@@ -244,9 +246,7 @@ module core_top (
         .io_diffTest_csr_dmw0_diff_0(csr_dmw0_diff_0),
         .io_diffTest_csr_dmw1_diff_0(csr_dmw1_diff_0),
         .io_diffTest_csr_pgdl_diff_0(csr_pgdl_diff_0),
-        .io_diffTest_csr_pgdh_diff_0(csr_pgdh_diff_0)
-`ifdef DIFFTEST_EN
-        ,
+        .io_diffTest_csr_pgdh_diff_0(csr_pgdh_diff_0),
         .io_diffTest_regs_0(regs[0]),
         .io_diffTest_regs_1(regs[1]),
         .io_diffTest_regs_2(regs[2]),

@@ -62,7 +62,7 @@ class DistributedQueuePlus[ElemT <: Data](
 
   for (i <- 0 until channelLength) {
     for (j <- 0 until channelNum) {
-      val idx = i * channelLength + j
+      val idx = i * channelNum + j
       io.elems(idx)            := queues(j).io.elems(i)
       queues(j).io.setPorts(i) := io.setPorts(idx)
     }

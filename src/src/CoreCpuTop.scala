@@ -186,7 +186,6 @@ class CoreCpuTop extends Module {
   }
   renameStage.io.isFlush              := cu.io.backendFlush
   renameStage.io.peer.get.branchFlush := cu.io.frontendFlush
-  renameStage.io.peer.get.robEmptyNum := rob.io.emptyNum
   renameStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
     case (dst, src) =>
       dst := src
@@ -268,7 +267,7 @@ class CoreCpuTop extends Module {
   }
   rob.io.requests.zip(renameStage.io.peer.get.requests).foreach {
     case (dst, src) =>
-      dst := src
+      dst <> src
   }
   rob.io.isFlush      := cu.io.backendFlush
   rob.io.hasInterrupt := csr.io.hasInterrupt

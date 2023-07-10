@@ -47,14 +47,14 @@ abstract class SimpleMultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   selectedIns.lazyZip(io.ins).foreach {
     case (selectIn, in) => {
       selectIn := Mux(
-        io.isFlush,
-        blankIn,
-        Mux(
-          in.valid,
-          in.bits,
-          blankIn
-        )
+        // io.isFlush,
+        // blankIn,
+        // Mux(
+        in.valid,
+        in.bits,
+        blankIn
       )
+      // )
     }
   }
 
