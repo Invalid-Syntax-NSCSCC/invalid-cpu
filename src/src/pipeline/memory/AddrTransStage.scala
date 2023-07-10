@@ -6,13 +6,13 @@ import common.enums.ReadWriteSel
 import control.enums.ExceptionPos
 import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
-import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
+import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.BaseStage
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
 import pipeline.memory.enums.AddrTransType
+import spec.Param.{isDiffTest, isNoPrivilege}
 import spec.Value.Csr
 import spec.Width
-import spec.Param.isDiffTest
 
 import scala.collection.immutable
 
@@ -87,6 +87,9 @@ class AddrTransStage
       transMode := AddrTransType.directMapping
     }.otherwise {
       transMode := AddrTransType.pageTableMapping
+      if (isNoPrivilege) {
+        transMode := AddrTransType.directMapping
+      }
     }
   }
 
@@ -133,11 +136,13 @@ class AddrTransStage
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      peer.tlbTrans.isValid := selectedIn.memRequest.isValid || selectedIn.cacheMaintenance.control.isCoherentByHit
-      translatedAddr        := peer.tlbTrans.physAddr
-      out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
+      if (!isNoPrivilege) {
+        peer.tlbTrans.isValid := selectedIn.memRequest.isValid || selectedIn.cacheMaintenance.control.isCoherentByHit
+        translatedAddr        := peer.tlbTrans.physAddr
+        out.translatedMemReq.isValid := selectedIn.memRequest.isValid && !peer.tlbTrans.exception.valid
 
-      handleException()
+        handleException()
+      }
     }
   }
 
@@ -157,6 +162,10 @@ class AddrTransStage
     tlbBlockingReg := true.B
   }
   io.in.ready := inReady && !tlbBlockingReg
+  if (isNoPrivilege) {
+    peer.tlbMaintenance := DontCare
+    io.in.ready         := inReady
+  }
 
   // Handle flush (actually is TLB maintenance done)
   when(io.isFlush) {

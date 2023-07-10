@@ -3,9 +3,8 @@ package control
 import chisel3._
 import chisel3.util._
 import common.bundles.{PassThroughPort, PcSetNdPort, RfWriteNdPort}
-import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
+import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort}
 import control.enums.ExceptionPos
-import memory.bundles.TlbMaintenanceNdPort
 import pipeline.commit.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param}

@@ -3,7 +3,6 @@ package frontend.fetch
 import chisel3._
 import chisel3.util._
 import frontend.bundles.InstMemResponseNdPort
-import memory.bundles.MemResponseNdPort
 import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.InstQueueEnqNdPort

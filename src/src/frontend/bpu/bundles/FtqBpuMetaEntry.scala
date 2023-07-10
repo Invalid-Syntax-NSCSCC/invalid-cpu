@@ -1,10 +1,10 @@
 package frontend.bpu.bundles
 
-import spec._
 import chisel3._
-import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.util._
 import frontend.bpu.components.Bundles.TageMetaPort
+import spec._
 
 class FtqBpuMetaEntry(
   addr:    Int = spec.wordLength,

@@ -2,13 +2,13 @@ package memory
 
 import chisel3._
 import chisel3.util._
-import control.csrBundles.{AsidBundle, EstatBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
+import control.csrBundles._
 import memory.bundles._
 import memory.enums.TlbMemType
 import pipeline.commit.bundles.DifftestTlbFillNdPort
 import spec.ExeInst.Op.Tlb._
-import spec._
 import spec.Param.isDiffTest
+import spec._
 
 class Tlb extends Module {
   val io = IO(new Bundle {

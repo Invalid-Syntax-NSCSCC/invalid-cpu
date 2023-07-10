@@ -1,11 +1,10 @@
 package frontend
 
-import spec._
 import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
-import chisel3.experimental.Param
 import frontend.bundles.{BackendCommitPort, BpuFtqPort, FtqBlockPort, FtqBpuMetaPort}
+import spec._
 
 class FetchTargetQueen(
   val queueSize: Int = Param.BPU.ftqSize,

@@ -4,14 +4,13 @@ import chisel3._
 import chisel3.util._
 import common.bundles.RfReadPort
 import control.enums.ExceptionPos
-import pipeline.commit.bundles._
 import pipeline.commit.WbNdPort
-import pipeline.common.MultiQueue
+import pipeline.commit.bundles._
+import pipeline.common.DistributedQueuePlus
 import pipeline.rob.bundles._
 import pipeline.rob.enums.{RegDataLocateSel, RobDistributeSel, RobInstState => State}
-import spec._
-import pipeline.common.DistributedQueuePlus
 import spec.Param._
+import spec._
 
 // assert: commits cannot ready 1 but not 0
 class Rob(

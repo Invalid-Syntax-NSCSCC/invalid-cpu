@@ -1,12 +1,4 @@
-import chisel3._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chiseltest._
-import chiseltest.simulator.WriteVcdAnnotation
-import pipeline.dispatch.bundles.FetchInstInfoBundle
-import pipeline.queue.InstQueue
-import utest._
 
-import scala.collection.immutable
 
 //  object ComponentSpec extends ChiselUtestTester {
 //   val tests = Tests {

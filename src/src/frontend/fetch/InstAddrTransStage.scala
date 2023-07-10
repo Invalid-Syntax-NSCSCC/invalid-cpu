@@ -2,12 +2,13 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import memory.enums.TlbMemType
-import memory.bundles.TlbTransPort
-import pipeline.memory.enums.AddrTransType
 import frontend.bundles.FetchCsrNdPort
+import memory.bundles.TlbTransPort
+import memory.enums.TlbMemType
+import pipeline.memory.enums.AddrTransType
 import spec.Value.Csr
 import spec.Width
+import spec.Param._
 
 class InstAddrTransPeerPort extends Bundle {
   val csr      = Input(new FetchCsrNdPort)
@@ -89,6 +90,9 @@ class InstAddrTransStage extends Module {
       transMode := AddrTransType.directMapping
     }.otherwise {
       transMode := AddrTransType.pageTableMapping
+      if (isNoPrivilege) {
+        transMode := AddrTransType.directMapping
+      }
     }
   }
 
@@ -106,12 +110,14 @@ class InstAddrTransStage extends Module {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      peer.tlbTrans.isValid := true.B
-      translatedAddr        := peer.tlbTrans.physAddr
-      outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
-        !peer.tlbTrans.exception.valid && !isAdef
+      if (!isNoPrivilege) {
+        peer.tlbTrans.isValid := true.B
+        translatedAddr        := peer.tlbTrans.physAddr
+        outReg.translatedMemReq.isValid := (io.isPcUpdate || !isLastSent) &&
+          !peer.tlbTrans.exception.valid && !isAdef
 
-      handleException()
+        handleException()
+      }
     }
   }
 

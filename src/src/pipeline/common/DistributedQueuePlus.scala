@@ -3,7 +3,6 @@ package pipeline.common
 import chisel3._
 import chisel3.util._
 import utils.MultiCounter
-import spec.Param
 
 class DistributedQueuePlus[ElemT <: Data](
   enqMaxNum:      Int,

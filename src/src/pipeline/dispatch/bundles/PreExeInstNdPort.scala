@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.VecLiterals._
 import common.bundles.RfAccessInfoNdPort
-import memory.bundles.TlbMaintenanceNdPort
 import spec._
 
 class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {

@@ -5,7 +5,6 @@ import chisel3.util._
 import frontend.bundles.ICacheAccessPort
 import frontend.fetch._
 import memory.bundles.TlbTransPort
-import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.memory.bundles.MemCsrNdPort
 import pipeline.queue.InstQueueEnqNdPort
 import spec._

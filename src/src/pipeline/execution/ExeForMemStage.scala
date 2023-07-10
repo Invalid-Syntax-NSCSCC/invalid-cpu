@@ -5,17 +5,15 @@ import chisel3.util._
 import common.enums.ReadWriteSel
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
+import memory.bundles.CacheMaintenanceControlNdPort
 import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.memory.AddrTransNdPort
-import memory.bundles.CacheMaintenanceControlNdPort
+import pipeline.memory.enums.CacheMaintenanceTargetType
 import spec.Param.isDiffTest
 import spec._
 
 import scala.collection.immutable
-import memory.bundles.TlbMaintenanceNdPort
-import pipeline.memory.bundles.CacheMaintenanceInstNdPort
-import pipeline.memory.enums.CacheMaintenanceTargetType
 
 class ExeForMemPeerPort extends Bundle {
   val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)

@@ -6,8 +6,9 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
-  val isDiffTest        = true
-  val isOutOfOrderIssue = true
+  val isDiffTest        = false
+  val isOutOfOrderIssue = false
+  val isNoPrivilege     = true
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
