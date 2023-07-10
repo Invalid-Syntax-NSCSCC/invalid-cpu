@@ -29,9 +29,11 @@ class RegFile(
   // larger index write first
   regs.zipWithIndex.foreach {
     case (reg, index) =>
-      io.writePorts.foreach { write =>
-        when(write.en && index.U === write.addr) {
-          reg := write.data
+      if (index != 0) {
+        io.writePorts.foreach { write =>
+          when(write.en && index.U === write.addr) {
+            reg := write.data
+          }
         }
       }
   }
@@ -39,18 +41,19 @@ class RegFile(
   // Read
   io.readPorts.foreach { readPorts =>
     readPorts.foreach { readPort =>
-      readPort.data := zeroWord
-      when(readPort.addr === 0.U) {
-        // Always zero
-        readPort.data := zeroWord
-      }.elsewhen(readPort.en) {
-        readPort.data := regs(readPort.addr)
-        io.writePorts.foreach { write =>
-          when(write.en && write.addr === readPort.addr) {
-            readPort.data := write.data
-          }
-        }
-      }
+      readPort.data := regs(readPort.addr)
+    // readPort.data := zeroWord
+    // when(readPort.addr === 0.U) {
+    //   // Always zero
+    //   readPort.data := zeroWord
+    // }.elsewhen(readPort.en) {
+    //   readPort.data := regs(readPort.addr)
+    //   io.writePorts.foreach { write =>
+    //     when(write.en && write.addr === readPort.addr) {
+    //       readPort.data := write.data
+    //     }
+    //   }
+    // }
     }
   }
 

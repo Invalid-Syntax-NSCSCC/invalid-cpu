@@ -37,9 +37,8 @@ class RenamePeerPort(
     extends Bundle {
 
   // `IssueStage` <-> `Rob`
-  val robEmptyNum = Input(UInt(log2Ceil(Param.Width.Rob._length + 1).W))
-  val requests    = Output(Vec(issueNum, new RobReadRequestNdPort))
-  val results     = Input(Vec(issueNum, new RobReadResultNdPort))
+  val requests = Vec(issueNum, Decoupled(new RobReadRequestNdPort))
+  val results  = Input(Vec(issueNum, new RobReadResultNdPort))
 
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
@@ -67,13 +66,13 @@ class RenameStage(
 
   // Fallback
   peer.requests.foreach { req =>
-    req.en := false.B
-    req.readRequests.foreach { port =>
+    req.valid := false.B
+    req.bits.readRequests.foreach { port =>
       port.en   := false.B
       port.addr := DontCare
     }
-    req.writeRequest.en   := false.B
-    req.writeRequest.addr := DontCare
+    req.bits.writeRequest.en   := false.B
+    req.bits.writeRequest.addr := DontCare
   }
 
   val reservationStation: BaseReservationStation = Module(
@@ -105,15 +104,19 @@ class RenameStage(
   val fetchEnableFlag = RegInit(true.B)
 
   // valid
-  val requestValids = io.ins
-    .lazyZip(
-      reservationStation.io.enqueuePorts
-    )
-    .zipWithIndex
-    .map {
-      case ((in, rs), idx) =>
-        in.valid && rs.ready && idx.U < peer.robEmptyNum && fetchEnableFlag
-    }
+  val requestValids = io.ins.zip(reservationStation.io.enqueuePorts).zip(io.peer.get.requests).map {
+    case ((in, rs), req) =>
+      in.valid && rs.ready && req.ready && fetchEnableFlag
+  }
+  // io.ins
+  // .lazyZip(
+  //   reservationStation.io.enqueuePorts
+  // )
+  // .lazyZip(peer.requests)
+  // .map {
+  //   case (in, rs, reqPort) =>
+  //     in.valid && rs.ready && reqPort.ready && fetchEnableFlag
+  // }
 
   io.ins.zip(requestValids).foreach {
     case (in, rValid) =>
@@ -125,15 +128,15 @@ class RenameStage(
   }
   peer.requests.zip(requestValids).foreach {
     case (req, rValid) =>
-      req.en := rValid
+      req.valid := rValid
   }
 
   // request
   peer.requests.zip(selectedIns).foreach {
     case (req, in) =>
       val decode = in.decode
-      req.writeRequest := decode.info.gprWritePort
-      req.readRequests.zip(decode.info.gprReadPorts).foreach {
+      req.bits.writeRequest := decode.info.gprWritePort
+      req.bits.readRequests.zip(decode.info.gprReadPorts).foreach {
         case (dst, src) =>
           dst := src
       }

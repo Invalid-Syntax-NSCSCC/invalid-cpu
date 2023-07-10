@@ -22,8 +22,8 @@ class Rob(
     extends Module {
   val io = IO(new Bundle {
     // `Rob` <-> `IssueStage`
-    val emptyNum          = Output(UInt(log2Ceil(robLength + 1).W))
-    val requests          = Input(Vec(issueNum, new RobReadRequestNdPort))
+    // val emptyNum          = Output(UInt(log2Ceil(robLength + 1).W))
+    val requests          = Vec(issueNum, Flipped(Decoupled(new RobReadRequestNdPort)))
     val distributeResults = Output(Vec(issueNum, new RobReadResultNdPort))
 
     // `Rob` <-> `Regfile`
@@ -98,7 +98,7 @@ class Rob(
   }
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.isFlush
-  io.emptyNum      := VecInit(queue.io.enqueuePorts.map(_.ready.asUInt)).reduceTree(_ +& _)
+
   io.instWbBroadCasts.zip(io.finishInsts).foreach {
     case (dst, src) =>
       dst.en    := src.valid // && io.robInstValids(src.bits.instInfo.robId)
@@ -202,8 +202,13 @@ class Rob(
     io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
   }
 
-  /** Distribute for issue stage
-    */
+  // Distribute for issue stage
+
+  io.requests.zip(queue.io.enqueuePorts).foreach {
+    case (req, enq) =>
+      req.ready := enq.ready
+  }
+
   queue.io.enqueuePorts
     .lazyZip(io.requests)
     .lazyZip(io.distributeResults)
@@ -212,58 +217,60 @@ class Rob(
     .foreach {
       case ((enq, req, res, rfReadPorts), idx) =>
         // enqueue
-        enq.valid                     := req.en
+        enq.valid                     := req.valid
         enq.bits                      := RobInstStoreBundle.default
         enq.bits.isValid              := true.B
         enq.bits.state                := State.busy
-        enq.bits.wbPort.gprWrite.en   := req.writeRequest.en
-        enq.bits.wbPort.gprWrite.addr := req.writeRequest.addr
+        enq.bits.wbPort.gprWrite.en   := req.bits.writeRequest.en
+        enq.bits.wbPort.gprWrite.addr := req.bits.writeRequest.addr
 
         // distribute rob id
         res       := RobReadResultNdPort.default
         res.robId := queue.io.enqIncResults(idx)
-        when(req.en && req.writeRequest.en && req.writeRequest.addr =/= 0.U) {
-          matchTable(req.writeRequest.addr).locate := RegDataLocateSel.rob
-          matchTable(req.writeRequest.addr).robId  := res.robId
+        when(req.valid && req.bits.writeRequest.en && req.bits.writeRequest.addr =/= 0.U) {
+          matchTable(req.bits.writeRequest.addr).locate := RegDataLocateSel.rob
+          matchTable(req.bits.writeRequest.addr).robId  := res.robId
         }
 
         // request read data
-        req.readRequests.lazyZip(res.readResults).lazyZip(rfReadPorts).foreach {
+        req.bits.readRequests.lazyZip(res.readResults).lazyZip(rfReadPorts).foreach {
           case (reqRead, resRead, rfReadPort) =>
             resRead := RobDistributeBundle.default
-            when(reqRead.en) {
-              when(matchTable(reqRead.addr).locate === RegDataLocateSel.rob) {
-                // in rob
-                when(queue.io.elems(matchTable(reqRead.addr).robId).state === State.ready) {
-                  resRead.sel    := RobDistributeSel.realData
-                  resRead.result := queue.io.elems(matchTable(reqRead.addr).robId).wbPort.gprWrite.data
-                }.otherwise {
-                  // busy
-                  resRead.sel    := RobDistributeSel.robId
-                  resRead.result := matchTable(reqRead.addr).robId
-                }
+
+            rfReadPort.en   := true.B
+            rfReadPort.addr := reqRead.addr
+
+            // when(reqRead.en) {
+            when(matchTable(reqRead.addr).locate === RegDataLocateSel.rob) {
+              // in rob
+              when(queue.io.elems(matchTable(reqRead.addr).robId).state === State.ready) {
+                resRead.sel    := RobDistributeSel.realData
+                resRead.result := queue.io.elems(matchTable(reqRead.addr).robId).wbPort.gprWrite.data
               }.otherwise {
-                // in regfile
-                rfReadPort.en   := true.B
-                rfReadPort.addr := reqRead.addr
-                resRead.sel     := RobDistributeSel.realData
-                resRead.result  := rfReadPort.data
+                // busy
+                resRead.sel    := RobDistributeSel.robId
+                resRead.result := matchTable(reqRead.addr).robId
               }
-              // if RAW in the same time request
-              val raw = io.requests.take(idx).map(_.writeRequest).map { prevWrite =>
-                prevWrite.en && (prevWrite.addr === reqRead.addr)
-              }
-              val selectWrite = PriorityEncoderOH(raw.reverse).reverse
-              when(raw.foldLeft(false.B)(_ || _)) {
-                io.distributeResults.take(idx).zip(selectWrite).foreach {
-                  case (prevRes, prevEn) =>
-                    when(prevEn) {
-                      resRead.sel    := RobDistributeSel.robId
-                      resRead.result := prevRes.robId
-                    }
-                }
+            }.otherwise {
+              // in regfile
+              resRead.sel    := RobDistributeSel.realData
+              resRead.result := rfReadPort.data
+            }
+            // if RAW in the same time request
+            val raw = io.requests.take(idx).map(_.bits.writeRequest).map { prevWrite =>
+              prevWrite.en && (prevWrite.addr === reqRead.addr)
+            }
+            val selectWrite = PriorityEncoderOH(raw.reverse).reverse
+            when(raw.foldLeft(false.B)(_ || _)) {
+              io.distributeResults.take(idx).zip(selectWrite).foreach {
+                case (prevRes, prevEn) =>
+                  when(prevEn) {
+                    resRead.sel    := RobDistributeSel.robId
+                    resRead.result := prevRes.robId
+                  }
               }
             }
+          // }
         }
 
     }
