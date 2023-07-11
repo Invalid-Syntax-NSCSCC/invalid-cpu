@@ -20,7 +20,7 @@ object Param {
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 1 // 单次提交数量
   val pipelineNum            = 3 // number of pipeline
-  val dispatchOutQueueLength = 4
+  val dispatchOutQueueLength = 2
   val csrReadNum             = 1
   val csrWriteNum            = 1
 

@@ -14,11 +14,12 @@ import utils.BiPriorityMux
 import spec.ExeInst
 
 class OutOfOrderReservationStation(
-  queueLength:   Int,
-  enqMaxNum:     Int,
-  deqMaxNum:     Int,
-  channelNum:    Int,
-  channelLength: Int)
+  queueLength:          Int,
+  enqMaxNum:            Int,
+  deqMaxNum:            Int,
+  channelNum:           Int,
+  channelLength:        Int,
+  supportCheckForIssue: Boolean = true)
     extends BaseReservationStation(
       queueLength,
       enqMaxNum,

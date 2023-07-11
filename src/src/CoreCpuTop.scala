@@ -16,6 +16,8 @@ import spec.Param.isDiffTest
 import control.Cu
 import pipeline.dispatch.RenameStage
 import pipeline.dispatch.DispatchStage
+import pipeline.dispatch.NewRenameStage
+import pipeline.dispatch.NewDispatchStage
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -102,8 +104,8 @@ class CoreCpuTop extends Module {
   val iCache           = Module(new ICache)
   val frontend         = Module(new Frontend)
   val instQueue        = Module(new MultiInstQueue)
-  val renameStage      = Module(new RenameStage)
-  val dispatchStage    = Module(new DispatchStage)
+  val renameStage      = Module(new NewRenameStage)
+  val dispatchStage    = Module(new NewDispatchStage)
   val exeForMemStage   = Module(new ExeForMemStage)
   val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
   val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))
@@ -194,7 +196,7 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  renameStage.io.peer.get.plv := csr.io.csrValues.crmd.plv
+  // renameStage.io.peer.get.plv := csr.io.csrValues.crmd.plv
 
   // dispatch
   dispatchStage.io.ins.zip(renameStage.io.outs).foreach {
@@ -203,6 +205,11 @@ class CoreCpuTop extends Module {
   }
   dispatchStage.io.isFlush           := cu.io.backendFlush
   dispatchStage.io.peer.get.csrScore := csrScoreBoard.io.regScore
+  dispatchStage.io.peer.get.plv      := csr.io.csrValues.crmd.plv
+  dispatchStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   // Scoreboards
   csrScoreBoard.io.freePort := commitStage.io.csrFreePort
