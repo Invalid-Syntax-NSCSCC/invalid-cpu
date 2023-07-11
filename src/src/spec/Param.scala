@@ -37,7 +37,7 @@ object Param {
     val exeOp  = log2Ceil(ExeInst.Op.count + 1).W
 
     object ReservationStation {
-      val _channelNum    = 4
+      val _channelNum    = 2
       val _channelLength = 4
       val _length        = _channelLength * _channelNum
     }
