@@ -61,11 +61,12 @@ class InOrderReservationStation(
   queue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
     case (deq, out) =>
       if (supportCheckForIssue) {
-        out.valid := deq.valid && deq.bits.robResult.readResults.forall(
+        val supportIssue = deq.bits.robResult.readResults.forall(
           _.sel === RobDistributeSel.realData
         )
+        out.valid := deq.valid && supportIssue
         out.bits  := deq.bits
-        deq.ready := out.ready
+        deq.ready := out.ready && supportIssue
       } else {
         out <> deq
       }
