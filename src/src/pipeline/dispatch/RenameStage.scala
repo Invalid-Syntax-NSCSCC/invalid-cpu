@@ -169,8 +169,7 @@ class RenameStage(
       // jumbBranch / memLoadStort / csr
       out.bits.exePort.jumpBranchAddr := rs.bits.regReadPort.preExeInstInfo.jumpBranchAddr
 
-      // Read Csr Data in dispatch
-      out.bits.csrReadEn := rs.bits.regReadPort.preExeInstInfo.csrReadEn
+      // Read Csr Data in exe
 
       out.bits.exePort.instInfo       := rs.bits.regReadPort.instInfo
       out.bits.exePort.instInfo.robId := rs.bits.robResult.robId

@@ -9,9 +9,8 @@ import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.enums.ScoreboardState
 
 class DispatchNdPort extends Bundle {
-  val issueEns  = Vec(Param.pipelineNum, Bool())
-  val csrReadEn = Bool()
-  val exePort   = new ExeNdPort
+  val issueEns = Vec(Param.pipelineNum, Bool())
+  val exePort  = new ExeNdPort
 }
 
 object DispatchNdPort {
@@ -98,18 +97,6 @@ class DispatchStage(
         when(in.exePort.instInfo.needCsr) {
           io.peer.get.csrOccupyPort.en := true.B
         }
-        // if (dst_idx == Param.csrIssuePipelineIndex) {
-        //   def csrAddr = in.exePort.jumpBranchAddr
-        //   when(in.csrReadEn) {
-        //     io.peer.get.csrReadPort.en   := true.B
-        //     io.peer.get.csrReadPort.addr := csrAddr(13, 0)
-        //     out.bits.csrData := Mux(
-        //       csrAddr(31),
-        //       0.U,
-        //       io.peer.get.csrReadPort.data
-        //     )
-        //   }
-        // }
       }
     }
   }

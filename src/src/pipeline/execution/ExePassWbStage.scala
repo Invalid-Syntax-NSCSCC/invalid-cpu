@@ -146,19 +146,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       }
     }
 
-    // if (dst_idx == Param.csrIssuePipelineIndex) {
-    // def csrAddr = selectedIn.jumpBranchAddr
-    // when(selectedIn.csrReadEn) {
-    //   io.peer.get.csrReadPort.en   := true.B
-    //   io.peer.get.csrReadPort.addr := csrAddr(13, 0)
-    //   out.bits.csrData := Mux(
-    //     csrAddr(31),
-    //     0.U,
-    //     io.peer.get.csrReadPort.data
-    //   )
-    // }
-    // }
-
     def csrAddr = selectedIn.csrAddr
 
     io.peer.get.csrReadPort.get.en   := true.B
