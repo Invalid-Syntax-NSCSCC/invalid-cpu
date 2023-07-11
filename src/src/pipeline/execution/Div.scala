@@ -10,10 +10,10 @@ class Div extends Module {
 
   val io = IO(new Bundle {
     val divInst = Flipped(Decoupled(new MulDivInstNdPort))
-    val divResult = Decoupled(new Bundle {
-      val quotient  = Output(UInt(wordLength.W)) // 商
-      val remainder = Output(UInt(wordLength.W)) // 余数
-    })
+    val divResult = Output(Valid(new Bundle {
+      val quotient  = UInt(wordLength.W) // 商
+      val remainder = UInt(wordLength.W) // 余数
+    }))
     val isFlush = Input(Bool())
   })
 
@@ -26,7 +26,7 @@ class Div extends Module {
   // 开始 正在运算或除零，忽略
   val start = WireDefault(io.divInst.valid && inputReady && io.divInst.bits.rightOperand.orR)
 
-  val op = WireDefault(io.divInst.bits.op)
+  // val op = WireDefault(io.divInst.bits.op)
   // 被除数
   val dividend = WireDefault(io.divInst.bits.leftOperand)
   // 除数
@@ -37,10 +37,7 @@ class Div extends Module {
 
   // 是否为有符号
   val isSigned = WireDefault(
-    VecInit(
-      ExeInst.Op.div,
-      ExeInst.Op.mod
-    ).contains(op)
+    io.divInst.bits.isSigned
   )
 
   def getSign(data: Bits, width: Integer): Bool = {
