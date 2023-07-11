@@ -17,12 +17,11 @@ class InstAddrTransPeerPort extends Bundle {
 
 class InstAddrTransStage extends Module {
   val io = IO(new Bundle {
-    val isFlush       = Input(Bool())
-    val isPcUpdate    = Input(Bool())
-    val pc            = Input(UInt(Width.Mem.addr))
-    val isBlockPcNext = Output(Bool())
-    val out           = Decoupled(new InstReqNdPort)
-    val peer          = new InstAddrTransPeerPort
+    val isFlush    = Input(Bool())
+    val isPcUpdate = Input(Bool())
+    val pc         = Input(UInt(Width.Mem.addr))
+    val out        = Decoupled(new InstReqNdPort)
+    val peer       = new InstAddrTransPeerPort
   })
 
   val peer = io.peer
@@ -33,9 +32,8 @@ class InstAddrTransStage extends Module {
   val isLastSent    = RegNext(true.B, true.B)
   val isOutputValid = RegNext(io.isPcUpdate || !isLastSent, false.B)
 
-  io.out.valid     := isOutputValid
-  io.out.bits      := outReg
-  io.isBlockPcNext := hasSentException
+  io.out.valid := isOutputValid
+  io.out.bits  := outReg
 
   val transMode = WireDefault(AddrTransType.direct) // Fallback: Direct translation
   val isAdef = WireDefault(
@@ -89,7 +87,7 @@ class InstAddrTransStage extends Module {
   outReg.translatedMemReq.addr := translatedAddr
   peer.tlbTrans.memType        := TlbMemType.fetch
   peer.tlbTrans.virtAddr       := io.pc
-  peer.tlbTrans.isValid        := true.B
+  peer.tlbTrans.isValid        := !hasSentException
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := io.pc
@@ -104,7 +102,7 @@ class InstAddrTransStage extends Module {
           !peer.tlbTrans.exception.valid && !isAdef
 
         // Handle exception
-        val isExceptionValid = isAdef || peer.tlbTrans.exception.valid
+        val isExceptionValid = isAdef || peer.tlbTrans.exception.valid || hasSentException
         outReg.exception.valid := isExceptionValid
         when(peer.tlbTrans.exception.valid && !isAdef) {
           outReg.exception.bits := peer.tlbTrans.exception.bits

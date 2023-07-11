@@ -6,7 +6,7 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
-  val isDiffTest        = false
+  val isDiffTest        = true
   val isOutOfOrderIssue = false
   val isNoPrivilege     = false
 

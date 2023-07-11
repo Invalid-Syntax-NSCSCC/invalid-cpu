@@ -58,5 +58,5 @@ class InstFetch extends Module {
     p.memRes <> io.accessPort.res
   }
 
-  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg && !addrTransStage.io.isBlockPcNext
+  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg
 }
