@@ -36,6 +36,10 @@ class NewRenamePeerPort(
   pipelineNum: Int = Param.pipelineNum)
     extends Bundle {
 
+  // `IssueStage` <-> `Scoreboard(csr)`
+  val csrOccupyPort = Output(new ScoreboardChangeNdPort)
+  val csrScore      = Input(ScoreboardState())
+
   // `IssueStage` <-> `Rob`
   val requests = Vec(issueNum, Decoupled(new RobReadRequestNdPort))
   val results  = Input(Vec(issueNum, new RobReadResultNdPort))
@@ -45,8 +49,6 @@ class NewRenamePeerPort(
 
   // `Cu` -> `IssueStage`
   val branchFlush = Input(Bool())
-
-  // val plv = Input(UInt(2.W))
 }
 
 class NewRenameStage(
@@ -78,12 +80,6 @@ class NewRenameStage(
   // Fallback
   peer.requests.foreach { req =>
     req.valid := false.B
-  // req.bits.readRequests.foreach { port =>
-  //   port.en   := false.B
-  //   port.addr := DontCare
-  // }
-  // req.bits.writeRequest.en   := false.B
-  // req.bits.writeRequest.addr := DontCare
   }
 
   val reservationStation = Module(
@@ -97,25 +93,6 @@ class NewRenameStage(
     )
   )
 
-  // val reservationStation: BaseReservationStation = Module(
-  //   if (Param.isOutOfOrderIssue) {
-  //     new OutOfOrderReservationStation(
-  //       reservationLength,
-  //       issueNum,
-  //       issueNum,
-  //       Param.Width.ReservationStation._channelNum,
-  //       Param.Width.ReservationStation._channelLength
-  //     )
-  //   } else {
-  //     new InOrderReservationStation(
-  //       reservationLength,
-  //       issueNum,
-  //       issueNum,
-  //       Param.Width.ReservationStation._channelNum,
-  //       Param.Width.ReservationStation._channelLength
-  //     )
-  //   }
-  // )
   reservationStation.io.writebacks.zip(io.peer.get.writebacks).foreach {
     case (dst, src) =>
       dst <> src
@@ -172,49 +149,30 @@ class NewRenameStage(
         }
     }
 
-  // val deqEns = Wire(Vec(issueNum, Bool()))
-
-  //
-  reservationStation.io.dequeuePorts.zip(io.outs).foreach {
-    case (src, dst) =>
-      dst <> src
+  val isCsr = WireDefault(
+    VecInit(
+      reservationStation.io.dequeuePorts.map(_.bits.regReadPort.preExeInstInfo.needCsr)
+    )
+  )
+  peer.csrOccupyPort.en := isCsr(0) && io.outs(0).ready && io.outs(0).valid
+  // peer.csr
+  reservationStation.io.dequeuePorts.zip(io.outs).zipWithIndex.foreach {
+    case ((src, dst), idx) =>
+      dst.valid := src.valid
+      dst.bits  := src.bits
+      src.ready := dst.ready
+      if (idx == 0) {
+        when(isCsr(idx) && peer.csrScore =/= ScoreboardState.free) {
+          dst.valid := false.B
+          src.ready := false.B
+        }
+      } else {
+        when(isCsr(idx) || !reservationStation.io.dequeuePorts(idx - 1).ready) {
+          dst.valid := false.B
+          src.ready := false.B
+        }
+      }
   }
-  // reservationStation.io.dequeuePorts.lazyZip(resultOuts).zipWithIndex.foreach {
-  //   case ((rs, out), idx) =>
-  //     val deqEn = out.ready && rs.valid && deqEns.take(idx).foldLeft(true.B)(_ && _)
-  //     deqEns(idx) := deqEn
-  //     out.valid   := deqEn
-  //     rs.ready    := deqEn
-
-  //     out.bits.exePort.leftOperand  := rs.bits.robResult.readResults(0).result
-  //     out.bits.exePort.rightOperand := rs.bits.robResult.readResults(1).result
-  //     out.bits.exePort.exeSel       := rs.bits.regReadPort.preExeInstInfo.exeSel
-  //     out.bits.exePort.exeOp        := rs.bits.regReadPort.preExeInstInfo.exeOp
-
-  //     out.bits.exePort.gprWritePort := rs.bits.regReadPort.preExeInstInfo.gprWritePort
-  //     // jumbBranch / memLoadStort / csr
-  //     out.bits.exePort.jumpBranchAddr := rs.bits.regReadPort.preExeInstInfo.jumpBranchAddr
-
-  //     // Read Csr Data in exe
-
-  //     out.bits.exePort.instInfo       := rs.bits.regReadPort.instInfo
-  //     out.bits.exePort.instInfo.robId := rs.bits.robResult.robId
-
-  //     when(
-  //       peer.plv =/= 0.U &&
-  //         rs.bits.regReadPort.preExeInstInfo.isPrivilege &&
-  //         rs.bits.regReadPort.instInfo.exceptionPos === ExceptionPos.none
-  //     ) {
-  //       out.bits.exePort.instInfo.exceptionPos    := ExceptionPos.backend
-  //       out.bits.exePort.instInfo.exceptionRecord := Csr.ExceptionIndex.ipe
-  //     }
-
-  //     out.bits.issueEns.zip(rs.bits.regReadPort.preExeInstInfo.issueEn).foreach {
-  //       case (dst, src) =>
-  //         dst := src
-  //     }
-
-  // }
 
   when(peer.branchFlush) {
     // peer.requests.foreach(_.en := false.B)

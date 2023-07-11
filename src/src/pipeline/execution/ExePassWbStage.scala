@@ -198,9 +198,8 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     when(alu.io.result.jumpBranchInfo.en) {
       branchEnableFlag := false.B
     }
-    branchSetPort.pcAddr         := alu.io.result.jumpBranchInfo.pcAddr
-    csrScoreboardChangePort.en   := selectedIn.instInfo.needCsr
-    csrScoreboardChangePort.addr := DontCare
+    branchSetPort.pcAddr       := alu.io.result.jumpBranchInfo.pcAddr
+    csrScoreboardChangePort.en := selectedIn.instInfo.needCsr
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)

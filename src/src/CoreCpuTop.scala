@@ -203,9 +203,9 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  dispatchStage.io.isFlush           := cu.io.backendFlush
-  dispatchStage.io.peer.get.csrScore := csrScoreBoard.io.regScore
-  dispatchStage.io.peer.get.plv      := csr.io.csrValues.crmd.plv
+  dispatchStage.io.isFlush         := cu.io.backendFlush
+  renameStage.io.peer.get.csrScore := csrScoreBoard.io.regScore
+  dispatchStage.io.peer.get.plv    := csr.io.csrValues.crmd.plv
   dispatchStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
     case (dst, src) =>
       dst := src
@@ -213,10 +213,9 @@ class CoreCpuTop extends Module {
 
   // Scoreboards
   csrScoreBoard.io.freePort := commitStage.io.csrFreePort
-  csrScoreBoard.io.toMemPort.en := exePassWbStage_1.io.peer.get.csrScoreboardChangePort.get.en || exeForMemStage.io.peer.get.csrScoreboardChangePort.en // TODO: check this
-  csrScoreBoard.io.toMemPort.addr    := DontCare
+  csrScoreBoard.io.toMemPort.en := exePassWbStage_1.io.peer.get.csrScoreboardChangePort.get.en || exeForMemStage.io.peer.get.csrScoreboardChangePort.en
   csrScoreBoard.io.csrWriteStorePort := exePassWbStage_1.io.peer.get.csrWriteStorePort.get
-  csrScoreBoard.io.occupyPort        := dispatchStage.io.peer.get.csrOccupyPort
+  csrScoreBoard.io.occupyPort        := renameStage.io.peer.get.csrOccupyPort
   csrScoreBoard.io.isFlush           := cu.io.backendFlush
   csrScoreBoard.io.branchFlush       := cu.io.frontendFlush
 

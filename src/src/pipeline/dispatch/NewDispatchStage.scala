@@ -22,9 +22,6 @@ import control.enums.ExceptionPos
 // }
 
 class NewDispatchPeerPort extends Bundle {
-  // `IssueStage` <-> `Scoreboard(csr)`
-  val csrOccupyPort = Output(new ScoreboardChangeNdPort)
-  val csrScore      = Input(ScoreboardState())
 
   val plv = Input(UInt(2.W))
 
@@ -53,8 +50,8 @@ class NewDispatchStage(
     out.valid := false.B
     out.bits  := DontCare
   }
-  io.peer.get.csrOccupyPort.en   := false.B
-  io.peer.get.csrOccupyPort.addr := DontCare
+  // io.peer.get.csrOccupyPort.en   := false.B
+  // io.peer.get.csrOccupyPort.addr := DontCare
 
   val reservationStations = Seq.fill(pipelineNum)(
     Module(
@@ -126,32 +123,33 @@ class NewDispatchStage(
       val rsDeqPort = rs.io.dequeuePorts(0)
       val deqEn = WireDefault(
         outReady &&
-          rsDeqPort.valid &&
-          !(
-            rsDeqPort.bits.regReadPort.preExeInstInfo.needCsr &&
-              peer.csrScore =/= ScoreboardState.free
-          )
+          rsDeqPort.valid
+          // &&
+          // !(
+          //   rsDeqPort.bits.regReadPort.preExeInstInfo.needCsr &&
+          //     peer.csrScore =/= ScoreboardState.free
+          // )
       )
-      if (idx == Param.csrIssuePipelineIndex) {
-        when(
-          deqEns(Param.loadStoreIssuePipelineIndex) &&
-            reservationStations(Param.loadStoreIssuePipelineIndex).io
-              .dequeuePorts(0)
-              .bits
-              .regReadPort
-              .preExeInstInfo
-              .needCsr
-        ) {
-          deqEn := false.B
-        }
-      }
+      // if (idx == Param.csrIssuePipelineIndex) {
+      //   when(
+      //     deqEns(Param.loadStoreIssuePipelineIndex) &&
+      //       reservationStations(Param.loadStoreIssuePipelineIndex).io
+      //         .dequeuePorts(0)
+      //         .bits
+      //         .regReadPort
+      //         .preExeInstInfo
+      //         .needCsr
+      //   ) {
+      //     deqEn := false.B
+      //   }
+      // }
       deqEns(idx)     := deqEn
       out.valid       := deqEn
       rsDeqPort.ready := deqEn
 
-      when(deqEn && rsDeqPort.bits.regReadPort.preExeInstInfo.needCsr) {
-        peer.csrOccupyPort.en := true.B
-      }
+      // when(deqEn && rsDeqPort.bits.regReadPort.preExeInstInfo.needCsr) {
+      //   peer.csrOccupyPort.en := true.B
+      // }
 
       out.bits.leftOperand  := rsDeqPort.bits.robResult.readResults(0).result
       out.bits.rightOperand := rsDeqPort.bits.robResult.readResults(1).result

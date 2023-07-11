@@ -42,8 +42,8 @@ class DispatchStage(
     out.valid := false.B
     out.bits  := DontCare
   }
-  io.peer.get.csrOccupyPort.en   := false.B
-  io.peer.get.csrOccupyPort.addr := DontCare
+  io.peer.get.csrOccupyPort.en := false.B
+  // io.peer.get.csrOccupyPort.addr := DontCare
 
   // dontcare if input valid
   val dispatchMap = WireDefault(VecInit(Seq.fill(issueNum)(VecInit(Seq.fill(pipelineNum)(false.B)))))
