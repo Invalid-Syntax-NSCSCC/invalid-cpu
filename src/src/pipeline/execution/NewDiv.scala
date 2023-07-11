@@ -66,8 +66,7 @@ class NewDiv extends Module {
   // 前导0数量
   val dividendClz = Wire(UInt(wordLog.W))
   val divisorClz  = Wire(UInt(wordLog.W))
-  val clzDelta    = dividendClz - divisorClz
-  val clzDeltaReg = RegNext(clzDelta)
+  val clzDelta    = divisorClz - dividendClz
 
   val dividendClzBlock = Module(new Clz)
   val divisorClzBlock  = Module(new Clz)
@@ -118,7 +117,8 @@ class NewDiv extends Module {
   val cyclesRemainingSub1 = Wire(UInt(wordLog.W))
   cyclesRemainingSub1 := cyclesRemainingReg -& 1.U
 
-  val isTerminateReg = RegNext(getSign(cyclesRemainingSub1, wordLog))
+  val isTerminateReg = RegInit(false.B)
+  isTerminateReg := false.B
 
   io.divResult.valid := false.B
   io.divResult.bits  := DontCare
@@ -140,7 +140,7 @@ class NewDiv extends Module {
       }
 
       // prepare init data for calculate
-      shiftedDivisorReg  := Cat(clzDeltaReg(wordLog - 1, 1), 0.U(1.W))
+      shiftedDivisorReg  := divisorAbsReg << Cat(clzDelta(wordLog - 1, 1), 0.U(1.W))
       remainderReg       := dividendAbsReg
       quotientReg        := zeroWord
       cyclesRemainingReg := clzDelta(wordLog - 1, 1)
@@ -148,22 +148,42 @@ class NewDiv extends Module {
     is(DivState.calc) {
       shiftedDivisorReg := shiftedDivisorReg >> 2
       remainderReg := Mux(
-        sub1xOverflow,
-        sub2xValue, // sub2x = remainder - 2 * shiftDivisor
-        sub1xValue // sub1x = remainder - (3 or 1) * shiftDivisor
+        !newQuotientBits.orR,
+        remainderReg, // stay the same
+        Mux(
+          sub1xOverflow,
+          sub2xValue, // sub2x = remainder - 2 * shiftDivisor
+          sub1xValue // sub1x = remainder - (3 or 1) * shiftDivisor
+        )
       )
       // quotient = quotient << 2 + new bits
       quotientReg        := Cat(quotientReg(wordLength - 3, 0), newQuotientBits)
       cyclesRemainingReg := cyclesRemainingSub1(wordLog - 2, 0)
+      // io.divResult.bits.quotient := RegNext(
+      //   Mux(
+      //     quotientSignReg,
+      //     (~quotientReg) + 1.U,
+      //     quotientReg
+      //   )
+      // )
+      // io.divResult.bits.remainder := RegNext(
+      //   Mux(
+      //     remainderSignReg,
+      //     (~remainderReg) + 1.U,
+      //     remainderReg
+      //   )
+      // )
+
+      isTerminateReg := getSign(cyclesRemainingSub1, wordLog)
       when(isTerminateReg) {
         stateReg           := DivState.free
         io.divResult.valid := true.B
-        io.divResult.bits.remainder := Mux(
+        io.divResult.bits.quotient := Mux(
           quotientSignReg,
           (~quotientReg) + 1.U,
           quotientReg
         )
-        io.divResult.bits.quotient := Mux(
+        io.divResult.bits.remainder := Mux(
           remainderSignReg,
           (~remainderReg) + 1.U,
           remainderReg
