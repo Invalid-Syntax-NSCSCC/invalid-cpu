@@ -39,7 +39,6 @@ class InstFetch extends Module {
   addrTransStage.io.peer.foreach { p =>
     p.csr      <> io.csr
     p.tlbTrans <> io.tlbTrans
-    p.ftqRedirect := false.B
   }
 
   // instReqStage
@@ -47,7 +46,6 @@ class InstFetch extends Module {
   instReqStage.io.in      <> addrTransStage.io.out
   instReqStage.io.peer.foreach { p =>
     p.memReq      <> io.accessPort.req
-    p.ftqRedirect := io.ftqIFPort.bits.redirect
   }
 
   // instResStage

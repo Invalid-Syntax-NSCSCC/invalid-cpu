@@ -19,7 +19,6 @@ object InstReqNdPort {
 
 class InstReqPeerPort extends Bundle {
   val memReq      = Flipped(new ICacheRequestHandshakePort)
-  val ftqRedirect = Input(Bool())
 }
 
 class InstReqStage
@@ -42,11 +41,7 @@ class InstReqStage
   // Fallback peer
   peer.memReq.client := selectedIn.translatedMemReq
 
-  when(peer.ftqRedirect){
-    peer.memReq.client.isValid := false.B
-    resultOutReg.valid:=false.B
-    out.ftqBlock := FtqBlockBundle.default
-  }.elsewhen(selectedIn.translatedMemReq.isValid && (!excpValid)) {
+  when(selectedIn.translatedMemReq.isValid && (!excpValid)) {
     when(io.out.ready) {
       // Whether memory request is submitted
       isComputed := peer.memReq.isReady

@@ -67,7 +67,7 @@ class FetchTargetQueue(
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
-  ifSendValid              := io.ftqIFPort.bits.ftqBlockBundle.isValid & io.ftqIFPort.ready & !io.backendFlush
+  ifSendValid              := io.ftqIFPort.bits.ftqBlockBundle.isValid & io.ftqIFPort.ready &(!(ifPtr===bpuMetaWritePtr & bpuMetaWriteValid)) & !io.backendFlush
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
   // last block send dirty block;need to quit
   ifRedirect               := ((bpuMetaWritePtr === lastIfPtr)&&(bpuMetaWritePtr+1.U === ifPtr)) & mainBpuRedirectModifyFtq & ifSendValidDelay
@@ -171,12 +171,15 @@ class FetchTargetQueue(
   // default value
   io.ftqIFPort.valid               := ifSendValid
   io.ftqIFPort.bits.ftqBlockBundle := ftqVecReg(ifPtr)
-  when(((ifPtr === bpuMetaWritePtr)||(lastIfPtr === bpuMetaWritePtr)) && bpuMetaWriteValid) {
-    // write though
-    // case 1 bpuWrite and if read in the same time
-    // case 2 last if send block was dirty;need to resend
-    io.ftqIFPort.bits.ftqBlockBundle := ftqNextVec(bpuMetaWritePtr)
-  }
+  // design 1 : wtire through  ( has been abandoned)
+  // feat: increase flush log;but easy to result in flush instfetch
+//  when(((ifPtr === bpuMetaWritePtr)||(lastIfPtr === bpuMetaWritePtr)) && bpuMetaWriteValid) {
+//    // write though
+//    // case 1 bpuWrite and if read in the same time
+//    // case 2 last if send block was dirty;need to resend
+//    io.ftqIFPort.bits.ftqBlockBundle := ftqNextVec(bpuMetaWritePtr)
+//  }
+  // design 2::::::: only send correct ftq block
 
   // Trigger a IFU flush when:
   // 1. last cycle send rreq to IFU
