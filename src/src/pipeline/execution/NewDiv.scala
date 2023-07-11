@@ -120,6 +120,9 @@ class NewDiv extends Module {
 
   val isTerminateReg = RegNext(getSign(cyclesRemainingSub1, wordLog))
 
+  io.divResult.valid := false.B
+  io.divResult.bits  := DontCare
+
   switch(stateReg) {
     is(DivState.free) {
       when(io.divInst.valid) {
