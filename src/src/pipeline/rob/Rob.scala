@@ -129,9 +129,10 @@ class Rob(
   /** Commit
     */
 
-  val hasInterruptReg = RegInit(false.B)
+  val hasInterruptReg             = RegInit(false.B)
+  val isDelayedMaintenanceTrigger = RegNext(false.B, false.B)
 
-  io.tlbMaintenanceTrigger := false.B
+  io.tlbMaintenanceTrigger := isDelayedMaintenanceTrigger
   io.commitStore.valid     := false.B
   io.branchCommit          := false.B
   io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
@@ -148,10 +149,12 @@ class Rob(
         // commit
         // TODO: refactor with forbidParallelCommit
         if (idx == 0) {
-          io.tlbMaintenanceTrigger := commit.ready &&
+          val isTlbMaintenanceTrigger = commit.ready &&
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
             !(io.hasInterrupt || hasInterruptReg) &&
             deqPort.bits.wbPort.instInfo.isTlb
+          val isNextTlbMaintenanceTrigger = !isDelayedMaintenanceTrigger && isTlbMaintenanceTrigger
+          isDelayedMaintenanceTrigger := isNextTlbMaintenanceTrigger
 
           if (isDiffTest) {
             commit.bits.instInfo.tlbFill.get := io.tlbDifftest.get
@@ -163,7 +166,8 @@ class Rob(
             deqPort.bits.wbPort.instInfo.isStore
           io.branchCommit := commit.ready &&
             deqPort.bits.wbPort.instInfo.branchSuccess
-          deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready)
+
+          deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready) && !isNextTlbMaintenanceTrigger
         } else {
           deqPort.ready := commit.ready &&
             !io.commits(idx - 1).bits.instInfo.forbidParallelCommit &&
