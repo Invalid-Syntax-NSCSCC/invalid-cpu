@@ -54,7 +54,7 @@ class NewDiv extends Module {
   )
   val divisorAbsReg = RegNext(
     Mux(
-      isSigned && dividendSign,
+      isSigned && divisorSign,
       ~divisor + 1.U,
       divisor
     )
