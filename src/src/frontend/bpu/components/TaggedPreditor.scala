@@ -2,8 +2,7 @@ package frontend.bpu.components
 import chisel3._
 import chisel3.util._
 import frontend.bpu.utils.{Bram, CsrHash}
-import memory.VTrueDualBRam
-import spec.{Param, Width}
+import spec.Param
 
 class TaggedPreditor(
   ghrLength:      Int = 4,

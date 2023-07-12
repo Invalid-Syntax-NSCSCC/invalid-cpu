@@ -1,10 +1,7 @@
-import chiseltest._
-import utest._
 import chisel3._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chisel3.util._
-import memory.DCache
+import chiseltest._
 import pipeline.common.BaseStage
+import utest._
 
 import scala.collection.immutable
 

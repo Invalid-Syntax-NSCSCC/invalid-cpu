@@ -1,8 +1,6 @@
 package memory.bundles
 
 import chisel3._
-import chisel3.util._
-import spec._
 
 class CacheMaintenanceControlNdPort extends Bundle {
   val isL1Valid         = Bool() // Maintenance operation on L1 data/instruction cache

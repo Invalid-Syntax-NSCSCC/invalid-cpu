@@ -9,7 +9,6 @@ import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode._
 import spec._
-import pipeline.common.MultiQueue
 
 class InstQueueEnqNdPort extends Bundle {
   val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))

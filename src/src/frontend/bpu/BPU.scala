@@ -5,7 +5,7 @@ import chisel3.util._
 import frontend.bpu.bundles._
 import frontend.bpu.components.Bundles.FtbEntryNdPort
 import frontend.bpu.components.FTB
-import frontend.bundles.{BpuFtqPort, FtqBlockPort, FtqBpuMetaPort}
+import frontend.bundles.{BpuFtqPort, FtqBlockPort}
 import spec._
 
 // BPU is the Branch Predicting Unit

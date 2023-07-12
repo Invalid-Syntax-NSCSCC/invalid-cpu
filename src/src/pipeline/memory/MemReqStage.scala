@@ -3,13 +3,12 @@ package pipeline.memory
 import chisel3._
 import chisel3.util._
 import common.enums.ReadWriteSel
+import control.enums.ExceptionPos
 import memory.bundles.{CacheMaintenanceControlNdPort, CacheMaintenanceHandshakePort, MemRequestHandshakePort}
 import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.common.BaseStage
+import pipeline.common.{BaseStage, LookupQueue}
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort, StoreInfoBundle}
-import control.enums.ExceptionPos
 import pipeline.memory.enums.CacheMaintenanceTargetType
-import pipeline.common.LookupQueue
 import spec._
 
 class MemReqNdPort extends Bundle {
