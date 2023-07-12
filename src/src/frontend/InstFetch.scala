@@ -45,7 +45,7 @@ class InstFetch extends Module {
   instReqStage.io.isFlush := io.isFlush
   instReqStage.io.in      <> addrTransStage.io.out
   instReqStage.io.peer.foreach { p =>
-    p.memReq      <> io.accessPort.req
+    p.memReq <> io.accessPort.req
   }
 
   // instResStage

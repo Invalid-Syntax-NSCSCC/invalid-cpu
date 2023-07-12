@@ -18,7 +18,7 @@ object InstReqNdPort {
 }
 
 class InstReqPeerPort extends Bundle {
-  val memReq      = Flipped(new ICacheRequestHandshakePort)
+  val memReq = Flipped(new ICacheRequestHandshakePort)
 }
 
 class InstReqStage

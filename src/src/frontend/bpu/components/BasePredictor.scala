@@ -60,8 +60,8 @@ class BasePredictor(
 
   val ctrRam = Module(
     new VSimpleDualBRam(
-      tableDepthLog, //size
-      ctrWidth //dataWidth
+      tableDepthLog, // size
+      ctrWidth // dataWidth
     )
   )
   ctrRam.io.readAddr  := queryIndex

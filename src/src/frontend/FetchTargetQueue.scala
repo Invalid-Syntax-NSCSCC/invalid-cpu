@@ -48,13 +48,13 @@ class FetchTargetQueue(
 
   val bpuPtr      = RegInit(0.U(ptrWidth.W))
   val ifPtr       = RegInit(0.U(ptrWidth.W))
-  val lastIfPtr = RegNext(ifPtr,0.U(ptrWidth.W))
+  val lastIfPtr   = RegNext(ifPtr, 0.U(ptrWidth.W))
   val commPtr     = RegInit(0.U(ptrWidth.W))
   val bpuPtrPlus1 = WireDefault(0.U(ptrWidth.W))
   bpuPtrPlus1 := bpuPtr + 1.U
 
   // Queue data structure
-  val ftqVecReg     = RegInit(VecInit(Seq.fill(queueSize)(FtqBlockBundle.default)))
+  val ftqVecReg  = RegInit(VecInit(Seq.fill(queueSize)(FtqBlockBundle.default)))
   val ftqNextVec = Wire(Vec(queueSize, new FtqBlockBundle))
   // FTQ meta
   val bpuMetaWriteValid = WireDefault(false.B)
@@ -67,10 +67,10 @@ class FetchTargetQueue(
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
-  ifSendValid              := io.ftqIFPort.bits.ftqBlockBundle.isValid & io.ftqIFPort.ready &(!(ifPtr===bpuMetaWritePtr & bpuMetaWriteValid)) & !io.backendFlush
+  ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid & io.ftqIFPort.ready & (!(ifPtr === bpuMetaWritePtr & bpuMetaWriteValid)) & !io.backendFlush
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
   // last block send dirty block;need to quit
-  ifRedirect               := ((bpuMetaWritePtr === lastIfPtr)&&(bpuMetaWritePtr+1.U === ifPtr)) & mainBpuRedirectModifyFtq & ifSendValidDelay
+  ifRedirect := ((bpuMetaWritePtr === lastIfPtr) && (bpuMetaWritePtr + 1.U === ifPtr)) & mainBpuRedirectModifyFtq & ifSendValidDelay
 
   // queue full
   queueFull            := (bpuPtrPlus1 === commPtr)
@@ -261,7 +261,7 @@ class FetchTargetQueue(
     ).jumpTargetAddr := io.exeFtqPort.commitBundle.ftqMetaUpdateJumpTarget
     ftqBranchMetaRegs(
       ftqUpdateMetaId
-    ).fallThroughAddr                        := io.exeFtqPort.commitBundle.ftqMetaUpdateFallThrough
+    ).fallThroughAddr                           := io.exeFtqPort.commitBundle.ftqMetaUpdateFallThrough
     ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.commitBundle.ftqMetaUpdateFtbDirty
   }
 

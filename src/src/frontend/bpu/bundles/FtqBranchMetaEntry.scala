@@ -7,7 +7,7 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 class FtqBranchMetaEntry(
   addr: Int = wordLength)
     extends Bundle {
-  val ftbDirty           = Bool()
+  val ftbDirty        = Bool()
   val jumpTargetAddr  = UInt(addr.W)
   val fallThroughAddr = UInt(addr.W)
 }

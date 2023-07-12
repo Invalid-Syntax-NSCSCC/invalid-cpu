@@ -66,9 +66,9 @@ class TaggedPreditor(
 
   def toPhtLine(line: UInt) = {
     val bundle = Wire(new PhtEntey)
-    bundle.counter := line(PhtEntey.width - 1,PhtEntey.width-phtCtrWidth)
-    bundle.tag := line(PhtEntey.width-phtCtrWidth-1 ,phtUsefulWidth)
-    bundle.useful := line(phtUsefulWidth-1,0)
+    bundle.counter := line(PhtEntey.width - 1, PhtEntey.width - phtCtrWidth)
+    bundle.tag     := line(PhtEntey.width - phtCtrWidth - 1, phtUsefulWidth)
+    bundle.useful  := line(phtUsefulWidth - 1, 0)
 
     bundle
   }
@@ -173,11 +173,10 @@ class TaggedPreditor(
   pcHashCsrHash2.io.dataUpdate := io.isGlobalHistoryUpdate
   tagHashCsr2                  := pcHashCsrHash2.io.hash
 
-
   val phtRam = Module(
     new VSimpleDualBRam(
-      phtDepth, //size
-      PhtEntey.width //dataWidth
+      phtDepth, // size
+      PhtEntey.width // dataWidth
 
     )
   )

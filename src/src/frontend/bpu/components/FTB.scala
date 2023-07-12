@@ -41,25 +41,25 @@ class FTB(
 
   def toEntryLine(line: UInt) = {
     val bundle = Wire(new FtbEntryNdPort)
-    bundle.valid := line(FtbEntryNdPort.width - 1)
-    bundle.isCrossCacheline := line(FtbEntryNdPort.width - 2)
-    bundle.branchType := line(FtbEntryNdPort.width - 3, FtbEntryNdPort.width-2-Param.BPU.BranchType.width)
-    bundle.tag := line(FtbEntryNdPort.width-3-Param.BPU.BranchType.width,spec.Width.Mem._addr*2)
-    bundle.jumpTargetAddress := line(spec.Width.Mem._addr*2-1,spec.Width.Mem._addr)
-    bundle.fallThroughAddress := line(spec.Width.Mem._addr-1,0)
+    bundle.valid              := line(FtbEntryNdPort.width - 1)
+    bundle.isCrossCacheline   := line(FtbEntryNdPort.width - 2)
+    bundle.branchType         := line(FtbEntryNdPort.width - 3, FtbEntryNdPort.width - 2 - Param.BPU.BranchType.width)
+    bundle.tag                := line(FtbEntryNdPort.width - 3 - Param.BPU.BranchType.width, spec.Width.Mem._addr * 2)
+    bundle.jumpTargetAddress  := line(spec.Width.Mem._addr * 2 - 1, spec.Width.Mem._addr)
+    bundle.fallThroughAddress := line(spec.Width.Mem._addr - 1, 0)
     bundle
   }
 
   // Signals definition
-  val wayQueryEntry = Wire(Vec(nway ,new FtbEntryNdPort))
-  val wayHits           = Wire(Vec(nway,Bool()))
-  val wayHitIndex       = Wire(UInt(nwayWidth.W))
+  val wayQueryEntry = Wire(Vec(nway, new FtbEntryNdPort))
+  val wayHits       = Wire(Vec(nway, Bool()))
+  val wayHitIndex   = Wire(UInt(nwayWidth.W))
   // Query
   val queryIndex  = WireDefault(0.U(nsetWidth.W))
   val queryTagReg = RegInit(0.U((addr - nsetWidth - 2).W))
   // Update
   val updateIndex     = WireDefault(0.U(nsetWidth.W))
-  val updateEntryPort = WireDefault( FtbEntryNdPort.default)
+  val updateEntryPort = WireDefault(FtbEntryNdPort.default)
   val updateWE        = WireDefault(VecInit(Seq.fill(nway)(false.B)))
   // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
   // which is use to generate random number
@@ -103,17 +103,17 @@ class FTB(
   val phtRams = Seq.fill(nway)(
     Module(
       new VSimpleDualBRam(
-           nset,
+        nset,
         FtbEntryNdPort.width
       )
     )
   )
   phtRams.zipWithIndex.foreach {
     case (ram, index) =>
-      wayQueryEntry(index)      := toEntryLine(ram.io.dataOut)
-      ram.io.readAddr          := queryIndex
-      ram.io.isWrite           := updateWE(index)
-      ram.io.dataIn            := updateEntryPort.asUInt
-      ram.io.writeAddr         := updateIndex
+      wayQueryEntry(index) := toEntryLine(ram.io.dataOut)
+      ram.io.readAddr      := queryIndex
+      ram.io.isWrite       := updateWE(index)
+      ram.io.dataIn        := updateEntryPort.asUInt
+      ram.io.writeAddr     := updateIndex
   }
 }

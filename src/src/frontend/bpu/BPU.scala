@@ -113,7 +113,7 @@ class BPU(
     io.bpuFtqPort.ftqP1.isValid          := true.B
     io.bpuFtqPort.ftqP1.isCrossCacheline := ftbEntry.isCrossCacheline
     io.bpuFtqPort.ftqP1.startPc          := p1Pc
-    //when a fetch block has branch inst,cut fetch num
+    // when a fetch block has branch inst,cut fetch num
     io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddress(Param.Width.ICache._fetchOffset, 2) -
       p1Pc(Param.Width.ICache._fetchOffset, 2)) // Use 1 + log(fetchNum) bits minus to ensure no overflow
     io.bpuFtqPort.ftqP1.predictValid := true.B
@@ -159,9 +159,9 @@ class BPU(
   ////////////////////////////////////////////////////////////////////
   // Update Logic
   ////////////////////////////////////////////////////////////////////
-  val misPredict        = WireDefault(io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken)
+  val misPredict     = WireDefault(io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken)
   val tageUpdateInfo = Wire(new TagePredictorUpdateInfoPort)
-  val ftbEntryUpdate    = Wire(new FtbEntryNdPort)
+  val ftbEntryUpdate = Wire(new FtbEntryNdPort)
   val rasPush = WireDefault(
     io.bpuFtqPort.ftqTrainMeta.valid & (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.call)
   )
