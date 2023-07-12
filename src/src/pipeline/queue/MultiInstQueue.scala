@@ -57,7 +57,8 @@ class MultiInstQueue(
       issueNum,
       channelNum,
       queueLength / channelNum,
-      new FetchInstInfoBundle
+      new FetchInstInfoBundle,
+      flow = true
     )
   )
 
