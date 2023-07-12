@@ -7,7 +7,9 @@ object Param {
   // Configurable self-defined parameters go here
 
   val isDiffTest        = true
-  val isOutOfOrderIssue = true
+  val isOutOfOrderIssue = false
+  val isNoPrivilege     = false
+  val isUncachedPatch   = false
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4

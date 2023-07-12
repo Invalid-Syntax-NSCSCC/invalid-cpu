@@ -11,6 +11,7 @@ import control.enums.ExceptionPos
 import pipeline.memory.enums.CacheMaintenanceTargetType
 import pipeline.common.LookupQueue
 import spec._
+import spec.Param.isUncachedPatch
 
 class MemReqNdPort extends Bundle {
   val isAtomicStore           = new Bool()
@@ -45,12 +46,17 @@ class MemReqStage
   val out  = resultOutReg.bits
 
   // Workaround
-  val isUncachedAddressRange = VecInit(
-    "h_1faf".U(16.W),
-    "h_bfaf".U(16.W),
-    "h_1fd0".U(16.W), // Chiplab only
-    "h_1fe0".U(16.W) // Chiplab only
-  ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
+  val isUncachedAddressRange = if (isUncachedPatch) {
+    VecInit(
+      "h_1faf".U(16.W),
+      "h_bfaf".U(16.W),
+      "h_1fd0".U(16.W), // Chiplab only
+      "h_1fe0".U(16.W) // Chiplab only
+    ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
+  } else {
+    false.B
+  }
+
   val isTrueCached = selectedIn.isCached && !isUncachedAddressRange
 
   // Fallback output
