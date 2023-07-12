@@ -15,6 +15,9 @@ class Pc(
     val ftqFull = Input(Bool())
     // 异常处理 + 分支跳转
     val newPc = Input(new BackendRedirectPcNdPort)
+
+    // bpu pc
+    val mainRedirectPc = Input(Valid(UInt(Width.Reg.data)))
   })
 
   val pcReg = RegInit(spec.Pc.init)
@@ -32,7 +35,7 @@ class Pc(
     }
   }
 
-  when(io.cuNewPc.en) {
+  when(io.newPc.en) {
     // when predict error or pc error => jump
     pcReg := io.newPc.pcAddr
   }.elsewhen(io.ftqFull) {

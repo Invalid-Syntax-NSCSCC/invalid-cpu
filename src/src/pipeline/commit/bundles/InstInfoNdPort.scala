@@ -26,12 +26,12 @@ class InstInfoNdPort extends Bundle {
   val exeSel = UInt(Param.Width.exeSel)
   val robId  = UInt(Param.Width.Rob.id)
 
-  val load      = if (isDiffTest) Some(new DifftestLoadNdPort) else None
-  val store     = if (isDiffTest) Some(new DifftestStoreNdPort) else None
-  val tlbFill   = if (isDiffTest) Some(new DifftestTlbFillNdPort) else None
-  val timerInfo = if (isDiffTest) Some(new DifftestTimerNdPort) else None
-  val ftqInfo   = new FtqInfoBundle
-  val ftqInfo   = new FtqInfoBundle
+  val load          = if (isDiffTest) Some(new DifftestLoadNdPort) else None
+  val store         = if (isDiffTest) Some(new DifftestStoreNdPort) else None
+  val tlbFill       = if (isDiffTest) Some(new DifftestTlbFillNdPort) else None
+  val timerInfo     = if (isDiffTest) Some(new DifftestTimerNdPort) else None
+  val ftqInfo       = new FtqInfoBundle
+  val ftqCommitInfo = new CommitFtqInfoBundle
 
   val isTlb = Bool()
 

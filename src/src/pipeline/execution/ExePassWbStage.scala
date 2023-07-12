@@ -13,6 +13,9 @@ import spec.ExeInst.Sel
 import spec.Param.isDiffTest
 import frontend.bundles.ExeFtqPort
 import spec._
+import control.bundles.CsrWriteNdPort
+import control.bundles.StableCounterReadPort
+import control.bundles.CsrReadPort
 
 // class ExCommitFtqNdPort(val queueSize: Int = Param.BPU.ftqSize) extends Bundle {
 //   val ftqMetaUpdateValid       = Bool()

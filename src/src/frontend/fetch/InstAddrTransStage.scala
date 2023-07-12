@@ -39,7 +39,7 @@ class InstAddrTransStage
 
   val pc = WireDefault(0.U(Width.inst))
   pc := selectedIn.ftqBlockBundle.startPc
-  val isAdef           = WireDefault(pc(1, 0).orR) // PC is not aligned
+  // val isAdef           = WireDefault(pc(1, 0).orR) // PC is not aligned
   val hasSentException = RegInit(false.B)
   hasSentException := hasSentException
 
@@ -87,9 +87,9 @@ class InstAddrTransStage
       transMode := AddrTransType.directMapping
     }.otherwise {
       transMode := AddrTransType.pageTableMapping
-      if (isNoPrivilege) {
-        transMode := AddrTransType.directMapping
-      }
+      // if (isNoPrivilege) {
+      //   transMode := AddrTransType.directMapping
+      // }
     }
   }
 
@@ -135,7 +135,7 @@ class InstAddrTransStage
   }
 
   // Handle flush
-  when(io.isFlush ) {
+  when(io.isFlush) {
     hasSentException := false.B
   }
 

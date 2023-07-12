@@ -3,7 +3,6 @@ package frontend
 import chisel3._
 import chisel3.util._
 import common.Pc
-import common.bundles.PcSetNdPort
 import frontend.bpu.BPU
 import frontend.bundles.{CuCommitFtqNdPort, ExeFtqPort, ICacheAccessPort}
 import memory.bundles.TlbTransPort
@@ -12,6 +11,7 @@ import pipeline.memory.bundles.MemCsrNdPort
 import pipeline.queue.InstQueueEnqNdPort
 import spec._
 import frontend.bundles.QueryPcBundle
+import common.bundles.BackendRedirectPcNdPort
 
 class Frontend extends Module {
   val io = IO(new Bundle {
