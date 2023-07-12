@@ -2,11 +2,11 @@ package pipeline.dispatch
 
 import chisel3._
 import chisel3.util._
-import spec._
 import pipeline.common.MultiBaseStageWOSaveIn
-import pipeline.execution.ExeNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.enums.ScoreboardState
+import pipeline.execution.ExeNdPort
+import spec._
 
 class DispatchNdPort extends Bundle {
   val issueEns = Vec(Param.pipelineNum, Bool())

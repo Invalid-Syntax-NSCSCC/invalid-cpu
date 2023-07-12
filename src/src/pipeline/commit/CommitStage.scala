@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import common.bundles.RfWriteNdPort
-import control.bundles.CsrValuePort
 import control.enums.ExceptionPos
 import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort

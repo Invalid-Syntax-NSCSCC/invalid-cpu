@@ -10,7 +10,8 @@ class DistributedQueue[ElemT <: Data](
   channelNum:     Int,
   channelLength:  Int,
   elemNdFactory:  => ElemT,
-  useSyncReadMem: Boolean = true)
+  useSyncReadMem: Boolean = true,
+  flow:           Boolean = false)
     extends Module {
 
   require(channelNum >= enqMaxNum)
@@ -34,8 +35,8 @@ class DistributedQueue[ElemT <: Data](
         in,
         entries        = channelLength,
         pipe           = false,
-        flow           = false,
-        useSyncReadMem = true,
+        flow           = flow,
+        useSyncReadMem = useSyncReadMem,
         flush          = Some(io.isFlush)
       )
   })

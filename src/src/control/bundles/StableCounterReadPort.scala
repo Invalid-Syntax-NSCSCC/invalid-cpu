@@ -1,7 +1,6 @@
 package control.bundles
 
 import chisel3._
-import spec.Param.isDiffTest
 import spec._
 
 class StableCounterReadPort extends Bundle {
