@@ -167,36 +167,27 @@ class Alu extends Module {
     ).contains(io.aluInst.op)
   )
 
-  val divStage = Module(new Div)
+  val divStage = Module(new NewDiv)
 
-  val divisorValid = WireDefault(rop.orR)
+  val divisorValid = WireDefault(rop =/= 0.U)
 
-  val divStart = WireDefault(useDiv && divStage.io.divInst.ready && !divStage.io.divResult.valid && divisorValid)
+  val divStart = WireDefault(useDiv && divisorValid)
 
-  divStage.io.isFlush                   := io.isFlush
-  divStage.io.divInst.valid             := divStart
-  divStage.io.divInst.bits.op           := io.aluInst.op
+  divStage.io.isFlush       := io.isFlush
+  divStage.io.divInst.valid := divStart
+  divStage.io.divInst.bits.isSigned := VecInit(
+    ExeInst.Op.div,
+    ExeInst.Op.mod
+  ).contains(io.aluInst.op)
   divStage.io.divInst.bits.leftOperand  := lop
   divStage.io.divInst.bits.rightOperand := rop
-
-  divStage.io.divResult.ready := DontCare
 
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
 
-  val quotientStoreReg  = RegInit(zeroWord)
-  val remainderStoreReg = RegInit(zeroWord)
-  quotientStoreReg  := quotientStoreReg
-  remainderStoreReg := remainderStoreReg
-  when(divStage.io.divResult.valid) {
-    quotientStoreReg  := quotient
-    remainderStoreReg := remainder
-  }
-
-  val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
-  val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
-
-  io.outputValid := mulResultValidReg || !useMul && !divStart && divStage.io.divInst.ready
+  io.outputValid := mulResultValidReg || !useMul && (
+    !(divStart && !divStage.io.divResult.valid)
+  )
 
   switch(io.aluInst.op) {
     is(Op.add) {
@@ -218,10 +209,10 @@ class Alu extends Module {
       arithmetic := mulResult(doubleWordLength - 1, wordLength)
     }
     is(Op.div, Op.divu) {
-      arithmetic := selectedQuotient
+      arithmetic := divStage.io.divResult.bits.quotient
     }
     is(Op.mod, Op.modu) {
-      arithmetic := selectedRemainder
+      arithmetic := divStage.io.divResult.bits.remainder
     }
   }
 
@@ -229,7 +220,5 @@ class Alu extends Module {
     io.outputValid    := false.B
     mulResult         := 0.U
     mulResultValidReg := false.B
-    remainderStoreReg := 0.U
-    quotientStoreReg  := 0.U
   }
 }
