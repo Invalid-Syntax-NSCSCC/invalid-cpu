@@ -12,7 +12,7 @@ import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
 import pipeline.common.BaseStage
 import pipeline.memory.MemReqNdPort
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
-import spec.Param.isDiffTest
+import spec.Param.{isDiffTest, isNoPrivilege}
 import spec.Value.Csr
 import spec.{Param, Width}
 
@@ -43,8 +43,6 @@ class InstAddrTransStage
   val hasSentException = RegInit(false.B)
   hasSentException := hasSentException
 
-  val isBlockPcNext = hasSentException
-
   val transMode = WireDefault(AddrTransType.direct) // Fallback: Direct translation
   val isAdef = WireDefault(
     pc(1, 0).orR ||
@@ -54,7 +52,7 @@ class InstAddrTransStage
   // Fallback output
   out.ftqBlock                  := selectedIn.ftqBlockBundle
   out.ftqId                     := selectedIn.ftqId
-  out.translatedMemReq.isValid  := (selectedIn.ftqBlockBundle.isValid) && !isAdef
+  out.translatedMemReq.isValid  := selectedIn.ftqBlockBundle.isValid && !isAdef
   out.translatedMemReq.isCached := true.B // Fallback: isCached
   out.exception.valid           := isAdef
   out.exception.bits            := spec.Csr.ExceptionIndex.adef
@@ -87,18 +85,9 @@ class InstAddrTransStage
       transMode := AddrTransType.directMapping
     }.otherwise {
       transMode := AddrTransType.pageTableMapping
-    }
-  }
-
-  // Handle exception
-  def handleException(): Unit = {
-    val isExceptionValid = isAdef || peer.tlbTrans.exception.valid
-    out.exception.valid := isExceptionValid
-    when(peer.tlbTrans.exception.valid && !isAdef) {
-      out.exception.bits := peer.tlbTrans.exception.bits
-    }
-    when(isExceptionValid) {
-      hasSentException := true.B
+      if (isNoPrivilege) {
+        transMode := AddrTransType.directMapping
+      }
     }
   }
 
@@ -107,7 +96,7 @@ class InstAddrTransStage
   out.translatedMemReq.addr := translatedAddr
   peer.tlbTrans.memType     := TlbMemType.fetch
   peer.tlbTrans.virtAddr    := pc
-  peer.tlbTrans.isValid     := false.B
+  peer.tlbTrans.isValid     := !hasSentException
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := pc
@@ -116,15 +105,22 @@ class InstAddrTransStage
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      peer.tlbTrans.isValid := selectedIn.ftqBlockBundle.isValid
-      translatedAddr        := peer.tlbTrans.physAddr
-      out.translatedMemReq.isValid := (selectedIn.ftqBlockBundle.isValid) &&
-        !peer.tlbTrans.exception.valid && !isAdef
+      if (!isNoPrivilege) {
+        translatedAddr               := peer.tlbTrans.physAddr
+        out.translatedMemReq.isValid := selectedIn.ftqBlockBundle.isValid && !peer.tlbTrans.exception.valid && !isAdef
 
-      handleException()
+        // Handle exception
+        val isExceptionValid = isAdef || peer.tlbTrans.exception.valid || hasSentException
+        out.exception.valid := isExceptionValid
+        when(peer.tlbTrans.exception.valid && !isAdef) {
+          out.exception.bits := peer.tlbTrans.exception.bits
+        }
+        when(isExceptionValid) {
+          hasSentException := true.B
+        }
+      }
     }
   }
-  io.in.ready := inReady && !isBlockPcNext
 
   // Submit result
   when(selectedIn.ftqBlockBundle.isValid) {
@@ -135,5 +131,4 @@ class InstAddrTransStage
   when(io.isFlush) {
     hasSentException := false.B
   }
-
 }
