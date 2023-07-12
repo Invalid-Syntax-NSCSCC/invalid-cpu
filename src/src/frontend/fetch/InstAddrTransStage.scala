@@ -52,7 +52,7 @@ class InstAddrTransStage
   // Fallback output
   out.ftqBlock                  := selectedIn.ftqBlockBundle
   out.ftqId                     := selectedIn.ftqId
-  out.translatedMemReq.isValid  := (selectedIn.ftqBlockBundle.isValid) && !isAdef
+  out.translatedMemReq.isValid  := selectedIn.ftqBlockBundle.isValid && !isAdef
   out.translatedMemReq.isCached := true.B // Fallback: isCached
   out.exception.valid           := isAdef
   out.exception.bits            := spec.Csr.ExceptionIndex.adef
@@ -106,9 +106,8 @@ class InstAddrTransStage
     }
     is(AddrTransType.pageTableMapping) {
       if (!isNoPrivilege) {
-        translatedAddr := peer.tlbTrans.physAddr
-        out.translatedMemReq.isValid := (selectedIn.ftqBlockBundle.isValid) &&
-          !peer.tlbTrans.exception.valid && !isAdef
+        translatedAddr               := peer.tlbTrans.physAddr
+        out.translatedMemReq.isValid := selectedIn.ftqBlockBundle.isValid && !peer.tlbTrans.exception.valid && !isAdef
 
         // Handle exception
         val isExceptionValid = isAdef || peer.tlbTrans.exception.valid || hasSentException
