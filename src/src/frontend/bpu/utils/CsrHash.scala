@@ -12,15 +12,18 @@ class CsrHash(
     val data       = Input(UInt(inputLength.W))
     val hash       = Output(UInt(outputLength.W))
   })
-  val CSR     = RegInit(0.U(outputLength.W))
+
+  val csr     = RegInit(0.U(outputLength.W))
   val nextCSR = WireDefault(0.U(outputLength.W))
 
   val residual = (inputLength - 1) % outputLength
-  nextCSR           := Cat(CSR(outputLength - 1, 0), CSR(outputLength - 1) ^ io.data(0))
-  nextCSR(residual) := nextCSR(residual) ^ io.data(inputLength - 1)
+//  nextCSR           := Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0))
+//  nextCSR(residual) := nextCSR(residual, residual) ^ io.data(inputLength - 1)
+
+  nextCSR := Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0)) ^ (io.data(inputLength - 1) << residual)
 
   when(io.dataUpdate) {
-    CSR := nextCSR
+    csr := nextCSR
   }
 
   io.hash := nextCSR

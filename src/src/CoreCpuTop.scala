@@ -1,8 +1,8 @@
 import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
-import common.{Pc, RegFile}
-import control.{Csr, Cu, StableCounter}
+import common.RegFile
+import control.{Csr, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
@@ -15,6 +15,7 @@ import spec.Param
 import spec.Param.isDiffTest
 import pipeline.dispatch.NewRenameStage
 import pipeline.dispatch.NewDispatchStage
+import control.Cu
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -127,11 +128,6 @@ class CoreCpuTop extends Module {
   val csrScoreBoard = Module(new CsrScoreboard)
 
   val regFile = Module(new RegFile)
-  val pc      = Module(new Pc)
-
-  // PC
-  pc.io.newPc  := cu.io.newPc
-  pc.io.isNext := frontend.io.isPcNext
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
@@ -162,13 +158,18 @@ class CoreCpuTop extends Module {
   // Frontend
   //   inst fetch stage
   frontend.io.isFlush    := cu.io.frontendFlush
+  frontend.io.ftqFlushId := cu.io.frontendFlushFtqId
   frontend.io.accessPort <> iCache.io.accessPort
-  frontend.io.pc         := pc.io.pc
-  frontend.io.pcUpdate   := pc.io.pcUpdate
+  frontend.io.cuNewPc    := cu.io.newPc
   frontend.io.tlbTrans   <> tlb.io.tlbTransPorts(1)
   frontend.io.csr.crmd   := csr.io.csrValues.crmd
   frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
+
+  // TODO: Connect frontend
+  frontend.io.exeFtqPort      <> exePassWbStage_1.io.peer.get.feedbackFtq.get
+  frontend.io.cuCommitFtqPort := cu.io.ftqPort
+  frontend.io.cuQueryPcBundle <> cu.io.queryPcPort
 
   // Instruction queue
   instQueue.io.enqueuePort <> frontend.io.instDequeuePort

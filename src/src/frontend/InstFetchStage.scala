@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import frontend.bundles.ICacheAccessPort
 import pipeline.dispatch.bundles.FetchInstInfoBundle
+import spec.Param.{NaiiveFetchStageState => State}
 import spec._
 
 class InstFetchStage extends Module {

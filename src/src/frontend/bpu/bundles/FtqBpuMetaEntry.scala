@@ -1,10 +1,10 @@
 package frontend.bpu.bundles
 
-import chisel3._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chisel3.util._
-import frontend.bpu.components.Bundles.TageMetaPort
 import spec._
+import chisel3._
+import chisel3.util._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import frontend.bpu.components.Bundles.TageMetaPort
 
 class FtqBpuMetaEntry(
   addr:    Int = spec.wordLength,
@@ -17,10 +17,5 @@ class FtqBpuMetaEntry(
 }
 
 object FtqBpuMetaEntry {
-  def default = (new FtqBpuMetaEntry).Lit(
-    _.valid -> false.B,
-    _.ftbHit -> false.B,
-    _.ftbHitIndex -> 0.U(log2Ceil(Param.BPU.FTB.nway).W),
-    _.bpuMeta -> TageMetaPort.default
-  )
+  def default = 0.U.asTypeOf(new FtqBpuMetaEntry)
 }

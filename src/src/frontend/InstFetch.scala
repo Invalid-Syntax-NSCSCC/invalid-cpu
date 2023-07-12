@@ -2,18 +2,18 @@ package frontend
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.ICacheAccessPort
+import frontend.bundles.{FtqIFNdPort, ICacheAccessPort}
 import frontend.fetch._
 import memory.bundles.TlbTransPort
+import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.memory.bundles.MemCsrNdPort
 import pipeline.queue.InstQueueEnqNdPort
 import spec._
 
 class InstFetch extends Module {
   val io = IO(new Bundle {
-    val pc       = Input(UInt(Width.Reg.data))
-    val pcUpdate = Input(Bool())
-    val isPcNext = Output(Bool())
+    // <-> Frontend <-> FetchTargetQueue
+    val ftqIFPort = Flipped(Decoupled(new FtqIFNdPort))
 
     // <-> Frontend  <->ICache
     val accessPort = Flipped(new ICacheAccessPort)
@@ -28,20 +28,18 @@ class InstFetch extends Module {
     val csr = Input(new MemCsrNdPort)
   })
 
-  val isFirstSentReg = RegInit(false.B)
-  isFirstSentReg := true.B
-
   // InstAddr translate and mem stages
   val addrTransStage = Module(new InstAddrTransStage)
   val instReqStage   = Module(new InstReqStage)
   val instResStage   = Module(new InstResStage)
 
   // addrTransStage
-  addrTransStage.io.isFlush       := io.isFlush
-  addrTransStage.io.isPcUpdate    := io.pcUpdate || !isFirstSentReg
-  addrTransStage.io.pc            := io.pc
-  addrTransStage.io.peer.csr      := io.csr
-  addrTransStage.io.peer.tlbTrans <> io.tlbTrans
+  addrTransStage.io.isFlush := io.isFlush
+  addrTransStage.io.in      <> io.ftqIFPort
+  addrTransStage.io.peer.foreach { p =>
+    p.csr      <> io.csr
+    p.tlbTrans <> io.tlbTrans
+  }
 
   // instReqStage
   instReqStage.io.isFlush := io.isFlush
@@ -58,5 +56,4 @@ class InstFetch extends Module {
     p.memRes <> io.accessPort.res
   }
 
-  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg
 }

@@ -5,6 +5,7 @@ import chisel3.util._
 import pipeline.queue.bundles.DecodeOutNdPort
 import spec.Inst.{_2RI16 => Inst}
 import spec._
+import Param.BPU.BranchType
 
 class Decoder_2RI16 extends Decoder {
 
@@ -59,6 +60,8 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.b
       outInfo.exeSel               := ExeInst.Sel.jumpBranch
+      outInfo.isBranch             := true.B
+      outInfo.branchType           := BranchType.uncond
       outInfo.jumpBranchAddr       := imm26SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bl) {
@@ -74,6 +77,8 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.bl
       outInfo.exeSel               := ExeInst.Sel.jumpBranch
+      outInfo.isBranch             := true.B
+      outInfo.branchType           := BranchType.call
       outInfo.jumpBranchAddr       := imm26SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.jirl) {
@@ -87,7 +92,17 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched             := true.B
       outInfo.exeOp                := ExeInst.Op.jirl
       outInfo.exeSel               := ExeInst.Sel.jumpBranch
-      outInfo.jumpBranchAddr       := imm16SextShift2.asUInt
+      outInfo.isBranch             := true.B
+      outInfo.branchType := Mux(
+        rd === 0.U && rj === 1.U,
+        BranchType.ret,
+        Mux(
+          rd === 1.U,
+          BranchType.call,
+          BranchType.uncond
+        )
+      )
+      outInfo.jumpBranchAddr := imm16SextShift2.asUInt
     }
     is(Inst.beq) {
       selectIssueEn(DispatchType.csrOrBranch)
@@ -96,6 +111,8 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.beq
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.isBranch       := true.B
+      outInfo.branchType     := BranchType.cond
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bne) {
@@ -105,6 +122,8 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bne
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.isBranch       := true.B
+      outInfo.branchType     := BranchType.cond
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.blt) {
@@ -114,6 +133,8 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.blt
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.isBranch       := true.B
+      outInfo.branchType     := BranchType.cond
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bge) {
@@ -123,6 +144,8 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bge
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.isBranch       := true.B
+      outInfo.branchType     := BranchType.cond
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bltu) {
@@ -132,6 +155,8 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bltu
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.isBranch       := true.B
+      outInfo.branchType     := BranchType.cond
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
     is(Inst.bgeu) {
@@ -141,6 +166,8 @@ class Decoder_2RI16 extends Decoder {
       io.out.isMatched       := true.B
       outInfo.exeOp          := ExeInst.Op.bgeu
       outInfo.exeSel         := ExeInst.Sel.jumpBranch
+      outInfo.isBranch       := true.B
+      outInfo.branchType     := BranchType.cond
       outInfo.jumpBranchAddr := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
     }
   }

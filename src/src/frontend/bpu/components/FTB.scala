@@ -2,8 +2,10 @@ package frontend.bpu.components
 
 import chisel3._
 import chisel3.util._
+import chisel3.util.random.LFSR
 import frontend.bpu.components.Bundles.FtbEntryNdPort
 import frontend.bpu.utils.{Bram, Lfsr}
+import memory.VSimpleDualBRam
 import spec._
 import utils.BiPriorityMux
 
@@ -21,96 +23,97 @@ class FTB(
   // param
   val nwayWidth = log2Ceil(nway)
   val nsetWidth = log2Ceil(nset)
-  val addrWidth = log2Ceil(addr)
 
   val io = IO(new Bundle {
     // Query
     val queryPc        = Input(UInt(addr.W))
     val queryEntryPort = Output(new FtbEntryNdPort)
-    val hitIndex       = Output(UInt(nway.W))
+    val hitIndex       = Output(UInt(nwayWidth.W))
     val hit            = Output(Bool())
 
     // Update signals
     val updatePc        = Input(UInt(addr.W))
-    val updateWayIndex  = Input(UInt(nway.W))
+    val updateWayIndex  = Input(UInt(nwayWidth.W))
     val updateValid     = Input(Bool())
     val updateDirty     = Input(Bool())
     val updateEntryPort = Input(new FtbEntryNdPort)
   })
 
-  // Signals definition
-  val wayQueryEntryRegs = Vec(nway, new FtbEntryNdPort)
-  val wayHit            = WireDefault(0.U(nway.W))
-  val wayHitIndex       = WireDefault(0.U(nwayWidth.W))
+  def toEntryLine(line: UInt) = {
+    val bundle = Wire(new FtbEntryNdPort)
+    bundle.valid              := line(FtbEntryNdPort.width - 1)
+    bundle.isCrossCacheline   := line(FtbEntryNdPort.width - 2)
+    bundle.branchType         := line(FtbEntryNdPort.width - 3, FtbEntryNdPort.width - 2 - Param.BPU.BranchType.width)
+    bundle.tag                := line(FtbEntryNdPort.width - 3 - Param.BPU.BranchType.width, spec.Width.Mem._addr * 2)
+    bundle.jumpTargetAddress  := line(spec.Width.Mem._addr * 2 - 1, spec.Width.Mem._addr)
+    bundle.fallThroughAddress := line(spec.Width.Mem._addr - 1, 0)
+    bundle
+  }
 
+  // Signals definition
+  val wayQueryEntry = Wire(Vec(nway, new FtbEntryNdPort))
+  val wayHits       = Wire(Vec(nway, Bool()))
+  val wayHitIndex   = Wire(UInt(nwayWidth.W))
   // Query
-  val queryIndex     = WireDefault(0.U(nsetWidth.W))
-  val queryTagBuffer = WireDefault(0.U((addrWidth - nsetWidth).W))
+  val queryIndex  = WireDefault(0.U(nsetWidth.W))
+  val queryTagReg = RegInit(0.U((addr - nsetWidth - 2).W))
   // Update
   val updateIndex     = WireDefault(0.U(nsetWidth.W))
-  val updateEntryPort = Reg(new FtbEntryNdPort)
-  val updateWE        = WireDefault(0.U(nway.W))
-  val randomR         = WireDefault(0.U(16.W))
+  val updateEntryPort = WireDefault(FtbEntryNdPort.default)
+  val updateWE        = WireDefault(VecInit(Seq.fill(nway)(false.B)))
+  // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
+  // which is use to generate random number
+  val randomNum = LFSR(width = 16)
 
   // Query logic
-  queryIndex     := io.queryPc(nsetWidth + 1, 2)
-  queryTagBuffer := RegNext(io.queryPc(addrWidth - 1, nwayWidth + 2))
-  for (index <- 0 to nwayWidth) {
-    wayHit(index) := (wayQueryEntryRegs(index).tag === queryTagBuffer) &&
-      wayQueryEntryRegs(index).valid
+  queryIndex  := io.queryPc(nsetWidth + 1, 2)
+  queryTagReg := io.queryPc(addr - 1, nsetWidth + 2)
+
+  wayHits.zip(wayQueryEntry).foreach {
+    case (isHit, wayEntry) =>
+      isHit := wayEntry.valid && wayEntry.tag === queryTagReg
   }
 
   // Query output
-  io.queryEntryPort := wayQueryEntryRegs(wayHitIndex)
-  io.hit            := wayHit.orR
+  io.queryEntryPort := wayQueryEntry(wayHitIndex)
+  io.hit            := wayHits.asUInt.orR
   io.hitIndex       := wayHitIndex
 
   // Update logic
   updateIndex := io.updatePc(nsetWidth + 1, 2)
   when(io.updateDirty) {
     // Just override all entry in this group to ensure old entry is cleared
-    updateEntryPort             := io.updateEntryPort
-    updateWE                    := 0.U(nway.W)
-    updateWE(io.updateWayIndex) := io.updateValid
+    updateEntryPort := io.updateEntryPort
+    updateWE.zipWithIndex.foreach {
+      case (en, index) =>
+        en := Mux(index.U === io.updateWayIndex, io.updateValid, false.B)
+    }
   }.otherwise {
     // Update a new entry in
     updateEntryPort := io.updateEntryPort
-    updateWE        := 0.U(nway.W)
-    for (wayIdx <- 0 to nway) {
-      when(wayIdx.asUInt(nwayWidth) === randomR(nwayWidth - 1, 0)) {
-        updateWE(wayIdx) := io.updateValid
-      }
+    updateWE.zipWithIndex.foreach {
+      case (en, index) =>
+        en := Mux(index.U === randomNum(nwayWidth - 1, 0), io.updateValid, false.B)
     }
   }
 
-  // hit Priority  todo
-  val isHit         = WireDefault(wayHit.orR)
-  val biPriorityMux = Module(new BiPriorityMux(num = nway))
-  biPriorityMux.io.inVector := wayHit
-  Cat(isHit, wayHitIndex)   := biPriorityMux.io.selectIndices
+  // hit Priority
+  wayHitIndex := PriorityEncoder(wayHits)
 
-  // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
-  // which is use to generate random number
-  val lsfr = new Lfsr(width = 16)
-  lsfr.io.en := true.B
-  randomR    := lsfr.io.value
-
-  // TODO use blackbox connect bram
-  // bram
-  Seq
-    .range(0, nway)
-    .map(wayIdx => {
-      val bram = Module(new Bram(dataWidth = FtbEntryNdPort.bitsLength, dataDepthExp2 = nsetWidth))
-      bram.io.ena               := true.B
-      bram.io.enb               := true.B
-      bram.io.wea               := false.B
-      bram.io.web               := updateWE(wayIdx)
-      bram.io.dina              := DontCare
-      bram.io.addra             := queryIndex
-      wayQueryEntryRegs(wayIdx) := bram.io.douta
-      bram.io.dinb              := updateEntryPort
-      bram.io.addrb             := updateIndex
-      bram.io.doutb             := DontCare
-      bram
-    })
+  val phtRams = Seq.fill(nway)(
+    Module(
+      new VSimpleDualBRam(
+        nset,
+        FtbEntryNdPort.width
+      )
+    )
+  )
+  phtRams.zipWithIndex.foreach {
+    case (ram, index) =>
+      wayQueryEntry(index) := toEntryLine(ram.io.dataOut)
+      ram.io.readAddr      := queryIndex
+      ram.io.isWrite       := updateWE(index)
+      ram.io.dataIn        := updateEntryPort.asUInt
+      ram.io.writeAddr     := updateIndex
+  }
 }

@@ -160,13 +160,15 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
       dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
       val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
-      dequeuePort.bits.instInfo.isValid    := true.B
-      dequeuePort.bits.instInfo.isCsrWrite := selectedDecoder.info.csrWriteEn
-      // dequeuePort.bits.instInfo.csrWritePort.addr := selectedDecoder.info.csrAddr
-      dequeuePort.bits.instInfo.exeOp   := selectedDecoder.info.exeOp
-      dequeuePort.bits.instInfo.exeSel  := selectedDecoder.info.exeSel
-      dequeuePort.bits.instInfo.isTlb   := selectedDecoder.info.isTlb
-      dequeuePort.bits.instInfo.needCsr := selectedDecoder.info.needCsr
+      dequeuePort.bits.instInfo.isValid                  := true.B
+      dequeuePort.bits.instInfo.isCsrWrite               := selectedDecoder.info.csrWriteEn
+      dequeuePort.bits.instInfo.exeOp                    := selectedDecoder.info.exeOp
+      dequeuePort.bits.instInfo.exeSel                   := selectedDecoder.info.exeSel
+      dequeuePort.bits.instInfo.isTlb                    := selectedDecoder.info.isTlb
+      dequeuePort.bits.instInfo.needCsr                  := selectedDecoder.info.needCsr
+      dequeuePort.bits.instInfo.ftqInfo                  := decodeInstInfo.ftqInfo
+      dequeuePort.bits.instInfo.ftqCommitInfo.isBranch   := selectedDecoder.info.isBranch
+      dequeuePort.bits.instInfo.ftqCommitInfo.branchType := selectedDecoder.info.branchType
 
       dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needCsr
 

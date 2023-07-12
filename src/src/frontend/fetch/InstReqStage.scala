@@ -1,14 +1,15 @@
 package frontend.fetch
 
+import chisel3._
 import chisel3.util._
-import chisel3.{Bundle, _}
-import frontend.bundles.{ICacheRequestHandshakePort, ICacheRequestNdPort}
+import frontend.bundles.{FtqBlockBundle, ICacheRequestHandshakePort, ICacheRequestNdPort}
 import pipeline.common.BaseStage
-import spec.Width
+import spec.{Csr, Param, Width}
 
 class InstReqNdPort extends Bundle {
   val translatedMemReq = new ICacheRequestNdPort
-  val pc               = UInt(Width.Mem.addr)
+  val ftqBlock         = new FtqBlockBundle
+  val ftqId            = UInt(Param.BPU.ftqPtrWitdh.W)
   val exception        = Valid(UInt(Width.Csr.exceptionIndex))
 }
 
@@ -33,8 +34,8 @@ class InstReqStage
   val excpValid = WireDefault(selectedIn.exception.valid)
 
   // Fallback output
-  out.pc        := selectedIn.pc
-  out.isValid   := true.B
+  out.ftqBlock  := selectedIn.ftqBlock
+  out.ftqId     := selectedIn.ftqId
   out.exception := selectedIn.exception
 
   // Fallback peer

@@ -2,8 +2,7 @@ package pipeline.execution
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PcSetNdPort, RfAccessInfoNdPort}
-import control.bundles.{CsrReadPort, CsrWriteNdPort, StableCounterReadPort}
+import common.bundles._
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import pipeline.commit.WbNdPort
@@ -12,7 +11,11 @@ import pipeline.common.BaseStage
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.ExeInst.Sel
 import spec.Param.isDiffTest
+import frontend.bundles.ExeFtqPort
 import spec._
+import control.bundles.CsrWriteNdPort
+import control.bundles.StableCounterReadPort
+import control.bundles.CsrReadPort
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -41,7 +44,7 @@ object ExeNdPort {
 
 class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
-  val branchSetPort           = if (supportBranchCsr) Some(Output(new PcSetNdPort)) else None
+  val branchSetPort           = if (supportBranchCsr) Some(Output(new BackendRedirectPcNdPort)) else None
   val csrScoreboardChangePort = if (supportBranchCsr) Some(Output(new ScoreboardChangeNdPort)) else None
   val csrWriteStorePort       = if (supportBranchCsr) Some(Output(Valid(new CsrWriteNdPort))) else None
 
@@ -54,6 +57,8 @@ class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
     val llbctl = new LlbctlBundle
     val era    = new EraBundle
   })
+
+  val feedbackFtq = if (supportBranchCsr) Some(Flipped(new ExeFtqPort)) else None
 }
 
 // throw exception: 地址未对齐 ale
@@ -190,22 +195,61 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     val csrScoreboardChangePort = io.peer.get.csrScoreboardChangePort.get
 
     // branch set
-    branchSetPort    := PcSetNdPort.default
-    branchSetPort.en := alu.io.result.jumpBranchInfo.en && branchEnableFlag
-    when(alu.io.result.jumpBranchInfo.en) {
-      branchEnableFlag := false.B
-    }
-    branchSetPort.pcAddr       := alu.io.result.jumpBranchInfo.pcAddr
+    branchSetPort              := BackendRedirectPcNdPort.default
     csrScoreboardChangePort.en := selectedIn.instInfo.needCsr
+
+    val feedbackFtq    = io.peer.get.feedbackFtq.get
+    val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)
+    val inFtqInfo      = WireDefault(selectedIn.instInfo.ftqInfo)
+    val fallThroughPc  = WireDefault(selectedIn.instInfo.pc + 4.U)
+
+    feedbackFtq.queryPcBundle.ftqId := selectedIn.instInfo.ftqInfo.ftqId + 1.U
+    val ftqQueryPc = feedbackFtq.queryPcBundle.pc
+
+    // mis predict
+    val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
+    val branchTargeMispredict = (
+      jumpBranchInfo.en &&
+        inFtqInfo.predictBranch &&
+        jumpBranchInfo.pcAddr =/= ftqQueryPc
+    ) || (
+      !jumpBranchInfo.en &&
+        !inFtqInfo.predictBranch &&
+        inFtqInfo.isLastInBlock &&
+        fallThroughPc =/= ftqQueryPc
+    )
+
+    // is branch
+    val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
+
+    branchSetPort.en    := (branchDirectionMispredict || branchTargeMispredict) && branchEnableFlag && isBranchInst
+    branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
+    when(branchSetPort.en) {
+      branchEnableFlag                                 := false.B
+      resultOutReg.bits.instInfo.ftqInfo.isLastInBlock := true.B
+    }
+    branchSetPort.pcAddr := Mux(
+      jumpBranchInfo.en,
+      jumpBranchInfo.pcAddr,
+      fallThroughPc
+    )
+
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
+    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargeMispredict ||
+      (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
+    feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
+    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+
+    resultOutReg.bits.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
+    resultOutReg.bits.instInfo.ftqCommitInfo.isPredictError  := branchSetPort.en
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
 
-    when(branchSetPort.en || isIdle || isErtn) {
+    when(isBranchInst || isIdle || isErtn) {
       resultOutReg.bits.instInfo.forbidParallelCommit := true.B
     }
-
-    resultOutReg.bits.instInfo.branchSuccess := branchSetPort.en
 
     when(io.isFlush) {
       branchEnableFlag := true.B

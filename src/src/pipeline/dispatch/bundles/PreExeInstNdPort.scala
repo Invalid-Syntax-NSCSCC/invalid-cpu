@@ -40,6 +40,8 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   val issueEn          = Vec(Param.pipelineNum, Bool())
   val forbidOutOfOrder = Bool()
   val isPrivilege      = Bool()
+  val isBranch         = Bool()
+  val branchType       = UInt(Param.BPU.BranchType.width.W)
   // TODO: Signals in this port is not sufficient
 }
 
@@ -57,6 +59,8 @@ object PreExeInstNdPort {
     _.csrWriteEn -> false.B,
     _.isTlb -> false.B,
     _.issueEn -> Vec.Lit(Seq.fill(Param.pipelineNum)(false.B): _*),
-    _.isPrivilege -> false.B
+    _.isPrivilege -> false.B,
+    _.branchType -> 0.U,
+    _.isBranch -> false.B
   )
 }

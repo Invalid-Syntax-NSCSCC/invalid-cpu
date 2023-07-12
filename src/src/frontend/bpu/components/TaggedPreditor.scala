@@ -1,8 +1,10 @@
 package frontend.bpu.components
 import chisel3._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util._
 import frontend.bpu.utils.{Bram, CsrHash}
-import spec.Param
+import memory.{VSimpleDualBRam, VTrueDualBRam}
+import spec.{Param, Width}
 
 class TaggedPreditor(
   ghrLength:      Int = 4,
@@ -14,6 +16,22 @@ class TaggedPreditor(
     extends Module {
   // param
   val phtAddrWidth = log2Ceil(phtDepth)
+
+  // define bundle
+  class PhtEntey extends Bundle {
+    val counter = UInt(phtCtrWidth.W)
+    val tag     = UInt(phtTagWidth.W)
+    val useful  = UInt(phtUsefulWidth.W)
+  }
+  object PhtEntey {
+    def default = (new PhtEntey).Lit(
+      // counter highest bit as 1,other 0;means weakly taken
+      _.counter -> (1 << (phtCtrWidth - 1)).asUInt(phtCtrWidth.W),
+      _.tag -> 0.U(phtTagWidth.W),
+      _.useful -> 0.U(phtUsefulWidth.W)
+    )
+    def width = phtCtrWidth + phtTagWidth + phtUsefulWidth
+  }
 
   val io = IO(new Bundle {
     // Query signal
@@ -46,105 +64,97 @@ class TaggedPreditor(
     val updateIndex      = Input(UInt(log2Ceil(phtDepth).W))
   })
 
+  def toPhtLine(line: UInt) = {
+    val bundle = Wire(new PhtEntey)
+    bundle.counter := line(PhtEntey.width - 1, PhtEntey.width - phtCtrWidth)
+    bundle.tag     := line(PhtEntey.width - phtCtrWidth - 1, phtUsefulWidth)
+    bundle.useful  := line(phtUsefulWidth - 1, 0)
+
+    bundle
+  }
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // Query logic
+  ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Index
   // Fold GHT input to a fix length, the same as index range
   // Using a CSR, described in PPM-Liked essay
   val hashedGhtInput = WireDefault(0.U(phtAddrWidth.W))
-  val queryIndex     = WireDefault(0.U(phtAddrWidth.W))
-  val queryIndexNext = WireDefault(0.U(phtTagWidth.W))
+  // query_index is Fold(GHR) ^ PC[low] ^ PC[high]
+  val queryIndex = WireDefault(io.pc(phtAddrWidth - 1, 0) ^ io.pc(2 * phtAddrWidth - 1, phtAddrWidth) ^ hashedGhtInput)
+  val queryIndexReg = RegNext(queryIndex, 0.U(phtTagWidth.W))
 
   // Tag
   // Generate another hash different from above, as described in PPM-Liked essay
-  val tagHashCsr1  = WireDefault(0.U(phtTagWidth.W))
-  val tagHashCsr2  = WireDefault(0.U((phtTagWidth - 1).W))
-  val queryTag     = WireDefault(0.U(phtTagWidth.W))
-  val queryTagNext = WireDefault(0.U(phtTagWidth.W))
+  val tagHashCsr1 = WireDefault(0.U(phtTagWidth.W))
+  val tagHashCsr2 = WireDefault(0.U((phtTagWidth - 1).W))
+  // query_tag is XORed from pc_i
+  // assign query_tag = pc_i[31:31-PHT_TAG_WIDTH+1];
+  val queryTag    = WireDefault(io.pc(1 + phtTagWidth, 2) ^ tagHashCsr1 ^ Cat(tagHashCsr2, 0.U(1.W)))
+  val queryTagReg = RegNext(queryTag, 0.U(phtTagWidth.W))
 
   // PHT
   // result
   // default ctr topbit:1 otherbits:0 (weakly taken)
-  val phtEntry       = phtCtrWidth + phtTagWidth + phtUsefulWidth
-  val phtEntryCtr    = WireDefault(Cat(1.U(1.W), 0.U((phtCtrWidth - 1).W)))
-  val phtEntryTag    = WireDefault(0.U(phtTagWidth.W))
-  val phtEntryUseful = WireDefault(0.U(phtUsefulWidth.W))
   // update entry
-  val phtEntryCtrNext    = WireDefault(Cat(1.U(1.W), 0.U((phtCtrWidth - 1).W)))
-  val phtEntryTagNext    = WireDefault(0.U(phtTagWidth.W))
-  val phtEntryUsefulNext = WireDefault(0.U(phtUsefulWidth.W))
+  val phtQueryResult  = WireDefault(PhtEntey.default)
+  val phtUpdateResult = RegInit(PhtEntey.default)
 
   val phtUpdateIndex = WireDefault(0.U(phtAddrWidth.W))
 
-  ////////////////////////////////////////////////////////////////////////////////////////////
-  // Query logic
-  ////////////////////////////////////////////////////////////////////////////////////////////
-  // query_index is Fold(GHR) ^ PC[low] ^ PC[high]
-  queryIndexNext := io.pc(0, phtAddrWidth) ^ io.pc(phtAddrWidth, 2 * phtAddrWidth) ^ hashedGhtInput
-  // query_tag is XORed from pc_i
-  // assign query_tag = pc_i[31:31-PHT_TAG_WIDTH+1];
-  queryTagNext := io.pc(2, 2 + phtTagWidth) ^ tagHashCsr1 ^ Cat(tagHashCsr2, 0.U(1.W))
-
-  queryIndex := queryIndexNext
-  queryTag   := queryTagNext
-
   // Output
-  io.ctrBits    := phtEntryCtr
-  io.usefulBits := phtEntryUseful
-  io.hitIndex   := queryIndex
-  io.queryTag   := queryTag
-  io.originTag  := phtEntryTag
-  io.taken      := (phtEntryCtr(phtCtrWidth - 1) === 1.U)
-  io.tagHit     := (queryTag === phtEntryTag)
+  io.ctrBits    := phtQueryResult.counter
+  io.usefulBits := phtQueryResult.useful
+  io.hitIndex   := queryIndexReg
+  io.queryTag   := queryTagReg
+  io.originTag  := phtQueryResult.tag
+  io.taken      := (phtQueryResult.counter(phtCtrWidth - 1) === 1.U)
+  io.tagHit     := (queryTag === phtQueryResult.tag)
 
   ///////////////////////////////////////////////////////////////////////////////////////////
   // Update logic
   ///////////////////////////////////////////////////////////////////////////////////////////
-  phtUpdateIndex := io.updateIndex
-
-  phtEntryTagNext := io.updateTag
   // update CTR bits
   when(io.updateCtr) {
     // default value
-    phtEntryCtrNext := Mux(io.incCtr, io.updateCtrBits + 1.U, io.updateCtrBits - 1.U)
-    switch(io.updateCtrBits) {
-      is(0.U) {
-        // min value
-        phtEntryCtrNext := Mux(io.incCtr, 1.U(phtCtrWidth.W), 0.U(phtCtrWidth.W))
-      }
-      is((-1.S(phtCtrWidth.W)).asUInt) {
-        // max value
-        phtEntryCtrNext := Mux(io.incCtr, (-1.S(phtCtrWidth.W)).asUInt, (-2.S(phtCtrWidth.W)).asUInt)
-      }
+    phtUpdateResult.counter := Mux(io.incCtr, io.updateCtrBits + 1.U, io.updateCtrBits - 1.U)
+    val zero    = 0.U(phtCtrWidth.W)
+    val fullOne = (-1.S(phtCtrWidth.W)).asUInt
+    when(io.updateCtrBits === zero) {
+      // min valuedon't decrease
+      phtUpdateResult.counter := Mux(io.incCtr, 1.U(phtCtrWidth.W), 0.U(phtCtrWidth.W))
+    }.elsewhen(io.updateCtrBits === fullOne) {
+      // max value dont' increase
+      phtUpdateResult.counter := Mux(io.incCtr, (-1.S(phtCtrWidth.W)).asUInt, (-2.S(phtCtrWidth.W)).asUInt)
     }
   }.otherwise {
-    phtEntryCtrNext := io.updateCtrBits
+    phtUpdateResult.counter := io.updateCtrBits
   }
+  phtUpdateIndex      := io.updateIndex
+  phtUpdateResult.tag := io.updateTag
 
   // Update useful bits
   when(io.updateUseful) {
-    phtEntryCtrNext := Mux(
+    // default value
+    phtUpdateResult.useful := Mux(
       io.incUseful,
       io.updateUsefulBits + 1.U(phtUsefulWidth.W),
       io.updateUsefulBits - 1.U(phtUsefulWidth.W)
     )
-    switch(io.updateUsefulBits) {
-      is(0.U) {
-        phtEntryCtrNext := Mux(io.incUseful, 1.U(phtUsefulWidth.W), 0.U(phtUsefulWidth.W))
-      }
-      is((-1.S(phtUsefulWidth.W)).asUInt) {
-        // max value
-        phtEntryCtrNext := Mux(io.incUseful, (-1.S(phtUsefulWidth.W)).asUInt, (-2.S(phtUsefulWidth.W)).asUInt)
-      }
+    when(io.updateUsefulBits === 0.U) {
+      // min value don't decrease
+      phtUpdateResult.useful := Mux(io.incUseful, 1.U(phtUsefulWidth.W), 0.U(phtUsefulWidth.W))
+    }.elsewhen(io.updateUsefulBits === (-1.S(phtUsefulWidth.W)).asUInt) {
+      // max value dont' increase
+      phtUpdateResult.useful := Mux(io.incUseful, (-1.S(phtUsefulWidth.W)).asUInt, (-2.S(phtUsefulWidth.W)).asUInt)
     }
   }.otherwise {
-    phtEntryCtrNext := io.updateUsefulBits
+    phtUpdateResult.useful := io.updateUsefulBits
   }
 
   // Alocate new entry
   when(io.reallocEntry) {
-    // Reset CTR  set top bit 1,other 0
-    phtEntryCtrNext := (1 << (phtCtrWidth - 1)).U(phtCtrWidth.W)
-    // Clear useful
-    phtEntryUsefulNext := 0.U(phtCtrWidth.W)
+    // Reset
+    phtUpdateResult := PhtEntey.default
   }
 
   // to do  connect CSR hash
@@ -163,26 +173,17 @@ class TaggedPreditor(
   pcHashCsrHash2.io.dataUpdate := io.isGlobalHistoryUpdate
   tagHashCsr2                  := pcHashCsrHash2.io.hash
 
-  // to do  connect bram
-  // connect table
-  // TODO connect bram with one read and one write port
-//  // Table
-//  // Port A as read port, Port B as write port
-  val phtTable = Module(
-    new Bram(
-      dataWidth     = phtEntry,
-      dataDepthExp2 = phtAddrWidth
+  val phtRam = Module(
+    new VSimpleDualBRam(
+      phtDepth, // size
+      PhtEntey.width // dataWidth
+
     )
   )
-  phtTable.io.ena                               := true.B
-  phtTable.io.enb                               := true.B
-  phtTable.io.wea                               := false.B
-  phtTable.io.web                               := io.updateValid
-  phtTable.io.dina                              := 0.U(phtCtrWidth.W)
-  phtTable.io.addra                             := queryIndex
-  Cat(phtEntryCtr, phtEntryTag, phtEntryUseful) := phtTable.io.douta
-  phtTable.io.dinb                              := Cat(phtEntryCtrNext, phtEntryTagNext, phtEntryUsefulNext)
-  phtTable.io.addrb                             := phtUpdateIndex
-  phtTable.io.doutb                             <> DontCare
+  phtRam.io.readAddr  := queryIndex.asUInt
+  phtQueryResult      := toPhtLine(phtRam.io.dataOut)
+  phtRam.io.isWrite   := io.updateValid
+  phtRam.io.dataIn    := phtUpdateResult.asUInt
+  phtRam.io.writeAddr := phtUpdateIndex.asUInt
 
 }

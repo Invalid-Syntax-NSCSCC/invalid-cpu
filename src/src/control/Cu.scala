@@ -2,12 +2,14 @@ package control
 
 import chisel3._
 import chisel3.util._
-import common.bundles.{PassThroughPort, PcSetNdPort, RfWriteNdPort}
-import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort}
+import common.bundles.{BackendRedirectPcNdPort, PassThroughPort, RfWriteNdPort}
+import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
 import control.enums.ExceptionPos
 import pipeline.commit.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param}
+import frontend.bundles.CuCommitFtqNdPort
+import frontend.bundles.QueryPcBundle
 
 // Note. Exception只从第0个提交
 class Cu(
@@ -16,8 +18,6 @@ class Cu(
     extends Module {
   val io = IO(new Bundle {
 
-    /** 回写与异常处理
-      */
     // `WbStage` -> `Cu` -> `Regfile`
     val gprWritePassThroughPorts = new PassThroughPort(Vec(commitNum, new RfWriteNdPort))
     val instInfoPorts            = Input(Vec(commitNum, new InstInfoNdPort))
@@ -33,17 +33,20 @@ class Cu(
     val csrFlushRequest = Input(Bool())
     val csrValues       = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
-    val branchExe = Input(new PcSetNdPort)
+    val branchExe = Input(new BackendRedirectPcNdPort)
     // `Rob` -> `Cu`
     val branchCommit = Input(Bool())
-    // `Cu` -> `Pc`
-    val newPc = Output(new PcSetNdPort)
     // `CsrScoreBoard` -> `Cu`
     val csrWriteInfo = Input(new CsrWriteNdPort)
+    val newPc        = Output(new BackendRedirectPcNdPort)
 
-    val frontendFlush = Output(Bool())
-    val backendFlush  = Output(Bool())
-    val idleFlush     = Output(Bool())
+    val frontendFlush      = Output(Bool())
+    val frontendFlushFtqId = Output(UInt(Param.BPU.ftqPtrWitdh.W))
+    val backendFlush       = Output(Bool())
+    val idleFlush          = Output(Bool())
+
+    val ftqPort     = Output(new CuCommitFtqNdPort)
+    val queryPcPort = Flipped(new QueryPcBundle)
 
     // <- Out
     val hardwareInterrupt = Input(UInt(8.W))
@@ -61,7 +64,9 @@ class Cu(
 
   // Values
   val majorInstInfo = io.instInfoPorts.head
-  val isException   = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
+  io.queryPcPort.ftqId := majorInstInfo.ftqInfo.ftqId
+  val majorPc: UInt = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
+  val isException = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
   // Write GPR
   io.gprWritePassThroughPorts.out.zip(io.gprWritePassThroughPorts.in).foreach {
@@ -80,16 +85,11 @@ class Cu(
   io.csrWritePorts.head.addr := io.csrWriteInfo.addr
   io.csrWritePorts.head.data := io.csrWriteInfo.data
 
-  // CSR write by exception
-
   io.csrMessage.exceptionFlush := isException
-  // Attention: 由于encoder在全零的情况下会选择idx最高的那个，
-  // 使用时仍需判断是否有exception
-  // 是否tlb重写异常：优先级最低，由前面是否发生其他异常决定
 
   // select era, ecodeBundle
   when(isException) {
-    io.csrMessage.era := majorInstInfo.pc
+    io.csrMessage.era := majorPc
     switch(majorInstInfo.exceptionRecord) {
       is(Csr.ExceptionIndex.int) {
         io.csrMessage.ecodeBundle := Csr.Estat.int
@@ -149,7 +149,7 @@ class Cu(
   when(isException) {
     when(majorInstInfo.exceptionRecord === Csr.ExceptionIndex.adef) {
       io.csrMessage.badVAddrSet.en   := true.B
-      io.csrMessage.badVAddrSet.addr := majorInstInfo.pc
+      io.csrMessage.badVAddrSet.addr := majorPc
     }.elsewhen(
       VecInit(
         Csr.ExceptionIndex.tlbr,
@@ -167,7 +167,7 @@ class Cu(
       io.csrMessage.badVAddrSet.addr := Mux(
         majorInstInfo.exceptionPos === ExceptionPos.backend,
         majorInstInfo.vaddr,
-        majorInstInfo.pc
+        majorPc
       )
     }
   }
@@ -204,8 +204,7 @@ class Cu(
     }
   }
 
-  /** Flush & jump
-    */
+  // Flush & jump
 
   val isExceptionReturn = majorInstInfo.exeOp === ExeInst.Op.ertn && majorInstInfo.isValid && !isException
 
@@ -213,28 +212,43 @@ class Cu(
 
   val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 
-  io.csrMessage.ertnFlush := isExceptionReturn
-  val isChangeInstPath =
-    isException || io.branchExe.en || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn
+  val refetchFlush =
+    majorInstInfo.isValid &&
+      (isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush)
 
-  io.frontendFlush := RegNext(
-    isChangeInstPath,
-    false.B
+  io.csrMessage.ertnFlush := isExceptionReturn
+  io.frontendFlush :=
+    RegNext(
+      isException || io.branchExe.en || refetchFlush || isExceptionReturn,
+      false.B
+    )
+  val frontendFlushFtqId = WireDefault(
+    Mux(
+      isException || refetchFlush || isExceptionReturn,
+      majorInstInfo.ftqInfo.ftqId,
+      io.branchExe.ftqId
+    )
   )
+  io.frontendFlushFtqId := RegNext(frontendFlushFtqId)
   io.backendFlush := RegNext(
-    isException || io.branchCommit || isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush || isExceptionReturn,
+    isException || io.branchCommit || refetchFlush || isExceptionReturn,
     false.B
   )
   io.idleFlush := RegNext(idleFlush)
 
   // Select new pc
-  val newPcReg = RegInit(PcSetNdPort.default)
-  io.newPc := newPcReg
+  val newPc = RegInit(BackendRedirectPcNdPort.default)
+  io.newPc := newPc
+  newPc.en :=
+    refetchFlush || isException || io.branchExe.en || isExceptionReturn
 
-  newPcReg       := PcSetNdPort.default
-  newPcReg.en    := isChangeInstPath
-  newPcReg.isTlb := isTlbMaintenance
-  newPcReg.pcAddr := Mux(
+  newPc.ftqId := Mux(
+    refetchFlush || isException || isExceptionReturn,
+    majorInstInfo.ftqInfo.ftqId,
+    io.branchExe.ftqId
+  )
+
+  newPc.pcAddr := Mux(
     isException,
     Mux(
       majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
@@ -245,12 +259,44 @@ class Cu(
       isExceptionReturn,
       io.csrValues.era.pc,
       Mux(
-        isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush,
-        majorInstInfo.pc + 4.U,
+        refetchFlush,
+        majorPc + 4.U,
         io.branchExe.pcAddr
       )
     )
   )
+
+  // BPU training data
+  val ftqCommitInfo = RegInit(CuCommitFtqNdPort.default)
+  io.ftqPort := ftqCommitInfo
+
+  ftqCommitInfo.ftqId               := majorInstInfo.ftqInfo.ftqId
+  ftqCommitInfo.meta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch && majorInstInfo.isValid
+  ftqCommitInfo.meta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
+  ftqCommitInfo.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
+  ftqCommitInfo.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
+
+  ftqCommitInfo.bitMask.foreach(_ := false.B)
+  ftqCommitInfo.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
+    case ((mask, instInfo), idx) =>
+      if (idx == 0) {
+        mask := instInfo.isValid && (isException ||
+          instInfo.ftqInfo.isLastInBlock ||
+          refetchFlush ||
+          isExceptionReturn)
+      } else {
+        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
+      }
+  }
+
+  ftqCommitInfo.blockBitmask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
+    case ((mask, instInfo), idx) =>
+      if (idx == 0) {
+        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
+      } else {
+        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
+      }
+  }
 
   io.difftest match {
     case Some(dt) =>

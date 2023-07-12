@@ -10,17 +10,24 @@ class Pc(
   val issueNum: Int = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new Bundle {
-    val pc       = Output(UInt(Width.Reg.data))
-    val pcUpdate = Output(Bool())
-    val isNext   = Input(Bool())
+    val pc = Output(UInt(Width.Reg.data))
+
+    val ftqFull = Input(Bool())
     // 异常处理 + 分支跳转
-    val newPc = Input(new PcSetNdPort)
+    val newPc = Input(new BackendRedirectPcNdPort)
+
+    // bpu pc
+    val mainRedirectPc = Input(Valid(UInt(Width.Reg.data)))
   })
 
-  val pcReg       = RegInit(spec.Pc.init)
-  val pcUpdateReg = RegInit(false.B)
-  io.pc       := pcReg
-  io.pcUpdate := pcUpdateReg && !io.newPc.en
+  val pcReg = RegInit(spec.Pc.init)
+  io.pc := pcReg
+
+  // keep pc signal
+  val ftqFullReg = RegNext(io.ftqFull)
+
+  // TODO change to fixed fetchNum
+  // sequential pc
   val pcFetchNum = WireDefault(Param.fetchInstMaxNum.U(log2Ceil(Param.fetchInstMaxNum + 1).W))
   if (Param.fetchInstMaxNum != 1) {
     when(pcReg(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset) =/= 0.U) {
@@ -28,15 +35,16 @@ class Pc(
     }
   }
 
-  pcReg := pcReg
   when(io.newPc.en) {
-    pcReg       := io.newPc.pcAddr
-    pcUpdateReg := true.B
-  }.elsewhen(io.isNext) {
-    pcReg       := pcReg + 4.U * pcFetchNum.asUInt
-    pcUpdateReg := true.B
+    // when predict error or pc error => jump
+    pcReg := io.newPc.pcAddr
+  }.elsewhen(io.ftqFull) {
+    pcReg := pcReg
+  }.elsewhen(io.mainRedirectPc.valid) {
+    // bpu reditect when it can predict
+    pcReg := io.mainRedirectPc.bits
   }.otherwise {
-    pcReg       := pcReg
-    pcUpdateReg := false.B
+    // sequential pc
+    pcReg := pcReg + 4.U * pcFetchNum.asUInt
   }
 }
