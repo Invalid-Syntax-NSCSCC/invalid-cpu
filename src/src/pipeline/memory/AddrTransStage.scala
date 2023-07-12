@@ -153,6 +153,9 @@ class AddrTransStage
       out.isCached := true.B
     }
   }
+  when(peer.csr.crmd.pg(0) === 1.U) {
+    out.isCached := true.B
+  }
   if (isForcedCache) {
     out.isCached := true.B
   }
