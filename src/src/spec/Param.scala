@@ -10,6 +10,7 @@ object Param {
   val isOutOfOrderIssue = false
   val isNoPrivilege     = false
   val isUncachedPatch   = false
+  val isForcedCache     = true
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
