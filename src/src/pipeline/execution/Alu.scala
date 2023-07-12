@@ -171,7 +171,6 @@ class Alu extends Module {
 
   val divisorValid = WireDefault(rop =/= 0.U)
 
-  // val divStart = WireDefault(useDiv && divStage.io.divInst.ready && !divStage.io.divResult.valid && divisorValid)
   val divStart = WireDefault(useDiv && divisorValid)
 
   divStage.io.isFlush       := io.isFlush
@@ -185,18 +184,6 @@ class Alu extends Module {
 
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
-
-  // val quotientStoreReg  = RegInit(zeroWord)
-  // val remainderStoreReg = RegInit(zeroWord)
-  // quotientStoreReg  := quotientStoreReg
-  // remainderStoreReg := remainderStoreReg
-  // when(divStage.io.divResult.valid) {
-  //   quotientStoreReg  := quotient
-  //   remainderStoreReg := remainder
-  // }
-
-  // val selectedQuotient  = Mux(divStage.io.divResult.valid, quotient, quotientStoreReg)
-  // val selectedRemainder = Mux(divStage.io.divResult.valid, remainder, remainderStoreReg)
 
   io.outputValid := mulResultValidReg || !useMul && (
     !(divStart && !divStage.io.divResult.valid)
@@ -222,12 +209,10 @@ class Alu extends Module {
       arithmetic := mulResult(doubleWordLength - 1, wordLength)
     }
     is(Op.div, Op.divu) {
-      // arithmetic := selectedQuotient
       arithmetic := divStage.io.divResult.bits.quotient
     }
     is(Op.mod, Op.modu) {
       arithmetic := divStage.io.divResult.bits.remainder
-      // arithmetic := selectedRemainder
     }
   }
 
@@ -235,7 +220,5 @@ class Alu extends Module {
     io.outputValid    := false.B
     mulResult         := 0.U
     mulResultValidReg := false.B
-    // remainderStoreReg := 0.U
-    // quotientStoreReg  := 0.U
   }
 }
