@@ -131,6 +131,8 @@ class Alu extends Module {
 
   // mul
 
+  val mulStage = Module(new Mul)
+
   val useSignedMul = WireDefault(
     VecInit(
       ExeInst.Op.mul,
@@ -142,19 +144,15 @@ class Alu extends Module {
 
   val useMul = WireDefault(useSignedMul || useUnsignedMul)
 
-  val mulResultValidReg = RegInit(false.B)
-  when(useMul) {
-    mulResultValidReg := !mulResultValidReg
-  }
+  val mulStart = useMul
 
-  val mulResult = RegNext(
-    Mux(
-      useSignedMul,
-      (lop.asSInt * rop.asSInt).asUInt,
-      lop * rop
-    ),
-    0.U(doubleWordLength.W)
-  )
+  mulStage.io.isFlush                   := io.isFlush
+  mulStage.io.mulInst.valid             := mulStart
+  mulStage.io.mulInst.bits.isSigned     := useSignedMul
+  mulStage.io.mulInst.bits.leftOperand  := lop
+  mulStage.io.mulInst.bits.rightOperand := rop
+
+  val mulResult = WireDefault(mulStage.io.mulResult.bits)
 
   // Div
 
@@ -185,9 +183,10 @@ class Alu extends Module {
   val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
   val remainder = WireDefault(divStage.io.divResult.bits.remainder)
 
-  io.outputValid := mulResultValidReg || !useMul && (
-    !(divStart && !divStage.io.divResult.valid)
-  )
+  io.outputValid :=
+    !(mulStart && !mulStage.io.mulResult.valid) && (
+      !(divStart && !divStage.io.divResult.valid)
+    )
 
   switch(io.aluInst.op) {
     is(Op.add) {
@@ -217,8 +216,7 @@ class Alu extends Module {
   }
 
   when(io.isFlush) {
-    io.outputValid    := false.B
-    mulResult         := 0.U
-    mulResultValidReg := false.B
+    io.outputValid := false.B
+    mulResult      := 0.U
   }
 }
