@@ -445,4 +445,8 @@ class Csr(
   // Read only constants
   asid.in.asidbits           := "h_A".U
   io.csrValues.asid.asidbits := "h_A".U
+
+  // Auto cached
+  io.csrValues.crmd.datm := Mux(crmd.out.pg, 1.U, crmd.out.datm)
+  io.csrValues.crmd.datf := Mux(crmd.out.pg, 1.U, crmd.out.datf)
 }
