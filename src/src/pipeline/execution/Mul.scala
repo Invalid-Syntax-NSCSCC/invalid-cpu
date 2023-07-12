@@ -34,18 +34,19 @@ class Mul extends Module {
         stateReg := MulState.calc
       }
     }
-  }
-  is(MulState.calc) {
-    stateReg := MulState.finish
-  }
-  is(MulState.finish) {
-    stateReg           := MulState.free
-    io.mulResult.valid := true.B
-    io.mulResult.bits := Mux(
-      isSignedReg,
-      signedResult.asUInt,
-      unsignedResult
-    )
+
+    is(MulState.calc) {
+      stateReg := MulState.finish
+    }
+    is(MulState.finish) {
+      stateReg           := MulState.free
+      io.mulResult.valid := true.B
+      io.mulResult.bits := Mux(
+        isSignedReg,
+        signedResult.asUInt,
+        unsignedResult
+      )
+    }
   }
 
   when(io.isFlush) {
