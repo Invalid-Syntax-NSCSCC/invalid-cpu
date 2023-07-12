@@ -52,7 +52,7 @@ class InstAddrTransStage
   // Fallback output
   out.ftqBlock                  := selectedIn.ftqBlockBundle
   out.ftqId                     := selectedIn.ftqId
-  out.translatedMemReq.isValid  := selectedIn.ftqBlockBundle.isValid && !isAdef
+  out.translatedMemReq.isValid  := selectedIn.ftqBlockBundle.isValid && !isAdef && !hasSentException
   out.translatedMemReq.isCached := true.B // Fallback: isCached
   out.exception.valid           := isAdef
   out.exception.bits            := spec.Csr.ExceptionIndex.adef
@@ -110,7 +110,8 @@ class InstAddrTransStage
         out.translatedMemReq.isValid := selectedIn.ftqBlockBundle.isValid && !peer.tlbTrans.exception.valid && !isAdef
 
         // Handle exception
-        val isExceptionValid = isAdef || peer.tlbTrans.exception.valid || hasSentException
+        val isExceptionValid =
+          ((isAdef || peer.tlbTrans.exception.valid) && selectedIn.ftqBlockBundle.isValid) || hasSentException
         out.exception.valid := isExceptionValid
         when(peer.tlbTrans.exception.valid && !isAdef) {
           out.exception.bits := peer.tlbTrans.exception.bits
