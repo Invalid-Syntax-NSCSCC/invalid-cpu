@@ -57,7 +57,8 @@ class MultiInstQueue(
       issueNum,
       channelNum,
       queueLength / channelNum,
-      new FetchInstInfoBundle
+      new FetchInstInfoBundle,
+      flow = true
     )
   )
 
@@ -122,8 +123,7 @@ class MultiInstQueue(
       issueNum,
       issueNum,
       2,
-      new FetchInstDecodeNdPort,
-      flow = true
+      new FetchInstDecodeNdPort
     )
   )
   resultQueue.io.isFlush := io.isFrontendFlush
