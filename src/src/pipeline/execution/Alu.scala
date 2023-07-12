@@ -14,14 +14,11 @@ class Alu extends Module {
     val outputValid = Output(Bool())
     val result      = Output(new AluResultNdPort)
 
-    // val isBranch = Output(Bool())
-
     val isFlush = Input(Bool())
   })
 
   io.outputValid := true.B
-  // io.isBranch    := false.B
-  io.result := AluResultNdPort.default
+  io.result      := AluResultNdPort.default
 
   def lop = io.aluInst.leftOperand
 
@@ -45,8 +42,8 @@ class Alu extends Module {
   io.result.jumpBranchInfo := jumpBranchInfo
   io.result.shift          := shift
 
-  /** Logic computation
-    */
+  // Logic computation
+
   switch(io.aluInst.op) {
     is(Op.nor) {
       logic := ~(lop | rop)
@@ -62,8 +59,8 @@ class Alu extends Module {
     }
   }
 
-  /** shift computation
-    */
+  // shift computation
+
   switch(io.aluInst.op) {
     is(Op.sll) {
       shift := lop << rop(4, 0)
@@ -76,8 +73,8 @@ class Alu extends Module {
     }
   }
 
-  /** jump and branch computation
-    */
+  // jump and branch computation
+
   switch(io.aluInst.op) {
     is(Op.tlbfill, Op.tlbrd, Op.tlbwr, Op.tlbsrch) {
       jumpBranchInfo.en     := true.B
@@ -129,8 +126,7 @@ class Alu extends Module {
     }
   }
 
-  /** arithmetic computation
-    */
+  // arithmetic computation
 
   // mul
 
