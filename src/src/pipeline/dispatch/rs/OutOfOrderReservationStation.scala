@@ -7,11 +7,12 @@ import pipeline.rob.enums.RobDistributeSel
 import utils.MultiCounter
 
 class OutOfOrderReservationStation(
-  queueLength:   Int,
-  enqMaxNum:     Int,
-  deqMaxNum:     Int,
-  channelNum:    Int,
-  channelLength: Int)
+  queueLength:          Int,
+  enqMaxNum:            Int,
+  deqMaxNum:            Int,
+  channelNum:           Int,
+  channelLength:        Int,
+  supportCheckForIssue: Boolean = true)
     extends BaseReservationStation(
       queueLength,
       enqMaxNum,

@@ -102,7 +102,6 @@ class CommitStage(
         in.valid && in.ready && inBit.instInfo.needCsr
     }
     .reduce(_ || _)
-  io.csrFreePort.addr := DontCare
 
   // Diff test connection
   io.difftest match {

@@ -6,11 +6,12 @@ import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
 
 class InOrderReservationStation(
-  queueLength:   Int,
-  enqMaxNum:     Int,
-  deqMaxNum:     Int,
-  channelNum:    Int,
-  channelLength: Int)
+  queueLength:          Int,
+  enqMaxNum:            Int,
+  deqMaxNum:            Int,
+  channelNum:           Int,
+  channelLength:        Int,
+  supportCheckForIssue: Boolean = true)
     extends BaseReservationStation(
       queueLength,
       enqMaxNum,
@@ -55,11 +56,17 @@ class InOrderReservationStation(
 
   queue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
     case (deq, out) =>
-      out.valid := deq.valid && deq.bits.robResult.readResults.forall(
-        _.sel === RobDistributeSel.realData
-      )
-      out.bits  := deq.bits
-      deq.ready := out.ready
+      if (supportCheckForIssue) {
+        val supportIssue = deq.bits.robResult.readResults.forall(
+          _.sel === RobDistributeSel.realData
+        )
+        out.valid := deq.valid && supportIssue
+        out.bits  := deq.bits
+        deq.ready := out.ready && supportIssue
+      } else {
+        out <> deq
+      }
+
   }
 
   queue.io.isFlush := io.isFlush
