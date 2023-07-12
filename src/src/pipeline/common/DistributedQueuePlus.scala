@@ -76,22 +76,15 @@ class DistributedQueuePlus[ElemT <: Data](
   if (channelNum == 1) {
     io.enqueuePorts(0) <> storeIns(0)
     io.dequeuePorts(0) <> storeOuts(0)
+    io.enqIncResults.foreach(_ := 0.U)
+    io.deqIncResults.foreach(_ := 0.U)
+
   } else {
     val enq_ptr = Module(new MultiCounter(channelLength * channelNum, enqMaxNum))
     val deq_ptr = Module(new MultiCounter(channelLength * channelNum, deqMaxNum))
 
     enq_ptr.io.flush := io.isFlush
     deq_ptr.io.flush := io.isFlush
-    // io.enq_ptr       := enq_ptr.io.value
-    // io.deq_ptr       := deq_ptr.io.value
-    // io.enqIncResults.zip(enq_ptr.io.incResults).foreach {
-    //   case (dst, src) =>
-    //     dst := src
-    // }
-    // io.deqIncResults.zip(deq_ptr.io.incResults).foreach {
-    //   case (dst, src) =>
-    //     dst := src
-    // }
     io.enqIncResults.zipWithIndex.foreach {
       case (dst, idx) =>
         dst := enq_ptr.io.incResults(idx)
