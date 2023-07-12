@@ -15,6 +15,7 @@ import spec.Param
 import spec.Param.isDiffTest
 import pipeline.dispatch.NewRenameStage
 import pipeline.dispatch.NewDispatchStage
+import control.Cu
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
