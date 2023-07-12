@@ -4,9 +4,9 @@ import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles.{BpuFtqMetaPort, TagePredictorUpdateInfoPort}
 import frontend.bpu.components.Bundles.TageMetaPort
-import spec._
 import frontend.bpu.components._
 import frontend.bpu.utils.Lfsr
+import spec._
 
 // TAGE predictor
 // This is the main predictor

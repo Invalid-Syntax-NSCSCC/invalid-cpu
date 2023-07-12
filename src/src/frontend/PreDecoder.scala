@@ -2,8 +2,8 @@ package frontend
 
 import chisel3._
 import chisel3.util._
-import spec.Inst.{_2RI16 => Inst}
 import frontend.bundles.PreDecoderResultNdPort
+import spec.Inst.{_2RI16 => Inst}
 import spec.Width
 
 class PreDecoder extends Module {

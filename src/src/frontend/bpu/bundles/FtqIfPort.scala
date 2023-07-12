@@ -1,5 +1,4 @@
 package frontend.bpu.bundles
-import spec._
 import chisel3._
 import chisel3.util._
 import frontend.bundles.FtqBlockPort
