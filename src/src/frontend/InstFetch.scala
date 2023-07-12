@@ -5,7 +5,6 @@ import chisel3.util._
 import frontend.bundles.ICacheAccessPort
 import frontend.fetch._
 import memory.bundles.TlbTransPort
-import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.memory.bundles.MemCsrNdPort
 import pipeline.queue.InstQueueEnqNdPort
 import spec._
@@ -59,5 +58,5 @@ class InstFetch extends Module {
     p.memRes <> io.accessPort.res
   }
 
-  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg && !addrTransStage.io.isBlockPcNext
+  io.isPcNext := instReqStage.io.in.ready && isFirstSentReg
 }

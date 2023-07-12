@@ -1,9 +1,9 @@
 package frontend.bpu.components.Bundles
 
-import spec._
 import chisel3._
-import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.util._
+import spec._
 class FtbEntryNdPort extends Bundle {
   val valid            = Bool()
   val isCrossCacheline = Bool()

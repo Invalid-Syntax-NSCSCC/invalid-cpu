@@ -2,11 +2,9 @@ package pipeline.dispatch.rs
 
 import chisel3._
 import chisel3.util._
-import spec.Param
-import pipeline.rob.bundles.InstWbNdPort
-import pipeline.common.DistributedQueuePlus
-import os.read
 import pipeline.dispatch.bundles.ReservationStationBundle
+import pipeline.rob.bundles.InstWbNdPort
+import spec.Param
 
 abstract class BaseReservationStation(
   queueLength:   Int,

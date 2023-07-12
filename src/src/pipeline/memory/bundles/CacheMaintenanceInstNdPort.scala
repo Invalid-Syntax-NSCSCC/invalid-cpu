@@ -1,10 +1,8 @@
 package pipeline.memory.bundles
 
 import chisel3._
-import chisel3.util._
-import spec._
-import pipeline.memory.enums.CacheMaintenanceTargetType
 import memory.bundles.CacheMaintenanceControlNdPort
+import pipeline.memory.enums.CacheMaintenanceTargetType
 
 class CacheMaintenanceInstNdPort extends Bundle {
   val target  = CacheMaintenanceTargetType()

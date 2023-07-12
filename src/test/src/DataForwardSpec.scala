@@ -1,14 +1,5 @@
-import chisel3._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chiseltest._
-import chiseltest.simulator.WriteVcdAnnotation
-import pipeline.dispatch.bundles.FetchInstInfoBundle
-import pipeline.queue.InstQueue
-import utest._
 
-import scala.collection.immutable
 // import pipeline.dataforward.DataForwardStage
-import pipeline.dataforward.DataForwardStage
 
 //  object DataForwardSpec extends ChiselUtestTester {
 //   val tests = Tests {

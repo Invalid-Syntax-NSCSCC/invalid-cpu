@@ -2,13 +2,13 @@ package memory
 
 import chisel3._
 import chisel3.util._
-import control.csrBundles.{AsidBundle, EstatBundle, TlbehiBundle, TlbeloBundle, TlbidxBundle}
+import control.csrBundles._
 import memory.bundles._
 import memory.enums.TlbMemType
 import pipeline.commit.bundles.DifftestTlbFillNdPort
 import spec.ExeInst.Op.Tlb._
-import spec._
 import spec.Param.isDiffTest
+import spec._
 
 class Tlb extends Module {
   val io = IO(new Bundle {
@@ -139,10 +139,10 @@ class Tlb extends Module {
 
       // Handle exception
       when(!isFound) {
-        transPort.exception.valid := transPort.isValid
+        transPort.exception.valid := true.B
         transPort.exception.bits  := Csr.ExceptionIndex.tlbr
       }.elsewhen(!selectedPage.isValid) {
-        transPort.exception.valid := transPort.isValid
+        transPort.exception.valid := true.B
         switch(transPort.memType) {
           is(TlbMemType.load) {
             transPort.exception.bits := Csr.ExceptionIndex.pil
@@ -155,13 +155,13 @@ class Tlb extends Module {
           }
         }
       }.elsewhen(selectedPage.plv < io.csr.in.plv) {
-        transPort.exception.valid := transPort.isValid
+        transPort.exception.valid := true.B
         transPort.exception.bits  := Csr.ExceptionIndex.ppi
       }.elsewhen(!selectedPage.isDirty && transPort.memType === TlbMemType.store) {
-        transPort.exception.valid := transPort.isValid
+        transPort.exception.valid := true.B
         transPort.exception.bits  := Csr.ExceptionIndex.pme
       }
-      when(transPort.exception.valid) {
+      when(transPort.exception.valid && transPort.isValid) {
         exceptionCsrReg.vppn := transPort.virtAddr(virtAddrLen - 1, virtAddrLen - Width.Tlb._vppn)
       }
   }
