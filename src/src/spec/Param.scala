@@ -13,6 +13,8 @@ object Param {
   val isCacheOnPg       = false
   val isForcedCache     = false
 
+  val canIssueSameWbRegInsts = true
+
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
   val regFileReadNum         = 2
