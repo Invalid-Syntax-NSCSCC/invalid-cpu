@@ -17,14 +17,6 @@ import control.bundles.CsrWriteNdPort
 import control.bundles.StableCounterReadPort
 import control.bundles.CsrReadPort
 
-// class ExCommitFtqNdPort(val queueSize: Int = Param.BPU.ftqSize) extends Bundle {
-//   val ftqMetaUpdateValid       = Bool()
-//   val ftqMetaUpdateFtbDirty    = Bool()
-//   val ftqMetaUpdateJumpTarget  = UInt(spec.Width.Mem.addr)
-//   val ftqMetaUpdateFallThrough = UInt(spec.Width.Mem.addr)
-//   val ftqUpdateMetaId          = UInt(log2Ceil(queueSize).W)
-// }
-
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
   val exeSel = UInt(Param.Width.exeSel)
