@@ -103,22 +103,25 @@ class NewRenameStage(
   val fetchEnableFlag = RegInit(true.B)
 
   // valid
-  val requestValids = io.ins.zip(reservationStation.io.enqueuePorts).zip(io.peer.get.requests).map {
-    case ((in, rs), req) =>
-      in.valid && rs.ready && req.ready && fetchEnableFlag
-  }
+  io.ins.lazyZip(reservationStation.io.enqueuePorts).lazyZip(io.peer.get.requests).zipWithIndex.foreach {
+    case ((in, rs, req), idx) =>
+      in.ready  := rs.ready && req.ready && fetchEnableFlag
+      rs.valid  := in.valid && req.ready && fetchEnableFlag
+      req.valid := rs.ready && in.valid && fetchEnableFlag
 
-  io.ins.zip(requestValids).foreach {
-    case (in, rValid) =>
-      in.ready := rValid
-  }
-  reservationStation.io.enqueuePorts.zip(requestValids).foreach {
-    case (rs, rValid) =>
-      rs.valid := rValid
-  }
-  peer.requests.zip(requestValids).foreach {
-    case (req, rValid) =>
-      req.valid := rValid
+      if (!Param.canIssueSameWbRegInsts && idx > 0) {
+        require(issueNum <= 2)
+        val prevWrites = io.ins.take(idx).map(_.bits.decode.info.gprWritePort)
+        val thisWrite  = in.bits.decode.info.gprWritePort
+        val writeConflict = prevWrites.map { prevWrite =>
+          prevWrite.en && prevWrite.addr === thisWrite.addr
+        }.reduce(_ || _) && thisWrite.en
+        when(writeConflict) {
+          in.ready  := false.B
+          rs.valid  := false.B
+          req.valid := false.B
+        }
+      }
   }
 
   // request

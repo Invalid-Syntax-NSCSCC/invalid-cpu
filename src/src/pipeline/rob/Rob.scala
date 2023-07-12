@@ -217,7 +217,7 @@ class Rob(
         // distribute rob id
         res       := RobReadResultNdPort.default
         res.robId := queue.io.enqIncResults(idx)
-        when(req.valid && req.bits.writeRequest.en && req.bits.writeRequest.addr =/= 0.U) {
+        when(req.valid && req.bits.writeRequest.en) {
           matchTable(req.bits.writeRequest.addr).locate           := RegDataLocateSel.rob
           matchTable(req.bits.writeRequest.addr).robId            := res.robId
           matchTable(req.bits.writeRequest.addr).robResData.valid := false.B
@@ -258,19 +258,32 @@ class Rob(
               RobDistributeSel.realData
             )
 
-            resRead.result := Mux(
-              isLocateInPrevWrite,
-              dataLocateInPrevWriteRobId,
-              Mux(
-                isLocateInRob,
+            if (Param.canIssueSameWbRegInsts) {
+              resRead.result := Mux(
+                isLocateInPrevWrite,
+                dataLocateInPrevWriteRobId,
                 Mux(
-                  isLocateInRobValid,
-                  matchTable(reqRead.addr).robResData.bits,
-                  matchTable(reqRead.addr).robId
-                ),
-                rfReadPort.data
+                  isLocateInRob,
+                  Mux(
+                    isLocateInRobValid,
+                    matchTable(reqRead.addr).robResData.bits,
+                    matchTable(reqRead.addr).robId
+                  ),
+                  rfReadPort.data
+                )
               )
-            )
+            } else {
+              resRead.result :=
+                Mux(
+                  isLocateInRob,
+                  Mux(
+                    isLocateInRobValid,
+                    matchTable(reqRead.addr).robResData.bits,
+                    matchTable(reqRead.addr).robId
+                  ),
+                  rfReadPort.data
+                )
+            }
         }
 
     }
