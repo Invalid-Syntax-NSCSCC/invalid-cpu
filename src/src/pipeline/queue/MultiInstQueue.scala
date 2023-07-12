@@ -122,7 +122,8 @@ class MultiInstQueue(
       issueNum,
       issueNum,
       2,
-      new FetchInstDecodeNdPort
+      new FetchInstDecodeNdPort,
+      flow = true
     )
   )
   resultQueue.io.isFlush := io.isFrontendFlush
