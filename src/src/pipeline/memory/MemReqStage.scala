@@ -10,6 +10,7 @@ import pipeline.common.{BaseStage, LookupQueue}
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort, StoreInfoBundle}
 import pipeline.memory.enums.CacheMaintenanceTargetType
 import spec._
+import spec.Param.isUncachedPatch
 
 class MemReqNdPort extends Bundle {
   val isAtomicStore           = new Bool()
@@ -44,13 +45,19 @@ class MemReqStage
   val out  = resultOutReg.bits
 
   // Workaround
-  val isUncachedAddressRange = VecInit(
-    "h_1faf".U(16.W),
-    "h_bfaf".U(16.W),
-    "h_1fd0".U(16.W), // Chiplab only
-    "h_1fe0".U(16.W) // Chiplab only
-  ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
+  val isUncachedAddressRange = if (isUncachedPatch) {
+    VecInit(
+      "h_1faf".U(16.W),
+      "h_bfaf".U(16.W),
+      "h_1fd0".U(16.W), // Chiplab only
+      "h_1fe0".U(16.W) // Chiplab only
+    ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
+  } else {
+    false.B
+  }
+
   val isTrueCached = selectedIn.isCached && !isUncachedAddressRange
+  val isInstantReq = WireDefault(selectedIn.translatedMemReq.isValid)
 
   // Fallback output
   out.instInfo                := selectedIn.instInfo
@@ -58,7 +65,7 @@ class MemReqStage
   out.isUnsigned              := selectedIn.translatedMemReq.read.isUnsigned
   out.isCached                := isTrueCached
   out.dataMask                := selectedIn.translatedMemReq.mask
-  out.isInstantReq            := selectedIn.translatedMemReq.isValid
+  out.isInstantReq            := isInstantReq
   out.isAtomicStore           := selectedIn.isAtomicStore
   out.isAtomicStoreSuccessful := selectedIn.isAtomicStoreSuccessful
   out.isRead                  := true.B
@@ -101,44 +108,33 @@ class MemReqStage
   storeOut.ready        := false.B
 
   // Handle pipelined input
-  when(selectedIn.instInfo.isValid && !peer.commitStore.valid) {
-    switch(selectedIn.translatedMemReq.rw) {
-      is(ReadWriteSel.read) {
-        // Whether last memory request is submitted and no stores in queue and not committing store
-        when(io.out.ready && !storeQueue.io.lookup.out) {
-          when(isTrueCached) {
-            peer.dCacheReq.client.isValid := true.B
-            isComputed                    := peer.dCacheReq.isReady
-          }.otherwise {
-            peer.uncachedReq.client.isValid := true.B
-            isComputed                      := peer.uncachedReq.isReady
-          }
-        }.otherwise {
-          isComputed := false.B
-        }
-      }
-
-      is(ReadWriteSel.write) {
-        out.isInstantReq := false.B
-
-        when(!selectedIn.isAtomicStore || selectedIn.isAtomicStoreSuccessful) {
-          // Whether last memory request is submitted and not committing store
-          when(io.out.ready) {
-            storeIn.valid := true.B
-            isComputed    := storeIn.ready
+  when(selectedIn.instInfo.isValid) {
+    when(selectedIn.translatedMemReq.isValid) {
+      switch(selectedIn.translatedMemReq.rw) {
+        is(ReadWriteSel.read) {
+          // Whether last memory request is submitted and no stores in queue and not committing store
+          when(io.out.ready && !storeQueue.io.lookup.out) {
+            when(isTrueCached) {
+              peer.dCacheReq.client.isValid := true.B
+              isComputed                    := peer.dCacheReq.isReady
+            }.otherwise {
+              peer.uncachedReq.client.isValid := true.B
+              isComputed                      := peer.uncachedReq.isReady
+            }
           }.otherwise {
             isComputed := false.B
           }
         }
-      }
-    }
 
-    // Handle TLB maintenance and exception (instruction passing through)
-    when(!selectedIn.translatedMemReq.isValid) {
-      peer.dCacheReq.client.isValid   := false.B
-      peer.uncachedReq.client.isValid := false.B
-      out.isInstantReq                := false.B
-      isComputed                      := true.B
+        is(ReadWriteSel.write) {
+          isInstantReq := false.B
+
+          when(!selectedIn.isAtomicStore || selectedIn.isAtomicStoreSuccessful) {
+            storeIn.valid := true.B
+            isComputed    := storeIn.ready
+          }
+        }
+      }
     }
 
     // Handle cache maintenance
@@ -171,30 +167,37 @@ class MemReqStage
     }
 
     when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
-      switch(selectedIn.cacheMaintenance.target) {
-        is(CacheMaintenanceTargetType.data) {
-          peer.dCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
-          when(isCacheMaintenance) {
-            if (isDCacheWorkaround) {
-              isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.dCacheMaintenance.isReady
-              when(peer.dCacheMaintenance.isReady) {
-                cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
+      when(storeOut.valid) {
+        // Wait until all store requests are processed
+        when(isCacheMaintenance) {
+          isComputed := false.B
+        }
+      }.otherwise {
+        switch(selectedIn.cacheMaintenance.target) {
+          is(CacheMaintenanceTargetType.data) {
+            peer.dCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
+            when(isCacheMaintenance) {
+              if (isDCacheWorkaround) {
+                isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.dCacheMaintenance.isReady
+                when(peer.dCacheMaintenance.isReady) {
+                  cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
+                }
+              } else {
+                isComputed := peer.dCacheMaintenance.isReady
               }
-            } else {
-              isComputed := peer.dCacheMaintenance.isReady
             }
           }
-        }
-        is(CacheMaintenanceTargetType.inst) {
-          peer.iCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
-          when(isCacheMaintenance) {
-            if (isICacheWorkaround) {
-              isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.iCacheMaintenance.isReady
-              when(peer.iCacheMaintenance.isReady) {
-                cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
+          is(CacheMaintenanceTargetType.inst) {
+            peer.iCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
+            when(isCacheMaintenance) {
+              if (isICacheWorkaround) {
+                isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.iCacheMaintenance.isReady
+                when(peer.iCacheMaintenance.isReady) {
+                  cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
+                }
+              } else {
+                isComputed := peer.iCacheMaintenance.isReady
               }
-            } else {
-              isComputed := peer.iCacheMaintenance.isReady
             }
           }
         }
@@ -203,19 +206,15 @@ class MemReqStage
   }
 
   // Handle writeback store trigger
-  peer.commitStore.ready := io.out.ready && Mux(
+  peer.commitStore.ready := Mux(
     storeOut.bits.isCached,
     peer.dCacheReq.isReady,
     peer.uncachedReq.isReady
   )
 
   when(peer.commitStore.valid) {
-    out.isPipelined  := false.B
-    out.isInstantReq := true.B
-    out.isCached     := storeOut.bits.isCached
-    out.isRead       := false.B
-    out.dataMask     := storeOut.bits.mask
-
+    peer.dCacheReq.client.isValid      := false.B
+    peer.uncachedReq.client.isValid    := false.B
     peer.dCacheReq.client.rw           := ReadWriteSel.write
     peer.dCacheReq.client.addr         := storeOut.bits.addr
     peer.dCacheReq.client.mask         := storeOut.bits.mask
@@ -225,12 +224,13 @@ class MemReqStage
     peer.uncachedReq.client.mask       := storeOut.bits.mask
     peer.uncachedReq.client.write.data := storeOut.bits.data
 
-    isComputed := false.B
+    when(isInstantReq) {
+      isComputed := false.B
+    }
 
     // Whether can submit memory request instantly
     when(peer.commitStore.ready) {
-      storeOut.ready     := true.B
-      resultOutReg.valid := true.B
+      storeOut.ready := true.B
 
       when(storeOut.bits.isCached) {
         peer.dCacheReq.client.isValid := true.B
@@ -238,8 +238,8 @@ class MemReqStage
         peer.uncachedReq.client.isValid := true.B
       }
     }
-  }.otherwise {
-    // Submit pipelined result
-    resultOutReg.valid := isComputed
   }
+
+  // Submit pipelined result
+  resultOutReg.valid := isComputed
 }
