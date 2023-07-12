@@ -196,5 +196,4 @@ class RenameStage(
     io.ins.foreach(_.ready := false.B)
     fetchEnableFlag := true.B
   }
-
 }

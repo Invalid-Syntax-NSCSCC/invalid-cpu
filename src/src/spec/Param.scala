@@ -8,8 +8,9 @@ object Param {
 
   val isDiffTest        = true
   val isOutOfOrderIssue = false
+  val isUncachedPatch   = true
   val isNoPrivilege     = false
-  val isUncachedPatch   = false
+  val isCacheOnPg       = false
   val isForcedCache     = false
 
   val instQueueLength        = 16

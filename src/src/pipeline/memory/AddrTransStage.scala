@@ -10,7 +10,7 @@ import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.BaseStage
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
 import pipeline.memory.enums.AddrTransType
-import spec.Param.{isDiffTest, isForcedCache, isNoPrivilege}
+import spec.Param.{isCacheOnPg, isDiffTest, isForcedCache, isNoPrivilege}
 import spec.Value.Csr
 import spec.Width
 
@@ -153,8 +153,10 @@ class AddrTransStage
       out.isCached := true.B
     }
   }
-  when(peer.csr.crmd.pg(0) === 1.U) {
-    out.isCached := true.B
+  if (isCacheOnPg) {
+    when(peer.csr.crmd.pg === 1.U) {
+      out.isCached := true.B
+    }
   }
   if (isForcedCache) {
     out.isCached := true.B
