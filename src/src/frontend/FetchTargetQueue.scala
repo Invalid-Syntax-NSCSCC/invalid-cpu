@@ -102,7 +102,7 @@ class FetchTargetQueue(
   commPtr := commPtr + backendCommitNum
   // If block is accepted by IF, ifuPtr++
   // IB full should result in FU not accepting FTQ input
-  when(ifSendValid & ~ifRedirect) {
+  when(ifSendValid & !ifRedirect) {
     ifPtr := ifPtr + 1.U
   }
 
@@ -134,7 +134,7 @@ class FetchTargetQueue(
   // * no need
   Seq.range(0, commitNum).foreach { idx =>
     when(idx.U < backendCommitNum) {
-      ftqNextVec(commPtr + idx.U) := FtqBlockBundle.default
+      ftqNextVec(commPtr + idx.U).isValid := false.B // := FtqBlockBundle.default
     }
   }
 
@@ -152,25 +152,25 @@ class FetchTargetQueue(
     ftqNextVec(bpuPtr) := io.bpuFtqPort.ftqP1
   }
 
-  // if predecoder redirect triggered,clear the committed and predicted entry
-  when(io.instFetchFlush) {
-    Seq.range(0, queueSize).foreach { idx =>
-      when(idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.instFetchFtqId) {
-        ftqNextVec(idx) := FtqBlockBundle.default
-      }
-    }
-  }
-  // if backend redirect triggered,clear the committed and predicted entry
-  when(io.backendFlush) {
-    Seq.range(0, queueSize).foreach { idx =>
-      when(
-        idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.backendFlushFtqId && idx
-          .U(ptrWidth.W) =/= io.backendFlushFtqId
-      ) {
-        ftqNextVec(idx) := FtqBlockBundle.default
-      }
-    }
-  }
+  // // if predecoder redirect triggered,clear the committed and predicted entry
+  // when(io.instFetchFlush) {
+  //   Seq.range(0, queueSize).foreach { idx =>
+  //     when(idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.instFetchFtqId) {
+  //       ftqNextVec(idx) := FtqBlockBundle.default
+  //     }
+  //   }
+  // }
+  // // if backend redirect triggered,clear the committed and predicted entry
+  // when(io.backendFlush) {
+  //   Seq.range(0, queueSize).foreach { idx =>
+  //     when(
+  //       idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.backendFlushFtqId && idx
+  //         .U(ptrWidth.W) =/= io.backendFlushFtqId
+  //     ) {
+  //       ftqNextVec(idx) := FtqBlockBundle.default
+  //     }
+  //   }
+  // }
 
   // Output
   // -> IFU
@@ -204,55 +204,66 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqFull := queueFull
 
   // training meta to BPU
-  io.bpuFtqPort.ftqTrainMeta := FtqBpuMetaPort.default
-  when(
-    io.cuCommitFtqPort.blockBitmask(0) & io.cuCommitFtqPort.meta.isBranch
-  ) {
-    // Update when a branch is committed, defined as:
-    // 1. Must be last in block, which means either a known branch or a mispredicted branch.
-    // 2. Exception introduced block commit is not considered a branch update.
-    val commitFtqId = WireDefault(io.cuCommitFtqPort.ftqId)
-    io.bpuFtqPort.ftqTrainMeta.valid       := true.B
-    io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaRegs(commitFtqId).ftbHit
-    io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaRegs(commitFtqId).ftbHitIndex
-    io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaRegs(commitFtqId).ftbDirty
-    // Must use accuraate decoded info passed from backend
-    io.bpuFtqPort.ftqTrainMeta.isBranch       := io.cuCommitFtqPort.meta.isBranch
-    io.bpuFtqPort.ftqTrainMeta.branchType     := io.cuCommitFtqPort.meta.branchType
-    io.bpuFtqPort.ftqTrainMeta.isTaken        := io.cuCommitFtqPort.meta.isTaken
-    io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.cuCommitFtqPort.meta.predictedTaken
+  // io.bpuFtqPort.ftqTrainMeta := FtqBpuMetaPort.default
+  // when(
+  //   io.cuCommitFtqPort.blockBitmask(0) & io.cuCommitFtqPort.meta.isBranch
+  // ) {
+  // Update when a branch is committed, defined as:
+  // 1. Must be last in block, which means either a known branch or a mispredicted branch.
+  // 2. Exception introduced block commit is not considered a branch update.
+  val commitFtqId = WireDefault(io.cuCommitFtqPort.ftqId)
+  io.bpuFtqPort.ftqTrainMeta.valid       := io.cuCommitFtqPort.blockBitmask(0) && io.cuCommitFtqPort.meta.isBranch
+  io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaRegs(commitFtqId).ftbHit
+  io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaRegs(commitFtqId).ftbHitIndex
+  io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaRegs(commitFtqId).ftbDirty
+  // Must use accuraate decoded info passed from backend
+  io.bpuFtqPort.ftqTrainMeta.isBranch       := io.cuCommitFtqPort.meta.isBranch
+  io.bpuFtqPort.ftqTrainMeta.branchType     := io.cuCommitFtqPort.meta.branchType
+  io.bpuFtqPort.ftqTrainMeta.isTaken        := io.cuCommitFtqPort.meta.isTaken
+  io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.cuCommitFtqPort.meta.predictedTaken
 
-    io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVecReg(commitFtqId).startPc
-    io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVecReg(commitFtqId).isCrossCacheline
-    io.bpuFtqPort.ftqTrainMeta.bpuMeta            := ftqBpuMetaRegs(commitFtqId).bpuMeta
-    io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
-    io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
-  }
+  io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVecReg(commitFtqId).startPc
+  io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVecReg(commitFtqId).isCrossCacheline
+  io.bpuFtqPort.ftqTrainMeta.bpuMeta            := ftqBpuMetaRegs(commitFtqId).bpuMeta
+  io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
+  io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
+  // }
 
   // Bpu meta ram
   // If last cycle accepted p1 input
-  when(io.bpuFtqPort.ftqP1.isValid & ~mainBpuRedirectDelay) {
-    bpuMetaWriteValid             := true.B
-    bpuMetaWritePtr               := bpuPtr - 1.U
-    bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
-    bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
-    bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
-  }.elsewhen(io.bpuFtqPort.ftqP1.isValid) {
-    bpuMetaWriteValid             := true.B
-    bpuMetaWritePtr               := bpuPtr
-    bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
-    bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
-    bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
-  }.elsewhen(io.bpuFtqPort.ftqP0.isValid) {
-    // if not provided by BPU,clear meta
-    bpuMetaWriteValid := true.B
-    bpuMetaWritePtr   := bpuPtr
-    bpuMetaWriteEntry := BpuFtqMetaNdPort.default
-  }.otherwise {
-    bpuMetaWriteValid := false.B
-    bpuMetaWritePtr   := 0.U
-    bpuMetaWriteEntry := BpuFtqMetaNdPort.default
-  }
+  bpuMetaWriteValid := io.bpuFtqPort.ftqP0.isValid && io.bpuFtqPort.ftqP1.isValid
+  bpuMetaWritePtr := Mux(
+    io.bpuFtqPort.ftqP1.isValid & !mainBpuRedirectDelay,
+    bpuPtr - 1.U,
+    bpuPtr
+  )
+  bpuMetaWriteEntry := Mux(
+    io.bpuFtqPort.ftqP1.isValid,
+    io.bpuFtqPort.ftqMeta,
+    BpuFtqMetaNdPort.default
+  )
+  // when(io.bpuFtqPort.ftqP1.isValid & ~mainBpuRedirectDelay) {
+  //   bpuMetaWriteValid             := true.B
+  //   bpuMetaWritePtr               := bpuPtr - 1.U
+  //   bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
+  //   bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
+  //   bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
+  // }.elsewhen(io.bpuFtqPort.ftqP1.isValid) {
+  //   bpuMetaWriteValid             := true.B
+  //   bpuMetaWritePtr               := bpuPtr
+  //   bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
+  //   bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
+  //   bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
+  // }.elsewhen(io.bpuFtqPort.ftqP0.isValid) {
+  //   // if not provided by BPU,clear meta
+  //   bpuMetaWriteValid := true.B
+  //   bpuMetaWritePtr   := bpuPtr
+  //   bpuMetaWriteEntry := BpuFtqMetaNdPort.default
+  // }.otherwise {
+  //   bpuMetaWriteValid := false.B
+  //   bpuMetaWritePtr   := 0.U
+  //   bpuMetaWriteEntry := BpuFtqMetaNdPort.default
+  // }
 
   // P1
   // maintain BPU meta info
