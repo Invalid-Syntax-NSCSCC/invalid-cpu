@@ -170,7 +170,9 @@ class MultiQueue[ElemT <: Data](
 
   if (supportSetEnqPtr) {
     enq_ptr.io.setPort.get := io.enqPtrSetPort.get
-    maybeFull              := false.B
+    when(io.enqPtrSetPort.get.valid) {
+      maybeFull := false.B
+    }
   }
 
   when(io.isFlush) {
