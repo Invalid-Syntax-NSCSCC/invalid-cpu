@@ -144,7 +144,7 @@ class FetchTargetQueue(
     ftqNextVec(bpuPtr) := io.bpuFtqPort.ftqP0
   }
   // p1
-  when(io.bpuFtqPort.ftqP1.isValid && mainBpuRedirectDelay) {
+  when(io.bpuFtqPort.ftqP1.isValid && !mainBpuRedirectDelay) {
     // If last cycle accepted P0 input
     ftqNextVec(bpuPtr - 1.U) := io.bpuFtqPort.ftqP1
   }.elsewhen(io.bpuFtqPort.ftqP1.isValid) {
