@@ -6,7 +6,7 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import frontend.bpu.components.Bundles.TageMetaPort
 
-class BpuFtqMetaPort(
+class BpuFtqMetaNdPort(
   ftbNway: Int = Param.BPU.FTB.nway)
     extends Bundle {
   val valid       = Bool()
@@ -15,6 +15,6 @@ class BpuFtqMetaPort(
   val bpuMeta     = new TageMetaPort
 }
 
-object BpuFtqMetaPort {
-  def default = 0.U.asTypeOf(new BpuFtqMetaPort)
+object BpuFtqMetaNdPort {
+  def default = 0.U.asTypeOf(new BpuFtqMetaNdPort)
 }

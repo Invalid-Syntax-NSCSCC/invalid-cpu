@@ -62,8 +62,8 @@ class BPU(
   ////////////////////////////////////////////////////////////////////////////////////
   // Query logic
   ////////////////////////////////////////////////////////////////////////////////////
-  val tageMeta = WireDefault(BpuFtqMetaPort.default)
-  val bpuMeta  = WireDefault(BpuFtqMetaPort.default)
+  val tageMeta = WireDefault(BpuFtqMetaNdPort.default)
+  val bpuMeta  = WireDefault(BpuFtqMetaNdPort.default)
 
   // P0
   // FTQ qutput generate
@@ -154,7 +154,7 @@ class BPU(
   bpuMeta.ftbHit        := ftbHit
   bpuMeta.ftbHitIndex   := ftbHitIndex
   bpuMeta.valid         := ftbHit
-  io.bpuFtqPort.ftqMeta := (bpuMeta.asUInt | tageMeta.asUInt).asTypeOf(new BpuFtqMetaPort)
+  io.bpuFtqPort.ftqMeta := (bpuMeta.asUInt | tageMeta.asUInt).asTypeOf(new BpuFtqMetaNdPort)
 
   ////////////////////////////////////////////////////////////////////
   // Update Logic
