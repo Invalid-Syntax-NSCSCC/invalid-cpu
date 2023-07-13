@@ -153,8 +153,9 @@ class NewFetchTargetQueue(
   // Output
   // -> IFU
   // default value
-  io.ftqIFPort.valid               := isSendValid
-  io.ftqIFPort.bits.ftqBlockBundle := ftq.io.elems(ifPtr)
+  io.ftqIFPort.valid                       := isSendValid
+  io.ftqIFPort.bits.ftqBlockBundle         := ftq.io.elems(ifPtr)
+  io.ftqIFPort.bits.ftqBlockBundle.isValid := ftq.io.elemValids(ifPtr)
   // design 1 : wtire through  ( has been abandoned)
   // feat: increase flush log;but easy to result in flush instfetch
   //  when(((ifPtr === bpuMetaWritePtr)||(lastIfPtr === bpuMetaWritePtr)) && bpuMetaWriteValid) {
