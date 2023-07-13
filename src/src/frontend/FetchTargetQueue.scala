@@ -230,39 +230,39 @@ class FetchTargetQueue(
 
   // Bpu meta ram
   // If last cycle accepted p1 input
-//  bpuMetaWriteValid := io.bpuFtqPort.ftqP0.isValid && io.bpuFtqPort.ftqP1.isValid
-//  bpuMetaWritePtr := Mux(
-//    io.bpuFtqPort.ftqP1.isValid & !mainBpuRedirectDelay,
-//    bpuPtr - 1.U,
-//    bpuPtr
-//  )
-//  bpuMetaWriteEntry := Mux(
-//    io.bpuFtqPort.ftqP1.isValid,
-//    io.bpuFtqPort.ftqMeta,
-//    BpuFtqMetaNdPort.default
-//  )
-  when(io.bpuFtqPort.ftqP1.isValid & ~mainBpuRedirectDelay) {
-    bpuMetaWriteValid             := true.B
-    bpuMetaWritePtr               := bpuPtr - 1.U
-    bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
-    bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
-    bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
-  }.elsewhen(io.bpuFtqPort.ftqP1.isValid) {
-    bpuMetaWriteValid             := true.B
-    bpuMetaWritePtr               := bpuPtr
-    bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
-    bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
-    bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
-  }.elsewhen(io.bpuFtqPort.ftqP0.isValid) {
-    // if not provided by BPU,clear meta
-    bpuMetaWriteValid := true.B
-    bpuMetaWritePtr   := bpuPtr
-    bpuMetaWriteEntry := BpuFtqMetaNdPort.default
-  }.otherwise {
-    bpuMetaWriteValid := false.B
-    bpuMetaWritePtr   := 0.U
-    bpuMetaWriteEntry := BpuFtqMetaNdPort.default
-  }
+  bpuMetaWriteValid := io.bpuFtqPort.ftqP0.isValid || io.bpuFtqPort.ftqP1.isValid
+  bpuMetaWritePtr := Mux(
+    io.bpuFtqPort.ftqP1.isValid && !mainBpuRedirectDelay,
+    bpuPtr - 1.U,
+    bpuPtr
+  )
+  bpuMetaWriteEntry := Mux(
+    io.bpuFtqPort.ftqP1.isValid,
+    io.bpuFtqPort.ftqMeta,
+    BpuFtqMetaNdPort.default
+  )
+//  when(io.bpuFtqPort.ftqP1.isValid & ~mainBpuRedirectDelay) {
+//    bpuMetaWriteValid             := true.B
+//    bpuMetaWritePtr               := bpuPtr - 1.U
+//    bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
+//    bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
+//    bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
+//  }.elsewhen(io.bpuFtqPort.ftqP1.isValid) {
+//    bpuMetaWriteValid             := true.B
+//    bpuMetaWritePtr               := bpuPtr
+//    bpuMetaWriteEntry.ftbHit      := io.bpuFtqPort.ftqMeta.ftbHit
+//    bpuMetaWriteEntry.ftbHitIndex := io.bpuFtqPort.ftqMeta.ftbHitIndex
+//    bpuMetaWriteEntry.bpuMeta     := io.bpuFtqPort.ftqMeta.bpuMeta
+//  }.elsewhen(io.bpuFtqPort.ftqP0.isValid) {
+//    // if not provided by BPU,clear meta
+//    bpuMetaWriteValid := true.B
+//    bpuMetaWritePtr   := bpuPtr
+//    bpuMetaWriteEntry := BpuFtqMetaNdPort.default
+//  }.otherwise {
+//    bpuMetaWriteValid := false.B
+//    bpuMetaWritePtr   := 0.U
+//    bpuMetaWriteEntry := BpuFtqMetaNdPort.default
+//  }
 
   // P1
   // maintain BPU meta info
