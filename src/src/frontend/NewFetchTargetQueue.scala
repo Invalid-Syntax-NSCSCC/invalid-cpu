@@ -75,14 +75,11 @@ class NewFetchTargetQueue(
       deq.ready := cmtValid
   }
 
-  val queueFull      = WireDefault(ftq.io.enqueuePorts.head.ready)
-  val queueFullDelay = RegNext(queueFull)
+  val queueFull = WireDefault(ftq.io.enqueuePorts.head.ready)
 
-  val bpuPtr      = ftq.io.enq_ptr
-  val ifPtr       = RegInit(0.U(ptrWidth.W))
-  val lastIfPtr   = RegNext(ifPtr, 0.U(ptrWidth.W))
-  val commPtr     = ftq.io.deq_ptr
-  val bpuPtrPlus1 = WireDefault(bpuPtr + 1.U)
+  val bpuPtr    = ftq.io.enq_ptr
+  val ifPtr     = RegInit(0.U(ptrWidth.W))
+  val lastIfPtr = RegNext(ifPtr, 0.U(ptrWidth.W))
 
   val bpuMetaWritePort = WireDefault(0.U.asTypeOf(new Bundle {
     val valid = Bool()
@@ -124,6 +121,7 @@ class NewFetchTargetQueue(
     io.bpuFtqPort.ftqP0.isValid &&
       !io.bpuFtqPort.mainBpuRedirectValid
 
+  // TODO: 搞清楚哪些是入队哪些是修改
   ftq.io.setPorts(bpuPtr).valid :=
     io.bpuFtqPort.ftqP0.isValid || (
       io.bpuFtqPort.ftqP1.isValid && mainBpuRedirectDelay
