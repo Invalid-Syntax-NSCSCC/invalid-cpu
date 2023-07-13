@@ -3,7 +3,7 @@ package frontend.bpu
 import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
-import frontend.bpu.bundles.{BpuFtqMetaPort, TagePredictorUpdateInfoPort}
+import frontend.bpu.bundles.{BpuFtqMetaNdPort, TagePredictorUpdateInfoPort}
 import frontend.bpu.components.Bundles.TageMetaPort
 import spec._
 import frontend.bpu.components._
@@ -27,7 +27,7 @@ class TagePredictor(
   val io = IO(new Bundle {
     // Query signal
     val pc                 = Input(UInt(Width.Reg.data))
-    val bpuMetaPort        = Output(new BpuFtqMetaPort)
+    val bpuMetaPort        = Output(new BpuFtqMetaNdPort)
     val predictBranchTaken = Output(Bool())
     val predictValid       = Output(Bool())
 
@@ -249,7 +249,7 @@ class TagePredictor(
 //    case (dst, src) =>
 //      dst := src
 //  }
-  io.bpuMetaPort         := BpuFtqMetaPort.default
+  io.bpuMetaPort         := BpuFtqMetaNdPort.default
   io.bpuMetaPort.bpuMeta := queryMetaBundle
 
   ////////////////////////////////////////////////////////////////////////////////////////////
