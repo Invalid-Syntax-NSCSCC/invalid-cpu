@@ -71,7 +71,6 @@ class FetchTargetQueue(
   // IF sent rreq
   // * valid & ready & no modify & no flush
   ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid &&
-    io.ftqIFPort.ready &&
     !(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) && // to ifStage and modify at the same time
     !io.backendFlush
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
@@ -102,7 +101,7 @@ class FetchTargetQueue(
   commPtr := commPtr + backendCommitNum
   // If block is accepted by IF, ifuPtr++
   // IB full should result in FU not accepting FTQ input
-  when(ifSendValid & !ifRedirect) {
+  when(ifSendValid && io.ftqIFPort.ready && !ifRedirect) {
     ifPtr := ifPtr + 1.U
   }
 
