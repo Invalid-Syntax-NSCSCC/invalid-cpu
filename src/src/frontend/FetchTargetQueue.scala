@@ -65,7 +65,7 @@ class FetchTargetQueue(
   val ftqBpuMetaRegs    = RegInit(VecInit(Seq.fill(queueSize)(BpuFtqMetaPort.default)))
   val ftqBranchMetaRegs = RegInit(VecInit(Seq.fill(queueSize)(FtqBranchMetaEntry.default)))
 
-  val backendCommitNum = WireInit(0.U(log2Ceil(commitNum).W))
+  val backendCommitNum = WireInit(0.U(log2Ceil(commitNum + 1).W))
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
