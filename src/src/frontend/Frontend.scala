@@ -40,7 +40,7 @@ class Frontend extends Module {
   })
   val pc        = Module(new Pc)
   val bpu       = Module(new BPU)
-  val ftq       = Module(new FetchTargetQueue())
+  val ftq       = Module(new FetchTargetQueue)
   val instFetch = Module(new InstFetch)
 
   pc.io.newPc          := io.cuNewPc
@@ -69,7 +69,7 @@ class Frontend extends Module {
   ftq.io.backendFlush      := io.isFlush
   ftq.io.backendFlushFtqId := io.ftqFlushId
   ftq.io.instFetchFlush    := false.B // TODO add predecoder stage
-  ftq.io.instFetchFtqId    := false.B
+  ftq.io.instFetchFtqId    := 0.U
   ftq.io.cuCommitFtqPort   := io.cuCommitFtqPort
   ftq.io.cuQueryPcBundle   <> io.cuQueryPcBundle
   ftq.io.exeFtqPort        <> io.exeFtqPort

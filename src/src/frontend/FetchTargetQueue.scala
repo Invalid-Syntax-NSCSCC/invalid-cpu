@@ -10,7 +10,7 @@ import frontend.bundles.QueryPcBundle
 
 class FetchTargetQueue(
   val queueSize: Int = Param.BPU.ftqSize,
-  val issueNum:  Int = Param.issueInstInfoMaxNum)
+  val commitNum: Int = Param.commitNum)
     extends Module {
   // parameter
   val ptrWidth = log2Ceil(queueSize)
@@ -63,11 +63,11 @@ class FetchTargetQueue(
   val ftqBpuMetaRegs    = RegInit(VecInit(Seq.fill(queueSize)(FtqBpuMetaEntry.default)))
   val ftqBranchMetaRegs = RegInit(VecInit(Seq.fill(queueSize)(FtqBranchMetaEntry.default)))
 
-  val backendCommitNum = WireInit(0.U(log2Ceil(issueNum).W))
+  val backendCommitNum = WireInit(0.U(log2Ceil(commitNum).W))
   backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
-  ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid & io.ftqIFPort.ready & (!(ifPtr === bpuMetaWritePtr & bpuMetaWriteValid)) & !io.backendFlush
+  ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid && io.ftqIFPort.ready && (!(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid)) && !io.backendFlush
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
   // last block send dirty block;need to quit
   ifRedirect := ((bpuMetaWritePtr === lastIfPtr) && (bpuMetaWritePtr + 1.U === ifPtr)) & mainBpuRedirectModifyFtq & ifSendValidDelay
@@ -126,7 +126,7 @@ class FetchTargetQueue(
   ftqNextVec := ftqVecReg
 
   // clear out if committed
-  Seq.range(0, issueNum).foreach { idx =>
+  Seq.range(0, commitNum).foreach { idx =>
     when(idx.U < backendCommitNum) {
       ftqNextVec(commPtr + idx.U) := FtqBlockBundle.default
     }
