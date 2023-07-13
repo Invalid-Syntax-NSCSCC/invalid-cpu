@@ -40,7 +40,7 @@ class Frontend extends Module {
   })
   val pc        = Module(new Pc)
   val bpu       = Module(new BPU)
-  val ftq       = Module(new FetchTargetQueue)
+  val ftq       = Module(new NewFetchTargetQueue)
   val instFetch = Module(new InstFetch)
 
   pc.io.newPc          := io.cuNewPc

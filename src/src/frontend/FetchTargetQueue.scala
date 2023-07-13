@@ -61,8 +61,8 @@ class FetchTargetQueue(
   // FTQ meta
   val bpuMetaWriteValid = WireDefault(false.B)
   val bpuMetaWritePtr   = WireDefault(0.U(ptrWidth.W))
-  val bpuMetaWriteEntry = WireDefault(FtqBpuMetaEntry.default)
-  val ftqBpuMetaRegs    = RegInit(VecInit(Seq.fill(queueSize)(FtqBpuMetaEntry.default)))
+  val bpuMetaWriteEntry = WireDefault(BpuFtqMetaPort.default)
+  val ftqBpuMetaRegs    = RegInit(VecInit(Seq.fill(queueSize)(BpuFtqMetaPort.default)))
   val ftqBranchMetaRegs = RegInit(VecInit(Seq.fill(queueSize)(FtqBranchMetaEntry.default)))
 
   val backendCommitNum = WireInit(0.U(log2Ceil(commitNum).W))
@@ -247,11 +247,11 @@ class FetchTargetQueue(
     // if not provided by BPU,clear meta
     bpuMetaWriteValid := true.B
     bpuMetaWritePtr   := bpuPtr
-    bpuMetaWriteEntry := FtqBpuMetaEntry.default
+    bpuMetaWriteEntry := BpuFtqMetaPort.default
   }.otherwise {
     bpuMetaWriteValid := false.B
     bpuMetaWritePtr   := 0.U
-    bpuMetaWriteEntry := FtqBpuMetaEntry.default
+    bpuMetaWriteEntry := BpuFtqMetaPort.default
   }
 
   // P1

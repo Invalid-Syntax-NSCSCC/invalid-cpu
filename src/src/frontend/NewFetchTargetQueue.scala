@@ -84,10 +84,10 @@ class NewFetchTargetQueue(
   val bpuMetaWritePort = WireDefault(0.U.asTypeOf(new Bundle {
     val valid = Bool()
     val ptr   = UInt(ptrWidth.W)
-    val entry = new FtqBpuMetaEntry
+    val entry = new BpuFtqMetaPort
   }))
 
-  val ftqBpuMetaRegs    = RegInit(VecInit(Seq.fill(queueSize)(FtqBpuMetaEntry.default)))
+  val ftqBpuMetaRegs    = RegInit(VecInit(Seq.fill(queueSize)(BpuFtqMetaPort.default)))
   val ftqBranchMetaRegs = RegInit(VecInit(Seq.fill(queueSize)(FtqBranchMetaEntry.default)))
 
   // IF sent rreq
@@ -211,7 +211,7 @@ class NewFetchTargetQueue(
   bpuMetaWritePort.entry := Mux(
     io.bpuFtqPort.ftqP1.isValid,
     io.bpuFtqPort.ftqMeta,
-    FtqBpuMetaEntry.default
+    BpuFtqMetaPort.default
   )
 
   // P1
