@@ -217,7 +217,7 @@ class Rob(
         // distribute rob id
         res       := RobReadResultNdPort.default
         res.robId := queue.io.enqIncResults(idx)
-        when(req.valid && req.bits.writeRequest.en) {
+        when(req.valid && req.ready && req.bits.writeRequest.en) {
           matchTable(req.bits.writeRequest.addr).locate           := RegDataLocateSel.rob
           matchTable(req.bits.writeRequest.addr).robId            := res.robId
           matchTable(req.bits.writeRequest.addr).robResData.valid := false.B
