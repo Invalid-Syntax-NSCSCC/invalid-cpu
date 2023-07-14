@@ -71,16 +71,14 @@ class FetchTargetQueue(
   // IF sent rreq
   // * valid & ready & no modify & no flush
   ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid &&
-    !(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) && // to ifStage and modify at the same time
-    !io.backendFlush
+    !(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) // to ifStage and modify at the same time
+//    !io.backendFlush   ( instAddr would not ready when flush, so valid needn't insure no flush in order to simply logic
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
 
   // last block send dirty block;need to quit
   // * prev to ifStage and modify now
-  ifRedirect := (bpuMetaWritePtr === lastIfPtr) && // lastIfPtr == ifPtr - 1
-    (bpuMetaWritePtr + 1.U === ifPtr) &&
-    mainBpuRedirectModifyFtq &&
-    ifSendValidDelay
+  ifRedirect := (bpuMetaWritePtr + 1.U === ifPtr) && // (bpuMetaWritePtr === lastIfPtr) && // lastIfPtr == ifPtr - 1
+    ifSendValidDelay // mainBpuRedirectModifyFtq &&
 
   // queue full
   queueFull            := bpuPtrPlus1 === commPtr
