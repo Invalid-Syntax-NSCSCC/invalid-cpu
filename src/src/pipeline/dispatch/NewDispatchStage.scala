@@ -167,4 +167,10 @@ class NewDispatchStage(
       }
   }
 
+  when(io.isFlush) {
+    resultOutsReg.foreach { out =>
+      out.valid := false.B
+    }
+  }
+
 }

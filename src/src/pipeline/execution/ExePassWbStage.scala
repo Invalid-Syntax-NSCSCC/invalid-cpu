@@ -222,7 +222,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     // is branch
     val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
 
-    branchSetPort.en := (branchDirectionMispredict || branchTargeMispredict) && branchEnableFlag && isBranchInst && !io.isFlush
+    branchSetPort.en    := (branchDirectionMispredict || branchTargeMispredict) && branchEnableFlag && isBranchInst
     branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
     when(branchSetPort.en) {
       branchEnableFlag                                 := false.B
