@@ -21,8 +21,6 @@ class OutOfOrderReservationStation(
       channelLength
     ) {
 
-  require(channelNum > 1)
-
 // Fallback
   io.dequeuePorts.foreach(_ <> DontCare)
   io.enqueuePorts.foreach(_.ready := false.B)
@@ -143,7 +141,7 @@ class OutOfOrderReservationStation(
   // compress
   // deq_ptr - out1 - out2 - enq_ptr
   // for those between out1 and out2, idx += 1
-  // for those between deq_ptr and out1 idx += 2
+  // for those between deq_ptr and out1 idx += 2 if deqNum >= 2
   val compressFlows = WireDefault(
     0.U.asTypeOf(Vec(deqMaxNum, Vec(queueLength, Valid(new ReservationStationBundle))))
   )
