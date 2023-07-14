@@ -15,7 +15,7 @@ object Param {
   val isPartialUncachedPatch = false || isReleasePackage
   val isNoPrivilege          = false || isReleasePackage
   val isCacheOnPg            = false
-  val isForcedCache          = false
+  val isForcedCache          = false || isReleasePackage
 
   val canIssueSameWbRegInsts = true
 
