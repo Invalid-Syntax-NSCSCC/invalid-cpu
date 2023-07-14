@@ -174,7 +174,7 @@ class DCache(
     new BetterAxiMaster(
       readSize  = Param.Width.DCache._dataLine,
       writeSize = Param.Width.DCache._dataLine,
-      id        = Param.Axi.Id.dCache
+      id        = 0
     )
   )
   io.axiMasterPort               <> axiMaster.io.axi

@@ -121,7 +121,7 @@ class ICache(
     new BetterAxiMaster(
       readSize  = Param.Width.ICache._dataLine,
       writeSize = Param.Width.ICache._dataLine,
-      id        = Param.Axi.Id.iCache,
+      id        = 0,
       isInst    = true
     )
   )
