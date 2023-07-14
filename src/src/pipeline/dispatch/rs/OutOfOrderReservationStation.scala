@@ -21,8 +21,6 @@ class OutOfOrderReservationStation(
       channelLength
     ) {
 
-  require(channelNum > 1)
-
 // Fallback
   io.dequeuePorts.foreach(_ <> DontCare)
   io.enqueuePorts.foreach(_.ready := false.B)

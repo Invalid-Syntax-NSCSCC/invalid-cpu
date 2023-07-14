@@ -57,7 +57,7 @@ class NewDispatchStage(
   val reservationStations = Seq.fill(pipelineNum)(
     Module(
       if (Param.isOutOfOrderIssue)
-        new InOrderReservationStation(
+        new OutOfOrderReservationStation(
           Param.Width.Rob._channelLength,
           1,
           1,
@@ -66,7 +66,7 @@ class NewDispatchStage(
           true
         )
       else
-        new OutOfOrderReservationStation(
+        new InOrderReservationStation(
           Param.Width.Rob._channelLength,
           1,
           1,
