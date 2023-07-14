@@ -22,8 +22,10 @@ help:
 compile:
 	./millw -i __.compile
 
-bsp:
+ide:
 	./millw -i mill.bsp.BSP/install
+	./millw -i --import ivy:com.lihaoyi::mill-contrib-bloop:  mill.contrib.bloop.Bloop/install
+	./millw -i mill.scalalib.GenIdea/idea
 
 reformat:
 	./millw -i __.reformat
@@ -34,4 +36,4 @@ checkformat:
 clean:
 	-rm -rf $(BUILD_DIR)
 
-.PHONY: test verilog chiplab help compile bsp reformat checkformat clean
+.PHONY: test verilog chiplab help compile ide reformat checkformat clean
