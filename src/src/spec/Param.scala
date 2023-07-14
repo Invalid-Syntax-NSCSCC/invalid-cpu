@@ -10,7 +10,7 @@ object Param {
   val isOutOfOrderIssue = false
   val isUncachedPatch   = true
   val isNoPrivilege     = false
-  val isCacheOnPg       = false
+  val isCacheOnPg       = true
   val isForcedCache     = false
 
   val canIssueSameWbRegInsts = true
@@ -149,7 +149,7 @@ object Param {
   }
 
   object BPU {
-    val fetchWidth  = 4
+    val fetchWidth  = fetchInstMaxNum
     val ftqSize     = 8
     val ftqPtrWitdh = log2Ceil(ftqSize)
 
