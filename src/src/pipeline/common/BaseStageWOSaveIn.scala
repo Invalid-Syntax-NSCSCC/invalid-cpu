@@ -31,8 +31,8 @@ abstract class BaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
   io.out <> outQueue
 
   // Handle input
-  protected val outReady = ((lastResultOut.ready && !lastResultOut.valid) || io.out.ready)
-  io.in.ready := outReady
+  protected val inReady = ((lastResultOut.ready && !lastResultOut.valid) || io.out.ready)
+  io.in.ready := inReady
 
   // Handle flush (queue is already handled)
   when(io.isFlush) {
