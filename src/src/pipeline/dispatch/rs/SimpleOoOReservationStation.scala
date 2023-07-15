@@ -95,12 +95,13 @@ class SimpleOoOReservationStation(
   // deq_ptr - out - enq_ptr
   // for those between deq_ptr and out idx += 1
   val compressResult = Wire(Vec(queueLength, Valid(new ReservationStationBundle)))
-  compressResult.zip(ramDownView).foreach {
-    case (dst, src) =>
-      dst.valid := false.B
-      dst.bits  := DontCare
-  }
+
   when(deqEn) {
+    compressResult.zip(ramDownView).foreach {
+      case (dst, src) =>
+        dst.valid := false.B
+        dst.bits  := DontCare
+    }
     ramDownView.zipWithIndex.foreach {
       case (elem, src_idx) =>
         when(src_idx.U === selectedDownViewIndex) {
@@ -113,6 +114,11 @@ class SimpleOoOReservationStation(
         }.otherwise {
           compressResult(src_idx) := elem
         }
+    }
+  }.otherwise {
+    compressResult.zip(ramDownView).foreach {
+      case (dst, src) =>
+        dst := src
     }
   }
 
