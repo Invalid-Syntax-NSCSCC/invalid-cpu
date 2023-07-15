@@ -200,6 +200,9 @@ class BPU(
   ftbEntry             := ftbModule.io.queryEntryPort
   ftbHit               := ftbModule.io.hit
   ftbHitIndex          := ftbModule.io.hitIndex
+  if (!Param.isBranchPredict) {
+    ftbHit := false.B
+  }
   // update
   ftbModule.io.updatePc        := io.bpuFtqPort.ftqTrainMeta.startPc
   ftbModule.io.updateWayIndex  := io.bpuFtqPort.ftqTrainMeta.ftbHitIndex

@@ -12,6 +12,7 @@ object Param {
   val isNoPrivilege     = false
   val isCacheOnPg       = true
   val isForcedCache     = false
+  val isBranchPredict   = false
 
   val canIssueSameWbRegInsts = true
 
