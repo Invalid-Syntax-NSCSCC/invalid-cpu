@@ -324,6 +324,12 @@ class DCache(
         lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset)
       when(isLastMatched && lastReg.isWrite) {
         selectedDataLine := lastReg.writeDataLine
+        statusTagLines.zipWithIndex.foreach {
+          case (statusTag, index) =>
+            when(index.U === lastReg.setIndex) {
+              statusTag.isDirty := true.B
+            }
+        }
       }
 
       // Step 2: Save data for later use
