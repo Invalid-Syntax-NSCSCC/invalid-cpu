@@ -7,7 +7,7 @@ class LookupQueue[T <: Data, LUIn <: Data](
   val gen:             T,
   val entries:         Int,
   val lookupInFactory: LUIn,
-  val lookupFn:        (LUIn, T) => Bool,
+  val lookupNeqFn:     (LUIn, T) => Bool,
   val pipe:            Boolean = false,
   val flow:            Boolean = false,
   val hasFlush:        Boolean = false)
@@ -39,11 +39,11 @@ class LookupQueue[T <: Data, LUIn <: Data](
   valid_flags := valid_flags
 
   // Lookup
-  val isHit = VecInit(valid_flags.zip(ram).map {
+  val isNotHit = VecInit(valid_flags.zip(ram).map {
     case (valid, entry) =>
-      valid && lookupFn(io.lookup.in, entry)
+      !valid || lookupNeqFn(io.lookup.in, entry)
   }).asUInt.orR
-  io.lookup.out := isHit
+  io.lookup.out := isNotHit
 
   // when flush is high, empty the queue
   // Semantically, any enqueues happen before the flush.

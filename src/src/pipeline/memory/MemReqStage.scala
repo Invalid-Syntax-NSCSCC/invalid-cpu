@@ -93,7 +93,7 @@ class MemReqStage
       new StoreInfoBundle,
       entries         = Param.Count.Mem.storeQueueLen,
       lookupInFactory = UInt(Width.Mem.addr),
-      lookupFn        = (in: UInt, entry: StoreInfoBundle) => in(5, 2) === entry.addr(5, 2),
+      lookupNeqFn     = (in: UInt, entry: StoreInfoBundle) => in(5, 2) =/= entry.addr(5, 2),
       pipe            = false,
       flow            = false,
       hasFlush        = true
@@ -118,7 +118,7 @@ class MemReqStage
       switch(selectedIn.translatedMemReq.rw) {
         is(ReadWriteSel.read) {
           // Whether last memory request is submitted and no stores in queue and not committing store
-          when(io.out.ready && !storeQueue.io.lookup.out) {
+          when(io.out.ready && storeQueue.io.lookup.out) {
             when(isTrueCached) {
               peer.dCacheReq.client.isValid := true.B
               isComputed                    := peer.dCacheReq.isReady
