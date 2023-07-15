@@ -150,7 +150,7 @@ object Param {
 
   object BPU {
     val fetchWidth  = fetchInstMaxNum
-    val ftqSize     = 8
+    val ftqSize     = 16
     val ftqPtrWitdh = log2Ceil(ftqSize)
 
     object Width {

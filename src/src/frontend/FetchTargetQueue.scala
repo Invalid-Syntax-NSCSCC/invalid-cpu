@@ -8,7 +8,6 @@ import chisel3.experimental.Param
 import frontend.bundles.{BpuFtqPort, CuCommitFtqNdPort, ExeFtqPort, FtqBlockBundle, FtqBpuMetaPort, FtqIFNdPort}
 import frontend.bundles.QueryPcBundle
 
-// * io.ftqIFPort.valid 依赖 io.ftqIFPort.ready
 class FetchTargetQueue(
   val queueSize: Int = Param.BPU.ftqSize,
   val commitNum: Int = Param.commitNum)
@@ -70,15 +69,15 @@ class FetchTargetQueue(
 
   // IF sent rreq
   // * valid & ready & no modify & no flush
-  ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid &&
-    !(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) // to ifStage and modify at the same time
+  ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid
+//  && !(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) // to ifStage and modify at the same time
 //    !io.backendFlush   ( instAddr would not ready when flush, so valid needn't insure no flush in order to simply logic
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
 
   // last block send dirty block;need to quit
   // * prev to ifStage and modify now
-  ifRedirect := (bpuMetaWritePtr + 1.U === ifPtr) && // (bpuMetaWritePtr === lastIfPtr) && // lastIfPtr == ifPtr - 1
-    ifSendValidDelay // mainBpuRedirectModifyFtq &&
+  ifRedirect := bpuMetaWriteValid && (bpuMetaWritePtr === ifPtr) // && ifSendValid // (bpuMetaWritePtr === lastIfPtr) && // lastIfPtr == ifPtr - 1
+  // mainBpuRedirectModifyFtq &&
 
   // queue full
   queueFull            := bpuPtrPlus1 === commPtr

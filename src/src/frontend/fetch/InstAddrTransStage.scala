@@ -128,6 +128,10 @@ class InstAddrTransStage
     resultOutReg.valid := true.B
   }
 
+  when(selectedIn.redirect) {
+    resultOutReg.valid := false.B
+    hasSentException   := false.B
+  }
   // Handle flush
   when(io.isFlush) {
     hasSentException := false.B
