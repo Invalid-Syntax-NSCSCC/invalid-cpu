@@ -12,8 +12,5 @@ class DecodeOutNdPort extends Bundle {
 }
 
 object DecodeOutNdPort {
-  def default = (new DecodeOutNdPort).Lit(
-    _.isMatched -> false.B,
-    _.info -> PreExeInstNdPort.default
-  )
+  def default = 0.U.asTypeOf(new DecodeOutNdPort)
 }
