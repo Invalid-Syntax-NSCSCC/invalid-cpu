@@ -295,7 +295,6 @@ class Rob(
     // Reset registers
     matchTable.foreach(_.locate := RegDataLocateSel.regfile)
     matchTable.foreach(_.robResData.valid := false.B)
-    hasInterruptReg             := false.B
     isDelayedMaintenanceTrigger := false.B
 
     // Disable peer port actions
