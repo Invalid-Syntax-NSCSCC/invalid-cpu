@@ -46,21 +46,5 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 }
 
 object PreExeInstNdPort {
-  def default = (new PreExeInstNdPort).Lit(
-    _.needCsr -> false.B,
-    _.exeSel -> ExeInst.Sel.none,
-    _.exeOp -> ExeInst.Op.nop,
-    _.gprReadPorts -> Vec.Lit(RfAccessInfoNdPort.default, RfAccessInfoNdPort.default),
-    _.gprWritePort -> RfAccessInfoNdPort.default,
-    _.isHasImm -> false.B,
-    _.imm -> 0.U,
-    _.jumpBranchAddr -> zeroWord,
-    _.csrReadEn -> false.B,
-    _.csrWriteEn -> false.B,
-    _.isTlb -> false.B,
-    _.issueEn -> Vec.Lit(Seq.fill(Param.pipelineNum)(false.B): _*),
-    _.isPrivilege -> false.B,
-    _.branchType -> 0.U,
-    _.isBranch -> false.B
-  )
+  def default = 0.U.asTypeOf(new PreExeInstNdPort)
 }
