@@ -6,13 +6,17 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
-  val isDiffTest        = true
-  val isOutOfOrderIssue = false
-  val isUncachedPatch   = true
-  val isNoPrivilege     = false
-  val isCacheOnPg       = true
-  val isForcedCache     = false
-  val isBranchPredict   = false
+  val isChiplab        = true
+  val isReleasePackage = false
+
+  val isDiffTest             = false || isChiplab
+  val isOutOfOrderIssue      = true
+  val isFullUncachedPatch    = false || isChiplab
+  val isPartialUncachedPatch = false || isReleasePackage
+  val isNoPrivilege          = false || isReleasePackage
+  val isCacheOnPg            = false
+  val isForcedCache          = false || isReleasePackage
+  val isBranchPredict        = false
 
   val canIssueSameWbRegInsts = true
 
@@ -246,13 +250,5 @@ object Param {
 
   object NaiiveFetchStageState extends ChiselEnum {
     val idle, request, waitQueue = Value
-  }
-
-  object ExeStageState extends ChiselEnum {
-    val nonBlocking, blocking = Value
-  }
-
-  object AluState extends ChiselEnum {
-    val nonBlocking, blocking = Value
   }
 }

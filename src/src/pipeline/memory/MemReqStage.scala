@@ -10,7 +10,7 @@ import pipeline.common.{BaseStage, LookupQueue}
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort, StoreInfoBundle}
 import pipeline.memory.enums.CacheMaintenanceTargetType
 import spec._
-import spec.Param.isUncachedPatch
+import spec.Param.{isFullUncachedPatch, isPartialUncachedPatch}
 
 class MemReqNdPort extends Bundle {
   val isAtomicStore           = new Bool()
@@ -45,12 +45,17 @@ class MemReqStage
   val out  = resultOutReg.bits
 
   // Workaround
-  val isUncachedAddressRange = if (isUncachedPatch) {
+  val isUncachedAddressRange = if (isFullUncachedPatch) {
     VecInit(
       "h_1faf".U(16.W),
       "h_bfaf".U(16.W),
       "h_1fd0".U(16.W), // Chiplab only
       "h_1fe0".U(16.W) // Chiplab only
+    ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
+  } else if (isPartialUncachedPatch) {
+    VecInit(
+      "h_1faf".U(16.W),
+      "h_bfaf".U(16.W)
     ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
   } else {
     false.B

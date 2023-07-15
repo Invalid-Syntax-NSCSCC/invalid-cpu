@@ -66,7 +66,7 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
 
   // Handle flush (queue is already handled)
   when(io.isFlush) {
-    io.ins.foreach(_.ready := false.B)
-    io.outs.foreach(_.valid := false.B)
+    // io.ins.foreach(_.ready := false.B)
+    // io.outs.foreach(_.valid := false.B)
   }
 }

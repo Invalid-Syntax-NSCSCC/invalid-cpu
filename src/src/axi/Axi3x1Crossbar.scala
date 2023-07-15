@@ -11,6 +11,18 @@ class Axi3x1Crossbar extends Module {
   })
 
   val blackbox = Module(new axi_3x1_crossbar)
+
+  val isReadHold = RegInit(false.B)
+  isReadHold := isReadHold
+
+  when(io.master(0).ar.valid && io.master(0).ar.ready) {
+    isReadHold := true.B
+  }
+
+  when(io.master(0).r.valid && io.master(0).r.ready && io.master(0).r.bits.last) {
+    isReadHold := false.B
+  }
+
   blackbox.io.clk := clock
   blackbox.io.rst := reset
 
@@ -178,8 +190,8 @@ class Axi3x1Crossbar extends Module {
   blackbox.io.m00_axi_arqos    <> io.master(0).ar.bits.qos
   blackbox.io.m00_axi_arregion <> io.master(0).ar.bits.region
   blackbox.io.m00_axi_aruser   <> io.master(0).ar.bits.user
-  blackbox.io.m00_axi_arvalid  <> io.master(0).ar.valid
-  blackbox.io.m00_axi_arready  <> io.master(0).ar.ready
+  io.master(0).ar.valid        := blackbox.io.m00_axi_arvalid && !isReadHold
+  blackbox.io.m00_axi_arready  := io.master(0).ar.ready && !isReadHold
   blackbox.io.m00_axi_rid      <> io.master(0).r.bits.id
   blackbox.io.m00_axi_rdata    <> io.master(0).r.bits.data
   blackbox.io.m00_axi_rresp    <> io.master(0).r.bits.resp
@@ -200,7 +212,7 @@ class axi_3x1_crossbar
         "S00_THREADS" -> 1,
         "S01_THREADS" -> 1,
         "S02_THREADS" -> 1,
-        "M00_ISSUE" -> 1,
+        "M00_ISSUE" -> 4,
         "S00_AR_REG_TYPE" -> 0,
         "S01_AR_REG_TYPE" -> 0,
         "S02_AR_REG_TYPE" -> 0

@@ -11,6 +11,7 @@ import pipeline.rob.bundles.InstWbNdPort
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.dispatch.rs.InOrderReservationStation
 import control.enums.ExceptionPos
+import pipeline.dispatch.rs.OutOfOrderReservationStation
 
 // class DispatchNdPort extends Bundle {
 //   val issueEns = Vec(Param.pipelineNum, Bool())
@@ -55,9 +56,24 @@ class NewDispatchStage(
 
   val reservationStations = Seq.fill(pipelineNum)(
     Module(
-      new InOrderReservationStation(
-        4, 1, 1, 1, 4, true
-      )
+      if (Param.isOutOfOrderIssue)
+        new OutOfOrderReservationStation(
+          Param.Width.Rob._channelLength,
+          1,
+          1,
+          1,
+          Param.Width.Rob._channelLength,
+          true
+        )
+      else
+        new InOrderReservationStation(
+          Param.Width.Rob._channelLength,
+          1,
+          1,
+          1,
+          Param.Width.Rob._channelLength,
+          true
+        )
     )
   )
 
@@ -124,32 +140,10 @@ class NewDispatchStage(
       val deqEn = WireDefault(
         outReady &&
           rsDeqPort.valid
-          // &&
-          // !(
-          //   rsDeqPort.bits.regReadPort.preExeInstInfo.needCsr &&
-          //     peer.csrScore =/= ScoreboardState.free
-          // )
       )
-      // if (idx == Param.csrIssuePipelineIndex) {
-      //   when(
-      //     deqEns(Param.loadStoreIssuePipelineIndex) &&
-      //       reservationStations(Param.loadStoreIssuePipelineIndex).io
-      //         .dequeuePorts(0)
-      //         .bits
-      //         .regReadPort
-      //         .preExeInstInfo
-      //         .needCsr
-      //   ) {
-      //     deqEn := false.B
-      //   }
-      // }
       deqEns(idx)     := deqEn
       out.valid       := deqEn
       rsDeqPort.ready := deqEn
-
-      // when(deqEn && rsDeqPort.bits.regReadPort.preExeInstInfo.needCsr) {
-      //   peer.csrOccupyPort.en := true.B
-      // }
 
       out.bits.leftOperand  := rsDeqPort.bits.robResult.readResults(0).result
       out.bits.rightOperand := rsDeqPort.bits.robResult.readResults(1).result
@@ -173,41 +167,10 @@ class NewDispatchStage(
       }
   }
 
-  // // out
-  // reservationStation.io.dequeuePorts.lazyZip(resultOuts).zipWithIndex.foreach {
-  //   case ((rs, out), idx) =>
-  //     val deqEn = out.ready && rs.valid && deqEns.take(idx).foldLeft(true.B)(_ && _)
-  //     deqEns(idx) := deqEn
-  //     out.valid   := deqEn
-  //     rs.ready    := deqEn
+  when(io.isFlush) {
+    resultOutsReg.foreach { out =>
+      out.valid := false.B
+    }
+  }
 
-  // out.bits.exePort.leftOperand  := rs.bits.robResult.readResults(0).result
-  // out.bits.exePort.rightOperand := rs.bits.robResult.readResults(1).result
-  // out.bits.exePort.exeSel       := rs.bits.regReadPort.preExeInstInfo.exeSel
-  // out.bits.exePort.exeOp        := rs.bits.regReadPort.preExeInstInfo.exeOp
-
-  // out.bits.exePort.gprWritePort := rs.bits.regReadPort.preExeInstInfo.gprWritePort
-  // // jumbBranch / memLoadStort / csr
-  // out.bits.exePort.jumpBranchAddr := rs.bits.regReadPort.preExeInstInfo.jumpBranchAddr
-
-  // // Read Csr Data in exe
-
-  // out.bits.exePort.instInfo       := rs.bits.regReadPort.instInfo
-  // out.bits.exePort.instInfo.robId := rs.bits.robResult.robId
-
-  // when(
-  //   peer.plv =/= 0.U &&
-  //     rs.bits.regReadPort.preExeInstInfo.isPrivilege &&
-  //     rs.bits.regReadPort.instInfo.exceptionPos === ExceptionPos.none
-  // ) {
-  //   out.bits.exePort.instInfo.exceptionPos    := ExceptionPos.backend
-  //   out.bits.exePort.instInfo.exceptionRecord := Csr.ExceptionIndex.ipe
-  // }
-
-  // out.bits.issueEns.zip(rs.bits.regReadPort.preExeInstInfo.issueEn).foreach {
-  //   case (dst, src) =>
-  //     dst := src
-  // }
-
-  // }
 }
