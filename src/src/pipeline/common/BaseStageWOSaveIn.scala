@@ -14,16 +14,6 @@ abstract class BaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
 
   private val queueSize = 1
 
-  protected val selectedIn: InT = Mux(
-    io.isFlush,
-    blankIn,
-    Mux(
-      io.in.valid,
-      io.in.bits,
-      blankIn
-    )
-  )
-
   protected val resultOutReg: ValidIO[OutT] = RegInit(0.U.asTypeOf(ValidIO(outNdFactory)))
   resultOutReg.valid := false.B
   private val lastResultOut = Wire(Decoupled(outNdFactory))
