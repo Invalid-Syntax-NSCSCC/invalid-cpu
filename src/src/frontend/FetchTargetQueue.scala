@@ -46,8 +46,10 @@ class FetchTargetQueue(
   val ifRedirect               = WireDefault(false.B)
   val ifRedirectDelay          = RegInit(false.B)
 
-  val bpuPtr      = RegInit(0.U(ptrWidth.W))
-  val ifPtr       = RegInit(0.U(ptrWidth.W))
+  val bpuPtr    = RegInit(0.U(ptrWidth.W))
+  val ifPtr     = RegInit(0.U(ptrWidth.W))
+  val nextIfPtr = WireDefault(ifPtr)
+  ifPtr := nextIfPtr
   val lastIfPtr   = RegNext(ifPtr, 0.U(ptrWidth.W))
   val commPtr     = RegInit(0.U(ptrWidth.W))
   val bpuPtrPlus1 = WireDefault(0.U(ptrWidth.W))
@@ -99,7 +101,7 @@ class FetchTargetQueue(
   // If block is accepted by IF, ifuPtr++
   // IB full should result in FU not accepting FTQ input
   when(ifSendValid && io.ftqIFPort.ready && !ifRedirect) {
-    ifPtr := ifPtr + 1.U
+    nextIfPtr := ifPtr + 1.U
   }
 
   // bpu ptr
@@ -112,14 +114,14 @@ class FetchTargetQueue(
 
   // if IF predecoder found a redirect
   when(io.instFetchFlush) {
-    ifPtr  := io.instFetchFtqId + 1.U
-    bpuPtr := io.instFetchFtqId + 1.U
+    nextIfPtr := io.instFetchFtqId + 1.U
+    bpuPtr    := io.instFetchFtqId + 1.U
   }
   // if backend redirect triggered,back to the next block of the redirect block
   // backend may continue to commit older block (flush before exeStage inst;commit after exeStage inst)
   when(io.backendFlush) {
-    ifPtr  := io.backendFlushFtqId + 1.U
-    bpuPtr := io.backendFlushFtqId + 1.U
+    nextIfPtr := io.backendFlushFtqId + 1.U
+    bpuPtr    := io.backendFlushFtqId + 1.U
   }
 
   // next FTQ
@@ -172,7 +174,7 @@ class FetchTargetQueue(
   // -> IFU
   // default value
   io.ftqIFPort.valid               := ifSendValid
-  io.ftqIFPort.bits.ftqBlockBundle := ftqVecReg(ifPtr)
+  io.ftqIFPort.bits.ftqBlockBundle := RegNext(ftqNextVec(nextIfPtr))
   // design 1 : wtire through  ( has been abandoned)
   // feat: increase flush log;but easy to result in flush instfetch
 //  when(((ifPtr === bpuMetaWritePtr)||(lastIfPtr === bpuMetaWritePtr)) && bpuMetaWriteValid) {
