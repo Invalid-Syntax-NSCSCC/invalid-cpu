@@ -292,9 +292,14 @@ class Rob(
     */
 
   when(io.isFlush) {
-    // queue.io.enqueuePorts.foreach(_.valid := false.B)
-    // io.commits.foreach(_.valid := false.B)
+    // Reset registers
     matchTable.foreach(_.locate := RegDataLocateSel.regfile)
     matchTable.foreach(_.robResData.valid := false.B)
+    isDelayedMaintenanceTrigger := false.B
+
+    // Disable peer port actions
+    io.commitStore.valid     := false.B
+    io.tlbMaintenanceTrigger := false.B
+    io.branchCommit          := false.B
   }
 }
