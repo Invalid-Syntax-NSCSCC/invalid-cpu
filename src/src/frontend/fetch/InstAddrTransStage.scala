@@ -17,6 +17,7 @@ import spec.Value.Csr
 import spec.{Param, Width}
 
 import scala.collection.immutable
+import pipeline.common.BaseStageWOSaveIn
 
 class InstAddrTransPeerPort extends Bundle {
   val csr      = Input(new FetchCsrNdPort)
@@ -27,12 +28,14 @@ object InstAddTransPeerPort {
 }
 
 class InstAddrTransStage
-    extends BaseStage(
+    extends BaseStageWOSaveIn(
       new FtqIFNdPort,
       new InstReqNdPort,
       FtqIFNdPort.default,
       Some(new InstAddrTransPeerPort)
     ) {
+
+  val selectedIn = io.in.bits
 
   val peer = io.peer.get
   val out  = resultOutReg.bits
@@ -116,7 +119,7 @@ class InstAddrTransStage
         when(peer.tlbTrans.exception.valid && !isAdef) {
           out.exception.bits := peer.tlbTrans.exception.bits
         }
-        when(isExceptionValid) {
+        when(isExceptionValid && io.in.ready && io.in.valid) {
           hasSentException := true.B
         }
       }
@@ -124,12 +127,19 @@ class InstAddrTransStage
   }
 
   // Submit result
-  when(selectedIn.ftqBlockBundle.isValid) {
-    resultOutReg.valid := true.B
-  }
+  when(io.in.ready && io.in.valid) {
+    when(selectedIn.ftqBlockBundle.isValid) {
+      resultOutReg.valid := true.B
+    }
 
+    when(selectedIn.redirect) {
+      resultOutReg.valid := false.B
+      hasSentException   := false.B
+    }
+  }
   // Handle flush
   when(io.isFlush) {
-    hasSentException := false.B
+    resultOutReg.valid := false.B
+    hasSentException   := false.B
   }
 }

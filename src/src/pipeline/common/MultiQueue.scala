@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import utils.MultiCounter
 
+// do not set enq ptr to full
 class MultiQueue[ElemT <: Data](
   queueLength:        Int,
   enqMaxNum:          Int,
@@ -11,7 +12,8 @@ class MultiQueue[ElemT <: Data](
   elemNdFactory:      => ElemT,
   blankElem:          => ElemT,
   isRelativePosition: Boolean = false,
-  writeFirst:         Boolean = true)
+  writeFirst:         Boolean = true,
+  supportSetEnqPtr:   Boolean = false)
     extends Module {
 
   val io = IO(new Bundle {
@@ -28,6 +30,8 @@ class MultiQueue[ElemT <: Data](
     val enq_ptr       = Output(UInt(log2Ceil(queueLength).W))
     val deq_ptr       = Output(UInt(log2Ceil(queueLength).W))
     val elemValids    = Output(Vec(queueLength, Bool()))
+
+    val enqPtrSetPort = if (supportSetEnqPtr) Some(Input(Valid(UInt(log2Ceil(queueLength).W)))) else None
   })
 
   require(queueLength > enqMaxNum)
@@ -36,7 +40,7 @@ class MultiQueue[ElemT <: Data](
   val ram       = RegInit(VecInit(Seq.fill(queueLength)(blankElem)))
   val ramValids = RegInit(VecInit(Seq.fill(queueLength)(false.B)))
 
-  val enq_ptr = Module(new MultiCounter(queueLength, enqMaxNum))
+  val enq_ptr = Module(new MultiCounter(queueLength, enqMaxNum, supportSet = supportSetEnqPtr))
   val deq_ptr = Module(new MultiCounter(queueLength, deqMaxNum))
 
   enq_ptr.io.inc   := 0.U
@@ -162,6 +166,13 @@ class MultiQueue[ElemT <: Data](
       } else {
         dst := ramValids(idx)
       }
+  }
+
+  if (supportSetEnqPtr) {
+    enq_ptr.io.setPort.get := io.enqPtrSetPort.get
+    when(io.enqPtrSetPort.get.valid) {
+      maybeFull := false.B
+    }
   }
 
   when(io.isFlush) {

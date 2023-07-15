@@ -16,6 +16,7 @@ object Param {
   val isNoPrivilege          = false || isReleasePackage
   val isCacheOnPg            = false
   val isForcedCache          = false || isReleasePackage
+  val isBranchPredict        = false
 
   val canIssueSameWbRegInsts = true
 
@@ -153,8 +154,8 @@ object Param {
   }
 
   object BPU {
-    val fetchWidth  = 4
-    val ftqSize     = 8
+    val fetchWidth  = fetchInstMaxNum
+    val ftqSize     = 16
     val ftqPtrWitdh = log2Ceil(ftqSize)
 
     object Width {

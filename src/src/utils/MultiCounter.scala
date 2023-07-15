@@ -4,15 +4,16 @@ import chisel3._
 import chisel3.util._
 
 class MultiCounter(
-  maxCount:  Int,
-  maxIncNum: Int,
-  init:      Int = 0)
+  maxCount:   Int,
+  maxIncNum:  Int,
+  init:       Int     = 0,
+  supportSet: Boolean = false)
     extends Module {
   require(maxCount >= maxIncNum)
   val value_w = log2Ceil(maxCount)
   val inc_w   = log2Ceil(maxIncNum + 1)
 
-  val isMaxCountPow2: Boolean = log2Ceil(maxCount) == log2Floor(maxCount)
+  val isMaxCountPow2: Boolean = isPow2(maxCount)
 
   val io = IO(new Bundle {
     // inc =/= `11`
@@ -22,6 +23,8 @@ class MultiCounter(
     val value = Output(UInt(value_w.W))
     // no delay
     val incResults = Output(Vec(maxCount + 1, UInt(value_w.W)))
+
+    val setPort = if (supportSet) Some(Input(Valid(UInt(value_w.W)))) else None
   })
 
   val counter    = RegInit(init.U(value_w.W))
@@ -48,6 +51,12 @@ class MultiCounter(
   }
 
   counter := incResults(io.inc)
+
+  if (supportSet) {
+    when(io.setPort.get.valid) {
+      counter := io.setPort.get.bits
+    }
+  }
 
   when(io.flush) {
     io.value := init.U
