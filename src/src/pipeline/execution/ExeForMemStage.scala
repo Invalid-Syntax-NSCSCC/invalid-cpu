@@ -21,8 +21,7 @@ class ExeForMemPeerPort extends Bundle {
     val llbctl = new LlbctlBundle
     val era    = new EraBundle
   })
-  val isLoadStoreRunning = Input(Bool())
-  val dbarFinish         = Input(Bool())
+  val dbarFinish = Input(Bool())
 }
 
 class ExeForMemStage
@@ -49,14 +48,9 @@ class ExeForMemStage
   io.peer.get.csrScoreboardChangePort.en := selectedIn.instInfo.needCsr
 
   val isDbarBlockingReg = RegInit(false.B)
-  // dbar wait and start
+  // dbar start
   when(selectedIn.exeOp === ExeInst.Op.dbar) {
-    when(io.peer.get.isLoadStoreRunning) {
-      isComputed         := false.B
-      resultOutReg.valid := false.B
-    }.otherwise {
-      isDbarBlockingReg := true.B
-    }
+    isDbarBlockingReg := true.B
   }
   // dbar execute and finish
   when(isDbarBlockingReg) {
