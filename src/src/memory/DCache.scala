@@ -428,7 +428,8 @@ class DCache(
               } else {
                 refillSetIndex := 0.U
               }
-              isNeedWbReg := true.B
+              isNeedWbReg           := true.B
+              isWriteBackReqSentReg := false.B
 
               // Save data for later use
               lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
@@ -457,20 +458,25 @@ class DCache(
 
       // Maintenance
       setCountDownReg := (Param.Count.DCache.setLen - 1).U
-
       when(io.maintenancePort.client.control.isL1Valid) {
-        isNeedWbReg           := true.B
-        isWriteBackReqSentReg := false.B
-
         when(io.maintenancePort.client.control.isInit) {
+          isNeedWbReg           := true.B
+          isWriteBackReqSentReg := false.B
+
           // Next Stage: Maintenance for all sets (no write-back)
           nextState := State.maintenanceInit
         }
         when(io.maintenancePort.client.control.isCoherentByIndex) {
+          isNeedWbReg           := true.B
+          isWriteBackReqSentReg := false.B
+
           // Next Stage: Maintenance for all sets
           nextState := State.maintenanceAll
         }
         when(io.maintenancePort.client.control.isCoherentByHit) {
+          isNeedWbReg           := true.B
+          isWriteBackReqSentReg := false.B
+
           // Next Stage: Maintenance only for hit
           nextState := State.maintenanceHit
         }
