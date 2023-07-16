@@ -418,7 +418,7 @@ class DCache(
           when(!isInvalidHit) {
             // Second, select from not dirty, if it can
             val isNotDirtyVec = statusTagLines.map(!_.isDirty)
-            val isNotDirtyHit = WireDefault(isInvalidVec.reduce(_ || _))
+            val isNotDirtyHit = isNotDirtyVec.reduce(_ || _)
             refillSetIndex := PriorityEncoder(isNotDirtyVec)
             when(!isNotDirtyHit) {
               // Finally, select randomly (using LFSR)
@@ -430,14 +430,16 @@ class DCache(
               }
               isNeedWbReg           := true.B
               isWriteBackReqSentReg := false.B
-
-              // Save data for later use
-              lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
             }
           }
 
-          // Save data for later use
+          // Save data for later use, with write pass through
           lastReg.setIndex := refillSetIndex
+          lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
+          val lastQueryIndex = queryIndexFromMemAddr(lastReg.memAddr)
+          when(lastReg.isWrite && refillSetIndex === lastReg.setIndex && queryIndex === lastQueryIndex) {
+            lastReg.dataLine := lastReg.writeDataLine
+          }
 
           // Init refill state regs
           isReadReqSentReg      := false.B
