@@ -418,7 +418,7 @@ class DCache(
           when(!isInvalidHit) {
             // Second, select from not dirty, if it can
             val isNotDirtyVec = statusTagLines.map(!_.isDirty)
-            val isNotDirtyHit = WireDefault(isInvalidVec.reduce(_ || _))
+            val isNotDirtyHit = isNotDirtyVec.reduce(_ || _)
             refillSetIndex := PriorityEncoder(isNotDirtyVec)
             when(!isNotDirtyHit) {
               // Finally, select randomly (using LFSR)
