@@ -322,8 +322,11 @@ class DCache(
       // Step 2: Read pass through (Last Step 2 is write)
       val isLastMatched = reqMemAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset) ===
         lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset)
+      val lastQueryIndex = queryIndexFromMemAddr(lastReg.memAddr)
       when(isLastMatched && lastReg.isWrite) {
         selectedDataLine := lastReg.writeDataLine
+      }
+      when(lastQueryIndex === queryIndex) {
         statusTagLines.zipWithIndex.foreach {
           case (statusTag, index) =>
             when(index.U === lastReg.setIndex) {
@@ -436,7 +439,6 @@ class DCache(
           // Save data for later use, with write pass through
           lastReg.setIndex := refillSetIndex
           lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
-          val lastQueryIndex = queryIndexFromMemAddr(lastReg.memAddr)
           when(lastReg.isWrite && refillSetIndex === lastReg.setIndex && queryIndex === lastQueryIndex) {
             lastReg.dataLine := lastReg.writeDataLine
           }
