@@ -207,7 +207,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     val ftqQueryPc = feedbackFtq.queryPcBundle.pc
 
     // mis predict
-    val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
+    val branchDirectionMispredict = jumpBranchInfo.en ^ (inFtqInfo.predictBranch && inFtqInfo.isLastInBlock)
     val branchTargeMispredict = (
       jumpBranchInfo.en &&
         inFtqInfo.predictBranch &&
