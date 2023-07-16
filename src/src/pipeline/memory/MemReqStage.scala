@@ -118,7 +118,7 @@ class MemReqStage
       switch(selectedIn.translatedMemReq.rw) {
         is(ReadWriteSel.read) {
           // Whether last memory request is submitted and no stores in queue and not committing store
-          when(io.out.ready && !storeQueue.io.lookup.out) {
+          when(io.out.ready && !storeQueue.io.lookup.out) { // TODO: Might optimize
             when(isTrueCached) {
               peer.dCacheReq.client.isValid := true.B
               isComputed                    := peer.dCacheReq.isReady

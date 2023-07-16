@@ -301,5 +301,12 @@ class Rob(
     io.commitStore.valid     := false.B
     io.tlbMaintenanceTrigger := false.B
     io.branchCommit          := false.B
+
+    if (isDiffTest) {
+      io.commits.map(_.bits.instInfo).foreach { info =>
+        info.load.get.en  := 0.U
+        info.store.get.en := 0.U
+      }
+    }
   }
 }
