@@ -184,8 +184,7 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  renameStage.io.isFlush              := cu.io.backendFlush
-  renameStage.io.peer.get.branchFlush := cu.io.frontendFlush
+  renameStage.io.isFlush := cu.io.backendFlush
   renameStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
     case (dst, src) =>
       dst := src

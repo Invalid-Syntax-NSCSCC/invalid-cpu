@@ -129,7 +129,7 @@ class MultiInstQueue(
       new FetchInstDecodeNdPort
     )
   )
-  resultQueue.io.isFlush := io.isFrontendFlush
+  resultQueue.io.isFlush := io.isBackendFlush
 
   val isBlockDequeueReg = RegInit(false.B)
   isBlockDequeueReg := Mux(
@@ -146,15 +146,15 @@ class MultiInstQueue(
     case (dst, src) =>
       dst.valid := src.valid
       src.ready := dst.ready
+      when(isBlockDequeueReg || io.isFrontendFlush) {
+        dst.valid := false.B
+        src.ready := false.B
+      }
   }
 
   io.dequeuePorts.zip(resultQueue.io.dequeuePorts).foreach {
     case (dst, src) =>
       dst <> src
-      when(isBlockDequeueReg) {
-        dst.valid := false.B
-        src.ready := false.B
-      }
   }
 
   val redirectRequests = Wire(Vec(issueNum, new BackendRedirectPcNdPort))
@@ -201,7 +201,7 @@ class MultiInstQueue(
           }
         }
 
-        redirectRequest.en     := !selectedDecoder.info.isBranch && decodeInstInfo.ftqInfo.predictBranch
+        redirectRequest.en := !selectedDecoder.info.isBranch && decodeInstInfo.ftqInfo.predictBranch && dequeuePort.valid
         redirectRequest.pcAddr := decodeInstInfo.pcAddr + 4.U
         redirectRequest.ftqId  := decodeInstInfo.ftqInfo.ftqId
 
