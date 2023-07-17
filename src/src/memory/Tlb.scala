@@ -132,7 +132,7 @@ class Tlb extends Module {
           transPort.virtAddr(Value.Tlb.Ps._4Kb.litValue - 1, 0)
         ),
         Cat(
-          selectedPage.physPageNum(Width.Tlb._ppn - 10 - 1, 0),
+          selectedPage.physPageNum(Width.Tlb._ppn - 1, 9),
           transPort.virtAddr(Value.Tlb.Ps._4Mb.litValue - 1, 0)
         )
       )
