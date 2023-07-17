@@ -187,8 +187,10 @@ class ICache(
     is(State.ready) {
       // Stage 1 and Stage 2.a: Read BRAM and cache query in two cycles
 
+      val isCanMaintenance = WireDefault(true.B)
+
       io.accessPort.req.isReady  := !io.maintenancePort.client.control.isL1Valid // Fallback: Ready for request
-      io.maintenancePort.isReady := true.B
+      io.maintenancePort.isReady := isCanMaintenance
 
       // Step 1: BRAM read request
       val currentQueryIndex = WireDefault(queryIndexFromMemAddr(currentMemAddr))
@@ -248,8 +250,8 @@ class ICache(
           // Cache miss
 
           io.accessPort.req.isReady    := false.B
-          io.maintenancePort.isReady   := false.B
           io.accessPort.res.isComplete := false.B
+          isCanMaintenance             := false.B
           isCompleteReg                := false.B
 
           // Select a set to refill
@@ -278,7 +280,7 @@ class ICache(
       }
 
       // Maintenance
-      when(io.maintenancePort.client.control.isL1Valid) {
+      when(io.maintenancePort.client.control.isL1Valid && isCanMaintenance) {
         when(io.maintenancePort.client.control.isInit) {
           // Next Stage: Maintenance for all sets
           nextState := State.maintenanceAll

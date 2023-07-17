@@ -288,8 +288,10 @@ class DCache(
     is(State.ready) {
       // Stage 1 and Stage 2.a: Read BRAM and cache query in two cycles
 
+      val isCanMaintenance = WireDefault(true.B) // Fallback: Ready for request
+
       io.accessPort.req.isReady  := !io.maintenancePort.client.control.isL1Valid // Fallback: Ready for request
-      io.maintenancePort.isReady := true.B // Fallback: Ready for request
+      io.maintenancePort.isReady := isCanMaintenance
 
       // Step 1: BRAM read request
       val currentQueryIndex = WireDefault(queryIndexFromMemAddr(currentMemAddr))
@@ -407,8 +409,8 @@ class DCache(
           // Cache miss
 
           io.accessPort.req.isReady    := false.B
-          io.maintenancePort.isReady   := false.B
           io.accessPort.res.isComplete := false.B
+          isCanMaintenance             := false.B
           isCompleteReg                := false.B
           isNeedWbReg                  := false.B // Fallback: No write back
 
@@ -462,7 +464,7 @@ class DCache(
 
       // Maintenance
       setCountDownReg := (Param.Count.DCache.setLen - 1).U
-      when(io.maintenancePort.client.control.isL1Valid) {
+      when(io.maintenancePort.client.control.isL1Valid && isCanMaintenance) {
         when(io.maintenancePort.client.control.isInit) {
           isNeedWbReg           := true.B
           isWriteBackReqSentReg := false.B
