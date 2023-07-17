@@ -173,7 +173,7 @@ class NewRenameStage(
 
   when(io.isFlush) {
     // peer.requests.foreach(_.en := false.B)
-    io.ins.foreach(_.ready := false.B)
+    // io.ins.foreach(_.ready := false.B)
   }
 
 }
