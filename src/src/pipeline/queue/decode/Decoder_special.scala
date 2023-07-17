@@ -81,23 +81,23 @@ class Decoder_special extends Decoder {
 
   switch(opcode17) {
     is(Inst.dbar) {
-      selectIssueEn(DispatchType.csrOrBranch)
+      selectIssueEn(DispatchType.loadStore)
       io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.dbar
-      // outInfo.exeSel   := ExeInst.Sel.loadStore
+      outInfo.exeSel   := ExeInst.Sel.loadStore
       outInfo.isHasImm := true.B
       immZext          := hint
       outInfo.imm      := immZext
     }
     is(Inst.ibar) {
-      selectIssueEn(DispatchType.csrOrBranch)
+      selectIssueEn(DispatchType.loadStore)
       io.out.info.forbidOutOfOrder := true.B
 
       io.out.isMatched := true.B
       outInfo.exeOp    := ExeInst.Op.ibar
-      // outInfo.exeSel   := ExeInst.Sel.loadStore
+      outInfo.exeSel   := ExeInst.Sel.loadStore
       outInfo.isHasImm := true.B
       immZext          := hint
       outInfo.imm      := immZext

@@ -21,6 +21,7 @@ class ExeForMemPeerPort extends Bundle {
     val llbctl = new LlbctlBundle
     val era    = new EraBundle
   })
+  val dbarFinish = Input(Bool())
 }
 
 class ExeForMemStage
@@ -45,6 +46,20 @@ class ExeForMemStage
   resultOutReg.valid                            := isComputed && selectedIn.instInfo.isValid
 
   io.peer.get.csrScoreboardChangePort.en := selectedIn.instInfo.needCsr
+
+  val isDbarBlockingReg = RegInit(false.B)
+  // dbar start
+  when(selectedIn.instInfo.isValid && selectedIn.exeOp === ExeInst.Op.dbar) {
+    isDbarBlockingReg := true.B
+  }
+  // dbar execute and finish
+  when(isDbarBlockingReg) {
+    isComputed         := false.B
+    resultOutReg.valid := false.B
+    when(io.peer.get.dbarFinish) {
+      isDbarBlockingReg := false.B
+    }
+  }
 
   // Generate address
   val isAddrNotAligned   = WireDefault(false.B)
@@ -204,5 +219,9 @@ class ExeForMemStage
         )
       )
     )
+  }
+
+  when(io.isFlush) {
+    isDbarBlockingReg := false.B
   }
 }

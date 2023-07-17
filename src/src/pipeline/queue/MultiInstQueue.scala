@@ -163,7 +163,6 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.isValid                  := true.B
       dequeuePort.bits.instInfo.isCsrWrite               := selectedDecoder.info.csrWriteEn
       dequeuePort.bits.instInfo.exeOp                    := selectedDecoder.info.exeOp
-      dequeuePort.bits.instInfo.exeSel                   := selectedDecoder.info.exeSel
       dequeuePort.bits.instInfo.isTlb                    := selectedDecoder.info.isTlb
       dequeuePort.bits.instInfo.needCsr                  := selectedDecoder.info.needCsr
       dequeuePort.bits.instInfo.ftqInfo                  := decodeInstInfo.ftqInfo

@@ -48,6 +48,8 @@ class Cu(
     val ftqPort     = Output(new CuCommitFtqNdPort)
     val queryPcPort = Flipped(new QueryPcBundle)
 
+    val isDbarFinish = Output(Bool())
+
     // <- Out
     val hardwareInterrupt = Input(UInt(8.W))
 
@@ -297,6 +299,10 @@ class Cu(
         mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
       }
   }
+
+  io.isDbarFinish := io.instInfoPorts.map { instInfo =>
+    instInfo.isValid && instInfo.exeOp === ExeInst.Op.dbar
+  }.reduce(_ || _)
 
   io.difftest match {
     case Some(dt) =>

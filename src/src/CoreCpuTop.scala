@@ -222,6 +222,7 @@ class CoreCpuTop extends Module {
   exeForMemStage.io.isFlush             := cu.io.backendFlush
   exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
   exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
+  exeForMemStage.io.peer.get.dbarFinish := cu.io.isDbarFinish
 
   exePassWbStage_1.io.peer.get.csrReadPort.get           <> csr.io.readPorts(0)
   exePassWbStage_1.io.peer.get.stableCounterReadPort.get <> stableCounter.io
