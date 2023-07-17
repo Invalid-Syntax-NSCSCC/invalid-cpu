@@ -34,8 +34,10 @@ class Cu(
     val csrValues       = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
     val branchExe = Input(new BackendRedirectPcNdPort)
+    // `MultiInstQueue` -> `Cu`
+    val redirectFromDecode = Input(new BackendRedirectPcNdPort)
     // `Rob` -> `Cu`
-    val branchCommit = Input(Bool())
+    val redirectCommit = Input(Bool())
     // `CsrScoreBoard` -> `Cu`
     val csrWriteInfo = Input(new CsrWriteNdPort)
     val newPc        = Output(new BackendRedirectPcNdPort)
@@ -221,19 +223,19 @@ class Cu(
   io.csrMessage.ertnFlush := isExceptionReturn
   io.frontendFlush :=
     RegNext(
-      isException || io.branchExe.en || refetchFlush || isExceptionReturn,
+      isException || io.branchExe.en || io.redirectFromDecode.en || refetchFlush || isExceptionReturn,
       false.B
     )
   val frontendFlushFtqId = WireDefault(
     Mux(
       isException || refetchFlush || isExceptionReturn,
       majorInstInfo.ftqInfo.ftqId,
-      io.branchExe.ftqId
+      Mux(io.branchExe.en, io.branchExe.ftqId, io.redirectFromDecode.ftqId)
     )
   )
   io.frontendFlushFtqId := RegNext(frontendFlushFtqId)
   io.backendFlush := RegNext(
-    isException || io.branchCommit || refetchFlush || isExceptionReturn,
+    isException || io.redirectCommit || refetchFlush || isExceptionReturn,
     false.B
   )
   io.idleFlush := RegNext(idleFlush)
@@ -242,12 +244,12 @@ class Cu(
   val newPc = RegInit(BackendRedirectPcNdPort.default)
   io.newPc := newPc
   newPc.en :=
-    refetchFlush || isException || io.branchExe.en || isExceptionReturn
+    refetchFlush || isException || io.branchExe.en || io.redirectFromDecode.en || isExceptionReturn
 
   newPc.ftqId := Mux(
     refetchFlush || isException || isExceptionReturn,
     majorInstInfo.ftqInfo.ftqId,
-    io.branchExe.ftqId
+    Mux(io.branchExe.en, io.branchExe.ftqId, io.redirectFromDecode.ftqId)
   )
 
   newPc.pcAddr := Mux(
@@ -263,7 +265,7 @@ class Cu(
       Mux(
         refetchFlush,
         majorPc + 4.U,
-        io.branchExe.pcAddr
+        Mux(io.branchExe.en, io.branchExe.pcAddr, io.redirectFromDecode.pcAddr)
       )
     )
   )
