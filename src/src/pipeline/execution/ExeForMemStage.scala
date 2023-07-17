@@ -49,7 +49,7 @@ class ExeForMemStage
 
   val isDbarBlockingReg = RegInit(false.B)
   // dbar start
-  when(selectedIn.exeOp === ExeInst.Op.dbar) {
+  when(selectedIn.instInfo.isValid && selectedIn.exeOp === ExeInst.Op.dbar) {
     isDbarBlockingReg := true.B
   }
   // dbar execute and finish
