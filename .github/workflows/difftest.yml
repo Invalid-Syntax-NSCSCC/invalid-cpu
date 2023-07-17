@@ -97,19 +97,11 @@ jobs:
         run: |
           export CHIPLAB_HOME=`pwd`/chiplab
           cd ./chiplab/sims/verilator/run_prog
-          ./configure.sh --run func/func_lab19 --threads `nproc` --tail-waveform --tail-simu-trace --waveform-tail-size 200 --trace-tail-size 200
+          ./configure.sh --run func/func_lab19 --threads `nproc` --disable-simu-trace
           make -j`nproc` > make_log.txt 2>&1
           sed -i '/RUN simulation/,$!d' make_log.txt
           cat make_log.txt
           if ! grep -q 'Reached test end PC' make_log.txt; then
             exit 1
           fi
-        
-      - name: Upload Result
-        uses: actions/upload-artifact@v3
-        with:
-          name: difftest-log
-          path: |
-            ./chiplab/sims/verilator/run_prog/make_log.txt
-            ./chiplab/sims/verilator/run_prog/log/**/simu_trace.*
-            ./chiplab/sims/verilator/run_prog/obj/**/obj/test.s
+          
