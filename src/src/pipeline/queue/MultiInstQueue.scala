@@ -9,6 +9,7 @@ import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode._
 import spec._
+import common.bundles.BackendRedirectPcNdPort
 
 class InstQueueEnqNdPort extends Bundle {
   val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
@@ -44,6 +45,8 @@ class MultiInstQueue(
 
     val idleBlocking    = Input(Bool())
     val interruptWakeUp = Input(Bool())
+
+    val redirectRequest = Output(new BackendRedirectPcNdPort)
   })
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
@@ -154,40 +157,55 @@ class MultiInstQueue(
       }
   }
 
-  resultQueue.io.enqueuePorts.lazyZip(selectedDecoders).lazyZip(decodeInstInfos).zipWithIndex.foreach {
-    case ((dequeuePort, selectedDecoder, decodeInstInfo), index) =>
-      dequeuePort.bits.instInfo      := InstInfoNdPort.default
-      dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
-      dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
-      val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
-      dequeuePort.bits.instInfo.isValid                  := true.B
-      dequeuePort.bits.instInfo.isCsrWrite               := selectedDecoder.info.csrWriteEn
-      dequeuePort.bits.instInfo.exeOp                    := selectedDecoder.info.exeOp
-      dequeuePort.bits.instInfo.isTlb                    := selectedDecoder.info.isTlb
-      dequeuePort.bits.instInfo.needCsr                  := selectedDecoder.info.needCsr
-      dequeuePort.bits.instInfo.ftqInfo                  := decodeInstInfo.ftqInfo
-      dequeuePort.bits.instInfo.ftqCommitInfo.isBranch   := selectedDecoder.info.isBranch
-      dequeuePort.bits.instInfo.ftqCommitInfo.branchType := selectedDecoder.info.branchType
+  val redirectRequests = Wire(Vec(issueNum, new BackendRedirectPcNdPort))
+  io.redirectRequest := PriorityMux(redirectRequests.map(_.en), redirectRequests)
 
-      dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needCsr
+  resultQueue.io.enqueuePorts
+    .lazyZip(selectedDecoders)
+    .lazyZip(decodeInstInfos)
+    .lazyZip(redirectRequests)
+    .zipWithIndex
+    .foreach {
+      case ((dequeuePort, selectedDecoder, decodeInstInfo, redirectRequest), index) =>
+        dequeuePort.bits.instInfo      := InstInfoNdPort.default
+        dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
+        dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
+        val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
+        dequeuePort.bits.instInfo.isValid                  := true.B
+        dequeuePort.bits.instInfo.isCsrWrite               := selectedDecoder.info.csrWriteEn
+        dequeuePort.bits.instInfo.exeOp                    := selectedDecoder.info.exeOp
+        dequeuePort.bits.instInfo.isTlb                    := selectedDecoder.info.isTlb
+        dequeuePort.bits.instInfo.needCsr                  := selectedDecoder.info.needCsr
+        dequeuePort.bits.instInfo.ftqInfo                  := decodeInstInfo.ftqInfo
+        dequeuePort.bits.instInfo.ftqCommitInfo.isBranch   := selectedDecoder.info.isBranch
+        dequeuePort.bits.instInfo.ftqCommitInfo.branchType := selectedDecoder.info.branchType
 
-      dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
-      dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
-      when(decodeInstInfo.exceptionValid) {
-        dequeuePort.bits.instInfo.exceptionPos           := ExceptionPos.frontend
-        dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
-      }.elsewhen(!isMatched) {
-        dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
-        dequeuePort.bits.instInfo.exceptionPos           := ExceptionPos.frontend
-        dequeuePort.bits.instInfo.exceptionRecord        := Csr.ExceptionIndex.ine
-      }
+        dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needCsr
 
-      dequeuePort.bits.decode := selectedDecoder
-      when(!isMatched) {
-        dequeuePort.bits.decode.info.issueEn.zipWithIndex.foreach {
-          case (en, idx) =>
-            en := (idx != Param.loadStoreIssuePipelineIndex).B
+        dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
+        dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
+        when(decodeInstInfo.exceptionValid) {
+          dequeuePort.bits.instInfo.exceptionPos := ExceptionPos.frontend
+          // dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
+        }.elsewhen(!isMatched) {
+          // dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
+          dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
+          dequeuePort.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ine
         }
-      }
-  }
+
+        dequeuePort.bits.decode := selectedDecoder
+        when(!isMatched) {
+          dequeuePort.bits.decode.info.issueEn.zipWithIndex.foreach {
+            case (en, idx) =>
+              en := (idx != Param.loadStoreIssuePipelineIndex).B
+          }
+        }
+
+        redirectRequest.en     := !selectedDecoder.info.isBranch && decodeInstInfo.ftqInfo.predictBranch
+        redirectRequest.pcAddr := decodeInstInfo.pcAddr + 4.U
+        redirectRequest.ftqId  := decodeInstInfo.ftqInfo.ftqId
+
+        dequeuePort.bits.instInfo.ftqCommitInfo.isRedirect := redirectRequest.en
+
+    }
 }
