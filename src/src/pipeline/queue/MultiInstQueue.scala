@@ -201,7 +201,7 @@ class MultiInstQueue(
           }
         }
 
-        redirectRequest.en := !selectedDecoder.info.isBranch && decodeInstInfo.ftqInfo.predictBranch && dequeuePort.valid
+        redirectRequest.en := !selectedDecoder.info.isBranch && decodeInstInfo.ftqInfo.predictBranch && dequeuePort.valid && dequeuePort.ready
         redirectRequest.pcAddr := decodeInstInfo.pcAddr + 4.U
         redirectRequest.ftqId  := decodeInstInfo.ftqInfo.ftqId
 
