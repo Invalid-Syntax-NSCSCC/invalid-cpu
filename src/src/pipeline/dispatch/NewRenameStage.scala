@@ -46,9 +46,6 @@ class NewRenamePeerPort(
 
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
-
-  // `Cu` -> `IssueStage`
-  val branchFlush = Input(Bool())
 }
 
 class NewRenameStage(
@@ -99,15 +96,12 @@ class NewRenameStage(
   }
   reservationStation.io.isFlush := io.isFlush
 
-  // stop fetch when branch
-  val fetchEnableFlag = RegInit(true.B)
-
   // valid
   io.ins.lazyZip(reservationStation.io.enqueuePorts).lazyZip(io.peer.get.requests).zipWithIndex.foreach {
     case ((in, rs, req), idx) =>
-      in.ready  := rs.ready && req.ready && fetchEnableFlag
-      rs.valid  := in.valid && req.ready && fetchEnableFlag
-      req.valid := rs.ready && in.valid && fetchEnableFlag
+      in.ready  := rs.ready && req.ready
+      rs.valid  := in.valid && req.ready
+      req.valid := rs.ready && in.valid
 
       if (!Param.canIssueSameWbRegInsts && idx > 0) {
         require(issueNum <= 2)
@@ -177,16 +171,9 @@ class NewRenameStage(
       }
   }
 
-  when(peer.branchFlush) {
-    // peer.requests.foreach(_.en := false.B)
-    io.ins.foreach(_.ready := false.B)
-    fetchEnableFlag := false.B
-  }
-
   when(io.isFlush) {
     // peer.requests.foreach(_.en := false.B)
     io.ins.foreach(_.ready := false.B)
-    fetchEnableFlag := true.B
   }
 
 }
