@@ -146,7 +146,7 @@ class MultiInstQueue(
     case (dst, src) =>
       dst.valid := src.valid
       src.ready := dst.ready
-      when(isBlockDequeueReg) {
+      when(isBlockDequeueReg || io.isFrontendFlush) {
         dst.valid := false.B
         src.ready := false.B
       }
