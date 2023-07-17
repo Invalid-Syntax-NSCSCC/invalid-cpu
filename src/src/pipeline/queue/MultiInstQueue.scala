@@ -174,10 +174,12 @@ class MultiInstQueue(
       dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
       dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
       when(decodeInstInfo.exceptionValid) {
-        dequeuePort.bits.instInfo.exceptionPos := ExceptionPos.frontend
+        dequeuePort.bits.instInfo.exceptionPos           := ExceptionPos.frontend
+        dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
       }.elsewhen(!isMatched) {
-        dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
-        dequeuePort.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ine
+        dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
+        dequeuePort.bits.instInfo.exceptionPos           := ExceptionPos.frontend
+        dequeuePort.bits.instInfo.exceptionRecord        := Csr.ExceptionIndex.ine
       }
 
       dequeuePort.bits.decode := selectedDecoder
