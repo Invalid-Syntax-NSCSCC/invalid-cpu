@@ -76,10 +76,6 @@ class Alu extends Module {
   // jump and branch computation
 
   switch(io.aluInst.op) {
-    is(Op.tlbfill, Op.tlbrd, Op.tlbwr, Op.tlbsrch) {
-      jumpBranchInfo.en     := true.B
-      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-    }
     is(Op.b, Op.bl) {
       jumpBranchInfo.en     := true.B
       jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
