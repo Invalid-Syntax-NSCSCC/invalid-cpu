@@ -21,6 +21,8 @@ class OutOfOrderReservationStation(
       channelLength
     ) {
 
+  require(supportCheckForIssue == true)
+
 // Fallback
   io.dequeuePorts.foreach(_ <> DontCare)
   io.enqueuePorts.foreach(_.ready := false.B)
@@ -108,7 +110,7 @@ class OutOfOrderReservationStation(
         //     .contains(elem.bits.regReadPort.preExeInstInfo.exeSel
         elem.bits.regReadPort.preExeInstInfo.forbidOutOfOrder
       ) {
-        if (idx >= enqMaxNum) {
+        if (idx >= deqMaxNum) {
           en := false.B
         } else {
           when(!ramDownViewEnableDeq.take(idx).foldLeft(true.B)(_ && _)) {

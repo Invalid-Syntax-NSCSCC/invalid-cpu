@@ -10,7 +10,7 @@ object Param {
   val isReleasePackage = false
 
   val isDiffTest             = false || isChiplab
-  val isOutOfOrderIssue      = true
+  val isOutOfOrderIssue      = false
   val isFullUncachedPatch    = false || isChiplab
   val isPartialUncachedPatch = false || isReleasePackage
   val isNoPrivilege          = false || isReleasePackage

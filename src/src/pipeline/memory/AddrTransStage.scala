@@ -15,6 +15,7 @@ import spec.Value.Csr
 import spec.Width
 
 import scala.collection.immutable
+import pipeline.common.BaseStageWOSaveIn
 
 class AddrTransNdPort extends Bundle {
   val isAtomicStore    = Bool()
@@ -36,14 +37,15 @@ class AddrTransPeerPort extends Bundle {
 }
 
 class AddrTransStage
-    extends BaseStage(
+    extends BaseStageWOSaveIn(
       new AddrTransNdPort,
       new MemReqNdPort,
       AddrTransNdPort.default,
       Some(new AddrTransPeerPort)
     ) {
-  val peer = io.peer.get
-  val out  = resultOutReg.bits
+  val selectedIn = io.in.bits
+  val peer       = io.peer.get
+  val out        = resultOutReg.bits
 
   val tlbBlockingReg = RegInit(false.B)
   tlbBlockingReg := tlbBlockingReg
@@ -138,7 +140,7 @@ class AddrTransStage
           out.instInfo.exceptionPos    := ExceptionPos.backend
           out.instInfo.exceptionRecord := exceptionIndex
 
-          tlbBlockingReg := true.B
+          tlbBlockingReg := true.B && io.in.ready && io.in.valid
         }
       }
     }
@@ -164,14 +166,14 @@ class AddrTransStage
 
   // Handle TLB maintenance
   peer.tlbMaintenance := selectedIn.tlbMaintenance
-  when(tlbBlockingReg) {
+  when(tlbBlockingReg || !io.in.ready || !io.in.valid) {
     peer.tlbMaintenance.isFill       := false.B
     peer.tlbMaintenance.isWrite      := false.B
     peer.tlbMaintenance.isRead       := false.B
     peer.tlbMaintenance.isInvalidate := false.B
     peer.tlbMaintenance.isSearch     := false.B
   }
-  when(selectedIn.instInfo.isTlb) {
+  when(selectedIn.instInfo.isTlb && io.in.valid && io.in.ready) {
     tlbBlockingReg := true.B
   }
   if (isNoPrivilege) {
@@ -185,7 +187,7 @@ class AddrTransStage
   }
 
   // Submit result
-  when(selectedIn.instInfo.isValid && !tlbBlockingReg) {
+  when(selectedIn.instInfo.isValid && !tlbBlockingReg && io.in.ready && io.in.valid) {
     resultOutReg.valid := true.B
   }
 }

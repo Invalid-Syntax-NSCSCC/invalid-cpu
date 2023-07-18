@@ -153,7 +153,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     io.peer.get.csrReadPort.get.en   := true.B
     io.peer.get.csrReadPort.get.addr := csrAddr
 
-    val csrReadData = io.peer.get.csrReadPort.get.data
+    val csrReadData = Mux(csrAddr(31), zeroWord, io.peer.get.csrReadPort.get.data)
 
     def csrWriteStorePort = io.peer.get.csrWriteStorePort.get
     csrWriteStorePort.valid     := false.B
@@ -242,7 +242,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
 
     resultOutReg.bits.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
-    resultOutReg.bits.instInfo.ftqCommitInfo.isPredictError  := branchSetPort.en
+    resultOutReg.bits.instInfo.ftqCommitInfo.isRedirect := branchSetPort.en || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)

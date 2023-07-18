@@ -57,13 +57,16 @@ class InstResStage
         infoBundle.bits.inst := peer.memRes.read.dataVec(fetchIndex)
         infoBundle.valid     := index.asUInt(log2Ceil(Param.fetchInstMaxNum + 1).W) < selectedIn.ftqBlock.length
       }
-      infoBundle.bits.exceptionValid        := selectedIn.exception.valid
-      infoBundle.bits.exception             := selectedIn.exception.bits
-      infoBundle.bits.ftqInfo.ftqId         := selectedIn.ftqId
-      infoBundle.bits.ftqInfo.predictBranch := selectedIn.ftqBlock.predictTaken
-      infoBundle.bits.ftqInfo.isLastInBlock := (index + 1).asUInt(
-        log2Ceil(Param.fetchInstMaxNum + 1).W
-      ) === selectedIn.ftqBlock.length
+      infoBundle.bits.exceptionValid := selectedIn.exception.valid
+      infoBundle.bits.exception      := selectedIn.exception.bits
+      infoBundle.bits.ftqInfo.ftqId  := selectedIn.ftqId
+      when((index + 1).U === selectedIn.ftqBlock.length) {
+        infoBundle.bits.ftqInfo.predictBranch := selectedIn.ftqBlock.predictTaken
+        infoBundle.bits.ftqInfo.isLastInBlock := true.B
+      }.otherwise {
+        infoBundle.bits.ftqInfo.predictBranch := false.B
+        infoBundle.bits.ftqInfo.isLastInBlock := false.B
+      }
   }
 
   when(selectedIn.ftqBlock.isValid) {

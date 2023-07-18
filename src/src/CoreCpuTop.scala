@@ -184,8 +184,7 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  renameStage.io.isFlush              := cu.io.backendFlush
-  renameStage.io.peer.get.branchFlush := cu.io.frontendFlush
+  renameStage.io.isFlush := cu.io.backendFlush
   renameStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
     case (dst, src) =>
       dst := src
@@ -222,6 +221,7 @@ class CoreCpuTop extends Module {
   exeForMemStage.io.isFlush             := cu.io.backendFlush
   exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
   exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
+  exeForMemStage.io.peer.get.dbarFinish := cu.io.isDbarFinish
 
   exePassWbStage_1.io.peer.get.csrReadPort.get           <> csr.io.readPorts(0)
   exePassWbStage_1.io.peer.get.stableCounterReadPort.get <> stableCounter.io
@@ -307,8 +307,9 @@ class CoreCpuTop extends Module {
   cu.io.csrValues := csr.io.csrValues
 
   require(Param.jumpBranchPipelineIndex != 0)
-  cu.io.branchExe    := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
-  cu.io.branchCommit := rob.io.branchCommit
+  cu.io.branchExe          := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
+  cu.io.redirectFromDecode := instQueue.io.redirectRequest
+  cu.io.redirectCommit     := rob.io.redirectCommit
 
   cu.io.hardwareInterrupt := io.intrpt
   cu.io.csrFlushRequest   := csr.io.csrFlushRequest

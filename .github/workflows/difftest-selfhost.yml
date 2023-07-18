@@ -8,7 +8,45 @@ on:
   workflow_dispatch:
 
 jobs:
-  difftest:
+  rand_test:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Clone Chiplab Repo
+        uses: actions/checkout@v3
+        with:
+          repository: Invalid-Syntax-NSCSCC/min-chiplab
+          lfs: true
+          token: ${{ secrets.DIFFTEST_ACCESS_TOKEN }}
+          path: chiplab
+
+      - name: Prepare Environment
+        run: |
+          echo "`pwd`/chiplab/toolchains/loongarch32r-linux-gnusf-2022-05-20/bin" >> $GITHUB_PATH
+
+      - name: Use Cache
+        uses: coursier/cache-action@v6
+
+      - name: Elaborate CPU
+        run: make
+
+      - name: Move to Chiplab
+        run: |
+          export CHIPLAB_HOME=`pwd`/chiplab
+          make chiplab
+
+      - name: Test
+        run: |
+          export CHIPLAB_HOME=`pwd`/chiplab
+          cd ./chiplab/sims/verilator/run_random
+          make
+          if [ -s fail.log || -s nopass.log ]; then
+            exit 1
+          fi
+
+  func_test:
     runs-on: self-hosted
 
     steps:
@@ -45,6 +83,9 @@ jobs:
           make -j`nproc` > make_log.txt 2>&1
           sed -i '/RUN simulation/,$!d' make_log.txt
           cat make_log.txt
+          if ! grep -q 'Reached test end PC' make_log.txt; then
+            exit 1
+          fi
         
       - name: Upload Result
         uses: actions/upload-artifact@v3

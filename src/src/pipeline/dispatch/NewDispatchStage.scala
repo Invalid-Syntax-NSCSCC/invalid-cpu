@@ -12,6 +12,7 @@ import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.dispatch.rs.InOrderReservationStation
 import control.enums.ExceptionPos
 import pipeline.dispatch.rs.OutOfOrderReservationStation
+import pipeline.dispatch.rs.SimpleOoOReservationStation
 
 // class DispatchNdPort extends Bundle {
 //   val issueEns = Vec(Param.pipelineNum, Bool())
@@ -57,11 +58,7 @@ class NewDispatchStage(
   val reservationStations = Seq.fill(pipelineNum)(
     Module(
       if (Param.isOutOfOrderIssue)
-        new OutOfOrderReservationStation(
-          Param.Width.Rob._channelLength,
-          1,
-          1,
-          1,
+        new SimpleOoOReservationStation(
           Param.Width.Rob._channelLength,
           true
         )

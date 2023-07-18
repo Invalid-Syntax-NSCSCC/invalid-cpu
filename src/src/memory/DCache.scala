@@ -288,8 +288,10 @@ class DCache(
     is(State.ready) {
       // Stage 1 and Stage 2.a: Read BRAM and cache query in two cycles
 
+      val isCanMaintenance = WireDefault(true.B) // Fallback: Ready for request
+
       io.accessPort.req.isReady  := !io.maintenancePort.client.control.isL1Valid // Fallback: Ready for request
-      io.maintenancePort.isReady := true.B // Fallback: Ready for request
+      io.maintenancePort.isReady := isCanMaintenance
 
       // Step 1: BRAM read request
       val currentQueryIndex = WireDefault(queryIndexFromMemAddr(currentMemAddr))
@@ -322,8 +324,17 @@ class DCache(
       // Step 2: Read pass through (Last Step 2 is write)
       val isLastMatched = reqMemAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset) ===
         lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset)
+      val lastQueryIndex = queryIndexFromMemAddr(lastReg.memAddr)
       when(isLastMatched && lastReg.isWrite) {
         selectedDataLine := lastReg.writeDataLine
+      }
+      when(lastQueryIndex === queryIndex) {
+        statusTagLines.zipWithIndex.foreach {
+          case (statusTag, index) =>
+            when(index.U === lastReg.setIndex) {
+              statusTag.isDirty := true.B
+            }
+        }
       }
 
       // Step 2: Save data for later use
@@ -398,8 +409,8 @@ class DCache(
           // Cache miss
 
           io.accessPort.req.isReady    := false.B
-          io.maintenancePort.isReady   := false.B
           io.accessPort.res.isComplete := false.B
+          isCanMaintenance             := false.B
           isCompleteReg                := false.B
           isNeedWbReg                  := false.B // Fallback: No write back
 
@@ -412,7 +423,7 @@ class DCache(
           when(!isInvalidHit) {
             // Second, select from not dirty, if it can
             val isNotDirtyVec = statusTagLines.map(!_.isDirty)
-            val isNotDirtyHit = WireDefault(isInvalidVec.reduce(_ || _))
+            val isNotDirtyHit = isNotDirtyVec.reduce(_ || _)
             refillSetIndex := PriorityEncoder(isNotDirtyVec)
             when(!isNotDirtyHit) {
               // Finally, select randomly (using LFSR)
@@ -422,15 +433,17 @@ class DCache(
               } else {
                 refillSetIndex := 0.U
               }
-              isNeedWbReg := true.B
-
-              // Save data for later use
-              lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
+              isNeedWbReg           := true.B
+              isWriteBackReqSentReg := false.B
             }
           }
 
-          // Save data for later use
+          // Save data for later use, with write pass through
           lastReg.setIndex := refillSetIndex
+          lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
+          when(lastReg.isWrite && refillSetIndex === lastReg.setIndex && queryIndex === lastQueryIndex) {
+            lastReg.dataLine := lastReg.writeDataLine
+          }
 
           // Init refill state regs
           isReadReqSentReg      := false.B
@@ -451,20 +464,25 @@ class DCache(
 
       // Maintenance
       setCountDownReg := (Param.Count.DCache.setLen - 1).U
-
-      when(io.maintenancePort.client.control.isL1Valid) {
-        isNeedWbReg           := true.B
-        isWriteBackReqSentReg := false.B
-
+      when(io.maintenancePort.client.control.isL1Valid && isCanMaintenance) {
         when(io.maintenancePort.client.control.isInit) {
+          isNeedWbReg           := true.B
+          isWriteBackReqSentReg := false.B
+
           // Next Stage: Maintenance for all sets (no write-back)
           nextState := State.maintenanceInit
         }
         when(io.maintenancePort.client.control.isCoherentByIndex) {
+          isNeedWbReg           := true.B
+          isWriteBackReqSentReg := false.B
+
           // Next Stage: Maintenance for all sets
           nextState := State.maintenanceAll
         }
         when(io.maintenancePort.client.control.isCoherentByHit) {
+          isNeedWbReg           := true.B
+          isWriteBackReqSentReg := false.B
+
           // Next Stage: Maintenance only for hit
           nextState := State.maintenanceHit
         }
@@ -702,8 +720,10 @@ class DCache(
               ram.io.writeAddr := queryIndex
           }
 
-          // Next Stage 1
-          nextState := State.ready
+          when(axiMaster.io.write.res.isComplete) {
+            // Next Stage 1
+            nextState := State.ready
+          }
         }
       }.otherwise {
         statusTagRams.zipWithIndex.foreach {
@@ -741,7 +761,7 @@ class DCache(
         when(isNeedWbReg) {
           handleWb(writeBackAddr, selectedDataLine)
         }.otherwise {
-          when(!isSetCountDownZero) {
+          when(!isSetCountDownZero && axiMaster.io.write.res.isComplete) {
             setCountDownReg := setCountDownReg - 1.U
           }
 
@@ -752,12 +772,15 @@ class DCache(
               ram.io.writeAddr := queryIndex
           }
 
-          when(isSetCountDownZero) {
-            // Next Stage 1
-            nextState := State.ready
-          }.otherwise {
-            isNeedWbReg           := true.B
-            isWriteBackReqSentReg := false.B
+          when(axiMaster.io.write.res.isComplete) {
+            when(isSetCountDownZero) {
+              // Next Stage 1
+              nextState := State.ready
+
+            }.otherwise {
+              isNeedWbReg           := true.B
+              isWriteBackReqSentReg := false.B
+            }
           }
         }
       }.otherwise {
