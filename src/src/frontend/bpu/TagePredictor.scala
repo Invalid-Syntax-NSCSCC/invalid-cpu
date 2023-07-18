@@ -12,16 +12,16 @@ import frontend.bpu.utils.Lfsr
 // TAGE predictor
 // This is the main predictor
 class TagePredictor(
-  tagComponentNum:      Int      = Param.BPU.TagePredictor.tagComponentNum,
-  tagComponentTagWidth: Int      = Param.BPU.TagePredictor.tagComponentTagWidth,
-  ghrDepth:             Int      = Param.BPU.TagePredictor.ghrLength,
-  historyLengths:       Seq[Int] = Param.BPU.TagePredictor.componentHistoryLength,
-  phtDepths:            Seq[Int] = Param.BPU.TagePredictor.componentTableDepth,
-  componentCtrWidth:    Seq[Int] = Param.BPU.TagePredictor.componentCtrWidth,
-  componentUsefulWidth: Seq[Int] = Param.BPU.TagePredictor.componentUsefulWidth,
-  entryNum:             Int      = Param.BPU.RAS.entryNum,
-  addr:                 Int      = spec.Width.Mem._addr)
-    extends Module {
+                     tagComponentNum:      Int      = Param.BPU.TagePredictor.tagComponentNum,
+                     tagComponentTagWidth: Int      = Param.BPU.TagePredictor.tagComponentTagWidth,
+                     ghrDepth:             Int      = Param.BPU.TagePredictor.ghrLength,
+                     historyLengths:       Seq[Int] = Param.BPU.TagePredictor.componentHistoryLength,
+                     phtDepths:            Seq[Int] = Param.BPU.TagePredictor.componentTableDepth,
+                     componentCtrWidth:    Seq[Int] = Param.BPU.TagePredictor.componentCtrWidth,
+                     componentUsefulWidth: Seq[Int] = Param.BPU.TagePredictor.componentUsefulWidth,
+                     entryNum:             Int      = Param.BPU.RAS.entryNum,
+                     addr:                 Int      = spec.Width.Mem._addr)
+  extends Module {
   val addrWidth      = log2Ceil(addr)
   val pointerWidth   = log2Ceil(entryNum)
   val tagComPtrWidth = log2Ceil(tagComponentNum + 1)
@@ -37,7 +37,7 @@ class TagePredictor(
     val updateInfoPort = Input(new TagePredictorUpdateInfoPort)
 
     // TODO PMU
-//    val perfTagHitCounters = Output(Vec(32, UInt((tagComponentNum + 1).W)))
+    //    val perfTagHitCounters = Output(Vec(32, UInt((tagComponentNum + 1).W)))
 
   })
 
@@ -82,9 +82,9 @@ class TagePredictor(
   val isBaseUpdateCtr        = WireDefault(false.B)
   val isUpdateValid          = WireDefault(false.B)
   val globalHistoryUpdateReg = RegInit(false.B)
-  val updatePredictCorrect   = WireDefault(0.U(tagComponentNum.W))
-  val updateBranchTaken      = WireDefault(0.U(tagComponentNum.W))
-  val updateIsConditional    = WireDefault(0.U(tagComponentNum.W))
+  val updatePredictCorrect   = WireDefault(false.B)
+  val updateBranchTaken      = WireDefault(false.B)
+  val updateIsConditional    = WireDefault(false.B)
   val updateNewEntryFlag     = WireDefault(false.B) // Indicates the provider is new
   val updateProviderId       = WireDefault(0.U(tagComPtrWidth.W))
   val updateALtProviderId    = WireDefault(0.U(tagComPtrWidth.W))
@@ -139,41 +139,41 @@ class TagePredictor(
 
   // Tagged Predictor Generate
   val taggedPreditors = Seq.range(0, tagComponentNum).map { providerId =>
-    {
-      val taggedPreditor = Module(
-        new TaggedPreditor(
-          ghrLength      = historyLengths(providerId + 1),
-          phtDepth       = phtDepths(providerId + 1),
-          phtUsefulWidth = componentUsefulWidth(providerId + 1),
-          phtCtrWidth    = componentCtrWidth(providerId + 1)
-        )
+  {
+    val taggedPreditor = Module(
+      new TaggedPreditor(
+        ghrLength      = historyLengths(providerId + 1),
+        phtDepth       = phtDepths(providerId + 1),
+        phtUsefulWidth = componentUsefulWidth(providerId + 1),
+        phtCtrWidth    = componentCtrWidth(providerId + 1)
       )
-      // Query
-      taggedPreditor.io.isGlobalHistoryUpdate := isUpdateValid
-      taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1), 0)
-      taggedPreditor.io.pc                    := io.pc
-      tagUsefuls(providerId)                  := taggedPreditor.io.usefulBits
-      tagCtrs(providerId)                     := taggedPreditor.io.ctrBits
-      tagQueryTags(providerId)                := taggedPreditor.io.queryTag
-      tagOriginTags(providerId)               := taggedPreditor.io.hitIndex
-      tagTaken(providerId)                    := taggedPreditor.io.taken
-      tagHit(providerId)                      := taggedPreditor.io.tagHit
+    )
+    // Query
+    taggedPreditor.io.isGlobalHistoryUpdate := isUpdateValid
+    taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1), 0)
+    taggedPreditor.io.pc                    := io.pc
+    tagUsefuls(providerId)                  := taggedPreditor.io.usefulBits
+    tagCtrs(providerId)                     := taggedPreditor.io.ctrBits
+    tagQueryTags(providerId)                := taggedPreditor.io.queryTag
+    tagOriginTags(providerId)               := taggedPreditor.io.hitIndex
+    tagTaken(providerId)                    := taggedPreditor.io.taken
+    tagHit(providerId)                      := taggedPreditor.io.tagHit
 
-      // update
-      taggedPreditor.io.updatePc         := io.updatePc
-      taggedPreditor.io.updateValid      := (isUpdateValid & updateIsConditional)
-      taggedPreditor.io.incUseful        := tagUpdateIncUseful(providerId)
-      taggedPreditor.io.updateUseful     := tagUpdateUseful(providerId)
-      taggedPreditor.io.updateUsefulBits := updateMetaBundle.tagPredictorUsefulBits(providerId)
-      taggedPreditor.io.updateCtr        := tagUpdateCtr.asBools(providerId)
-      taggedPreditor.io.incCtr           := updateBranchTaken.asBools(providerId)
-      taggedPreditor.io.updateCtrBits    := updateMetaBundle.providerCtrBits(providerId)
-      taggedPreditor.io.reallocEntry     := tagUpdateReallocEntry(providerId)
-      taggedPreditor.io.updateTag        := tagUpdateNewTags(providerId)
-      taggedPreditor.io.updateIndex      := updateMetaBundle.tagPredictorHitIndex(providerId)
+    // update
+    taggedPreditor.io.updatePc         := io.updatePc
+    taggedPreditor.io.updateValid      := isUpdateValid && updateIsConditional
+    taggedPreditor.io.incUseful        := tagUpdateIncUseful(providerId)
+    taggedPreditor.io.updateUseful     := tagUpdateUseful(providerId)
+    taggedPreditor.io.updateUsefulBits := updateMetaBundle.tagPredictorUsefulBits(providerId)
+    taggedPreditor.io.updateCtr        := tagUpdateCtr.asBools(providerId)
+    taggedPreditor.io.incCtr           := updateBranchTaken
+    taggedPreditor.io.updateCtrBits    := updateMetaBundle.providerCtrBits(providerId)
+    taggedPreditor.io.reallocEntry     := tagUpdateReallocEntry(providerId)
+    taggedPreditor.io.updateTag        := tagUpdateNewTags(providerId)
+    taggedPreditor.io.updateIndex      := updateMetaBundle.tagPredictorHitIndex(providerId)
 
-      taggedPreditor
-    }
+    taggedPreditor
+  }
   }
 
   queryIsUseful := (takens(predPredictionId) =/= takens(altPredPredctionId))
@@ -208,7 +208,7 @@ class TagePredictor(
 
   // Output logic
   io.predictValid := true.B
-//  takens          := Cat(tagTaken, baseTaken)
+  //  takens          := Cat(tagTaken, baseTaken)
   Seq.range(1, tagComponentNum + 1).foreach { i =>
     takens(i) := tagTaken(i - 1)
   }
@@ -239,10 +239,10 @@ class TagePredictor(
       // skip ctrBitsVec(0)
       queryMetaBundle.providerCtrBits(i + 1) := tagCtrs(i)
     )
-//  queryMetaPort.providerCtrBits.drop(1).zip(tagCtrs).foreach {
-//    case (dst, src) =>
-//      dst := src
-//  }
+  //  queryMetaPort.providerCtrBits.drop(1).zip(tagCtrs).foreach {
+  //    case (dst, src) =>
+  //      dst := src
+  //  }
   io.bpuMetaPort         := BpuFtqMetaNdPort.default
   io.bpuMetaPort.bpuMeta := queryMetaBundle
 
@@ -253,10 +253,10 @@ class TagePredictor(
   // USE_ALT_ON_NA
   updateNewEntryFlag := (updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 3.U(3.W) ||
     updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 4.U(3.W) &&
-    updateProviderId =/= 0.U)
+      updateProviderId =/= 0.U)
   when(
-    isUpdateValid & updateNewEntryFlag &
-      updateMetaBundle.useful & ~io.updateInfoPort.predictCorrect
+    isUpdateValid && updateNewEntryFlag &&
+      updateMetaBundle.useful && !io.updateInfoPort.predictCorrect
   ) {
     useAltOnNaCounterTablesReg(updatePc(4, 2)) := Mux(
       useALtOnNaCounter === 15.U(4.W),
@@ -264,8 +264,8 @@ class TagePredictor(
       useALtOnNaCounter + 1.U
     )
   }.elsewhen(
-    isUpdateValid & updateNewEntryFlag &
-      updateMetaBundle.useful & io.updateInfoPort.predictCorrect
+    isUpdateValid && updateNewEntryFlag &&
+      updateMetaBundle.useful && io.updateInfoPort.predictCorrect
   ) {
     useAltOnNaCounterTablesReg(updatePc(4, 2)) := Mux(useALtOnNaCounter === 0.U(4.W), 0.U(4.W), useALtOnNaCounter - 1.U)
   }
@@ -323,13 +323,13 @@ class TagePredictor(
   // Fill update structs
   // update ctr Policy
   // update provider
-  when(updateIsConditional.orR & isUpdateValid) {
+  when(updateIsConditional && isUpdateValid) {
     updateCtr(updateProviderId) := true.B
   }
 
   // update altProvider if new entry
   when(
-    updateNewEntryFlag && updateIsConditional.orR &&
+    updateNewEntryFlag && updateIsConditional &&
       !io.updateInfoPort.predictCorrect && isUpdateValid
   ) {
     updateCtr(updateALtProviderId) := true.B
@@ -338,13 +338,13 @@ class TagePredictor(
   // tag update policy
 
   // Default 0
-//  val tagUpdateUseful       = WireDefault(0.U((tagComponentNum + 1).W))
-//  val tagUpdateIncUseful    = WireDefault(0.U((tagComponentNum + 1).W))
-//  val tagUpdateReallocEntry = WireDefault(0.U((tagComponentNum + 1).W))
+  //  val tagUpdateUseful       = WireDefault(0.U((tagComponentNum + 1).W))
+  //  val tagUpdateIncUseful    = WireDefault(0.U((tagComponentNum + 1).W))
+  //  val tagUpdateReallocEntry = WireDefault(0.U((tagComponentNum + 1).W))
 
   // Only update on conditional branches
-  when(updateIsConditional.xorR & isUpdateValid) {
-    when(updatePredictCorrect.xorR) {
+  when(updateIsConditional & isUpdateValid) {
+    when(updatePredictCorrect) {
       // if useful,update useful bits
       tagUpdateUseful(updateProviderId - 1.U) := updateMetaBundle.useful
       // Increase if correct, else decrease
@@ -377,10 +377,10 @@ class TagePredictor(
     )
   }
 
-//  // counter
-//  Seq.range(0, tagComponentNum + 1).foreach { i =>
-//    io.perfTagHitCounters(i) := io.perfTagHitCounters(i) + Cat(0.U(31.W), (i.U === predPredictionId))
-//  }
+  //  // counter
+  //  Seq.range(0, tagComponentNum + 1).foreach { i =>
+  //    io.perfTagHitCounters(i) := io.perfTagHitCounters(i) + Cat(0.U(31.W), (i.U === predPredictionId))
+  //  }
 
   // todo debug
 
