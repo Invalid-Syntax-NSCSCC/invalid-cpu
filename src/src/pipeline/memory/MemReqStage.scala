@@ -112,6 +112,18 @@ class MemReqStage
   storeIn.bits.isCached := isTrueCached
   storeOut.ready        := false.B
 
+  // CACOP workaround
+  val dCacheBitsDelta   = Param.Width.DCache._addr + Param.Width.DCache._byteOffset - Param.Width.DCache._indexOffsetMax
+  val iCacheBitsDelta   = Param.Width.ICache._addr + Param.Width.ICache._byteOffset - Param.Width.ICache._indexOffsetMax
+  val maxCacheBitsDelta = dCacheBitsDelta.max(iCacheBitsDelta)
+  val maxCacheMaintenanceCount = Math.pow(2, maxCacheBitsDelta).toInt - 1
+  val isDCacheWorkaround       = dCacheBitsDelta > 0
+  val isICacheWorkaround       = iCacheBitsDelta > 0
+  val cacheMaintenanceCountDownReg = Option.when(isDCacheWorkaround || isICacheWorkaround)(
+    RegInit(maxCacheMaintenanceCount.U)
+  )
+  cacheMaintenanceCountDownReg.foreach(reg => reg := reg)
+
   // Handle pipelined input
   when(selectedIn.instInfo.isValid) {
     when(selectedIn.translatedMemReq.isValid) {
@@ -143,17 +155,6 @@ class MemReqStage
     }
 
     // Handle cache maintenance
-    val dCacheBitsDelta = Param.Width.DCache._addr + Param.Width.DCache._byteOffset - Param.Width.DCache._indexOffsetMax
-    val iCacheBitsDelta = Param.Width.ICache._addr + Param.Width.ICache._byteOffset - Param.Width.ICache._indexOffsetMax
-    val maxCacheBitsDelta        = dCacheBitsDelta.max(iCacheBitsDelta)
-    val maxCacheMaintenanceCount = Math.pow(2, maxCacheBitsDelta).toInt - 1
-    val isDCacheWorkaround       = dCacheBitsDelta > 0
-    val isICacheWorkaround       = iCacheBitsDelta > 0
-    val cacheMaintenanceCountDownReg = Option.when(isDCacheWorkaround || isICacheWorkaround)(
-      RegInit(maxCacheMaintenanceCount.U)
-    )
-    cacheMaintenanceCountDownReg.foreach(reg => reg := reg)
-
     val isCacheMaintenance = selectedIn.cacheMaintenance.control.isInit ||
       selectedIn.cacheMaintenance.control.isCoherentByIndex ||
       selectedIn.cacheMaintenance.control.isCoherentByHit
@@ -181,6 +182,7 @@ class MemReqStage
         switch(selectedIn.cacheMaintenance.target) {
           is(CacheMaintenanceTargetType.data) {
             when(isCacheMaintenance) {
+              isComputed := false.B
               when(peer.iCacheMaintenance.isReady) {
                 peer.dCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
                 if (isDCacheWorkaround) {
@@ -191,13 +193,12 @@ class MemReqStage
                 } else {
                   isComputed := peer.dCacheMaintenance.isReady
                 }
-              }.otherwise {
-                isComputed := false.B
               }
             }
           }
           is(CacheMaintenanceTargetType.inst) {
             when(isCacheMaintenance) {
+              isComputed := false.B
               when(peer.dCacheMaintenance.isReady) {
                 peer.iCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
                 if (isICacheWorkaround) {
@@ -208,8 +209,6 @@ class MemReqStage
                 } else {
                   isComputed := peer.iCacheMaintenance.isReady
                 }
-              }.otherwise {
-                isComputed := false.B
               }
             }
           }
@@ -255,4 +254,9 @@ class MemReqStage
 
   // Submit pipelined result
   resultOutReg.valid := isComputed
+
+  // Handle flush
+  when(io.isFlush) {
+    cacheMaintenanceCountDownReg.foreach(_ := maxCacheMaintenanceCount.U)
+  }
 }
