@@ -67,17 +67,22 @@ class SimpleOoOReservationStation(
     ram(deq_ptr.io.value).valid := false.B
   }
 
-  // select which can issue
-  // val ramDownView = WireDefault(VecInit(Seq.range(0, queueLength).map { idx =>
-  //   ram(deq_ptr.io.incResults(idx))
-  // // if (!Param.isWritebackPassThroughWakeUp)
-  // }))
-
   val ramDownView = Wire(Vec(queueLength, Valid(new ReservationStationBundle)))
   ramDownView.zipWithIndex.foreach {
     case (dst, idx) =>
-      val ramElem = ram(deq_ptr.io.incResults(idx))
-      dst := ramElem
+      val src = ram(deq_ptr.io.incResults(idx))
+      dst := src
+      if (Param.isWritebackPassThroughWakeUp) {
+        io.writebacks.foreach { wb =>
+          dst.bits.robResult.readResults.zip(src.bits.robResult.readResults).foreach {
+            case (dstRead, srcRead) =>
+              when(srcRead.sel === RobDistributeSel.robId && wb.en && wb.robId === srcRead.result) {
+                dstRead.sel    := RobDistributeSel.realData
+                dstRead.result := wb.data
+              }
+          }
+        }
+      }
   }
 
   val ramDownViewEnableDeq = Wire(Vec(queueLength, Bool()))
