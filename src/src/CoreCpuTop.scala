@@ -214,7 +214,7 @@ class CoreCpuTop extends Module {
   csrScoreBoard.io.csrWriteStorePort := exePassWbStage_1.io.peer.get.csrWriteStorePort.get
   csrScoreBoard.io.occupyPort        := renameStage.io.peer.get.csrOccupyPort
   csrScoreBoard.io.isFlush           := cu.io.backendFlush
-  csrScoreBoard.io.branchFlush       := cu.io.frontendFlush
+  csrScoreBoard.io.branchFlush       := cu.io.isBranchFlush
 
   // Execution stage
   exeForMemStage.io.in                  <> dispatchStage.io.outs(Param.loadStoreIssuePipelineIndex)
