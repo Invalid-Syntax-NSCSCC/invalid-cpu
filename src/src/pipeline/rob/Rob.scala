@@ -41,8 +41,6 @@ class Rob(
     // `Rob` -> `Tlb`
     val tlbMaintenanceTrigger = Output(Bool())
 
-    val redirectCommit = Output(Bool())
-
     // `Csr` -> `Rob`
     val hasInterrupt = Input(Bool())
 
@@ -134,7 +132,6 @@ class Rob(
 
   io.tlbMaintenanceTrigger := isDelayedMaintenanceTrigger
   io.commitStore.valid     := false.B
-  io.redirectCommit        := false.B
   io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
     case ((commit, deqPort), idx) =>
       when(
@@ -163,8 +160,6 @@ class Rob(
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
             !(io.hasInterrupt || hasInterruptReg) &&
             deqPort.bits.wbPort.instInfo.isStore
-          io.redirectCommit := commit.ready &&
-            (deqPort.bits.wbPort.instInfo.ftqCommitInfo.isRedirect)
           deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready) && !isNextTlbMaintenanceTrigger
         } else {
           deqPort.ready := commit.ready &&
@@ -300,7 +295,6 @@ class Rob(
     // Disable peer port actions
     io.commitStore.valid     := false.B
     io.tlbMaintenanceTrigger := false.B
-    io.redirectCommit        := false.B
 
     if (isDiffTest) {
       io.commits.map(_.bits.instInfo).foreach { info =>
