@@ -50,7 +50,7 @@ jobs:
           export CHIPLAB_HOME=`pwd`/chiplab
           cd ./chiplab/sims/verilator/run_random
           make
-          if [ -s fail.log || -s nopass.log ]; then
+          if [[ -s fail.log || -s nopass.log ]]; then
             exit 1
           fi
 
