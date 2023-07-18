@@ -97,7 +97,7 @@ class TaggedPreditor(
   // default ctr topbit:1 otherbits:0 (weakly taken)
   // update entry
   val phtQueryResult  = WireDefault(PhtEntey.default)
-  val phtUpdateResult = RegInit(PhtEntey.default)
+  val phtUpdateResult = WireDefault(PhtEntey.default)
 
   val phtUpdateIndex = WireDefault(0.U(phtAddrWidth.W))
 
@@ -108,7 +108,7 @@ class TaggedPreditor(
   io.queryTag   := queryTagReg
   io.originTag  := phtQueryResult.tag
   io.taken      := (phtQueryResult.counter(phtCtrWidth - 1) === 1.U)
-  io.tagHit     := (queryTag === phtQueryResult.tag)
+  io.tagHit     := (queryTagReg === phtQueryResult.tag)
 
   ///////////////////////////////////////////////////////////////////////////////////////////
   // Update logic
@@ -158,7 +158,7 @@ class TaggedPreditor(
   }
 
   // to do  connect CSR hash
-  val ghtHashCsrHash = Module(new CsrHash(ghrLength + 1, phtTagWidth))
+  val ghtHashCsrHash = Module(new CsrHash(ghrLength + 1, phtAddrWidth))
   ghtHashCsrHash.io.data       := io.globalHistory
   ghtHashCsrHash.io.dataUpdate := io.isGlobalHistoryUpdate
   hashedGhtInput               := ghtHashCsrHash.io.hash
