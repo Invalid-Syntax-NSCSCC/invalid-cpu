@@ -36,8 +36,6 @@ class Cu(
     val branchExe = Input(new BackendRedirectPcNdPort)
     // `MultiInstQueue` -> `Cu`
     val redirectFromDecode = Input(new BackendRedirectPcNdPort)
-    // `Rob` -> `Cu`
-    val redirectCommit = Input(Bool())
     // `CsrScoreBoard` -> `Cu`
     val csrWriteInfo = Input(new CsrWriteNdPort)
     val newPc        = Output(new BackendRedirectPcNdPort)
@@ -210,6 +208,8 @@ class Cu(
 
   // Flush & jump
 
+  val redirectCommit = majorInstInfo.ftqCommitInfo.isRedirect && majorInstInfo.isValid
+
   val isExceptionReturn = majorInstInfo.exeOp === ExeInst.Op.ertn && majorInstInfo.isValid && !isException
 
   val cacopFlush = majorInstInfo.exeOp === ExeInst.Op.cacop && majorInstInfo.isValid
@@ -235,7 +235,7 @@ class Cu(
   )
   io.frontendFlushFtqId := RegNext(frontendFlushFtqId)
   io.backendFlush := RegNext(
-    isException || io.redirectCommit || refetchFlush || isExceptionReturn,
+    isException || redirectCommit || refetchFlush || isExceptionReturn,
     false.B
   )
   io.idleFlush := RegNext(idleFlush)

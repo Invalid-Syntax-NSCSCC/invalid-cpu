@@ -309,7 +309,6 @@ class CoreCpuTop extends Module {
   require(Param.jumpBranchPipelineIndex != 0)
   cu.io.branchExe          := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
   cu.io.redirectFromDecode := instQueue.io.redirectRequest
-  cu.io.redirectCommit     := rob.io.redirectCommit
 
   cu.io.hardwareInterrupt := io.intrpt
   cu.io.csrFlushRequest   := csr.io.csrFlushRequest
