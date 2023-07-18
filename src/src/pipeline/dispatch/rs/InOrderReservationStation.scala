@@ -4,6 +4,7 @@ import chisel3._
 import pipeline.common.DistributedQueuePlus
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
+import spec.Param.isWritebackPassThroughWakeUp
 
 class InOrderReservationStation(
   queueLength:          Int,
@@ -57,11 +58,25 @@ class InOrderReservationStation(
   queue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
     case (deq, out) =>
       if (supportCheckForIssue) {
-        val supportIssue = deq.bits.robResult.readResults.forall(
+        val outBits = WireDefault(deq.bits)
+        if (isWritebackPassThroughWakeUp) {
+          outBits.robResult.readResults.zip(deq.bits.robResult.readResults).foreach {
+            case (dst, src) =>
+              when(src.sel === RobDistributeSel.robId) {
+                io.writebacks.foreach { wb =>
+                  when(wb.en && src.result === wb.robId) {
+                    dst.sel    := RobDistributeSel.realData
+                    dst.result := wb.data
+                  }
+                }
+              }
+          }
+        }
+        val supportIssue = outBits.robResult.readResults.forall(
           _.sel === RobDistributeSel.realData
         )
         out.valid := deq.valid && supportIssue
-        out.bits  := deq.bits
+        out.bits  := outBits
         deq.ready := out.ready && supportIssue
       } else {
         out <> deq
