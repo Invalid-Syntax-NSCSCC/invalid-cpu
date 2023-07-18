@@ -5,7 +5,6 @@ import chisel3.util._
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
 import utils.MultiCounter
-import spec.Param
 
 class SimpleOoOReservationStation(
   queueLength:          Int,
@@ -67,23 +66,10 @@ class SimpleOoOReservationStation(
     ram(deq_ptr.io.value).valid := false.B
   }
 
-  val ramDownView = Wire(Vec(queueLength, Valid(new ReservationStationBundle)))
-  ramDownView.zipWithIndex.foreach {
-    case (dst, idx) =>
-      val src = ram(deq_ptr.io.incResults(idx))
-      dst := src
-      if (Param.isWritebackPassThroughWakeUp) {
-        io.writebacks.foreach { wb =>
-          dst.bits.robResult.readResults.zip(src.bits.robResult.readResults).foreach {
-            case (dstRead, srcRead) =>
-              when(srcRead.sel === RobDistributeSel.robId && wb.en && wb.robId === srcRead.result) {
-                dstRead.sel    := RobDistributeSel.realData
-                dstRead.result := wb.data
-              }
-          }
-        }
-      }
-  }
+  // select which can issue
+  val ramDownView = WireDefault(VecInit(Seq.range(0, queueLength).map { idx =>
+    ram(deq_ptr.io.incResults(idx))
+  }))
 
   val ramDownViewEnableDeq = Wire(Vec(queueLength, Bool()))
 
@@ -141,23 +127,21 @@ class SimpleOoOReservationStation(
     case (src, idx) =>
       ram(deq_ptr.io.incResults(idx)) := src
 
-      if (!Param.isWritebackPassThroughWakeUp) {
-        io.writebacks.foreach { wb =>
-          src.bits.regReadPort.preExeInstInfo.gprReadPorts
-            .lazyZip(src.bits.robResult.readResults)
-            .lazyZip(ram(deq_ptr.io.incResults(idx)).bits.robResult.readResults)
-            .foreach {
-              case (readPort, robReadResult, dst) =>
-                when(
-                  wb.en && readPort.en &&
-                    robReadResult.sel === RobDistributeSel.robId &&
-                    wb.robId === robReadResult.result
-                ) {
-                  dst.sel    := RobDistributeSel.realData
-                  dst.result := wb.data
-                }
-            }
-        }
+      io.writebacks.foreach { wb =>
+        src.bits.regReadPort.preExeInstInfo.gprReadPorts
+          .lazyZip(src.bits.robResult.readResults)
+          .lazyZip(ram(deq_ptr.io.incResults(idx)).bits.robResult.readResults)
+          .foreach {
+            case (readPort, robReadResult, dst) =>
+              when(
+                wb.en && readPort.en &&
+                  robReadResult.sel === RobDistributeSel.robId &&
+                  wb.robId === robReadResult.result
+              ) {
+                dst.sel    := RobDistributeSel.realData
+                dst.result := wb.data
+              }
+          }
       }
   }
 

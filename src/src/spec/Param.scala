@@ -18,8 +18,7 @@ object Param {
   val isForcedCache          = false || isReleasePackage
   val isBranchPredict        = true
 
-  val isWritebackPassThroughWakeUp = true
-  val canIssueSameWbRegInsts       = true
+  val canIssueSameWbRegInsts = true
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
