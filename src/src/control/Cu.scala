@@ -40,6 +40,7 @@ class Cu(
     val csrWriteInfo = Input(new CsrWriteNdPort)
     val newPc        = Output(new BackendRedirectPcNdPort)
 
+    val isBranchFlush      = Output(Bool())
     val frontendFlush      = Output(Bool())
     val frontendFlushFtqId = Output(UInt(Param.BPU.ftqPtrWitdh.W))
     val backendFlush       = Output(Bool())
@@ -238,7 +239,8 @@ class Cu(
     isException || redirectCommit || refetchFlush || isExceptionReturn,
     false.B
   )
-  io.idleFlush := RegNext(idleFlush)
+  io.idleFlush     := RegNext(idleFlush)
+  io.isBranchFlush := RegNext(io.branchExe.en)
 
   // Select new pc
   val newPc = RegInit(BackendRedirectPcNdPort.default)
