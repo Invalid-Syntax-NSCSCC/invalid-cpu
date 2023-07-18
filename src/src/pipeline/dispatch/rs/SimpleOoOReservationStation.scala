@@ -5,6 +5,7 @@ import chisel3.util._
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
 import utils.MultiCounter
+import spec.Param
 
 class SimpleOoOReservationStation(
   queueLength:          Int,
@@ -67,9 +68,17 @@ class SimpleOoOReservationStation(
   }
 
   // select which can issue
-  val ramDownView = WireDefault(VecInit(Seq.range(0, queueLength).map { idx =>
-    ram(deq_ptr.io.incResults(idx))
-  }))
+  // val ramDownView = WireDefault(VecInit(Seq.range(0, queueLength).map { idx =>
+  //   ram(deq_ptr.io.incResults(idx))
+  // // if (!Param.isWritebackPassThroughWakeUp)
+  // }))
+
+  val ramDownView = Wire(Vec(queueLength, Valid(new ReservationStationBundle)))
+  ramDownView.zipWithIndex.foreach {
+    case (dst, idx) =>
+      val ramElem = ram(deq_ptr.io.incResults(idx))
+      dst := ramElem
+  }
 
   val ramDownViewEnableDeq = Wire(Vec(queueLength, Bool()))
 
@@ -127,21 +136,23 @@ class SimpleOoOReservationStation(
     case (src, idx) =>
       ram(deq_ptr.io.incResults(idx)) := src
 
-      io.writebacks.foreach { wb =>
-        src.bits.regReadPort.preExeInstInfo.gprReadPorts
-          .lazyZip(src.bits.robResult.readResults)
-          .lazyZip(ram(deq_ptr.io.incResults(idx)).bits.robResult.readResults)
-          .foreach {
-            case (readPort, robReadResult, dst) =>
-              when(
-                wb.en && readPort.en &&
-                  robReadResult.sel === RobDistributeSel.robId &&
-                  wb.robId === robReadResult.result
-              ) {
-                dst.sel    := RobDistributeSel.realData
-                dst.result := wb.data
-              }
-          }
+      if (!Param.isWritebackPassThroughWakeUp) {
+        io.writebacks.foreach { wb =>
+          src.bits.regReadPort.preExeInstInfo.gprReadPorts
+            .lazyZip(src.bits.robResult.readResults)
+            .lazyZip(ram(deq_ptr.io.incResults(idx)).bits.robResult.readResults)
+            .foreach {
+              case (readPort, robReadResult, dst) =>
+                when(
+                  wb.en && readPort.en &&
+                    robReadResult.sel === RobDistributeSel.robId &&
+                    wb.robId === robReadResult.result
+                ) {
+                  dst.sel    := RobDistributeSel.realData
+                  dst.result := wb.data
+                }
+            }
+        }
       }
   }
 
