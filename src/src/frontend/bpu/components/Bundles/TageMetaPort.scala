@@ -9,8 +9,8 @@ class TageMetaPort(
   tagComponentNum:      Int = Param.BPU.TagePredictor.tagComponentNum,
   tagComponentTagWidth: Int = Param.BPU.TagePredictor.tagComponentTagWidth)
     extends Bundle {
-  val providerId             = UInt(log2Ceil(tagComponentNum).W)
-  val altProviderId          = UInt(log2Ceil(tagComponentNum).W)
+  val providerId             = UInt(log2Ceil(tagComponentNum+1).W)
+  val altProviderId          = UInt(log2Ceil(tagComponentNum+1).W)
   val useful                 = Bool()
   val providerCtrBits        = Vec(tagComponentNum + 1, UInt(3.W))
   val tagPredictorQueryTag   = Vec(tagComponentNum, UInt(tagComponentTagWidth.W))
