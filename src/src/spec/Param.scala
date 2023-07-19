@@ -16,6 +16,7 @@ object Param {
   val isNoPrivilege          = false || isReleasePackage
   val isCacheOnPg            = false
   val isForcedCache          = false || isReleasePackage
+  val isForcedUncached       = false
   val isBranchPredict        = true
 
   val isWritebackPassThroughWakeUp = true
