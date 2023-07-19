@@ -144,8 +144,9 @@ class Csr(
   }
 
   // TimeVal
+  val timerEnable = RegInit(false.B)
 
-  when(tcfg.out.en) {
+  when(timerEnable) {
     when(tval.out.timeVal === 0.U) {
       tval.in.timeVal := Mux(
         tcfg.out.periodic,
@@ -153,6 +154,7 @@ class Csr(
         "hffffffff".U(32.W)
       )
       estat.in.is_timeInt := true.B
+      timerEnable         := tcfg.out.periodic
     }.otherwise {
       tval.in.timeVal := tval.out.timeVal - 1.U
     }
@@ -290,6 +292,7 @@ class Csr(
           tcfg.in.initVal  := initVal
           tcfg.in.periodic := writePort.data(1)
           tcfg.in.en       := writePort.data(0)
+          timerEnable      := writePort.data(0)
           tval.in.timeVal  := initVal << 2
         }
         is(spec.Csr.Index.tval) {
