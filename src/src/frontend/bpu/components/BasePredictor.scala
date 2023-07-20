@@ -35,7 +35,7 @@ class BasePredictor(
   // base predictor ctrWidth == 2
 
   // 00-.weakly taken; 01->stronglty taken;  10-> strongly not taken' 11->weakly not taken
-  io.isTaken := (queryEntry(ctrWidth - 1) === 0.U(ctrWidth.W))
+  io.isTaken := queryEntry(ctrWidth - 1) === 0.U
   io.ctr     := queryEntry
 
   // update logic
