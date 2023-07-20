@@ -77,7 +77,7 @@ class single_readfirst_bram(size: Int, dataWidth: Int)
       Map(
         "RAM_WIDTH" -> dataWidth,
         "RAM_DEPTH" -> size,
-        "RAM_PERFORMANCE" -> "LOW_LATENCY"
+        "RAM_PERFORMANCE" -> "HIGH_PERFORMANCE"
       )
     ) {
   val io = IO(new Bundle {
@@ -97,7 +97,7 @@ class truedual_readfirst_bram(size: Int, dataWidth: Int)
       Map(
         "RAM_WIDTH" -> dataWidth,
         "RAM_DEPTH" -> size,
-        "RAM_PERFORMANCE" -> "LOW_LATENCY"
+        "RAM_PERFORMANCE" -> "HIGH_PERFORMANCE"
       )
     ) {
   val io = IO(new Bundle {
@@ -124,7 +124,7 @@ class simpledual_readfirst_bram(size: Int, dataWidth: Int)
       Map(
         "RAM_WIDTH" -> dataWidth,
         "RAM_DEPTH" -> size,
-        "RAM_PERFORMANCE" -> "LOW_LATENCY"
+        "RAM_PERFORMANCE" -> "HIGH_PERFORMANCE"
       )
     ) {
   val io = IO(new Bundle {

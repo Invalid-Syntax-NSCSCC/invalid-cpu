@@ -6,8 +6,8 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
-  val isChiplab        = true
-  val isReleasePackage = false
+  val isChiplab        = false
+  val isReleasePackage = true
 
   val isDiffTest             = false || isChiplab
   val isOutOfOrderIssue      = true
