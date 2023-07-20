@@ -279,6 +279,10 @@ class CoreCpuTop extends Module {
   if (isDiffTest) {
     rob.io.tlbDifftest.get := tlb.io.difftest.get
   }
+  rob.io.regfileDatas.zip(regFile.io.regfileDatas).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   // commit stage
   commitStage.io.ins.zip(rob.io.commits).foreach {
@@ -289,13 +293,6 @@ class CoreCpuTop extends Module {
 
   // Register file (GPR file)
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out
-  regFile.io.readPorts.zip(rob.io.regReadPortss).foreach {
-    case (rfReads, robReads) =>
-      rfReads.zip(robReads).foreach {
-        case (rfRead, robRead) =>
-          rfRead <> robRead
-      }
-  }
 
   // Control unit
   cu.io.instInfoPorts.zip(commitStage.io.cuInstInfoPorts).foreach {
@@ -381,9 +378,9 @@ class CoreCpuTop extends Module {
       t.cmt_excp_flush := c.cmt_excp_flush
     case _ =>
   }
-  (io.diffTest, regFile.io.difftest) match {
-    case (Some(t), Some(r)) =>
-      t.regs := r.gpr
+  (io.diffTest, regFile.io.regfileDatas) match {
+    case (Some(t), r) =>
+      t.regs := r
     case _ =>
   }
   (io.diffTest, csr.io.csrValues) match {

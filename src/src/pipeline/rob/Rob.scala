@@ -8,9 +8,9 @@ import pipeline.commit.WbNdPort
 import pipeline.commit.bundles._
 import pipeline.common.DistributedQueuePlus
 import pipeline.rob.bundles._
-import pipeline.rob.enums.{RegDataLocateSel, RobDistributeSel, RobInstState => State}
 import spec.Param._
 import spec._
+import pipeline.rob.enums.{RegDataState, RobDistributeSel, RobInstState => State}
 
 // assert: commits cannot ready 1 but not 0
 class Rob(
@@ -26,7 +26,9 @@ class Rob(
     val distributeResults = Output(Vec(issueNum, new RobReadResultNdPort))
 
     // `Rob` <-> `Regfile`
-    val regReadPortss    = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
+    val regfileDatas = Input(Vec(wordLength, UInt(spec.Width.Reg.data)))
+    // val regReadPortss    = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
+
     val instWbBroadCasts = Output(Vec(pipelineNum, new InstWbNdPort))
 
     // `ExeStage / LSU` -> `Rob`
@@ -51,10 +53,6 @@ class Rob(
   })
 
   // fall back
-  io.regReadPortss.foreach(_.foreach { port =>
-    port.en   := false.B
-    port.addr := DontCare
-  })
   io.commits.foreach { commit =>
     commit.valid := false.B
     commit.bits  := DontCare
@@ -114,12 +112,11 @@ class Rob(
 
       when(
         finishInst.bits.gprWrite.en &&
-          finishInst.bits.instInfo.robId === matchTable(
-            finishInst.bits.gprWrite.addr
-          ).robId
+          matchTable(finishInst.bits.gprWrite.addr).state === RegDataState.busy &&
+          finishInst.bits.instInfo.robId === matchTable(finishInst.bits.gprWrite.addr).data
       ) {
-        matchTable(finishInst.bits.gprWrite.addr).robResData.valid := true.B
-        matchTable(finishInst.bits.gprWrite.addr).robResData.bits  := finishInst.bits.gprWrite.data
+        matchTable(finishInst.bits.gprWrite.addr).state := RegDataState.ready
+        matchTable(finishInst.bits.gprWrite.addr).data  := finishInst.bits.gprWrite.data
       }
     }
   }
@@ -197,10 +194,9 @@ class Rob(
   queue.io.enqueuePorts
     .lazyZip(io.requests)
     .lazyZip(io.distributeResults)
-    .lazyZip(io.regReadPortss)
     .zipWithIndex
     .foreach {
-      case ((enq, req, res, rfReadPorts), idx) =>
+      case ((enq, req, res), idx) =>
         // enqueue
         enq.valid                     := req.valid
         enq.bits                      := RobInstStoreBundle.default
@@ -213,21 +209,14 @@ class Rob(
         res       := RobReadResultNdPort.default
         res.robId := queue.io.enqIncResults(idx)
         when(req.valid && req.ready && req.bits.writeRequest.en) {
-          matchTable(req.bits.writeRequest.addr).locate           := RegDataLocateSel.rob
-          matchTable(req.bits.writeRequest.addr).robId            := res.robId
-          matchTable(req.bits.writeRequest.addr).robResData.valid := false.B
+          matchTable(req.bits.writeRequest.addr).state := RegDataState.busy
+          matchTable(req.bits.writeRequest.addr).data  := res.robId
         }
 
         // request read data
-        req.bits.readRequests.lazyZip(res.readResults).lazyZip(rfReadPorts).foreach {
-          case (reqRead, resRead, rfReadPort) =>
-            resRead := RobDistributeBundle.default
-
-            rfReadPort.en   := true.B
-            rfReadPort.addr := reqRead.addr
-
-            val isLocateInRob      = matchTable(reqRead.addr).locate === RegDataLocateSel.rob
-            val isLocateInRobValid = matchTable(reqRead.addr).robResData.valid
+        req.bits.readRequests.lazyZip(res.readResults).foreach {
+          case (reqRead, resRead) =>
+            val isDataInRobBusy = WireDefault(matchTable(reqRead.addr).state === RegDataState.busy)
 
             val isLocateInPrevWrite        = WireDefault(false.B)
             val dataLocateInPrevWriteRobId = WireDefault(zeroWord)
@@ -248,7 +237,7 @@ class Rob(
             }
 
             resRead.sel := Mux(
-              reqRead.en && ((isLocateInRob && !isLocateInRobValid) || isLocateInPrevWrite),
+              reqRead.en && (isDataInRobBusy || isLocateInPrevWrite),
               RobDistributeSel.robId,
               RobDistributeSel.realData
             )
@@ -257,27 +246,28 @@ class Rob(
               resRead.result := Mux(
                 isLocateInPrevWrite,
                 dataLocateInPrevWriteRobId,
-                Mux(
-                  isLocateInRob,
-                  Mux(
-                    isLocateInRobValid,
-                    matchTable(reqRead.addr).robResData.bits,
-                    matchTable(reqRead.addr).robId
-                  ),
-                  rfReadPort.data
-                )
+                matchTable(reqRead.addr).data
+                // Mux(
+                //   isLocateInRob,
+                //   Mux(
+                //     isLocateInRobValid,
+                //     matchTable(reqRead.addr).robResData.bits,
+                //     matchTable(reqRead.addr).robId
+                //   ),
+                //   rfReadPort.data
+                // )
               )
             } else {
-              resRead.result :=
-                Mux(
-                  isLocateInRob,
-                  Mux(
-                    isLocateInRobValid,
-                    matchTable(reqRead.addr).robResData.bits,
-                    matchTable(reqRead.addr).robId
-                  ),
-                  rfReadPort.data
-                )
+              resRead.result := matchTable(reqRead.addr).data
+              // Mux(
+              //   isLocateInRob,
+              //   Mux(
+              //     isLocateInRobValid,
+              //     matchTable(reqRead.addr).robResData.bits,
+              //     matchTable(reqRead.addr).robId
+              //   ),
+              //   rfReadPort.data
+              // )
             }
         }
 
@@ -288,8 +278,14 @@ class Rob(
 
   when(io.isFlush) {
     // Reset registers
-    matchTable.foreach(_.locate := RegDataLocateSel.regfile)
-    matchTable.foreach(_.robResData.valid := false.B)
+    // matchTable.foreach(_.locate := RegDataLocateSel.regfile)
+    // matchTable.foreach(_.robResData.valid := false.B)
+    matchTable.zip(io.regfileDatas).foreach {
+      case (dst, src) => {
+        dst.state := RegDataState.ready
+        dst.data  := src
+      }
+    }
     isDelayedMaintenanceTrigger := false.B
 
     // Disable peer port actions

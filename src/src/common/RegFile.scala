@@ -12,14 +12,8 @@ class RegFile(
     extends Module {
   val io = IO(new Bundle {
     val writePorts = Input(Vec(writeNum, new RfWriteNdPort))
-    val readPorts  = Vec(issueNum, Vec(readNum, new RfReadPort))
 
-    val difftest =
-      if (isDiffTest)
-        Some(Output(new Bundle {
-          val gpr = Vec(Count.reg, UInt(Width.Reg.data))
-        }))
-      else None
+    val regfileDatas = Output(Vec(Count.reg, UInt(spec.Width.Reg.data)))
   })
 
   // 32 bits registers of 32 number
@@ -38,32 +32,8 @@ class RegFile(
       }
   }
 
-  // Read
-  io.readPorts.foreach { readPorts =>
-    readPorts.foreach { readPort =>
-      readPort.data := regs(readPort.addr)
-    // readPort.data := zeroWord
-    // when(readPort.addr === 0.U) {
-    //   // Always zero
-    //   readPort.data := zeroWord
-    // }.elsewhen(readPort.en) {
-    //   readPort.data := regs(readPort.addr)
-    //   io.writePorts.foreach { write =>
-    //     when(write.en && write.addr === readPort.addr) {
-    //       readPort.data := write.data
-    //     }
-    //   }
-    // }
-    }
-  }
-
-  // Diff test
-  io.difftest match {
-    case Some(dt) =>
-      dt.gpr.zip(regs).foreach {
-        case (port, reg) =>
-          port := reg
-      }
-    case _ =>
+  io.regfileDatas.zip(regs).foreach {
+    case (port, reg) =>
+      port := reg
   }
 }
