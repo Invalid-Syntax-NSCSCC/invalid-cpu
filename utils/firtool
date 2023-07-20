@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ARGS='-O=release --dedup --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --disable-all-randomization --lowering-options disallowLocalVariables --split-verilog -o build/final/'
+ARGS='-O=release --dedup --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --disable-all-randomization --lowering-options disallowLocalVariables'
 
 # Workaround
 for arg do
@@ -12,7 +12,7 @@ for arg do
 done
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    firtool_darwin -O=release --dedup --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --disable-all-randomization --lowering-options disallowLocalVariables --split-verilog -o build/final/ "$@"
+    firtool_darwin -O=release --dedup --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --disable-all-randomization --lowering-options disallowLocalVariables "$@"
 else
-    firtool_ubuntu2004 -O=release --dedup --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --disable-all-randomization --lowering-options disallowLocalVariables --split-verilog -o build/final/ "$@"
+    firtool_ubuntu2004 -O=release --dedup --disable-annotation-unknown --add-vivado-ram-address-conflict-synthesis-bug-workaround --disable-all-randomization --lowering-options disallowLocalVariables "$@"
 fi

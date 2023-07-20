@@ -9,7 +9,7 @@ object Elaborate extends App {
 
   if (useMFC) {
     (new circt.stage.ChiselStage)
-      .execute(args, generator :+ CIRCTTargetAnnotation(CIRCTTarget.Verilog))
+      .execute(args, generator :+ CIRCTTargetAnnotation(CIRCTTarget.SystemVerilog))
   } else {
     (new ChiselStage).execute(args, generator)
   }

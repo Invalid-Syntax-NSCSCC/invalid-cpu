@@ -10,7 +10,7 @@ import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.BaseStage
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
 import pipeline.memory.enums.AddrTransType
-import spec.Param.{isCacheOnPg, isDiffTest, isForcedCache, isNoPrivilege}
+import spec.Param.{isCacheOnPg, isDiffTest, isForcedCache, isForcedUncached, isNoPrivilege}
 import spec.Value.Csr
 import spec.Width
 
@@ -162,6 +162,9 @@ class AddrTransStage
   }
   if (isForcedCache) {
     out.isCached := true.B
+  }
+  if (isForcedUncached) {
+    out.isCached := false.B
   }
 
   // Handle TLB maintenance

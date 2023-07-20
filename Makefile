@@ -10,6 +10,7 @@ test:
 verilog:
 	mkdir -p $(BUILD_DIR)/final
 	./millw -i __.test.runMain Elaborate -td $(BUILD_DIR)
+	cp -f $(BUILD_DIR)/CoreCpuTop.* $(BUILD_DIR)/final/
 	cp -f ./verilog/* $(BUILD_DIR)/final/
 
 chiplab:
@@ -34,6 +35,6 @@ checkformat:
 	./millw -i __.checkFormat
 
 clean:
-	-rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)
 
 .PHONY: test verilog chiplab help compile ide reformat checkformat clean
