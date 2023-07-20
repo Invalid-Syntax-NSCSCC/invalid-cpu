@@ -21,13 +21,11 @@ class Rob(
     extends Module {
   val io = IO(new Bundle {
     // `Rob` <-> `IssueStage`
-    // val emptyNum          = Output(UInt(log2Ceil(robLength + 1).W))
     val requests          = Vec(issueNum, Flipped(Decoupled(new RobReadRequestNdPort)))
     val distributeResults = Output(Vec(issueNum, new RobReadResultNdPort))
 
     // `Rob` <-> `Regfile`
     val regfileDatas = Input(Vec(wordLength, UInt(spec.Width.Reg.data)))
-    // val regReadPortss    = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RfReadPort)))
 
     val instWbBroadCasts = Output(Vec(pipelineNum, new InstWbNdPort))
 
@@ -91,8 +89,7 @@ class Rob(
       dst.data  := src.bits.gprWrite.data
   }
 
-  /** deal with finished insts
-    */
+  // deal with finished insts
 
   io.finishInsts.foreach { finishInst =>
     finishInst.ready := true.B
@@ -121,8 +118,7 @@ class Rob(
     }
   }
 
-  /** Commit
-    */
+  // Commit
 
   val hasInterruptReg             = RegInit(false.B)
   val isDelayedMaintenanceTrigger = RegNext(false.B, false.B)
@@ -247,39 +243,18 @@ class Rob(
                 isLocateInPrevWrite,
                 dataLocateInPrevWriteRobId,
                 matchTable(reqRead.addr).data
-                // Mux(
-                //   isLocateInRob,
-                //   Mux(
-                //     isLocateInRobValid,
-                //     matchTable(reqRead.addr).robResData.bits,
-                //     matchTable(reqRead.addr).robId
-                //   ),
-                //   rfReadPort.data
-                // )
               )
             } else {
               resRead.result := matchTable(reqRead.addr).data
-              // Mux(
-              //   isLocateInRob,
-              //   Mux(
-              //     isLocateInRobValid,
-              //     matchTable(reqRead.addr).robResData.bits,
-              //     matchTable(reqRead.addr).robId
-              //   ),
-              //   rfReadPort.data
-              // )
             }
         }
 
     }
 
-  /** flush
-    */
+  // flush
 
   when(io.isFlush) {
     // Reset registers
-    // matchTable.foreach(_.locate := RegDataLocateSel.regfile)
-    // matchTable.foreach(_.robResData.valid := false.B)
     matchTable.zip(io.regfileDatas).foreach {
       case (dst, src) => {
         dst.state := RegDataState.ready
