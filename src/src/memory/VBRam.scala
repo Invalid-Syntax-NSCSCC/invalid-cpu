@@ -24,7 +24,6 @@ class VSingleBRam(size: Int, dataWidth: Int) extends Module {
   blackBox.io.regcea := false.B
   io.dataOut         := blackBox.io.douta
 }
-
 class VTrueDualBRam(size: Int, dataWidth: Int) extends Module {
   // TODO: customize it as you want
   val addrWidth = log2Ceil(size)
@@ -54,14 +53,14 @@ class VTrueDualBRam(size: Int, dataWidth: Int) extends Module {
   blackBox.io.clka   := clock
   blackBox.io.wea    := io.port0.isWrite
   blackBox.io.web    := io.port1.isWrite
-  blackBox.io.ena    := io.port0.isWrite||io.port0.isRead
-  blackBox.io.enb    := io.port1.isWrite||io.port1.isRead
+  blackBox.io.ena    := io.port0.isWrite || io.port0.isRead
+  blackBox.io.enb    := io.port1.isWrite || io.port1.isRead
   blackBox.io.rsta   := reset
   blackBox.io.rstb   := reset
-  blackBox.io.regcea := false.B
-  blackBox.io.regceb := false.B
-  io.port0.dataOut           <> blackBox.io.douta
-  io.port1.dataOut             <> blackBox.io.doutb
+  blackBox.io.regcea := true.B
+  blackBox.io.regceb := true.B
+  io.port0.dataOut   <> blackBox.io.douta
+  io.port1.dataOut   <> blackBox.io.doutb
 }
 
 class VSimpleDualBRam(size: Int, dataWidth: Int) extends Module {
@@ -84,7 +83,7 @@ class VSimpleDualBRam(size: Int, dataWidth: Int) extends Module {
   blackBox.io.wea    := io.isWrite
   blackBox.io.enb    := true.B
   blackBox.io.rstb   := reset
-  blackBox.io.regceb := false.B
+  blackBox.io.regceb := true.B
   io.dataOut         := blackBox.io.doutb
 }
 
@@ -93,7 +92,7 @@ class single_readfirst_bram(size: Int, dataWidth: Int)
       Map(
         "RAM_WIDTH" -> dataWidth,
         "RAM_DEPTH" -> size,
-        "RAM_PERFORMANCE" -> "HIGH_PERFORMANCE"
+        "RAM_PERFORMANCE" -> "LOW_LATENCY"
       )
     ) {
   val io = IO(new Bundle {
@@ -113,7 +112,7 @@ class truedual_readfirst_bram(size: Int, dataWidth: Int)
       Map(
         "RAM_WIDTH" -> dataWidth,
         "RAM_DEPTH" -> size,
-        "RAM_PERFORMANCE" -> "HIGH_PERFORMANCE"
+        "RAM_PERFORMANCE" -> "LOW_LATENCY"
       )
     ) {
   val io = IO(new Bundle {
@@ -140,7 +139,7 @@ class simpledual_readfirst_bram(size: Int, dataWidth: Int)
       Map(
         "RAM_WIDTH" -> dataWidth,
         "RAM_DEPTH" -> size,
-        "RAM_PERFORMANCE" -> "HIGH_PERFORMANCE"
+        "RAM_PERFORMANCE" -> "LOW_LATENCY"
       )
     ) {
   val io = IO(new Bundle {

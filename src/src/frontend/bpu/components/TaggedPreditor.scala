@@ -3,7 +3,7 @@ import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util._
 import frontend.bpu.utils.{Bram, CsrHash}
-import memory.{VSimpleDualBRam, VTrueDualBRam}
+import memory.VSimpleDualBRam
 import spec.{Param, Width}
 
 class TaggedPreditor(
