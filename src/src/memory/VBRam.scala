@@ -24,6 +24,7 @@ class VSingleBRam(size: Int, dataWidth: Int) extends Module {
   blackBox.io.regcea := false.B
   io.dataOut         := blackBox.io.douta
 }
+
 class VTrueDualBRam(size: Int, dataWidth: Int) extends Module {
   // TODO: customize it as you want
   val addrWidth = log2Ceil(size)
