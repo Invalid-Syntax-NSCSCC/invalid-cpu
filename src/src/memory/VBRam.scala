@@ -25,28 +25,44 @@ class VSingleBRam(size: Int, dataWidth: Int) extends Module {
   io.dataOut         := blackBox.io.douta
 }
 
-//class VTrueDualBRam(size: Int, dataWidth: Int) extends Module {
-//  // TODO: customize it as you want
-//  val io = IO(new Bundle {})
-//
-//  val blackBox = Module(new truedual_readfirst_bram(size, dataWidth))
-//
-//  blackBox.io.addra  := DontCare
-//  blackBox.io.addrb  := DontCare
-//  blackBox.io.dina   := DontCare
-//  blackBox.io.dinb   := DontCare
-//  blackBox.io.clka   := DontCare
-//  blackBox.io.wea    := DontCare
-//  blackBox.io.web    := DontCare
-//  blackBox.io.ena    := DontCare
-//  blackBox.io.enb    := DontCare
-//  blackBox.io.rsta   := DontCare
-//  blackBox.io.rstb   := DontCare
-//  blackBox.io.regcea := DontCare
-//  blackBox.io.regceb := DontCare
-//  DontCare           <> blackBox.io.douta
-//  DontCare           <> blackBox.io.doutb
-//}
+class VTrueDualBRam(size: Int, dataWidth: Int) extends Module {
+  // TODO: customize it as you want
+  val addrWidth = log2Ceil(size)
+  val io = IO(new Bundle {
+    val port0 = new Bundle() {
+      val isWrite = Input(Bool())
+      val isRead  = Input(Bool())
+      val addr    = Input(UInt(addrWidth.W))
+      val dataIn  = Input(UInt(dataWidth.W))
+      val dataOut = Output(UInt(dataWidth.W))
+    }
+    val port1 = new Bundle() {
+      val isWrite = Input(Bool())
+      val isRead  = Input(Bool())
+      val addr    = Input(UInt(addrWidth.W))
+      val dataIn  = Input(UInt(dataWidth.W))
+      val dataOut = Output(UInt(dataWidth.W))
+    }
+  })
+
+  val blackBox = Module(new truedual_readfirst_bram(size, dataWidth))
+
+  blackBox.io.addra  := io.port0.addr
+  blackBox.io.addrb  := io.port1.addr
+  blackBox.io.dina   := io.port0.dataIn
+  blackBox.io.dinb   := io.port1.dataIn
+  blackBox.io.clka   := clock
+  blackBox.io.wea    := io.port0.isWrite
+  blackBox.io.web    := io.port1.isWrite
+  blackBox.io.ena    := io.port0.isWrite || io.port0.isRead
+  blackBox.io.enb    := io.port1.isWrite || io.port1.isRead
+  blackBox.io.rsta   := reset
+  blackBox.io.rstb   := reset
+  blackBox.io.regcea := false.B
+  blackBox.io.regceb := false.B
+  io.port0.dataOut   <> blackBox.io.douta
+  io.port1.dataOut   <> blackBox.io.doutb
+}
 
 class VSimpleDualBRam(size: Int, dataWidth: Int) extends Module {
   val addrWidth = log2Ceil(size)

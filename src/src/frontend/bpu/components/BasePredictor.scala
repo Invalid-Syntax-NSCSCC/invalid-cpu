@@ -60,7 +60,7 @@ class BasePredictor(
 
   val ctrRam = Module(
     new VSimpleDualBRam(
-      tableDepthLog, // size
+      tableDepth, // size
       ctrWidth // dataWidth
     )
   )

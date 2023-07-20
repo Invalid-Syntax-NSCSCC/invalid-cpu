@@ -12,16 +12,16 @@ import frontend.bpu.utils.Lfsr
 // TAGE predictor
 // This is the main predictor
 class TagePredictor(
-                     tagComponentNum:      Int      = Param.BPU.TagePredictor.tagComponentNum,
-                     tagComponentTagWidth: Int      = Param.BPU.TagePredictor.tagComponentTagWidth,
-                     ghrDepth:             Int      = Param.BPU.TagePredictor.ghrLength,
-                     historyLengths:       Seq[Int] = Param.BPU.TagePredictor.componentHistoryLength,
-                     phtDepths:            Seq[Int] = Param.BPU.TagePredictor.componentTableDepth,
-                     componentCtrWidth:    Seq[Int] = Param.BPU.TagePredictor.componentCtrWidth,
-                     componentUsefulWidth: Seq[Int] = Param.BPU.TagePredictor.componentUsefulWidth,
-                     entryNum:             Int      = Param.BPU.RAS.entryNum,
-                     addr:                 Int      = spec.Width.Mem._addr)
-  extends Module {
+  tagComponentNum:      Int      = Param.BPU.TagePredictor.tagComponentNum,
+  tagComponentTagWidth: Int      = Param.BPU.TagePredictor.tagComponentTagWidth,
+  ghrDepth:             Int      = Param.BPU.TagePredictor.ghrLength,
+  historyLengths:       Seq[Int] = Param.BPU.TagePredictor.componentHistoryLength,
+  phtDepths:            Seq[Int] = Param.BPU.TagePredictor.componentTableDepth,
+  componentCtrWidth:    Seq[Int] = Param.BPU.TagePredictor.componentCtrWidth,
+  componentUsefulWidth: Seq[Int] = Param.BPU.TagePredictor.componentUsefulWidth,
+  entryNum:             Int      = Param.BPU.RAS.entryNum,
+  addr:                 Int      = spec.Width.Mem._addr)
+    extends Module {
   val addrWidth      = log2Ceil(addr)
   val pointerWidth   = log2Ceil(entryNum)
   val tagComPtrWidth = log2Ceil(tagComponentNum + 1)
@@ -135,45 +135,44 @@ class TagePredictor(
   basePredictor.io.updatePc    := updatePc
   basePredictor.io.isCtrInc    := updateBranchTaken
   basePredictor.io.updateCtr   := updateMetaBundle.providerCtrBits(0)
-  // basePredictor.io.updateCtr   <> io.updateInfoPort.bpuMeta.providerCtrBits(0)
 
   // Tagged Predictor Generate
   val taggedPreditors = Seq.range(0, tagComponentNum).map { providerId =>
-  {
-    val taggedPreditor = Module(
-      new TaggedPreditor(
-        ghrLength      = historyLengths(providerId + 1),
-        phtDepth       = phtDepths(providerId + 1),
-        phtUsefulWidth = componentUsefulWidth(providerId + 1),
-        phtCtrWidth    = componentCtrWidth(providerId + 1)
+    {
+      val taggedPreditor = Module(
+        new TaggedPreditor(
+          ghrLength      = historyLengths(providerId + 1),
+          phtDepth       = phtDepths(providerId + 1),
+          phtUsefulWidth = componentUsefulWidth(providerId + 1),
+          phtCtrWidth    = componentCtrWidth(providerId + 1)
+        )
       )
-    )
-    // Query
-    taggedPreditor.io.isGlobalHistoryUpdate := isUpdateValid
-    taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1), 0)
-    taggedPreditor.io.pc                    := io.pc
-    tagUsefuls(providerId)                  := taggedPreditor.io.usefulBits
-    tagCtrs(providerId)                     := taggedPreditor.io.ctrBits
-    tagQueryTags(providerId)                := taggedPreditor.io.queryTag
-    tagOriginTags(providerId)               := taggedPreditor.io.hitIndex
-    tagTaken(providerId)                    := taggedPreditor.io.taken
-    tagHit(providerId)                      := taggedPreditor.io.tagHit
+      // Query
+      taggedPreditor.io.isGlobalHistoryUpdate := isUpdateValid
+      taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1), 0)
+      taggedPreditor.io.pc                    := io.pc
+      tagUsefuls(providerId)                  := taggedPreditor.io.usefulBits
+      tagCtrs(providerId)                     := taggedPreditor.io.ctrBits
+      tagQueryTags(providerId)                := taggedPreditor.io.queryTag
+      tagOriginTags(providerId)               := taggedPreditor.io.hitIndex
+      tagTaken(providerId)                    := taggedPreditor.io.taken
+      tagHit(providerId)                      := taggedPreditor.io.tagHit
 
-    // update
-    taggedPreditor.io.updatePc         := io.updatePc
-    taggedPreditor.io.updateValid      := isUpdateValid && updateIsConditional
-    taggedPreditor.io.incUseful        := tagUpdateIncUseful(providerId)
-    taggedPreditor.io.updateUseful     := tagUpdateUseful(providerId)
-    taggedPreditor.io.updateUsefulBits := updateMetaBundle.tagPredictorUsefulBits(providerId)
-    taggedPreditor.io.updateCtr        := tagUpdateCtr.asBools(providerId)
-    taggedPreditor.io.incCtr           := updateBranchTaken
-    taggedPreditor.io.updateCtrBits    := updateMetaBundle.providerCtrBits(providerId)
-    taggedPreditor.io.reallocEntry     := tagUpdateReallocEntry(providerId)
-    taggedPreditor.io.updateTag        := tagUpdateNewTags(providerId)
-    taggedPreditor.io.updateIndex      := updateMetaBundle.tagPredictorHitIndex(providerId)
+      // update
+      taggedPreditor.io.updatePc         := io.updatePc
+      taggedPreditor.io.updateValid      := isUpdateValid && updateIsConditional
+      taggedPreditor.io.incUseful        := tagUpdateIncUseful(providerId)
+      taggedPreditor.io.updateUseful     := tagUpdateUseful(providerId)
+      taggedPreditor.io.updateUsefulBits := updateMetaBundle.tagPredictorUsefulBits(providerId)
+      taggedPreditor.io.updateCtr        := tagUpdateCtr.asBools(providerId)
+      taggedPreditor.io.incCtr           := updateBranchTaken
+      taggedPreditor.io.updateCtrBits    := updateMetaBundle.providerCtrBits(providerId)
+      taggedPreditor.io.reallocEntry     := tagUpdateReallocEntry(providerId)
+      taggedPreditor.io.updateTag        := tagUpdateNewTags(providerId)
+      taggedPreditor.io.updateIndex      := updateMetaBundle.tagPredictorHitIndex(providerId)
 
-    taggedPreditor
-  }
+      taggedPreditor
+    }
   }
 
   queryIsUseful := (takens(predPredictionId) =/= takens(altPredPredctionId))
@@ -253,7 +252,7 @@ class TagePredictor(
   // USE_ALT_ON_NA
   updateNewEntryFlag := (updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 3.U(3.W) ||
     updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 4.U(3.W) &&
-      updateProviderId =/= 0.U)
+    updateProviderId =/= 0.U)
   when(
     isUpdateValid && updateNewEntryFlag &&
       updateMetaBundle.useful && !io.updateInfoPort.predictCorrect
@@ -302,16 +301,14 @@ class TagePredictor(
   // Shorter history component has a higher chance of chosen
   // foreach from high index to low index
 
-  tagUpdateUsefulZeroId := 0.U(log2Ceil(tagComponentNum + 1).W)
+  tagUpdateUsefulZeroId := 0.U(tagComPtrWidth.W)
   tagUpdateQueryUsefulsMatch.zipWithIndex.reverse.foreach {
     case (isMatch, index) =>
       when(
-        isMatch && (index.asUInt(log2Ceil(tagComponentTagWidth)) + 1.U(
-          log2Ceil(tagComponentTagWidth).W
-        ) > updateProviderId)
+        isMatch && (index.asUInt(log2Ceil(tagComponentTagWidth)) + 1.U > updateProviderId)
       ) {
         when(tagUpdateUsefulPingpongCounter(index)) {
-          tagUpdateUsefulZeroId := index.U((log2Ceil(tagComponentNum + 1).W))
+          tagUpdateUsefulZeroId := index.U(tagComPtrWidth.W)
         }
       }
   }
