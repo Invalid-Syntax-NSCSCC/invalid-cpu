@@ -177,7 +177,7 @@ class CoreCpuTop extends Module {
   instQueue.io.isFrontendFlush := cu.io.frontendFlush
   instQueue.io.isBackendFlush  := cu.io.backendFlush
   instQueue.io.idleBlocking    := cu.io.idleFlush
-  instQueue.io.interruptWakeUp := csr.io.hasInterrupt
+  instQueue.io.hasInterrupt    := csr.io.hasInterrupt
 
   // rename stage
   renameStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
