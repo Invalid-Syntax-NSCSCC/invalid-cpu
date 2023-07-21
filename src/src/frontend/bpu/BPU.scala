@@ -163,10 +163,10 @@ class BPU(
   val tageUpdateInfo = Wire(new TagePredictorUpdateInfoPort)
   val ftbEntryUpdate = Wire(new FtbEntryNdPort)
   val rasPush = WireDefault(
-    io.bpuFtqPort.ftqTrainMeta.valid & (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.call)
+    io.bpuFtqPort.ftqTrainMeta.valid && (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.call)
   )
   val rasPop = WireDefault(
-    io.bpuFtqPort.ftqTrainMeta.valid & (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.ret)
+    io.bpuFtqPort.ftqTrainMeta.valid && (io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.ret)
   )
   val rasPushAddr = WireDefault(io.bpuFtqPort.ftqTrainMeta.fallThroughAddress)
 
@@ -180,12 +180,12 @@ class BPU(
 
   // Direction preditor update policy
   tageUpdateInfo.valid          := io.bpuFtqPort.ftqTrainMeta.valid
-  tageUpdateInfo.predictCorrect := io.bpuFtqPort.ftqTrainMeta.valid & ~misPredict
+  tageUpdateInfo.predictCorrect := !misPredict
   tageUpdateInfo.isConditional  := io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.cond
   tageUpdateInfo.branchTaken    := io.bpuFtqPort.ftqTrainMeta.isTaken
-  tageUpdateInfo.bpuMeta        := io.bpuFtqPort.ftqTrainMeta.bpuMeta
+  tageUpdateInfo.bpuMeta        := io.bpuFtqPort.ftqTrainMeta.tageMeta
 
-  ftbEntryUpdate.valid              := ~(io.bpuFtqPort.ftqTrainMeta.ftbDirty & io.bpuFtqPort.ftqTrainMeta.ftbHit)
+  ftbEntryUpdate.valid              := ~(io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
   ftbEntryUpdate.tag                := io.bpuFtqPort.ftqTrainMeta.startPc(addr - 1, log2Ceil(ftbNset) + 2)
   ftbEntryUpdate.branchType         := io.bpuFtqPort.ftqTrainMeta.branchType
   ftbEntryUpdate.isCrossCacheline   := io.bpuFtqPort.ftqTrainMeta.isCrossCacheline

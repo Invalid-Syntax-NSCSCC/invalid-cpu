@@ -78,23 +78,25 @@ class TagePredictor(
   val tagHitIndexs  = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(10.W))))
 
   // update
-  val updatePc               = WireDefault(0.U(Width.Reg.data))
-  val isBaseUpdateCtr        = WireDefault(false.B)
-  val isUpdateValid          = WireDefault(false.B)
-  val globalHistoryUpdateReg = RegInit(false.B)
-  val updatePredictCorrect   = WireDefault(false.B)
-  val updateBranchTaken      = WireDefault(false.B)
-  val updateIsConditional    = WireDefault(false.B)
-  val updateNewEntryFlag     = WireDefault(false.B) // Indicates the provider is new
-  val updateProviderId       = WireDefault(0.U(tagComPtrWidth.W))
-  val updateALtProviderId    = WireDefault(0.U(tagComPtrWidth.W))
-  val updateCtr              = WireDefault(VecInit(Seq.fill(tagComponentNum + 1)(false.B)))
-  val tagUpdateCtr           = WireDefault(0.U(tagComponentNum.W))
-  val tagUpdateUseful        = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
-  val tagUpdateIncUseful     = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
-  val tagUpdateReallocEntry  = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
-  val tagUpdateQueryUsefuls  = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(3.W))))
-  val tagUpdateNewTags       = WireInit(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
+  val updatePc                 = WireDefault(0.U(Width.Reg.data))
+  val isBaseUpdateCtr          = WireDefault(false.B)
+  val isUpdateValid            = WireDefault(false.B)
+  val isGlobalHistoryUpdateReg = RegInit(false.B)
+  val updatePredictCorrect     = WireDefault(false.B)
+  val updateBranchTaken        = WireDefault(false.B)
+  val updateIsConditional      = WireDefault(false.B)
+  val updateNewEntryFlag       = WireDefault(false.B) // Indicates the provider is new
+  val updateProviderId         = WireDefault(0.U(tagComPtrWidth.W))
+  val updateALtProviderId      = WireDefault(0.U(tagComPtrWidth.W))
+  val isUpdateCtrVec = WireDefault(
+    VecInit(Seq.fill(tagComponentNum + 1)(false.B))
+  ) // Whether a component should updated its ctr
+  val tagUpdateCtr          = WireDefault(0.U(tagComponentNum.W))
+  val tagUpdateUseful       = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
+  val tagUpdateIncUseful    = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
+  val tagUpdateReallocEntry = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
+  val tagUpdateQueryUsefuls = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(3.W))))
+  val tagUpdateNewTags      = WireInit(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
 
   // Indicates the longest history component which useful is 0
   val tagUpdateUsefulZeroId = WireDefault(0.U(tagComPtrWidth.W))
@@ -120,7 +122,7 @@ class TagePredictor(
   when(isUpdateValid) {
     ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
   }
-  globalHistoryUpdateReg := isUpdateValid
+  isGlobalHistoryUpdateReg := isUpdateValid
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Logic
@@ -154,7 +156,8 @@ class TagePredictor(
       tagUsefuls(providerId)                  := taggedPreditor.io.usefulBits
       tagCtrs(providerId)                     := taggedPreditor.io.ctrBits
       tagQueryTags(providerId)                := taggedPreditor.io.queryTag
-      tagOriginTags(providerId)               := taggedPreditor.io.hitIndex
+      tagOriginTags(providerId)               := taggedPreditor.io.originTag
+      tagHitIndexs(providerId)                := taggedPreditor.io.hitIndex
       tagTaken(providerId)                    := taggedPreditor.io.taken
       tagHit(providerId)                      := taggedPreditor.io.tagHit
 
@@ -242,14 +245,15 @@ class TagePredictor(
   //    case (dst, src) =>
   //      dst := src
   //  }
-  io.bpuMetaPort         := BpuFtqMetaNdPort.default
-  io.bpuMetaPort.bpuMeta := queryMetaBundle
+  io.bpuMetaPort          := BpuFtqMetaNdPort.default
+  io.bpuMetaPort.tageMeta := queryMetaBundle
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Update policy
   ////////////////////////////////////////////////////////////////////////////////////////////
 
   // USE_ALT_ON_NA
+  // ctr = b100 or b011 means has no confidence;so update new entry
   updateNewEntryFlag := (updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 3.U(3.W) ||
     updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 4.U(3.W) &&
     updateProviderId =/= 0.U)
@@ -277,8 +281,8 @@ class TagePredictor(
   // if pred is correct, then increase useful counter, else decrese
 
   // Update structs
-  tagUpdateCtr    := updateCtr.asUInt(tagComponentNum, 1)
-  isBaseUpdateCtr := updateCtr(0)
+  tagUpdateCtr    := isUpdateCtrVec.asUInt(tagComponentNum, 1)
+  isBaseUpdateCtr := isUpdateCtrVec(0)
   // update-prefixed signals are updated related
   isUpdateValid        := io.updateInfoPort.valid
   updatePredictCorrect := io.updateInfoPort.predictCorrect
@@ -321,7 +325,7 @@ class TagePredictor(
   // update ctr Policy
   // update provider
   when(updateIsConditional && isUpdateValid) {
-    updateCtr(updateProviderId) := true.B
+    isUpdateCtrVec(updateProviderId) := true.B
   }
 
   // update altProvider if new entry
@@ -329,7 +333,7 @@ class TagePredictor(
     updateNewEntryFlag && updateIsConditional &&
       !io.updateInfoPort.predictCorrect && isUpdateValid
   ) {
-    updateCtr(updateALtProviderId) := true.B
+    isUpdateCtrVec(updateALtProviderId) := true.B
   }
 
   // tag update policy
@@ -340,7 +344,7 @@ class TagePredictor(
   //  val tagUpdateReallocEntry = WireDefault(0.U((tagComponentNum + 1).W))
 
   // Only update on conditional branches
-  when(updateIsConditional & isUpdateValid) {
+  when(updateIsConditional && isUpdateValid) {
     when(updatePredictCorrect) {
       // if useful,update useful bits
       tagUpdateUseful(updateProviderId - 1.U) := updateMetaBundle.useful

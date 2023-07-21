@@ -222,7 +222,7 @@ class FetchTargetQueue(
 
   io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVecReg(commitFtqId).startPc
   io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVecReg(commitFtqId).isCrossCacheline
-  io.bpuFtqPort.ftqTrainMeta.bpuMeta            := ftqBpuMetaRegs(commitFtqId).bpuMeta
+  io.bpuFtqPort.ftqTrainMeta.tageMeta            := ftqBpuMetaRegs(commitFtqId).tageMeta
   io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
   io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
 //  }

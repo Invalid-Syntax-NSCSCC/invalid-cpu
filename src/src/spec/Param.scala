@@ -156,6 +156,7 @@ object Param {
   }
 
   object BPU {
+    val isDebug     = true
     val fetchWidth  = fetchInstMaxNum
     val ftqSize     = 16
     val ftqPtrWitdh = log2Ceil(ftqSize)
