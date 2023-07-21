@@ -14,10 +14,11 @@ object Param {
   val isFullUncachedPatch    = false || isChiplab
   val isPartialUncachedPatch = false || isReleasePackage
   val isNoPrivilege          = false || isReleasePackage
-  val isCacheOnPg            = false
+  val isCacheOnPg            = true
   val isForcedCache          = false || isReleasePackage
   val isForcedUncached       = false
   val isBranchPredict        = true
+  val isTagePredictor        = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
@@ -156,6 +157,7 @@ object Param {
   }
 
   object BPU {
+    val isDebug     = true
     val fetchWidth  = fetchInstMaxNum
     val ftqSize     = 16
     val ftqPtrWitdh = log2Ceil(ftqSize)

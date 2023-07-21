@@ -58,8 +58,8 @@ class VTrueDualBRam(size: Int, dataWidth: Int) extends Module {
   blackBox.io.enb    := io.port1.isWrite || io.port1.isRead
   blackBox.io.rsta   := reset
   blackBox.io.rstb   := reset
-  blackBox.io.regcea := false.B
-  blackBox.io.regceb := false.B
+  blackBox.io.regcea := true.B
+  blackBox.io.regceb := true.B
   io.port0.dataOut   <> blackBox.io.douta
   io.port1.dataOut   <> blackBox.io.doutb
 }
