@@ -268,9 +268,8 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  rob.io.isFlush      := cu.io.backendFlush
-  rob.io.hasInterrupt := csr.io.hasInterrupt
-  rob.io.commitStore  <> memReqStage.io.peer.get.commitStore
+  rob.io.isFlush     := cu.io.backendFlush
+  rob.io.commitStore <> memReqStage.io.peer.get.commitStore
   if (isDiffTest) {
     rob.io.tlbDifftest.get := tlb.io.difftest.get
   }
@@ -284,7 +283,6 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  commitStage.io.hasInterrupt := csr.io.hasInterrupt
 
   // Register file (GPR file)
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out

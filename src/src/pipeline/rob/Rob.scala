@@ -41,9 +41,6 @@ class Rob(
     // `Rob` -> `Tlb`
     val tlbMaintenanceTrigger = Output(Bool())
 
-    // `Csr` -> `Rob`
-    val hasInterrupt = Input(Bool())
-
     // `Cu` <-> `Rob`
     val isFlush = Input(Bool())
 
@@ -120,7 +117,6 @@ class Rob(
 
   // Commit
 
-  val hasInterruptReg             = RegInit(false.B)
   val isDelayedMaintenanceTrigger = RegNext(false.B, false.B)
 
   io.tlbMaintenanceTrigger := isDelayedMaintenanceTrigger
@@ -140,7 +136,6 @@ class Rob(
         if (idx == 0) {
           val isTlbMaintenanceTrigger = commit.ready &&
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
-            !(io.hasInterrupt || hasInterruptReg) &&
             deqPort.bits.wbPort.instInfo.isTlb
           val isNextTlbMaintenanceTrigger = !isDelayedMaintenanceTrigger && isTlbMaintenanceTrigger
           isDelayedMaintenanceTrigger := isNextTlbMaintenanceTrigger
@@ -151,7 +146,6 @@ class Rob(
 
           io.commitStore.valid := commit.ready &&
             deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
-            !(io.hasInterrupt || hasInterruptReg) &&
             deqPort.bits.wbPort.instInfo.isStore
           deqPort.ready := commit.ready && !(io.commitStore.valid && !io.commitStore.ready) && !isNextTlbMaintenanceTrigger
         } else {
@@ -159,25 +153,9 @@ class Rob(
             !io.commits(idx - 1).bits.instInfo.forbidParallelCommit &&
             !deqPort.bits.wbPort.instInfo.forbidParallelCommit &&
             queue.io.dequeuePorts(idx - 1).valid &&
-            queue.io.dequeuePorts(idx - 1).ready && // promise commit in order
-            !hasInterruptReg
-          // &&
-          // !io.hasInterrupt
+            queue.io.dequeuePorts(idx - 1).ready
         }
       }
-  }
-
-  when(io.hasInterrupt) {
-    // when(io.commits(0).valid && io.commits(0).ready) {
-    //   io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
-    //   io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
-    // }.otherwise {
-    hasInterruptReg := true.B
-    // }
-  }.elsewhen(hasInterruptReg && io.commits(0).valid && io.commits(0).ready) {
-    hasInterruptReg                             := false.B
-    io.commits(0).bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
-    io.commits(0).bits.instInfo.exceptionPos    := ExceptionPos.backend
   }
 
   // Distribute for issue stage

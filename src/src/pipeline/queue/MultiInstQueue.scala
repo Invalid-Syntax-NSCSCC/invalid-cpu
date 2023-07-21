@@ -43,8 +43,8 @@ class MultiInstQueue(
       Decoupled(new FetchInstDecodeNdPort)
     )
 
-    val idleBlocking    = Input(Bool())
-    val interruptWakeUp = Input(Bool())
+    val idleBlocking = Input(Bool())
+    val hasInterrupt = Input(Bool())
 
     val redirectRequest = Output(new BackendRedirectPcNdPort)
   })
@@ -66,7 +66,7 @@ class MultiInstQueue(
   )
 
   val isIdle = RegInit(false.B)
-  when(io.interruptWakeUp) {
+  when(io.hasInterrupt) {
     isIdle := false.B
   }.elsewhen(io.idleBlocking) {
     isIdle := true.B
@@ -183,12 +183,14 @@ class MultiInstQueue(
         dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needRefetch
 
         dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
-        dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
-        when(decodeInstInfo.exceptionValid) {
-          dequeuePort.bits.instInfo.exceptionPos := ExceptionPos.frontend
-          // dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
+        dequeuePort.bits.instInfo.exceptionRecord := DontCare
+        when(io.hasInterrupt) {
+          dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
+          dequeuePort.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
+        }.elsewhen(decodeInstInfo.exceptionValid) {
+          dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
+          dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
         }.elsewhen(!isMatched) {
-          // dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
           dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
           dequeuePort.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ine
         }

@@ -383,7 +383,7 @@ class Csr(
     Cat(estat.out.is_hardwareInt, estat.out.is_softwareInt) & ecfg.out.lie1,
     Cat(estat.out.is_ipInt, estat.out.is_timeInt) & ecfg.out.lie2
   ).orR && crmd.out.ie // TODO: Check *ALL* things about interruption is correct
-  io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
+  io.hasInterrupt := hasInterrupt
 
   // crmd / dmw change should flush all pipeline
   io.csrFlushRequest := ((crmd.in.asUInt =/= crmd.out.asUInt) ||
