@@ -14,10 +14,11 @@ object Param {
   val isFullUncachedPatch    = false || isChiplab
   val isPartialUncachedPatch = false || isReleasePackage
   val isNoPrivilege          = false || isReleasePackage
-  val isCacheOnPg            = false
+  val isCacheOnPg            = true
   val isForcedCache          = false || isReleasePackage
   val isForcedUncached       = false
   val isBranchPredict        = true
+  val isTagePredictor        = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true

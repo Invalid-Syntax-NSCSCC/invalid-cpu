@@ -26,9 +26,9 @@ class TaggedPreditor(
   object PhtEntey {
     def default = (new PhtEntey).Lit(
       // counter highest bit as 1,other 0;means weakly taken
-      _.counter -> (1 << (phtCtrWidth - 1)).asUInt(phtCtrWidth.W),
-      _.useful -> 0.U(phtUsefulWidth.W),
-      _.tag -> 0.U(phtTagWidth.W)
+      _.counter -> (1 << (phtCtrWidth - 1)).U,
+      _.useful -> 0.U,
+      _.tag -> 0.U
     )
     def width = phtCtrWidth + phtTagWidth + phtUsefulWidth
   }
@@ -67,8 +67,8 @@ class TaggedPreditor(
   def toPhtLine(line: UInt) = {
     val bundle = Wire(new PhtEntey)
     bundle.counter := line(PhtEntey.width - 1, PhtEntey.width - phtCtrWidth)
-    bundle.tag     := line(PhtEntey.width - phtCtrWidth - 1, phtUsefulWidth)
-    bundle.useful  := line(phtUsefulWidth - 1, 0)
+    bundle.useful  := line(PhtEntey.width - phtCtrWidth - 1, phtTagWidth)
+    bundle.tag     := line(phtTagWidth - 1, 0)
 
     bundle
   }
@@ -154,8 +154,10 @@ class TaggedPreditor(
   // Alocate new entry
   when(io.reallocEntry) {
     // Reset
-    phtUpdateResult     := PhtEntey.default
-    phtUpdateResult.tag := io.updateTag
+    phtUpdateResult := PhtEntey.default
+    if (Param.isTagePredictor) {
+      phtUpdateResult.tag := io.updateTag
+    }
     // when realocEntry,clear ctr and useful
     // when realloc ,use query tag; else use origin tag
   }
@@ -183,10 +185,10 @@ class TaggedPreditor(
 
     )
   )
-  phtRam.io.readAddr  := queryIndex.asUInt
+  phtRam.io.readAddr  := queryIndex
   phtQueryResult      := toPhtLine(phtRam.io.dataOut)
   phtRam.io.isWrite   := io.updateValid
-  phtRam.io.dataIn    := phtUpdateResult.asUInt
-  phtRam.io.writeAddr := phtUpdateIndex.asUInt
+  phtRam.io.dataIn    := Cat(phtUpdateResult.counter, phtUpdateResult.useful, phtUpdateResult.tag)
+  phtRam.io.writeAddr := phtUpdateIndex
 
 }
