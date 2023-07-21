@@ -307,9 +307,8 @@ class CoreCpuTop extends Module {
   cu.io.branchExe          := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
   cu.io.redirectFromDecode := instQueue.io.redirectRequest
 
-  cu.io.hardwareInterrupt := io.intrpt
-  cu.io.csrFlushRequest   := csr.io.csrFlushRequest
-  cu.io.csrWriteInfo      := csrScoreBoard.io.csrWritePort
+  cu.io.csrFlushRequest := csr.io.csrFlushRequest
+  cu.io.csrWriteInfo    := csrScoreBoard.io.csrWritePort
 
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -326,7 +325,8 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  csr.io.csrMessage := cu.io.csrMessage
+  csr.io.csrMessage                   := cu.io.csrMessage
+  csr.io.csrMessage.hardwareInterrupt := io.intrpt
 
   // Debug ports
   io.debug0_wb.pc   := commitStage.io.ins(0).bits.instInfo.pc

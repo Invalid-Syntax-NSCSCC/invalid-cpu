@@ -10,7 +10,8 @@ class EstatBundle extends Bundle {
   val zero2          = UInt(3.W)
   val is_ipInt       = Bool()
   val is_timeInt     = Bool()
-  val is_hardwareInt = UInt(9.W)
+  val zero3          = Bool()
+  val is_hardwareInt = UInt(8.W)
   val is_softwareInt = UInt(2.W)
 }
 

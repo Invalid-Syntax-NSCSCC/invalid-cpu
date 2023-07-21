@@ -145,6 +145,7 @@ class Csr(
 
   // TimeVal
   val timerEnable = RegInit(false.B)
+  timerEnable := timerEnable
 
   when(timerEnable) {
     when(tval.out.timeVal === 0.U) {
@@ -182,7 +183,8 @@ class Csr(
           euen.in.fpe := writePort.data(0)
         }
         is(spec.Csr.Index.ecfg) {
-          ecfg.in.lie := Cat(writePort.data(12, 11), false.B, Cat(writePort.data(9, 0))) // writePort.data(12, 0)
+          ecfg.in.lie1 := writePort.data(9, 0)
+          ecfg.in.lie2 := writePort.data(12, 11)
         }
         is(spec.Csr.Index.estat) {
           estat.in.is_softwareInt := writePort.data(1, 0)
@@ -375,10 +377,12 @@ class Csr(
   }
 
   // 中断
-  // la 最高位空出来了一位
   estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
 
-  val hasInterrupt = (estat.out.asUInt(12, 0) & ecfg.out.lie(12, 0)).orR && crmd.out.ie
+  val hasInterrupt = Cat(
+    Cat(estat.out.is_hardwareInt, estat.out.is_softwareInt) & ecfg.out.lie1,
+    Cat(estat.out.is_ipInt, estat.out.is_timeInt) & ecfg.out.lie2
+  ).orR && crmd.out.ie // TODO: Check *ALL* things about interruption is correct
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
 
   // crmd / dmw change should flush all pipeline

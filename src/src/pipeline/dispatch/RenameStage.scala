@@ -169,7 +169,7 @@ class RenameStage(
       out.bits.exePort.instInfo.robId := rs.bits.robResult.robId
 
       when(
-        peer.plv =/= 0.U &&
+        peer.plv === 3.U &&
           rs.bits.regReadPort.preExeInstInfo.isPrivilege &&
           rs.bits.regReadPort.instInfo.exceptionPos === ExceptionPos.none
       ) {
@@ -181,7 +181,6 @@ class RenameStage(
         case (dst, src) =>
           dst := src
       }
-
   }
 
   when(peer.branchFlush) {
