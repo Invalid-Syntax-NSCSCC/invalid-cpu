@@ -20,15 +20,15 @@ class TaggedPreditor(
   // define bundle
   class PhtEntey extends Bundle {
     val counter = UInt(phtCtrWidth.W)
-    val tag     = UInt(phtTagWidth.W)
     val useful  = UInt(phtUsefulWidth.W)
+    val tag     = UInt(phtTagWidth.W)
   }
   object PhtEntey {
     def default = (new PhtEntey).Lit(
       // counter highest bit as 1,other 0;means weakly taken
-      _.counter -> (1 << (phtCtrWidth - 1)).asUInt(phtCtrWidth.W),
-      _.tag -> 0.U(phtTagWidth.W),
-      _.useful -> 0.U(phtUsefulWidth.W)
+      _.counter -> (1 << (phtCtrWidth - 1)).U,
+      _.useful -> 0.U,
+      _.tag -> 0.U
     )
     def width = phtCtrWidth + phtTagWidth + phtUsefulWidth
   }
@@ -36,7 +36,7 @@ class TaggedPreditor(
   val io = IO(new Bundle {
     // Query signal
     val isGlobalHistoryUpdate = Input(Bool())
-    val globalHistory         = Input(UInt(ghrLength.W))
+    val globalHistory         = Input(UInt((ghrLength + 1).W))
     val pc                    = Input(UInt(spec.Width.Mem.addr))
 
     // Meta
@@ -44,7 +44,7 @@ class TaggedPreditor(
     val ctrBits    = Output(UInt(phtCtrWidth.W))
     val queryTag   = Output(UInt(phtTagWidth.W))
     val originTag  = Output(UInt(phtTagWidth.W))
-    val hitIndex   = Output(UInt((log2Ceil(phtDepth)).W))
+    val hitIndex   = Output(UInt(log2Ceil(phtDepth).W))
 
     // Query result
     val taken  = Output(Bool())
@@ -52,7 +52,7 @@ class TaggedPreditor(
 
     // Update signals
     val updateValid      = Input(Bool())
-    val updatePc         = Input(UInt(spec.Width.Mem.addr))
+    val updatePc         = Input(UInt(spec.Width.Mem.addr)) // has been hash to updateIndex
     val updateUseful     = Input(Bool())
     val incUseful        = Input(Bool())
     val updateUsefulBits = Input(UInt(phtUsefulWidth.W))
@@ -67,8 +67,8 @@ class TaggedPreditor(
   def toPhtLine(line: UInt) = {
     val bundle = Wire(new PhtEntey)
     bundle.counter := line(PhtEntey.width - 1, PhtEntey.width - phtCtrWidth)
-    bundle.tag     := line(PhtEntey.width - phtCtrWidth - 1, phtUsefulWidth)
-    bundle.useful  := line(phtUsefulWidth - 1, 0)
+    bundle.useful  := line(PhtEntey.width - phtCtrWidth - 1, phtTagWidth)
+    bundle.tag     := line(phtTagWidth - 1, 0)
 
     bundle
   }
@@ -155,6 +155,11 @@ class TaggedPreditor(
   when(io.reallocEntry) {
     // Reset
     phtUpdateResult := PhtEntey.default
+    if (Param.isTagePredictor) {
+      phtUpdateResult.tag := io.updateTag
+    }
+    // when realocEntry,clear ctr and useful
+    // when realloc ,use query tag; else use origin tag
   }
 
   // to do  connect CSR hash
@@ -180,10 +185,10 @@ class TaggedPreditor(
 
     )
   )
-  phtRam.io.readAddr  := queryIndex.asUInt
+  phtRam.io.readAddr  := queryIndex
   phtQueryResult      := toPhtLine(phtRam.io.dataOut)
   phtRam.io.isWrite   := io.updateValid
-  phtRam.io.dataIn    := phtUpdateResult.asUInt
-  phtRam.io.writeAddr := phtUpdateIndex.asUInt
+  phtRam.io.dataIn    := Cat(phtUpdateResult.counter, phtUpdateResult.useful, phtUpdateResult.tag)
+  phtRam.io.writeAddr := phtUpdateIndex
 
 }

@@ -12,7 +12,7 @@ class BpuFtqMetaNdPort(
   val valid       = Bool()
   val ftbHit      = Bool()
   val ftbHitIndex = UInt(log2Ceil(ftbNway).W)
-  val bpuMeta     = new TageMetaPort
+  val tageMeta     = new TageMetaPort
 }
 
 object BpuFtqMetaNdPort {

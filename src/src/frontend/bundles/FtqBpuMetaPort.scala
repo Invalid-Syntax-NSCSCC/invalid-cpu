@@ -15,7 +15,7 @@ class FtqBpuMetaPort(
   val ftbDirty         = Bool()
   val isCrossCacheline = Bool()
 
-  val bpuMeta = new TageMetaPort
+  val tageMeta = new TageMetaPort
 
   // Backend Decode Info
   val isBranch       = Bool()
