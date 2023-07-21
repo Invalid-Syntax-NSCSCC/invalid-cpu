@@ -17,7 +17,7 @@ class InstInfoNdPort extends Bundle {
   val exceptionRecord = UInt(Csr.ExceptionIndex.width)
   val isStore         = Bool()
   val vaddr           = UInt(Width.Mem.addr)
-  val needCsr         = Bool()
+  val needRefetch     = Bool()
   val isCsrWrite      = Bool()
   val branchSuccess   = Bool()
 
@@ -41,7 +41,7 @@ object InstInfoNdPort {
 
   def invalidate(instInfo: InstInfoNdPort): Unit = {
     instInfo.isValid              := false.B
-    instInfo.needCsr              := false.B
+    instInfo.needRefetch          := false.B
     instInfo.exceptionPos         := ExceptionPos.none
     instInfo.exeOp                := ExeInst.Op.nop
     instInfo.isCsrWrite           := false.B

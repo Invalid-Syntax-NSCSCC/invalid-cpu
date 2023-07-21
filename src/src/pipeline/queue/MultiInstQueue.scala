@@ -43,8 +43,8 @@ class MultiInstQueue(
       Decoupled(new FetchInstDecodeNdPort)
     )
 
-    val idleBlocking    = Input(Bool())
-    val interruptWakeUp = Input(Bool())
+    val idleBlocking = Input(Bool())
+    val hasInterrupt = Input(Bool())
 
     val redirectRequest = Output(new BackendRedirectPcNdPort)
   })
@@ -66,7 +66,7 @@ class MultiInstQueue(
   )
 
   val isIdle = RegInit(false.B)
-  when(io.interruptWakeUp) {
+  when(io.hasInterrupt) {
     isIdle := false.B
   }.elsewhen(io.idleBlocking) {
     isIdle := true.B
@@ -175,20 +175,22 @@ class MultiInstQueue(
         dequeuePort.bits.instInfo.isCsrWrite               := selectedDecoder.info.csrWriteEn
         dequeuePort.bits.instInfo.exeOp                    := selectedDecoder.info.exeOp
         dequeuePort.bits.instInfo.isTlb                    := selectedDecoder.info.isTlb
-        dequeuePort.bits.instInfo.needCsr                  := selectedDecoder.info.needCsr
+        dequeuePort.bits.instInfo.needRefetch              := selectedDecoder.info.needRefetch
         dequeuePort.bits.instInfo.ftqInfo                  := decodeInstInfo.ftqInfo
         dequeuePort.bits.instInfo.ftqCommitInfo.isBranch   := selectedDecoder.info.isBranch
         dequeuePort.bits.instInfo.ftqCommitInfo.branchType := selectedDecoder.info.branchType
 
-        dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needCsr
+        dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needRefetch
 
         dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.none
-        dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
-        when(decodeInstInfo.exceptionValid) {
-          dequeuePort.bits.instInfo.exceptionPos := ExceptionPos.frontend
-          // dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
+        dequeuePort.bits.instInfo.exceptionRecord := DontCare
+        when(io.hasInterrupt) {
+          dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
+          dequeuePort.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.int
+        }.elsewhen(decodeInstInfo.exceptionValid) {
+          dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
+          dequeuePort.bits.instInfo.exceptionRecord := decodeInstInfo.exception
         }.elsewhen(!isMatched) {
-          // dequeuePort.bits.instInfo.ftqCommitInfo.isBranch := false.B
           dequeuePort.bits.instInfo.exceptionPos    := ExceptionPos.frontend
           dequeuePort.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ine
         }

@@ -60,7 +60,7 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprWritePort.en      := rdIsNotZero // true.B
       outInfo.gprWritePort.addr    := rd
       outInfo.loadStoreImm         := immSext.asUInt << 2
-      outInfo.needCsr              := true.B
+      outInfo.needRefetch          := true.B
     }
     is(Inst.sc) {
       selectIssueEn(DispatchType.loadStore)
@@ -76,7 +76,7 @@ class Decoder_2RI14 extends Decoder {
       outInfo.gprWritePort.en      := true.B
       outInfo.gprWritePort.addr    := rd
       outInfo.loadStoreImm         := immSext.asUInt << 2
-      outInfo.needCsr              := true.B
+      outInfo.needRefetch          := true.B
     }
     // csr读写指令
     is(Inst.csr_) {
@@ -87,7 +87,6 @@ class Decoder_2RI14 extends Decoder {
       outInfo.exeSel          := ExeInst.Sel.none
       outInfo.csrAddr         := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
       outInfo.csrReadEn       := true.B
-      outInfo.needCsr         := true.B
       io.out.info.isPrivilege := true.B
       when(rj === "b00000".U) { // csrrd csr -> rd
         outInfo.exeOp             := ExeInst.Op.csrrd
@@ -100,6 +99,7 @@ class Decoder_2RI14 extends Decoder {
         outInfo.gprWritePort.en      := rdIsNotZero
         outInfo.gprWritePort.addr    := rd
         outInfo.csrWriteEn           := csrAddrValid
+        outInfo.needRefetch          := true.B
       }.otherwise {
         outInfo.exeOp                := ExeInst.Op.csrxchg
         outInfo.gprReadPorts(0).en   := true.B
@@ -109,6 +109,7 @@ class Decoder_2RI14 extends Decoder {
         outInfo.gprWritePort.en      := rdIsNotZero
         outInfo.gprWritePort.addr    := rd
         outInfo.csrWriteEn           := csrAddrValid
+        outInfo.needRefetch          := true.B
       }
     }
   }

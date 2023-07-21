@@ -6,15 +6,13 @@ import control.{Csr, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
-import pipeline.dispatch.{CsrScoreboard, DispatchStage, RenameStage}
-import pipeline.execution.{ExeForMemStage, ExePassWbStage}
+import pipeline.dispatch._
+import pipeline.execution._
 import pipeline.memory.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
 import spec.Param.isDiffTest
-import pipeline.dispatch.NewRenameStage
-import pipeline.dispatch.NewDispatchStage
 import control.Cu
 
 class CoreCpuTop extends Module {
@@ -177,7 +175,7 @@ class CoreCpuTop extends Module {
   instQueue.io.isFrontendFlush := cu.io.frontendFlush
   instQueue.io.isBackendFlush  := cu.io.backendFlush
   instQueue.io.idleBlocking    := cu.io.idleFlush
-  instQueue.io.interruptWakeUp := csr.io.hasInterrupt
+  instQueue.io.hasInterrupt    := csr.io.hasInterrupt
 
   // rename stage
   renameStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
@@ -200,21 +198,16 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  dispatchStage.io.isFlush         := cu.io.backendFlush
-  renameStage.io.peer.get.csrScore := csrScoreBoard.io.regScore
-  dispatchStage.io.peer.get.plv    := csr.io.csrValues.crmd.plv
+  dispatchStage.io.isFlush      := cu.io.backendFlush
+  dispatchStage.io.peer.get.plv := csr.io.csrValues.crmd.plv
   dispatchStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
     case (dst, src) =>
       dst := src
   }
 
   // Scoreboards
-  csrScoreBoard.io.freePort := commitStage.io.csrFreePort
-  csrScoreBoard.io.toMemPort.en := exePassWbStage_1.io.peer.get.csrScoreboardChangePort.get.en || exeForMemStage.io.peer.get.csrScoreboardChangePort.en
   csrScoreBoard.io.csrWriteStorePort := exePassWbStage_1.io.peer.get.csrWriteStorePort.get
-  csrScoreBoard.io.occupyPort        := renameStage.io.peer.get.csrOccupyPort
   csrScoreBoard.io.isFlush           := cu.io.backendFlush
-  csrScoreBoard.io.branchFlush       := cu.io.isBranchFlush
 
   // Execution stage
   exeForMemStage.io.in                  <> dispatchStage.io.outs(Param.loadStoreIssuePipelineIndex)
@@ -273,9 +266,8 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  rob.io.isFlush      := cu.io.backendFlush
-  rob.io.hasInterrupt := csr.io.hasInterrupt
-  rob.io.commitStore  <> memReqStage.io.peer.get.commitStore
+  rob.io.isFlush     := cu.io.backendFlush
+  rob.io.commitStore <> memReqStage.io.peer.get.commitStore
   if (isDiffTest) {
     rob.io.tlbDifftest.get := tlb.io.difftest.get
   }
@@ -289,7 +281,6 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  commitStage.io.hasInterrupt := csr.io.hasInterrupt
 
   // Register file (GPR file)
   regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out
@@ -325,8 +316,8 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  csr.io.csrMessage                   := cu.io.csrMessage
-  csr.io.csrMessage.hardwareInterrupt := io.intrpt
+  csr.io.csrMessage        := cu.io.csrMessage
+  csr.io.hardwareInterrupt := io.intrpt
 
   // Debug ports
   io.debug0_wb.pc   := commitStage.io.ins(0).bits.instInfo.pc
