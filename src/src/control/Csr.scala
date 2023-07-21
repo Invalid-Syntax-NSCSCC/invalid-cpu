@@ -26,6 +26,9 @@ class Csr(
     val hasInterrupt = Output(Bool())
     // `Csr` -> Cu`
     val csrFlushRequest = Output(Bool())
+
+    // 外部中断
+    val hardwareInterrupt = Input(UInt(8.W))
   })
 
   // Util: view UInt as Bundle
@@ -341,7 +344,7 @@ class Csr(
   }
 
   // estat
-  estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
+  estat.in.is_hardwareInt := io.hardwareInterrupt
   when(io.csrMessage.exceptionFlush) {
     estat.in.ecode    := io.csrMessage.ecodeBundle.ecode
     estat.in.esubcode := io.csrMessage.ecodeBundle.esubcode
@@ -375,9 +378,6 @@ class Csr(
   when(tlbExceptionWriteValid) {
     tlbehi.in.vppn := io.csrMessage.badVAddrSet.addr(31, 13) // tlbExceptionWriteBits.vppn
   }
-
-  // 中断
-  estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
 
   val hasInterrupt = Cat(
     Cat(estat.out.is_hardwareInt, estat.out.is_softwareInt) & ecfg.out.lie1,

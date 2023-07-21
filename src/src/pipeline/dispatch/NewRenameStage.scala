@@ -36,10 +36,6 @@ class NewRenamePeerPort(
   pipelineNum: Int = Param.pipelineNum)
     extends Bundle {
 
-  // `IssueStage` <-> `Scoreboard(csr)`
-  val csrOccupyPort = Output(new ScoreboardChangeNdPort)
-  val csrScore      = Input(ScoreboardState())
-
   // `IssueStage` <-> `Rob`
   val requests = Vec(issueNum, Decoupled(new RobReadRequestNdPort))
   val results  = Input(Vec(issueNum, new RobReadResultNdPort))
@@ -146,25 +142,13 @@ class NewRenameStage(
         }
     }
 
-  val isCsr = WireDefault(
-    VecInit(
-      reservationStation.io.dequeuePorts.map(_.bits.regReadPort.preExeInstInfo.needCsr)
-    )
-  )
-  peer.csrOccupyPort.en := isCsr(0) && io.outs(0).ready && io.outs(0).valid
-  // peer.csr
   reservationStation.io.dequeuePorts.zip(io.outs).zipWithIndex.foreach {
     case ((src, dst), idx) =>
       dst.valid := src.valid
       dst.bits  := src.bits
       src.ready := dst.ready
-      if (idx == 0) {
-        when(isCsr(idx) && peer.csrScore =/= ScoreboardState.free) {
-          dst.valid := false.B
-          src.ready := false.B
-        }
-      } else {
-        when(isCsr(idx) || !reservationStation.io.dequeuePorts(idx - 1).ready) {
+      if (idx != 0) {
+        when(!reservationStation.io.dequeuePorts(idx - 1).ready) {
           dst.valid := false.B
           src.ready := false.B
         }

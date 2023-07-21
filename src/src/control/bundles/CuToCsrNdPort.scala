@@ -14,8 +14,6 @@ class CuToCsrNdPort extends Bundle {
   val badVAddrSet = new BadVAddrSetBundle
   // llbit设置
   val llbitSet = new LLBitSetBundle
-  // 外部中断
-  val hardwareInterrupt = Input(UInt(8.W))
 }
 
 object CuToCsrNdPort {

@@ -31,7 +31,7 @@ class CommitStage(
     // `CommitStage` -> `Cu` NO delay
     val gprWritePorts = Output(Vec(commitNum, new RfWriteNdPort))
 
-    val csrFreePort = Output(new ScoreboardChangeNdPort)
+    // val csrFreePort = Output(new ScoreboardChangeNdPort)
 
     // `AddrTransStage` -> `CommitStage` -> `Cu` NO delay
     val cuInstInfoPorts = Output(Vec(commitNum, new InstInfoNdPort))
@@ -92,16 +92,6 @@ class CommitStage(
       dstGprWrite         := inBit.gprWrite
       dstGprWrite.en      := in.valid && in.ready && inBit.gprWrite.en
   }
-
-  // Indicate the availability in scoreboard
-
-  io.csrFreePort.en := io.ins
-    .zip(inBits)
-    .map {
-      case (in, inBit) =>
-        in.valid && in.ready && inBit.instInfo.needCsr
-    }
-    .reduce(_ || _)
 
   // Diff test connection
   io.difftest match {

@@ -95,12 +95,13 @@ class Decoder_special extends Decoder {
       selectIssueEn(DispatchType.loadStore)
       io.out.info.forbidOutOfOrder := true.B
 
-      io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.ibar
-      outInfo.exeSel   := ExeInst.Sel.loadStore
-      outInfo.isHasImm := true.B
-      immZext          := hint
-      outInfo.imm      := immZext
+      io.out.isMatched        := true.B
+      outInfo.exeOp           := ExeInst.Op.ibar
+      outInfo.exeSel          := ExeInst.Sel.loadStore
+      outInfo.isHasImm        := true.B
+      immZext                 := hint
+      outInfo.imm             := immZext
+      io.out.info.needRefetch := true.B
     }
   }
 
@@ -113,7 +114,6 @@ class Decoder_special extends Decoder {
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.ertn
       outInfo.exeSel          := ExeInst.Sel.jumpBranch
-      outInfo.needCsr         := true.B
       io.out.info.isPrivilege := true.B
     }
     is(Inst.tlbsrch) {
@@ -123,7 +123,7 @@ class Decoder_special extends Decoder {
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbsrch
       outInfo.isTlb           := true.B
-      outInfo.needCsr         := true.B
+      io.out.info.needRefetch := true.B
       outInfo.exeSel          := ExeInst.Sel.loadStore
       io.out.info.isPrivilege := true.B
     }
@@ -134,7 +134,7 @@ class Decoder_special extends Decoder {
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbrd
       outInfo.isTlb           := true.B
-      outInfo.needCsr         := true.B
+      io.out.info.needRefetch := true.B
       outInfo.exeSel          := ExeInst.Sel.loadStore
       io.out.info.isPrivilege := true.B
     }
@@ -145,7 +145,7 @@ class Decoder_special extends Decoder {
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbwr
       outInfo.isTlb           := true.B
-      outInfo.needCsr         := true.B
+      io.out.info.needRefetch := true.B
       outInfo.exeSel          := ExeInst.Sel.loadStore
       io.out.info.isPrivilege := true.B
     }
@@ -156,7 +156,7 @@ class Decoder_special extends Decoder {
       io.out.isMatched        := true.B
       outInfo.exeOp           := ExeInst.Op.tlbfill
       outInfo.isTlb           := true.B
-      outInfo.needCsr         := true.B
+      io.out.info.needRefetch := true.B
       outInfo.exeSel          := ExeInst.Sel.loadStore
       io.out.info.isPrivilege := true.B
     }

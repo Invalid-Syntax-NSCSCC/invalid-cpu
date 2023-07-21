@@ -34,8 +34,8 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
 
   def tlbInvalidateInst = jumpBranchAddr
 
-  val needCsr = Bool()
-  val isTlb   = Bool()
+  val needRefetch = Bool()
+  val isTlb       = Bool()
 
   val issueEn          = Vec(Param.pipelineNum, Bool())
   val forbidOutOfOrder = Bool()

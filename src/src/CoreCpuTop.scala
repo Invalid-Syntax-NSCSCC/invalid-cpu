@@ -200,21 +200,16 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst <> src
   }
-  dispatchStage.io.isFlush         := cu.io.backendFlush
-  renameStage.io.peer.get.csrScore := csrScoreBoard.io.regScore
-  dispatchStage.io.peer.get.plv    := csr.io.csrValues.crmd.plv
+  dispatchStage.io.isFlush      := cu.io.backendFlush
+  dispatchStage.io.peer.get.plv := csr.io.csrValues.crmd.plv
   dispatchStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
     case (dst, src) =>
       dst := src
   }
 
   // Scoreboards
-  csrScoreBoard.io.freePort := commitStage.io.csrFreePort
-  csrScoreBoard.io.toMemPort.en := exePassWbStage_1.io.peer.get.csrScoreboardChangePort.get.en || exeForMemStage.io.peer.get.csrScoreboardChangePort.en
   csrScoreBoard.io.csrWriteStorePort := exePassWbStage_1.io.peer.get.csrWriteStorePort.get
-  csrScoreBoard.io.occupyPort        := renameStage.io.peer.get.csrOccupyPort
   csrScoreBoard.io.isFlush           := cu.io.backendFlush
-  csrScoreBoard.io.branchFlush       := cu.io.isBranchFlush
 
   // Execution stage
   exeForMemStage.io.in                  <> dispatchStage.io.outs(Param.loadStoreIssuePipelineIndex)
@@ -325,8 +320,8 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  csr.io.csrMessage                   := cu.io.csrMessage
-  csr.io.csrMessage.hardwareInterrupt := io.intrpt
+  csr.io.csrMessage        := cu.io.csrMessage
+  csr.io.hardwareInterrupt := io.intrpt
 
   // Debug ports
   io.debug0_wb.pc   := commitStage.io.ins(0).bits.instInfo.pc

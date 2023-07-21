@@ -16,7 +16,7 @@ import spec._
 import scala.collection.immutable
 
 class ExeForMemPeerPort extends Bundle {
-  val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
+  // val csrScoreboardChangePort = Output(new ScoreboardChangeNdPort)
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
     val era    = new EraBundle
@@ -45,7 +45,7 @@ class ExeForMemStage
   resultOutReg.bits.gprAddr                     := selectedIn.gprWritePort.addr
   resultOutReg.valid                            := isComputed && selectedIn.instInfo.isValid
 
-  io.peer.get.csrScoreboardChangePort.en := selectedIn.instInfo.needCsr
+  // io.peer.get.csrScoreboardChangePort.en := selectedIn.instInfo.needCsr
 
   val isDbarBlockingReg = RegInit(false.B)
   // dbar start
