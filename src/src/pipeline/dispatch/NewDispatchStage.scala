@@ -52,8 +52,6 @@ class NewDispatchStage(
     out.valid := false.B
     out.bits  := DontCare
   }
-  // io.peer.get.csrOccupyPort.en   := false.B
-  // io.peer.get.csrOccupyPort.addr := DontCare
 
   val reservationStations = Seq.fill(pipelineNum)(
     Module(

@@ -19,17 +19,17 @@ import pipeline.dispatch._
 import pipeline.queue._
 import chisel3.experimental.BundleLiterals._
 
-// class RegReadNdPort extends Bundle {
-//   val preExeInstInfo = new PreExeInstNdPort
-//   val instInfo       = new InstInfoNdPort
-// }
+class RegReadNdPort extends Bundle {
+  val preExeInstInfo = new PreExeInstNdPort
+  val instInfo       = new InstInfoNdPort
+}
 
-// object RegReadNdPort {
-//   def default = (new RegReadNdPort).Lit(
-//     _.preExeInstInfo -> PreExeInstNdPort.default,
-//     _.instInfo -> InstInfoNdPort.default
-//   )
-// }
+object RegReadNdPort {
+  def default = (new RegReadNdPort).Lit(
+    _.preExeInstInfo -> PreExeInstNdPort.default,
+    _.instInfo -> InstInfoNdPort.default
+  )
+}
 
 class NewRenamePeerPort(
   issueNum:    Int = Param.issueInstInfoMaxNum,
