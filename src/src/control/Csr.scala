@@ -145,6 +145,7 @@ class Csr(
 
   // TimeVal
   val timerEnable = RegInit(false.B)
+  timerEnable := timerEnable
 
   when(timerEnable) {
     when(tval.out.timeVal === 0.U) {

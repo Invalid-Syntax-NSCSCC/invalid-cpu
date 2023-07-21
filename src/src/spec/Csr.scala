@@ -117,7 +117,7 @@ object Csr {
 
   object TimeVal {
     object Width {
-      val timeVal = 32
+      val timeVal = 30
     }
   }
 
