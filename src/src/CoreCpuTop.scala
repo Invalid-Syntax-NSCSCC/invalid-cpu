@@ -6,15 +6,13 @@ import control.{Csr, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
-import pipeline.dispatch.{CsrScoreboard, DispatchStage, RenameStage}
-import pipeline.execution.{ExeForMemStage, ExePassWbStage}
+import pipeline.dispatch._
+import pipeline.execution._
 import pipeline.memory.{AddrTransStage, MemReqStage, MemResStage}
 import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
 import spec.Param.isDiffTest
-import pipeline.dispatch.NewRenameStage
-import pipeline.dispatch.NewDispatchStage
 import control.Cu
 
 class CoreCpuTop extends Module {
