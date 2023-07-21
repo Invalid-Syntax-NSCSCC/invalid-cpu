@@ -155,7 +155,7 @@ class NewDispatchStage(
       out.bits.instInfo.robId := rsDeqPort.bits.robResult.robId
 
       when(
-        peer.plv =/= 0.U &&
+        peer.plv === 3.U &&
           rsDeqPort.bits.regReadPort.preExeInstInfo.isPrivilege &&
           rsDeqPort.bits.regReadPort.instInfo.exceptionPos === ExceptionPos.none
       ) {

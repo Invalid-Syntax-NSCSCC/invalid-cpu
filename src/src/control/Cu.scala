@@ -51,9 +51,6 @@ class Cu(
 
     val isDbarFinish = Output(Bool())
 
-    // <- Out
-    val hardwareInterrupt = Input(UInt(8.W))
-
     val difftest = if (isDiffTest) {
       Some(Output(new Bundle {
         val cmt_ertn       = Output(Bool())
@@ -79,9 +76,6 @@ class Cu(
   when(isException) {
     io.gprWritePassThroughPorts.out.foreach(_.en := false.B)
   }
-
-  // Hardware interrupt
-  io.csrMessage.hardwareInterrupt := io.hardwareInterrupt
 
   // CSR write by instruction
   io.csrWritePorts.head.en   := majorInstInfo.isCsrWrite && majorInstInfo.isValid && !isException && io.csrWriteInfo.en
