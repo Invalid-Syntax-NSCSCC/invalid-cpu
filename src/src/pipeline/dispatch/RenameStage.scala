@@ -181,7 +181,6 @@ class RenameStage(
         case (dst, src) =>
           dst := src
       }
-
   }
 
   when(peer.branchFlush) {

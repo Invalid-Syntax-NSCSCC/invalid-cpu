@@ -379,8 +379,8 @@ class Csr(
   estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
 
   val hasInterrupt = Cat(
-    Cat(estat.out.is_hardwareInt, estat.out.is_softwareInt) | ecfg.out.lie1,
-    Cat(estat.out.is_ipInt, estat.out.is_timeInt) | ecfg.out.lie2
+    Cat(estat.out.is_hardwareInt, estat.out.is_softwareInt) & ecfg.out.lie1,
+    Cat(estat.out.is_ipInt, estat.out.is_timeInt) & ecfg.out.lie2
   ).orR && crmd.out.ie // TODO: Check *ALL* things about interruption is correct
   io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
 
