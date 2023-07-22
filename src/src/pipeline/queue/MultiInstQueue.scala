@@ -142,11 +142,14 @@ class MultiInstQueue(
     )
   )
 
-  resultQueue.io.enqueuePorts.zip(instQueue.io.dequeuePorts).foreach {
-    case (dst, src) =>
+  val redirectRequests = Wire(Vec(issueNum, new BackendRedirectPcNdPort))
+  io.redirectRequest := PriorityMux(redirectRequests.map(_.en), redirectRequests)
+
+  resultQueue.io.enqueuePorts.zip(instQueue.io.dequeuePorts).zipWithIndex.foreach {
+    case ((dst, src), idx) =>
       dst.valid := src.valid
       src.ready := dst.ready
-      when(isBlockDequeueReg || io.isFrontendFlush) {
+      when(isBlockDequeueReg || io.isFrontendFlush || redirectRequests.map(_.en).take(idx).foldLeft(false.B)(_ || _)) {
         dst.valid := false.B
         src.ready := false.B
       }
@@ -156,9 +159,6 @@ class MultiInstQueue(
     case (dst, src) =>
       dst <> src
   }
-
-  val redirectRequests = Wire(Vec(issueNum, new BackendRedirectPcNdPort))
-  io.redirectRequest := PriorityMux(redirectRequests.map(_.en), redirectRequests)
 
   resultQueue.io.enqueuePorts
     .lazyZip(selectedDecoders)
