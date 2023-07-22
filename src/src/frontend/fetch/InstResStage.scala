@@ -23,14 +23,10 @@ class InstResPeerPort extends Bundle {
   val memRes = Input(new InstMemResponseNdPort)
 }
 
-class InstEnqueuePort extends Bundle {
-  val instInfo = new FetchInstInfoBundle
-}
-
 class InstResStage
     extends BaseStage(
       new InstResNdPort,
-      new InstQueueEnqNdPort,
+      new InstPreDecodeNdPort,
       InstResNdPort.default,
       Some(new InstResPeerPort)
     ) {
@@ -40,34 +36,35 @@ class InstResStage
   val isLastHasReq = RegNext(false.B, false.B)
 
   // Fallback output
-  out.enqInfos.zipWithIndex.foreach {
-    case (infoBundle, index) =>
-      infoBundle.bits.pcAddr             := selectedIn.ftqBlock.startPc + index.asUInt(Width.Mem.addr) * 4.U
-      infoBundle.bits.ftqInfo.idxInBlock := index.U
-      if (Param.fetchInstMaxNum == 1) {
-        infoBundle.bits.inst := peer.memRes.read.dataVec(0)
-        infoBundle.valid     := true.B
-      } else {
-        val fetchIndex = WireDefault(
-          selectedIn.ftqBlock.startPc(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset) + index
-            .asUInt(
-              log2Ceil(Param.fetchInstMaxNum).W
-            )
-        )
-        infoBundle.bits.inst := peer.memRes.read.dataVec(fetchIndex)
-        infoBundle.valid     := index.asUInt(log2Ceil(Param.fetchInstMaxNum + 1).W) < selectedIn.ftqBlock.length
-      }
-      infoBundle.bits.exceptionValid := selectedIn.exception.valid
-      infoBundle.bits.exception      := selectedIn.exception.bits
-      infoBundle.bits.ftqInfo.ftqId  := selectedIn.ftqId
-      when((index + 1).U === selectedIn.ftqBlock.length) {
-        infoBundle.bits.ftqInfo.predictBranch := selectedIn.ftqBlock.predictTaken
-        infoBundle.bits.ftqInfo.isLastInBlock := true.B
-      }.otherwise {
-        infoBundle.bits.ftqInfo.predictBranch := false.B
-        infoBundle.bits.ftqInfo.isLastInBlock := false.B
-      }
-  }
+  out.instVec := peer.memRes.read.dataVec
+//  out.enqInfos.zipWithIndex.foreach {
+//    case (infoBundle, index) =>
+//      infoBundle.bits.pcAddr             := selectedIn.ftqBlock.startPc + index.asUInt(Width.Mem.addr) * 4.U
+//      infoBundle.bits.ftqInfo.idxInBlock := index.U
+//      if (Param.fetchInstMaxNum == 1) {
+//        infoBundle.bits.inst := peer.memRes.read.dataVec(0)
+//        infoBundle.valid     := true.B
+//      } else {
+//        val fetchIndex = WireDefault(
+//          selectedIn.ftqBlock.startPc(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset) + index
+//            .asUInt(
+//              log2Ceil(Param.fetchInstMaxNum).W
+//            )
+//        )
+//        infoBundle.bits.inst := peer.memRes.read.dataVec(fetchIndex)
+//        infoBundle.valid     := index.asUInt(log2Ceil(Param.fetchInstMaxNum + 1).W) < selectedIn.ftqBlock.length
+//      }
+//      infoBundle.bits.exceptionValid := selectedIn.exception.valid
+//      infoBundle.bits.exception      := selectedIn.exception.bits
+//      infoBundle.bits.ftqInfo.ftqId  := selectedIn.ftqId
+//      when((index + 1).U === selectedIn.ftqBlock.length) {
+//        infoBundle.bits.ftqInfo.predictBranch := selectedIn.ftqBlock.predictTaken
+//        infoBundle.bits.ftqInfo.isLastInBlock := true.B
+//      }.otherwise {
+//        infoBundle.bits.ftqInfo.predictBranch := false.B
+//        infoBundle.bits.ftqInfo.isLastInBlock := false.B
+//      }
+//  }
 
   when(selectedIn.ftqBlock.isValid) {
     isComputed         := peer.memRes.isComplete | selectedIn.exception.valid

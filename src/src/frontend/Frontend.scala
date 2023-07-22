@@ -43,9 +43,11 @@ class Frontend extends Module {
   val ftq       = Module(new FetchTargetQueue)
   val instFetch = Module(new InstFetch)
 
-  pc.io.newPc          := io.cuNewPc
-  pc.io.mainRedirectPc := bpu.io.mainRedirectPc
-  pc.io.ftqFull        := ftq.io.bpuFtqPort.ftqFull
+  pc.io.newPc             := io.cuNewPc
+  pc.io.mainRedirectPc    := bpu.io.mainRedirectPc
+  pc.io.ftqFull           := ftq.io.bpuFtqPort.ftqFull
+  pc.io.preDecodePc.bits  := instFetch.io.preDecodeRedirectPort.redirectPc
+  pc.io.preDecodePc.valid := instFetch.io.preDecodeRedirectPort.predecodeRedirect
 
   // Frontend pipeline structure
   // bpu(branch predict unit) => ftq(fetchTargetQueue) =>
@@ -68,8 +70,8 @@ class Frontend extends Module {
   // act as a fetch buffer
   ftq.io.backendFlush      := io.isFlush
   ftq.io.backendFlushFtqId := io.ftqFlushId
-  ftq.io.instFetchFlush    := false.B // TODO add predecoder stage
-  ftq.io.instFetchFtqId    := 0.U
+  ftq.io.instFetchFlush    := instFetch.io.preDecodeRedirectPort.predecodeRedirect // TODO add predecoder stage
+  ftq.io.instFetchFtqId    := instFetch.io.preDecodeRedirectPort.redirectFtqId
   ftq.io.cuCommitFtqPort   := io.cuCommitFtqPort
   ftq.io.cuQueryPcBundle   <> io.cuQueryPcBundle
   ftq.io.exeFtqPort        <> io.exeFtqPort

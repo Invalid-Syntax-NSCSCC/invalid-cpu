@@ -18,6 +18,9 @@ class Pc(
 
     // bpu pc
     val mainRedirectPc = Input(Valid(UInt(Width.Reg.data)))
+
+    // inst predecode pc
+    val preDecodePc = Input(Valid(UInt(Width.Reg.data)))
   })
 
   val pcReg = RegInit(spec.Pc.init)
@@ -38,6 +41,8 @@ class Pc(
   when(io.newPc.en) {
     // when predict error or pc error => jump
     pcReg := io.newPc.pcAddr
+  }.elsewhen(io.preDecodePc.valid) {
+    pcReg := io.preDecodePc.bits
   }.elsewhen(io.ftqFull) {
     pcReg := pcReg
   }.elsewhen(io.mainRedirectPc.valid) {
