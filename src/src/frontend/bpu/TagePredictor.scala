@@ -309,10 +309,10 @@ class TagePredictor(
   tagUpdateQueryUsefulsMatch.zipWithIndex.reverse.foreach {
     case (isMatch, index) =>
       when(
-        isMatch && (index.asUInt(log2Ceil(tagComponentTagWidth)) + 1.U > updateProviderId)
+        isMatch && (index.U(tagComPtrWidth.W) + 1.U > updateProviderId)
       ) {
         when(tagUpdateUsefulPingpongCounter(index)) {
-          tagUpdateUsefulZeroId := index.U(tagComPtrWidth.W)
+          tagUpdateUsefulZeroId := (index + 1).U(tagComPtrWidth.W)
         }
       }
   }

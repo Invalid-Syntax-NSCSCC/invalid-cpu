@@ -81,6 +81,9 @@ class TaggedPreditor(
   val hashedGhtInput = WireDefault(0.U(phtAddrWidth.W))
   // query_index is Fold(GHR) ^ PC[low] ^ PC[high]
   val queryIndex = WireDefault(io.pc(phtAddrWidth - 1, 0) ^ io.pc(2 * phtAddrWidth - 1, phtAddrWidth) ^ hashedGhtInput)
+//  val queryIndex = WireDefault(
+//    io.pc(phtAddrWidth + 1, 2) ^ io.pc(2 * phtAddrWidth + 1, phtAddrWidth + 2) ^ hashedGhtInput
+//  )
   val queryIndexReg = RegNext(queryIndex, 0.U(phtTagWidth.W))
 
   // Tag
@@ -155,7 +158,7 @@ class TaggedPreditor(
   when(io.reallocEntry) {
     // Reset
     phtUpdateResult := PhtEntey.default
-    if (Param.isTagePredictor) {
+    if (Param.isTagePredictorTagCompare) {
       phtUpdateResult.tag := io.updateTag
     }
     // when realocEntry,clear ctr and useful

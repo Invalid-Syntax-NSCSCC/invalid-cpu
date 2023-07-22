@@ -9,16 +9,16 @@ object Param {
   val isChiplab        = true
   val isReleasePackage = false
 
-  val isDiffTest             = false || isChiplab
-  val isOutOfOrderIssue      = true
-  val isFullUncachedPatch    = false || isChiplab
-  val isPartialUncachedPatch = false || isReleasePackage
-  val isNoPrivilege          = false || isReleasePackage
-  val isCacheOnPg            = true
-  val isForcedCache          = false || isReleasePackage
-  val isForcedUncached       = false
-  val isBranchPredict        = true
-  val isTagePredictor        = true
+  val isDiffTest                = false || isChiplab
+  val isOutOfOrderIssue         = true
+  val isFullUncachedPatch       = false || isChiplab
+  val isPartialUncachedPatch    = false || isReleasePackage
+  val isNoPrivilege             = false || isReleasePackage
+  val isCacheOnPg               = false
+  val isForcedCache             = false || isReleasePackage
+  val isForcedUncached          = false
+  val isBranchPredict           = true
+  val isTagePredictorTagCompare = false
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
@@ -167,16 +167,21 @@ object Param {
     }
 
     object TagePredictor {
-      val ghrLength            = 1400
-      val tagComponentNum      = 15
-      val tagComponentTagWidth = 12
       //        ComponentTableDepth
-      // length = tagComponentNum +1
+      // predictor num = tagComponentNum + 1 (BasePredictor)
+      val ghrLength            = 1400
+      val tagComponentTagWidth = 12
+//      val tagComponentNum        = 15
+//      val componentHistoryLength = Seq(0, 6, 10, 18, 25, 35, 55, 69, 105, 155, 230, 354, 479, 642, 1012, 1347)
+      val tagComponentNum        = 7
+      val componentHistoryLength = Seq(0, 10, 25, 55, 105, 230, 479, 1012)
+      //      val tagComponentNum        = 3
+      //      val componentHistoryLength = Seq(0, 10, 55, 230, 479, 1012)
+
       val componentTableDepth =
         Seq(16384, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
-      val componentCtrWidth      = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
-      val componentUsefulWidth   = Seq(0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
-      val componentHistoryLength = Seq(0, 6, 10, 18, 25, 35, 55, 69, 105, 155, 230, 354, 479, 642, 1012, 1347)
+      val componentCtrWidth    = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+      val componentUsefulWidth = Seq(0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
 
     }
 
