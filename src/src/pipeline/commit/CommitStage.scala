@@ -31,15 +31,8 @@ class CommitStage(
     // `CommitStage` -> `Cu` NO delay
     val gprWritePorts = Output(Vec(commitNum, new RfWriteNdPort))
 
-    val csrFreePort = Output(new ScoreboardChangeNdPort)
-
     // `AddrTransStage` -> `CommitStage` -> `Cu` NO delay
     val cuInstInfoPorts = Output(Vec(commitNum, new InstInfoNdPort))
-
-    // `CommitStage` -> `Cu` NO delay
-    val isExceptionValid = Output(Bool())
-
-    val hasInterrupt = Input(Bool())
 
     val difftest =
       if (isDiffTest)
@@ -74,15 +67,9 @@ class CommitStage(
       else None
   })
 
-  io.ins.foreach(_.ready := !io.hasInterrupt)
+  io.ins.foreach(_.ready := true.B)
 
   val inBits = WireDefault(VecInit(io.ins.map(_.bits)))
-
-  // Whether current instruction causes exception
-  io.isExceptionValid := inBits.map { inBit =>
-    inBit.instInfo.isValid && (inBit.instInfo.exceptionPos =/= ExceptionPos.none)
-  }
-    .reduce(_ || _) // inBits.instInfo.isValid && inBits.instInfo.isExceptionValid
 
   // Output connection
   io.cuInstInfoPorts.lazyZip(io.gprWritePorts).lazyZip(io.ins).lazyZip(inBits).foreach {
@@ -92,16 +79,6 @@ class CommitStage(
       dstGprWrite         := inBit.gprWrite
       dstGprWrite.en      := in.valid && in.ready && inBit.gprWrite.en
   }
-
-  // Indicate the availability in scoreboard
-
-  io.csrFreePort.en := io.ins
-    .zip(inBits)
-    .map {
-      case (in, inBit) =>
-        in.valid && in.ready && inBit.instInfo.needCsr
-    }
-    .reduce(_ || _)
 
   // Diff test connection
   io.difftest match {

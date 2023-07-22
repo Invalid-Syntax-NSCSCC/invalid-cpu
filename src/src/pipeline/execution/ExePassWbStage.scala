@@ -44,9 +44,8 @@ object ExeNdPort {
 
 class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   // `ExeStage` -> `Cu` (no delay)
-  val branchSetPort           = if (supportBranchCsr) Some(Output(new BackendRedirectPcNdPort)) else None
-  val csrScoreboardChangePort = if (supportBranchCsr) Some(Output(new ScoreboardChangeNdPort)) else None
-  val csrWriteStorePort       = if (supportBranchCsr) Some(Output(Valid(new CsrWriteNdPort))) else None
+  val branchSetPort     = if (supportBranchCsr) Some(Output(new BackendRedirectPcNdPort)) else None
+  val csrWriteStorePort = if (supportBranchCsr) Some(Output(Valid(new CsrWriteNdPort))) else None
 
   // `Exe` <-> `StableCounter`
   val stableCounterReadPort = if (supportBranchCsr) Some(Flipped(new StableCounterReadPort)) else None
@@ -61,7 +60,6 @@ class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   val feedbackFtq = if (supportBranchCsr) Some(Flipped(new ExeFtqPort)) else None
 }
 
-// throw exception: 地址未对齐 ale
 class ExePassWbStage(supportBranchCsr: Boolean = true)
     extends BaseStage(
       new ExeNdPort,
@@ -191,12 +189,10 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
     val branchEnableFlag = RegInit(true.B)
 
-    val branchSetPort           = io.peer.get.branchSetPort.get
-    val csrScoreboardChangePort = io.peer.get.csrScoreboardChangePort.get
+    val branchSetPort = io.peer.get.branchSetPort.get
 
     // branch set
-    branchSetPort              := BackendRedirectPcNdPort.default
-    csrScoreboardChangePort.en := selectedIn.instInfo.needCsr
+    branchSetPort := BackendRedirectPcNdPort.default
 
     val feedbackFtq    = io.peer.get.feedbackFtq.get
     val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)

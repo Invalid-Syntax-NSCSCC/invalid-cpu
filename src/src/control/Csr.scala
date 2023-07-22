@@ -26,6 +26,9 @@ class Csr(
     val hasInterrupt = Output(Bool())
     // `Csr` -> Cu`
     val csrFlushRequest = Output(Bool())
+
+    // 外部中断
+    val hardwareInterrupt = Input(UInt(8.W))
   })
 
   // Util: view UInt as Bundle
@@ -290,15 +293,12 @@ class Csr(
           dmw1.in.vseg := writePort.data(31, 29)
         }
         is(spec.Csr.Index.tcfg) {
-          val initVal = WireDefault(writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 2))
+          val initVal = writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 2)
           tcfg.in.initVal  := initVal
           tcfg.in.periodic := writePort.data(1)
           tcfg.in.en       := writePort.data(0)
           timerEnable      := writePort.data(0)
           tval.in.timeVal  := initVal << 2
-        }
-        is(spec.Csr.Index.tval) {
-          // no write
         }
         is(spec.Csr.Index.ticlr) {
           when(writePort.data(0) === true.B) {
@@ -341,7 +341,7 @@ class Csr(
   }
 
   // estat
-  estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
+  estat.in.is_hardwareInt := io.hardwareInterrupt
   when(io.csrMessage.exceptionFlush) {
     estat.in.ecode    := io.csrMessage.ecodeBundle.ecode
     estat.in.esubcode := io.csrMessage.ecodeBundle.esubcode
@@ -376,14 +376,11 @@ class Csr(
     tlbehi.in.vppn := io.csrMessage.badVAddrSet.addr(31, 13) // tlbExceptionWriteBits.vppn
   }
 
-  // 中断
-  estat.in.is_hardwareInt := io.csrMessage.hardwareInterrupt
-
   val hasInterrupt = Cat(
     Cat(estat.out.is_hardwareInt, estat.out.is_softwareInt) & ecfg.out.lie1,
     Cat(estat.out.is_ipInt, estat.out.is_timeInt) & ecfg.out.lie2
   ).orR && crmd.out.ie // TODO: Check *ALL* things about interruption is correct
-  io.hasInterrupt := hasInterrupt && !RegNext(hasInterrupt)
+  io.hasInterrupt := hasInterrupt
 
   // crmd / dmw change should flush all pipeline
   io.csrFlushRequest := ((crmd.in.asUInt =/= crmd.out.asUInt) ||

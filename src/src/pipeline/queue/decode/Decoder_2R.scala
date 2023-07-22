@@ -21,10 +21,8 @@ class Decoder_2R extends Decoder {
       selectIssueEn(DispatchType.csrOrBranch)
       io.out.info.forbidOutOfOrder := true.B
 
-      io.out.isMatched    := true.B
-      io.out.info.needCsr := true.B
+      io.out.isMatched := true.B
       when(rj.orR) {
-        io.out.info.needCsr           := true.B
         io.out.info.csrReadEn         := true.B
         io.out.info.csrAddr           := Csr.Index.tid
         io.out.info.exeOp             := ExeInst.Op.csrrd
@@ -40,7 +38,6 @@ class Decoder_2R extends Decoder {
       selectIssueEn(DispatchType.csrOrBranch)
       io.out.info.forbidOutOfOrder := true.B
 
-      io.out.info.needCsr           := true.B
       io.out.isMatched              := true.B
       io.out.info.gprWritePort.en   := rdIsNotZero
       io.out.info.gprWritePort.addr := rd
