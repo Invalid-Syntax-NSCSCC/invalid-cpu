@@ -203,13 +203,10 @@ class Cu(
 
   val isExceptionReturn = majorInstInfo.exeOp === ExeInst.Op.ertn && majorInstInfo.isValid && !isException
 
-  val cacopFlush = majorInstInfo.exeOp === ExeInst.Op.cacop && majorInstInfo.isValid
-
   val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 
-  val refetchFlush =
-    majorInstInfo.isValid && majorInstInfo.needRefetch
-  // (isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush)
+  // need refetch : tlb ; csr change ; cacop ; idle
+  val refetchFlush = majorInstInfo.isValid && majorInstInfo.needRefetch
 
   io.csrMessage.ertnFlush := isExceptionReturn
   io.frontendFlush :=
