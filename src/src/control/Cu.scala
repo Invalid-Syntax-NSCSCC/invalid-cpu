@@ -144,14 +144,10 @@ class Cu(
 
   // badv
   when(isException) {
-    when(majorInstInfo.exceptionRecord === Csr.ExceptionIndex.adef) {
-      io.csrMessage.badVAddrSet.en   := true.B
-      io.csrMessage.badVAddrSet.addr := majorPc
-    }.elsewhen(
+    when(
       VecInit(
         Csr.ExceptionIndex.tlbr,
         Csr.ExceptionIndex.adef,
-        Csr.ExceptionIndex.adem,
         Csr.ExceptionIndex.ale,
         Csr.ExceptionIndex.pil,
         Csr.ExceptionIndex.pis,
@@ -207,13 +203,10 @@ class Cu(
 
   val isExceptionReturn = majorInstInfo.exeOp === ExeInst.Op.ertn && majorInstInfo.isValid && !isException
 
-  val cacopFlush = majorInstInfo.exeOp === ExeInst.Op.cacop && majorInstInfo.isValid
-
   val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
 
-  val refetchFlush =
-    majorInstInfo.isValid && majorInstInfo.needRefetch
-  // (isTlbMaintenance || io.csrFlushRequest || cacopFlush || idleFlush)
+  // need refetch : tlb ; csr change ; cacop ; idle
+  val refetchFlush = majorInstInfo.isValid && majorInstInfo.needRefetch
 
   io.csrMessage.ertnFlush := isExceptionReturn
   io.frontendFlush :=
