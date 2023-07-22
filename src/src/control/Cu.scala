@@ -144,14 +144,10 @@ class Cu(
 
   // badv
   when(isException) {
-    when(majorInstInfo.exceptionRecord === Csr.ExceptionIndex.adef) {
-      io.csrMessage.badVAddrSet.en   := true.B
-      io.csrMessage.badVAddrSet.addr := majorPc
-    }.elsewhen(
+    when(
       VecInit(
         Csr.ExceptionIndex.tlbr,
         Csr.ExceptionIndex.adef,
-        Csr.ExceptionIndex.adem,
         Csr.ExceptionIndex.ale,
         Csr.ExceptionIndex.pil,
         Csr.ExceptionIndex.pis,
