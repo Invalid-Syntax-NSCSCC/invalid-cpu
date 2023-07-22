@@ -293,15 +293,12 @@ class Csr(
           dmw1.in.vseg := writePort.data(31, 29)
         }
         is(spec.Csr.Index.tcfg) {
-          val initVal = WireDefault(writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 2))
+          val initVal = writePort.data(spec.Csr.TimeVal.Width.timeVal - 1, 2)
           tcfg.in.initVal  := initVal
           tcfg.in.periodic := writePort.data(1)
           tcfg.in.en       := writePort.data(0)
           timerEnable      := writePort.data(0)
           tval.in.timeVal  := initVal << 2
-        }
-        is(spec.Csr.Index.tval) {
-          // no write
         }
         is(spec.Csr.Index.ticlr) {
           when(writePort.data(0) === true.B) {
