@@ -109,7 +109,7 @@ class Tlb extends Module {
       val selectedIndex = OHToUInt(isFoundVec)
       val selectedEntry = tlbEntryVec(selectedIndex)
       val selectedPage = Mux(
-        transPort.virtAddr(selectedEntry.compare.pageSize) === 0.U,
+        transPort.virtAddr(selectedEntry.compare.pageSize(log2Ceil(virtAddrLen) - 1, 0)) === 0.U,
         selectedEntry.trans(0),
         selectedEntry.trans(1)
       )
