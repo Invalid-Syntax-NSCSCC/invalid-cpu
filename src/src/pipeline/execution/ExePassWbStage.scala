@@ -204,7 +204,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
     // mis predict
     val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
-    val branchTargeMispredict = (
+    val branchTargetMispredict = (
       jumpBranchInfo.en &&
         inFtqInfo.predictBranch &&
         jumpBranchInfo.pcAddr =/= ftqQueryPc
@@ -218,7 +218,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     // is branch
     val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
 
-    branchSetPort.en    := (branchDirectionMispredict || branchTargeMispredict) && branchEnableFlag && isBranchInst
+    branchSetPort.en    := (branchDirectionMispredict || branchTargetMispredict) && branchEnableFlag && isBranchInst
     branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
     when(branchSetPort.en) {
       branchEnableFlag                                 := false.B
@@ -231,7 +231,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     )
 
     feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
-    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargeMispredict ||
+    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
