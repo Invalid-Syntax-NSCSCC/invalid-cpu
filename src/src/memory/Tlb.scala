@@ -2,6 +2,7 @@ package memory
 
 import chisel3._
 import chisel3.util._
+import chisel3.util.random._
 import control.csrBundles._
 import memory.bundles._
 import memory.enums.TlbMemType
@@ -16,12 +17,12 @@ class Tlb extends Module {
     val maintenanceInfo    = Input(new TlbMaintenanceNdPort)
     val csr = new Bundle {
       val in = Input(new Bundle {
-        val plv      = UInt(2.W)
-        val asId     = new AsidBundle
-        val tlbehi   = new TlbehiBundle
-        val tlbidx   = new TlbidxBundle
-        val tlbloVec = Vec(2, new TlbeloBundle)
-        val estat    = new EstatBundle
+        val plv       = UInt(2.W)
+        val asId      = new AsidBundle
+        val tlbehi    = new TlbehiBundle
+        val tlbidx    = new TlbidxBundle
+        val tlbeloVec = Vec(2, new TlbeloBundle)
+        val estat     = new EstatBundle
       })
       val out = Output(new TlbCsrWriteNdPort)
     }
@@ -78,7 +79,7 @@ class Tlb extends Module {
     csrOutReg.tlbidx.bits := io.csr.in.tlbidx
     csrOutReg.asId.bits   := io.csr.in.asId
     csrOutReg.tlbehi.bits := io.csr.in.tlbehi
-    csrOutReg.tlbeloVec.map(_.bits).zip(io.csr.in.tlbloVec).foreach {
+    csrOutReg.tlbeloVec.map(_.bits).zip(io.csr.in.tlbeloVec).foreach {
       case (out, in) => out := in
     }
   }
@@ -108,7 +109,7 @@ class Tlb extends Module {
       val selectedIndex = OHToUInt(isFoundVec)
       val selectedEntry = tlbEntryVec(selectedIndex)
       val selectedPage = Mux(
-        transPort.virtAddr(selectedEntry.compare.pageSize(log2Ceil(virtAddrLen) - 1, 0)) === 0.U,
+        transPort.virtAddr(selectedEntry.compare.pageSize) === 0.U,
         selectedEntry.trans(0),
         selectedEntry.trans(1)
       )
@@ -198,30 +199,29 @@ class Tlb extends Module {
   }
 
   // Maintenance: Write & Fill
-  val fillIndex = PriorityEncoder(tlbEntryVec.map(!_.compare.isExisted))
+  val fillIndex = LFSR(log2Ceil(Param.Count.Tlb.num))
   val writeEntry = tlbEntryVec(
     Mux(
-      io.maintenanceTrigger && savedMaintenance.isWrite,
+      savedMaintenance.isWrite,
       io.csr.in.tlbidx.index,
       fillIndex
     )
   )
   when(io.maintenanceTrigger && (savedMaintenance.isWrite || savedMaintenance.isFill)) {
-    writeEntry.compare.isExisted := !io.csr.in.tlbidx.ne || isInTlbRefillException
-
+    writeEntry.compare.isExisted   := !io.csr.in.tlbidx.ne || isInTlbRefillException
     writeEntry.compare.pageSize    := io.csr.in.tlbidx.ps
     writeEntry.compare.virtPageNum := io.csr.in.tlbehi.vppn
-    writeEntry.compare.isGlobal    := io.csr.in.tlbloVec.map(_.g).reduce(_ || _)
+    writeEntry.compare.isGlobal    := io.csr.in.tlbeloVec.map(_.g).reduce(_ && _)
     writeEntry.compare.asId        := io.csr.in.asId.asid
     // Question: Should write ASID or not
 
-    writeEntry.trans.zip(io.csr.in.tlbloVec).foreach {
-      case (trans, tlblo) =>
-        trans.plv         := tlblo.plv
-        trans.mat         := tlblo.mat
-        trans.isDirty     := tlblo.d
-        trans.isValid     := tlblo.v
-        trans.physPageNum := tlblo.ppn
+    writeEntry.trans.zip(io.csr.in.tlbeloVec).foreach {
+      case (trans, tlbelo) =>
+        trans.plv         := tlbelo.plv
+        trans.mat         := tlbelo.mat
+        trans.isDirty     := tlbelo.d
+        trans.isValid     := tlbelo.v
+        trans.physPageNum := tlbelo.ppn
     }
   }
 
