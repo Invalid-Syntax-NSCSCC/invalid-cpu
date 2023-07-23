@@ -2,7 +2,7 @@
 
 ## 概述
 
-Invalid Syntax 参赛队为 LoongArch 挑战赛 2023 设计的 CPU 源代码。
+Invalid Syntax 参赛队为 NSCSCC 2023 团队赛 LoongArch 赛道设计的 CPU 源代码。
 
 ## 使用方式
 
