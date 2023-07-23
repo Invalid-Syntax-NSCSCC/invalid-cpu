@@ -62,6 +62,8 @@ class InstPreDecodeStage
       // TODO support crossCacheline
       when(index.U < selectedIn.ftqBlock.length) {
         instVal := selectedIn.instVec(fetchIndex)
+      }.otherwise {
+        instVal := 0.U
       }
   }
 
@@ -88,9 +90,11 @@ class InstPreDecodeStage
   val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
 
   // peer output
+  val ftqIdReg  = RegNext(selectedIn.ftqId, 0.U)
+  val jumpPcReg = RegNext(decodeResultVec(immJumpIndex).jumpTargetAddr, 0.U)
   peer.predecodeRedirect := isPredecoderRedirectReg
-  peer.redirectPc        := decodeResultVec(immJumpIndex).jumpTargetAddr
-  peer.redirectFtqId     := selectedIn.ftqId
+  peer.redirectPc        := jumpPcReg
+  peer.redirectFtqId     := ftqIdReg
 
   // output
   // cut block length

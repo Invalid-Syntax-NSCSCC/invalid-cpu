@@ -9,5 +9,5 @@ class PreDecoderResultNdPort extends Bundle {
 }
 
 object PreDecoderResultNdPort {
-  val default = 0.U.asTypeOf(new PreDecoderResultNdPort)
+  def default = 0.U.asTypeOf(new PreDecoderResultNdPort)
 }

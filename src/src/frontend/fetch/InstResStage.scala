@@ -36,7 +36,10 @@ class InstResStage
   val isLastHasReq = RegNext(false.B, false.B)
 
   // Fallback output
-  out.instVec := peer.memRes.read.dataVec
+  out.instVec   := peer.memRes.read.dataVec
+  out.ftqId     := selectedIn.ftqId
+  out.ftqBlock  := selectedIn.ftqBlock
+  out.exception := selectedIn.exception
 //  out.enqInfos.zipWithIndex.foreach {
 //    case (infoBundle, index) =>
 //      infoBundle.bits.pcAddr             := selectedIn.ftqBlock.startPc + index.asUInt(Width.Mem.addr) * 4.U

@@ -55,14 +55,13 @@ class InstFetch extends Module {
   // instResStage
   instResStage.io.isFlush := io.isFlush || instPreDecodeStage.io.peer.get.predecodeRedirect
   instResStage.io.in      <> instReqStage.io.out
-  io.instDequeuePort      <> instResStage.io.out
   instResStage.io.peer.foreach { p =>
     p.memRes <> io.accessPort.res
   }
 
   // instPreDecodeStage
   instPreDecodeStage.io.isFlush := io.isFlush
-  instPreDecodeStage.io.in      <> instResStage.out
+  instPreDecodeStage.io.in      <> instResStage.io.out
   io.instDequeuePort            <> instPreDecodeStage.io.out
   instPreDecodeStage.io.peer.foreach { p =>
     p <> io.preDecodeRedirectPort
