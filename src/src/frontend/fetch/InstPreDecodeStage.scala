@@ -82,7 +82,7 @@ class InstPreDecodeStage
   val immJumpIndex = PriorityEncoder(isImmJumpVec)
 
   val isPredecoderRedirect = WireDefault(false.B)
-  isPredecoderRedirect := isImmJumpVec.asUInt.orR && !io.isFlush && (immJumpIndex + 1.U < selectedIn.ftqBlock.length)
+  isPredecoderRedirect := io.in.valid && isImmJumpVec.asUInt.orR && !io.isFlush && (immJumpIndex + 1.U < selectedIn.ftqBlock.length)
   val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
 
   // peer output
