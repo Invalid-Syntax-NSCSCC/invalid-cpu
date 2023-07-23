@@ -24,7 +24,7 @@ class PreDecoder extends Module {
   switch(opcode) {
     is(Inst.b_, Inst.bl) {
       io.result.isUnconditionalJump := true.B
-      io.result.jumpTargetAddr      := imm26SextShift2.asUInt
+      io.result.jumpTargetAddr      := imm26SextShift2.asUInt + io.pc
     }
     is(Inst.jirl) {
       io.result.isUnconditionalJump := true.B
