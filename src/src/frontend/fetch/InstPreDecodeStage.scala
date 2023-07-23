@@ -60,11 +60,7 @@ class InstPreDecodeStage
           )
       )
       // TODO support crossCacheline
-      when(index.U < selectedIn.ftqBlock.length) {
-        instVal := selectedIn.instVec(fetchIndex)
-      }.otherwise {
-        instVal := 0.U
-      }
+      instVal := selectedIn.instVec(fetchIndex)
   }
 
   // preDecode inst info
@@ -100,7 +96,7 @@ class InstPreDecodeStage
   // cut block length
   val selectBlockLength = WireDefault(selectedIn.ftqBlock.length)
   when(isPredecoderRedirect) {
-    selectBlockLength := immJumpIndex + 1.U
+    selectBlockLength := immJumpIndex +& 1.U
   }
   // select instOutput
   out.enqInfos.zipWithIndex.foreach {
