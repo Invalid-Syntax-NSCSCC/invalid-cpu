@@ -18,7 +18,7 @@ object Param {
   val isForcedCache             = false || isReleasePackage
   val isForcedUncached          = false
   val isBranchPredict           = true
-  val isTagePredictorTagCompare = false
+  val isTagePredictorTagCompare = false || isChiplab
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
