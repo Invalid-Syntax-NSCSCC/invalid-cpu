@@ -230,31 +230,39 @@ class Cu(
   io.isBranchFlush := RegNext(io.branchExe.en)
 
   // Select new pc
-  val newPc = RegInit(BackendRedirectPcNdPort.default)
-  io.newPc := newPc
-  newPc.en :=
-    refetchFlush || isException || io.branchExe.en || io.redirectFromDecode.en || isExceptionReturn
+  val refetchFlushDelay       = RegNext(refetchFlush, false.B)
+  val isExceptionDelay        = RegNext(isException, false.B)
+  val redirectFromExeDelay    = RegNext(io.branchExe, BackendRedirectPcNdPort.default)
+  val redirectFromDecodeDelay = RegNext(io.redirectFromDecode, BackendRedirectPcNdPort.default)
+  val isExceptionReturnDelay  = RegNext(isExceptionReturn, false.B)
+  io.newPc.en := refetchFlushDelay ||
+    isExceptionDelay ||
+    redirectFromExeDelay.en ||
+    redirectFromDecodeDelay.en ||
+    isExceptionReturnDelay
 
-  newPc.ftqId := Mux(
-    refetchFlush || isException || isExceptionReturn,
-    majorInstInfo.ftqInfo.ftqId,
-    Mux(io.branchExe.en, io.branchExe.ftqId, io.redirectFromDecode.ftqId)
+  io.newPc.ftqId := Mux(
+    refetchFlushDelay || isExceptionDelay || isExceptionReturnDelay,
+    RegNext(majorInstInfo.ftqInfo.ftqId),
+    Mux(redirectFromExeDelay.en, redirectFromExeDelay.ftqId, redirectFromDecodeDelay.ftqId)
   )
 
-  newPc.pcAddr := Mux(
-    isException,
-    Mux(
-      majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
-      io.csrValues.tlbrentry.asUInt,
-      io.csrValues.eentry.asUInt
+  io.newPc.pcAddr := Mux(
+    isExceptionDelay,
+    RegNext(
+      Mux(
+        majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
+        io.csrValues.tlbrentry.asUInt,
+        io.csrValues.eentry.asUInt
+      )
     ),
     Mux(
-      isExceptionReturn,
-      io.csrValues.era.pc,
+      isExceptionReturnDelay,
+      RegNext(io.csrValues.era.pc),
       Mux(
-        refetchFlush,
-        majorPc + 4.U,
-        Mux(io.branchExe.en, io.branchExe.pcAddr, io.redirectFromDecode.pcAddr)
+        refetchFlushDelay,
+        RegNext(majorPc + 4.U),
+        Mux(redirectFromExeDelay.en, redirectFromExeDelay.pcAddr, redirectFromDecodeDelay.pcAddr)
       )
     )
   )
