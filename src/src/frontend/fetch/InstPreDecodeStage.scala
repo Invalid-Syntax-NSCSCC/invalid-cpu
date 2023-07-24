@@ -121,7 +121,7 @@ class InstPreDecodeStage
         infoBundle.bits.ftqInfo.isLastInBlock := false.B
       }
   }
-
+dontTouch
   // Submit result
   when(io.in.ready && io.in.valid) {
     when(selectedIn.ftqBlock.isValid) {
