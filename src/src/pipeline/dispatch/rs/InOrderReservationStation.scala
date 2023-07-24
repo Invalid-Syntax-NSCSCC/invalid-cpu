@@ -40,22 +40,35 @@ class InOrderReservationStation(
       in.ready  := enq.ready
       enq.valid := in.valid
       enq.bits  := in.bits
-      io.writebacks.foreach { wb =>
-        in.bits.regReadPort.preExeInstInfo.gprReadPorts
-          .lazyZip(in.bits.robResult.readResults)
-          .lazyZip(enq.bits.robResult.readResults)
-          .foreach {
-            case (readPort, robReadResult, dst) =>
-              when(
-                wb.en && readPort.en &&
-                  robReadResult.sel === RobDistributeSel.robId &&
-                  wb.robId === robReadResult.result
-              ) {
-                dst.sel    := RobDistributeSel.realData
-                dst.result := wb.data
+      in.bits.regReadPort.preExeInstInfo.gprReadPorts
+        .lazyZip(in.bits.robResult.readResults)
+        .lazyZip(enq.bits.robResult.readResults)
+        .foreach {
+          case (readPort, robReadResult, dst) =>
+            io.writebacks.foreach { wb =>
+              if (spec.Param.isOptimizedByMultiMux) {
+                val mux = Module(new MultiMux1(spec.Param.pipelineNum, UInt(spec.Width.Reg.data), zeroWord))
+                mux.io.inputs.zip(io.writebacks).foreach {
+                  case (input, wb) =>
+                    input.valid := wb.en && wb.robId === robReadResult.result
+                    input.bits  := wb.data
+                }
+                when(mux.io.output.valid && readPort.en && robReadResult.sel === RobDistributeSel.robId) {
+                  dst.sel    := RobDistributeSel.realData
+                  dst.result := mux.io.output.bits
+                }
+              } else {
+                when(
+                  wb.en && readPort.en &&
+                    robReadResult.sel === RobDistributeSel.robId &&
+                    wb.robId === robReadResult.result
+                ) {
+                  dst.sel    := RobDistributeSel.realData
+                  dst.result := wb.data
+                }
               }
-          }
-      }
+            }
+        }
   }
 
   queue.io.dequeuePorts.zip(io.dequeuePorts).foreach {
@@ -121,9 +134,11 @@ class InOrderReservationStation(
                   input.valid := wb.en && readResult.result === wb.robId
                   input.bits  := wb.data
               }
-              set.valid            := readResult.sel === RobDistributeSel.robId && mux.io.output.valid
-              setReadResult.sel    := RobDistributeSel.realData
-              setReadResult.result := mux.io.output.bits
+              when(readResult.sel === RobDistributeSel.robId && mux.io.output.valid) {
+                set.valid            := true.B
+                setReadResult.sel    := RobDistributeSel.realData
+                setReadResult.result := mux.io.output.bits
+              }
             } else {
 
               io.writebacks.foreach { wb =>
