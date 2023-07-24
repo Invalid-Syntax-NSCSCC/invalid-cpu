@@ -16,8 +16,7 @@ object src extends ScalaModule with ScalafmtModule { m =>
   )
 
   override def ivyDeps = Agg(
-    ivy"edu.berkeley.cs::chisel3:3.6.0",
-    ivy"org.scalaz::scalaz-core:7.3.7"
+    ivy"edu.berkeley.cs::chisel3:3.6.0"
   )
 
   override def scalacPluginIvyDeps = Agg(

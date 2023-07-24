@@ -6,23 +6,28 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
-  val isChiplab        = true
+  // These options are one-hot
+  val isChiplab = true
   val isReleasePackage = false
+  val isFullFpga = false
 
-  val isDiffTest                = false || isChiplab
-  val isOutOfOrderIssue         = true
-  val isFullUncachedPatch       = false || isChiplab
-  val isPartialUncachedPatch    = false || isReleasePackage
-  val isNoPrivilege             = false || isReleasePackage
-  val isCacheOnPg               = true
-  val isForcedCache             = false || isReleasePackage
-  val isForcedUncached          = false
-  val isBranchPredict           = true
-  val isTagePredictorTagCompare = false
+  val isDiffTest = false || isChiplab
+  val isOutOfOrderIssue = true
+  val isFullUncachedPatch = false || isChiplab || isFullFpga
+  val isPartialUncachedPatch = false || isReleasePackage
+  val isMmioDelay = false || isChiplab || isFullFpga
+  val isNoPrivilege = false || isReleasePackage
+  val isCacheOnPg = false
+  val isForcedCache = false || isReleasePackage
+  val isForcedUncached = false
+  val isBranchPredict = true
+  val isTagePredictorTagCompare = true
   val isShowBranchNum = isChiplab // need commitNum == 1. branch inst num -> pc_1 ; branch predict failed num -> wdata_1
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
+
+  val isOptimizedByMultiMux = true
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
@@ -80,7 +85,7 @@ object Param {
     }
 
     object DCache {
-      val _addr           = 8 // TODO: Choose an optimal value (small value is suitible for difftest)
+      val _addr           = 10 // TODO: Choose an optimal value (small value is suitible for difftest)
       val _byteOffset     = log2Ceil(Count.DCache.dataPerLine) + log2Ceil(wordLength / byteLength)
       val _dataLine       = Count.DCache.dataPerLine * spec.Width.Mem._data
       val _tag            = spec.Width.Mem._addr - _addr - _byteOffset
@@ -93,7 +98,7 @@ object Param {
     }
 
     object ICache {
-      val _addr           = 8 // TODO: Choose an optimal value (small value is suitible for difftest)
+      val _addr           = 10 // TODO: Choose an optimal value (small value is suitible for difftest)
       val _instOffset     = log2Ceil(wordLength / byteLength)
       val _fetchOffset    = log2Ceil(fetchInstMaxNum) + log2Ceil(wordLength / byteLength)
       val _byteOffset     = log2Ceil(Count.ICache.dataPerLine) + log2Ceil(wordLength / byteLength)
@@ -132,6 +137,7 @@ object Param {
 
     object Mem {
       val storeQueueLen = 8
+      val MmioDelayMax  = 5
     }
   }
 

@@ -16,10 +16,7 @@ class WbNdPort extends Bundle {
 }
 
 object WbNdPort {
-  def default = (new WbNdPort).Lit(
-    _.gprWrite -> RfWriteNdPort.default,
-    _.instInfo -> InstInfoNdPort.default
-  )
+  def default = 0.U.asTypeOf(new WbNdPort)
 }
 
 class CommitStage(

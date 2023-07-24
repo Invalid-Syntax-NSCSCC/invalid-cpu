@@ -11,6 +11,7 @@ import pipeline.rob.bundles._
 import spec.Param._
 import spec._
 import pipeline.rob.enums.{RegDataState, RobDistributeSel, RobInstState => State}
+import utils.MultiMux1
 
 // assert: commits cannot ready 1 but not 0
 class Rob(
@@ -87,30 +88,76 @@ class Rob(
   }
 
   // deal with finished insts
+  if (Param.isOptimizedByMultiMux) {
+    io.finishInsts.foreach(_.ready := true.B)
+    val finishInstFillRobBundles = Wire(Vec(pipelineNum, Valid(new WbNdPort)))
+    finishInstFillRobBundles.zip(io.finishInsts).foreach {
+      case (dst, src) =>
+        dst.valid := src.valid
+        dst.bits  := src.bits
+        when(src.bits.instInfo.exceptionPos =/= ExceptionPos.none) {
+          dst.bits.instInfo.forbidParallelCommit := true.B
+        }
+    }
 
-  io.finishInsts.foreach { finishInst =>
-    finishInst.ready := true.B
-    when(finishInst.valid && finishInst.bits.instInfo.isValid) {
-      queue.io.elems.lazyZip(queue.io.setPorts).zipWithIndex.foreach {
-        case ((elem, set), idx) =>
-          when(elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
-            set.valid        := true.B
-            set.bits.isValid := elem.isValid
-            set.bits.state   := State.ready
-            set.bits.wbPort  := finishInst.bits
-            when(set.bits.wbPort.instInfo.exceptionPos =/= ExceptionPos.none) {
-              set.bits.wbPort.instInfo.forbidParallelCommit := true.B
+    // set rob queue
+    queue.io.elems.zip(queue.io.setPorts).zipWithIndex.foreach {
+      case ((elem, set), idx) =>
+        val mux = Module(new MultiMux1(pipelineNum, new WbNdPort, WbNdPort.default))
+        mux.io.inputs.zip(finishInstFillRobBundles).foreach {
+          case (input, finishInst) =>
+            input.valid := idx.U === finishInst.bits.instInfo.robId &&
+              finishInst.valid &&
+              finishInst.bits.instInfo.isValid
+            input.bits := finishInst.bits
+        }
+        set.valid       := elem.state === State.busy && mux.io.output.valid
+        set.bits.state  := State.ready
+        set.bits.wbPort := mux.io.output.bits
+    }
+
+    // update match table
+    matchTable.zipWithIndex.foreach {
+      case (elem, idx) =>
+        val mux = Module(new MultiMux1(pipelineNum, UInt(spec.Width.Reg.data), zeroWord))
+        mux.io.inputs.zip(io.finishInsts).foreach {
+          case (input, finishInst) =>
+            input.valid := finishInst.valid &&
+              finishInst.bits.instInfo.isValid &&
+              finishInst.bits.gprWrite.en &&
+              // matchTable(finishInst.bits.gprWrite.addr).state === RegDataState.busy &&
+              finishInst.bits.instInfo.robId === elem.data
+            input.bits := finishInst.bits.gprWrite.data
+        }
+        when(mux.io.output.valid && elem.state === RegDataState.busy) {
+          elem.state := RegDataState.ready
+          elem.data  := mux.io.output.bits
+        }
+    }
+  } else {
+    io.finishInsts.foreach { finishInst =>
+      finishInst.ready := true.B
+      when(finishInst.valid && finishInst.bits.instInfo.isValid) {
+        queue.io.elems.lazyZip(queue.io.setPorts).zipWithIndex.foreach {
+          case ((elem, set), idx) =>
+            when(elem.state === State.busy && idx.U === finishInst.bits.instInfo.robId) {
+              set.valid       := true.B
+              set.bits.state  := State.ready
+              set.bits.wbPort := finishInst.bits
+              when(set.bits.wbPort.instInfo.exceptionPos =/= ExceptionPos.none) {
+                set.bits.wbPort.instInfo.forbidParallelCommit := true.B
+              }
             }
-          }
-      }
+        }
 
-      when(
-        finishInst.bits.gprWrite.en &&
-          matchTable(finishInst.bits.gprWrite.addr).state === RegDataState.busy &&
-          finishInst.bits.instInfo.robId === matchTable(finishInst.bits.gprWrite.addr).data
-      ) {
-        matchTable(finishInst.bits.gprWrite.addr).state := RegDataState.ready
-        matchTable(finishInst.bits.gprWrite.addr).data  := finishInst.bits.gprWrite.data
+        when(
+          finishInst.bits.gprWrite.en &&
+            matchTable(finishInst.bits.gprWrite.addr).state === RegDataState.busy &&
+            finishInst.bits.instInfo.robId === matchTable(finishInst.bits.gprWrite.addr).data
+        ) {
+          matchTable(finishInst.bits.gprWrite.addr).state := RegDataState.ready
+          matchTable(finishInst.bits.gprWrite.addr).data  := finishInst.bits.gprWrite.data
+        }
       }
     }
   }
@@ -174,7 +221,6 @@ class Rob(
         // enqueue
         enq.valid                     := req.valid
         enq.bits                      := RobInstStoreBundle.default
-        enq.bits.isValid              := true.B
         enq.bits.state                := State.busy
         enq.bits.wbPort.gprWrite.en   := req.bits.writeRequest.en
         enq.bits.wbPort.gprWrite.addr := req.bits.writeRequest.addr
