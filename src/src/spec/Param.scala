@@ -23,7 +23,7 @@ object Param {
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
 
-  val isOptimizedByMultiMux2 = false
+  val isOptimizedByMultiMux = true
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
