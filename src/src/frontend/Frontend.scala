@@ -63,7 +63,7 @@ class Frontend extends Module {
   //          if the pc has send to instFetch, then flush it  (by mainRedirect signal )
   bpu.io.pc           := pc.io.pc
   bpu.io.bpuFtqPort   <> ftq.io.bpuFtqPort
-  bpu.io.backendFlush := io.isFlush
+  bpu.io.backendFlush := io.isFlush || instFetch.io.preDecodeRedirectPort.predecodeRedirect
 
   // fetch Target Pc queue;
   // stage 1
