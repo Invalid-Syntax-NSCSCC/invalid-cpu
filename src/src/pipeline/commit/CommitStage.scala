@@ -110,6 +110,22 @@ class CommitStage(
       dt.wen_1   := DontCare
       dt.wdest_1 := DontCare
       dt.wdata_1 := DontCare
+
+      if (Param.isShowBranchNum) {
+        val branchCounter              = RegInit(zeroWord)
+        val branchPredictFailedCounter = RegInit(zeroWord)
+        dt.pc_1    := branchCounter
+        dt.wdata_1 := branchPredictFailedCounter
+        when(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready) {
+          when(inBits(0).instInfo.ftqCommitInfo.isBranch) {
+            branchCounter := branchCounter + 1.U
+          }
+          when(inBits(0).instInfo.ftqCommitInfo.isRedirect) {
+            branchPredictFailedCounter := branchPredictFailedCounter + 1.U
+          }
+        }
+      }
+
       if (commitNum == 2) {
         dt.valid_1 := RegNext(inBits(1).instInfo.isValid && io.ins(1).valid && io.ins(1).ready)
         dt.instr_1 := RegNext(inBits(1).instInfo.inst)
