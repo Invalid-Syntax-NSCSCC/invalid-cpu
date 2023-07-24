@@ -115,7 +115,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
   val isSyscall = selectedIn.exeOp === ExeInst.Op.syscall
   val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
 
-  resultOutReg.bits.instInfo.exceptionPos := selectedIn.instInfo.exceptionPos
   when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
     when(isSyscall) {
       resultOutReg.bits.instInfo.exceptionPos    := ExceptionPos.backend
@@ -127,7 +126,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
   }
 
   if (supportBranchCsr) {
-
     if (isDiffTest) {
       resultOutReg.bits.instInfo.timerInfo.get.isCnt := VecInit(ExeInst.Op.rdcntvl_w, ExeInst.Op.rdcntvh_w)
         .contains(selectedIn.exeOp)
@@ -135,7 +133,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     }
 
     switch(selectedIn.exeOp) {
-
       is(ExeInst.Op.rdcntvl_w) {
         resultOutReg.bits.gprWrite.data := io.peer.get.stableCounterReadPort.get.output(wordLength - 1, 0)
       }
@@ -250,6 +247,5 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     when(io.isFlush) {
       branchEnableFlag := true.B
     }
-
   }
 }
