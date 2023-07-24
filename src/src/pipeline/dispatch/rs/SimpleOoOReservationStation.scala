@@ -5,7 +5,8 @@ import chisel3.util._
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
 import utils.MultiCounter
-import spec.Param
+import spec._
+import utils.MultiMux1
 
 class SimpleOoOReservationStation(
   queueLength:          Int,
@@ -142,22 +143,36 @@ class SimpleOoOReservationStation(
       ram(deq_ptr.io.incResults(idx)) := src
 
       if (!Param.isWritebackPassThroughWakeUp) {
-        io.writebacks.foreach { wb =>
-          src.bits.regReadPort.preExeInstInfo.gprReadPorts
-            .lazyZip(src.bits.robResult.readResults)
-            .lazyZip(ram(deq_ptr.io.incResults(idx)).bits.robResult.readResults)
-            .foreach {
-              case (readPort, robReadResult, dst) =>
-                when(
-                  wb.en && readPort.en &&
-                    robReadResult.sel === RobDistributeSel.robId &&
-                    wb.robId === robReadResult.result
-                ) {
-                  dst.sel    := RobDistributeSel.realData
-                  dst.result := wb.data
+
+        src.bits.regReadPort.preExeInstInfo.gprReadPorts
+          .lazyZip(src.bits.robResult.readResults)
+          .lazyZip(ram(deq_ptr.io.incResults(idx)).bits.robResult.readResults)
+          .foreach {
+            case (readPort, robReadResult, dst) =>
+              if (Param.isOptimizedByMultiMux) {
+                val mux = Module(new MultiMux1(Param.pipelineNum, UInt(Width.Reg.data), zeroWord))
+                mux.io.inputs.zip(io.writebacks).foreach {
+                  case (input, wb) =>
+                    input.valid := wb.en && wb.robId === robReadResult.result
+                    input.bits  := wb.data
                 }
-            }
-        }
+                when(mux.io.output.valid && readPort.en && robReadResult.sel === RobDistributeSel.robId) {
+                  dst.sel    := RobDistributeSel.realData
+                  dst.result := mux.io.output.bits
+                }
+              } else {
+                io.writebacks.foreach { wb =>
+                  when(
+                    wb.en && readPort.en &&
+                      robReadResult.sel === RobDistributeSel.robId &&
+                      wb.robId === robReadResult.result
+                  ) {
+                    dst.sel    := RobDistributeSel.realData
+                    dst.result := wb.data
+                  }
+                }
+              }
+          }
       }
   }
 
@@ -167,22 +182,35 @@ class SimpleOoOReservationStation(
     ram(enq_ptr.io.value).bits  := in.bits
     ram(enq_ptr.io.value).valid := true.B
 
-    io.writebacks.foreach { wb =>
-      in.bits.regReadPort.preExeInstInfo.gprReadPorts
-        .lazyZip(in.bits.robResult.readResults)
-        .lazyZip(ram(enq_ptr.io.value).bits.robResult.readResults)
-        .foreach {
-          case (readPort, robReadResult, dst) =>
-            when(
-              wb.en && readPort.en &&
-                robReadResult.sel === RobDistributeSel.robId &&
-                wb.robId === robReadResult.result
-            ) {
-              dst.sel    := RobDistributeSel.realData
-              dst.result := wb.data
+    in.bits.regReadPort.preExeInstInfo.gprReadPorts
+      .lazyZip(in.bits.robResult.readResults)
+      .lazyZip(ram(enq_ptr.io.value).bits.robResult.readResults)
+      .foreach {
+        case (readPort, robReadResult, dst) =>
+          io.writebacks.foreach { wb =>
+            if (Param.isOptimizedByMultiMux) {
+              val mux = Module(new MultiMux1(Param.pipelineNum, UInt(Width.Reg.data), zeroWord))
+              mux.io.inputs.zip(io.writebacks).foreach {
+                case (input, wb) =>
+                  input.valid := wb.en && wb.robId === robReadResult.result
+                  input.bits  := wb.data
+              }
+              when(mux.io.output.valid && readPort.en && robReadResult.sel === RobDistributeSel.robId) {
+                dst.sel    := RobDistributeSel.realData
+                dst.result := mux.io.output.bits
+              }
+            } else {
+              when(
+                wb.en && readPort.en &&
+                  robReadResult.sel === RobDistributeSel.robId &&
+                  wb.robId === robReadResult.result
+              ) {
+                dst.sel    := RobDistributeSel.realData
+                dst.result := wb.data
+              }
             }
-        }
-    }
+          }
+      }
   }
 
   when(io.isFlush) {
