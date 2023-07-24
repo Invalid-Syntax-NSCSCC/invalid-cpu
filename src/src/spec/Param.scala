@@ -6,19 +6,22 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
+  // These options are one-hot
   val isChiplab        = true
   val isReleasePackage = false
+  val isFullFpga       = false
 
   val isDiffTest                = false || isChiplab
   val isOutOfOrderIssue         = true
-  val isFullUncachedPatch       = false || isChiplab
+  val isFullUncachedPatch       = false || isChiplab || isFullFpga
   val isPartialUncachedPatch    = false || isReleasePackage
+  val isMmioDelay               = false || isChiplab || isFullFpga
   val isNoPrivilege             = false || isReleasePackage
   val isCacheOnPg               = false
   val isForcedCache             = false || isReleasePackage
   val isForcedUncached          = false
   val isBranchPredict           = true
-  val isTagePredictorTagCompare = false || isChiplab
+  val isTagePredictorTagCompare = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
@@ -131,6 +134,7 @@ object Param {
 
     object Mem {
       val storeQueueLen = 8
+      val MmioDelayMax  = 5
     }
   }
 

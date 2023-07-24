@@ -10,7 +10,7 @@ import pipeline.common.{BaseStage, LookupQueue}
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort, StoreInfoBundle}
 import pipeline.memory.enums.CacheMaintenanceTargetType
 import spec._
-import spec.Param.{isFullUncachedPatch, isPartialUncachedPatch}
+import spec.Param.{isFullUncachedPatch, isMmioDelay, isPartialUncachedPatch}
 
 class MemReqNdPort extends Bundle {
   val isAtomicStore           = new Bool()
@@ -50,7 +50,7 @@ class MemReqStage
       "h_1faf".U(16.W),
       "h_bfaf".U(16.W),
       "h_1fd0".U(16.W), // Chiplab only
-      "h_1fe0".U(16.W), // Chiplab only; serial port
+      "h_1fe0".U(16.W), // Serial port
       "h_1fe7".U(16.W), // FPGA: NAND flash
       "h_1ff0".U(16.W) // FPGA: Xilinx DMFE
     ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
@@ -61,6 +61,21 @@ class MemReqStage
     ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
   } else {
     false.B
+  }
+
+  // Delay load for MMIO
+  val isAdditionalLoadReady = Wire(Bool())
+  if (isMmioDelay) {
+    val isMmioAddressMatched =
+      selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16) === "h_1fe0".U(16.W)
+    val MmioCountDownReg = RegInit(Param.Count.Mem.MmioDelayMax.U)
+    MmioCountDownReg := MmioCountDownReg - 1.U
+    when(isLastComputed || io.isFlush) {
+      MmioCountDownReg := Param.Count.Mem.MmioDelayMax.U
+    }
+    isAdditionalLoadReady := !isMmioAddressMatched || (!MmioCountDownReg.orR && !isLastComputed)
+  } else {
+    isAdditionalLoadReady := true.B
   }
 
   val isTrueCached = selectedIn.isCached && !isUncachedAddressRange
@@ -132,7 +147,7 @@ class MemReqStage
       switch(selectedIn.translatedMemReq.rw) {
         is(ReadWriteSel.read) {
           // Whether last memory request is submitted and no stores in queue and not committing store
-          when(io.out.ready && !storeQueue.io.lookup.out) { // TODO: Might optimize
+          when(io.out.ready && !storeQueue.io.lookup.out && isAdditionalLoadReady) { // TODO: Might optimize
             when(isTrueCached) {
               peer.dCacheReq.client.isValid := true.B
               isComputed                    := peer.dCacheReq.isReady

@@ -192,6 +192,10 @@ class AddrTransStage
     tlbBlockingReg := false.B
   }
 
+  if (isNoPrivilege) {
+    tlbBlockingReg := true.B
+  }
+
   // Submit result
   when(selectedIn.instInfo.isValid && !tlbBlockingReg && io.in.ready && io.in.valid) {
     resultOutReg.valid := true.B
