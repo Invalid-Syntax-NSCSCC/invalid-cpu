@@ -354,7 +354,7 @@ class TagePredictor(
         // No slot to allocate, decrease all useful bits of longer history components
         tagUpdateUseful.lazyZip(tagUpdateIncUseful).zipWithIndex.foreach {
           case ((useful, incUseful), idx) =>
-            when(idx.U > updateProviderId) {
+            when(idx.U >= updateProviderId - 1.U) {
               useful    := true.B
               incUseful := false.B
             }
