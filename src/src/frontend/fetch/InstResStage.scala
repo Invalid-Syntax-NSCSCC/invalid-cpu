@@ -26,7 +26,7 @@ class InstResPeerPort extends Bundle {
 class InstResStage
     extends BaseStage(
       new InstResNdPort,
-      new InstQueueEnqNdPort,
+      new InstPreDecodeNdPort,
       InstResNdPort.default,
       Some(new InstResPeerPort)
     ) {
@@ -36,6 +36,8 @@ class InstResStage
   val isLastHasReq = RegNext(false.B, false.B)
 
   // Fallback output
+  out.ftqLength := selectedIn.ftqBlock.length
+  out.ftqId     := selectedIn.ftqId
 
   out.enqInfos.zipWithIndex.foreach {
     case (infoBundle, index) =>
