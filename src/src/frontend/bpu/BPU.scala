@@ -154,7 +154,7 @@ class BPU(
       io.mainRedirectPc.bits := ftbEntry.jumpTargetAddress
     }
     is(Param.BPU.BranchType.ret) {
-//      io.mainRedirectPc.bits := rasTopAddr // TODO RAS
+      // io.mainRedirectPc.bits := rasTopAddr // TODO RAS
     }
   }
 

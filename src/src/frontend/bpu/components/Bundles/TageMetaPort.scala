@@ -11,11 +11,11 @@ class TageMetaPort(
     extends Bundle {
   val providerId             = UInt(log2Ceil(tagComponentNum + 1).W)
   val altProviderId          = UInt(log2Ceil(tagComponentNum + 1).W)
-  val useful                 = Bool()
+  val isUseful               = Bool()
   val providerCtrBits        = Vec(tagComponentNum + 1, UInt(3.W))
-  val tagPredictorQueryTag   = Vec(tagComponentNum, UInt(tagComponentTagWidth.W))
-  val tagPredictorOriginTag  = Vec(tagComponentNum, UInt(tagComponentTagWidth.W))
-  val tagPredictorHitIndex   = Vec(tagComponentNum, UInt(10.W))
+  val tagPredictorQueryTags  = Vec(tagComponentNum, UInt(tagComponentTagWidth.W))
+  val tagPredictorOriginTags = Vec(tagComponentNum, UInt(tagComponentTagWidth.W))
+  val tagPredictorHitIndexs  = Vec(tagComponentNum, UInt(10.W))
   val tagPredictorUsefulBits = Vec(tagComponentNum, UInt(3.W))
 }
 
