@@ -140,7 +140,7 @@ class ICache(
 
   val isCompleteReg = RegInit(false.B)
   isCompleteReg := isCompleteReg
-  val readDataVecReg = RegInit(VecInit(Seq.fill(Param.fetchInstMaxNum)(0.U(Width.Mem.data))))
+  val readDataVecReg = RegInit(VecInit(Seq.fill(Param.Count.ICache.dataPerLine)(0.U(Width.Mem.data))))
   readDataVecReg := readDataVecReg
 
   io.accessPort.req.isReady := false.B // Fallback: Not ready
@@ -240,9 +240,9 @@ class ICache(
 
           // Step 2: Read result in same cycle output
           io.accessPort.res.isComplete   := true.B
-          io.accessPort.res.read.dataVec := selectDataVec
+          io.accessPort.res.read.dataVec := selectedDataLine
           isCompleteReg                  := true.B
-          readDataVecReg                 := selectDataVec
+          readDataVecReg                 := selectedDataLine
 
           // Next Stage 1
           nextState := State.ready
@@ -351,9 +351,9 @@ class ICache(
           // TODO: Add one more cycle for return read data
           io.accessPort.res.isComplete   := true.B
           io.accessPort.res.isFailed     := axiMaster.io.read.res.isFailed
-          io.accessPort.res.read.dataVec := readDataVec
+          io.accessPort.res.read.dataVec := dataLine
           isCompleteReg                  := true.B
-          readDataVecReg                 := readDataVec
+//          readDataVecReg                 := readDataVec
           // TODO: `isFailedReg`
 
           // Next Stage 1

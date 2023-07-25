@@ -49,10 +49,7 @@ class InstResStage
         infoBundle.valid     := true.B
       } else {
         val fetchIndex = WireDefault(
-          selectedIn.ftqBlock.startPc(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset) + index
-            .asUInt(
-              log2Ceil(Param.fetchInstMaxNum).W
-            )
+          selectedIn.ftqBlock.startPc(Param.Width.ICache._byteOffset - 1, Param.Width.ICache._instOffset) + index.U
         )
         infoBundle.bits.inst := peer.memRes.read.dataVec(fetchIndex)
         infoBundle.valid     := index.asUInt(log2Ceil(Param.fetchInstMaxNum + 1).W) < selectedIn.ftqBlock.length
