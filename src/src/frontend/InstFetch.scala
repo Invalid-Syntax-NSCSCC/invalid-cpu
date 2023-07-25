@@ -26,15 +26,19 @@ class InstFetch extends Module {
     val tlbTrans = Flipped(new TlbTransPort)
     // <-> Frontend <-> csr
     val csr = Input(new MemCsrNdPort)
+
+    // <-> Frontend <-> Pc,Ftq,
+    val preDecodeRedirectPort = Output(new InstPreDecodePeerPort)
   })
 
   // InstAddr translate and mem stages
-  val addrTransStage = Module(new InstAddrTransStage)
-  val instReqStage   = Module(new InstReqStage)
-  val instResStage   = Module(new InstResStage)
+  val addrTransStage     = Module(new InstAddrTransStage)
+  val instReqStage       = Module(new InstReqStage)
+  val instResStage       = Module(new InstResStage)
+  val instPreDecodeStage = Module(new InstPreDecodeStage)
 
   // addrTransStage
-  addrTransStage.io.isFlush := io.isFlush
+  addrTransStage.io.isFlush := io.isFlush || instPreDecodeStage.io.peer.get.predecodeRedirect
   addrTransStage.io.in      <> io.ftqIFPort
   addrTransStage.io.peer.foreach { p =>
     p.csr      <> io.csr
@@ -42,18 +46,25 @@ class InstFetch extends Module {
   }
 
   // instReqStage
-  instReqStage.io.isFlush := io.isFlush
+  instReqStage.io.isFlush := io.isFlush || instPreDecodeStage.io.peer.get.predecodeRedirect
   instReqStage.io.in      <> addrTransStage.io.out
   instReqStage.io.peer.foreach { p =>
     p.memReq <> io.accessPort.req
   }
 
   // instResStage
-  instResStage.io.isFlush := io.isFlush
+  instResStage.io.isFlush := io.isFlush || instPreDecodeStage.io.peer.get.predecodeRedirect
   instResStage.io.in      <> instReqStage.io.out
-  io.instDequeuePort      <> instResStage.io.out
   instResStage.io.peer.foreach { p =>
     p.memRes <> io.accessPort.res
+  }
+
+  // instPreDecodeStage
+  instPreDecodeStage.io.isFlush := io.isFlush
+  instPreDecodeStage.io.in      <> instResStage.io.out
+  io.instDequeuePort            <> instPreDecodeStage.io.out
+  instPreDecodeStage.io.peer.foreach { p =>
+    p <> io.preDecodeRedirectPort
   }
 
 }
