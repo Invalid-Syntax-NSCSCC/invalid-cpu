@@ -353,7 +353,7 @@ class ICache(
           io.accessPort.res.isFailed     := axiMaster.io.read.res.isFailed
           io.accessPort.res.read.dataVec := dataLine
           isCompleteReg                  := true.B
-//          readDataVecReg                 := readDataVec
+          readDataVecReg                 := dataLine
           // TODO: `isFailedReg`
 
           // Next Stage 1
