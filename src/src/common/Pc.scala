@@ -10,7 +10,8 @@ class Pc(
   val issueNum: Int = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new Bundle {
-    val pc = Output(UInt(Width.Reg.data))
+    val pc       = Output(UInt(Width.Reg.data))
+    val fetchNum = Input(UInt(log2Ceil(Param.fetchInstMaxNum + 1).W))
 
     val ftqFull = Input(Bool())
     // 异常处理 + 分支跳转
@@ -50,6 +51,6 @@ class Pc(
     pcReg := io.mainRedirectPc.bits
   }.otherwise {
     // sequential pc
-    pcReg := pcReg + 4.U * pcFetchNum.asUInt
+    pcReg := pcReg + 4.U * io.fetchNum.asUInt
   }
 }

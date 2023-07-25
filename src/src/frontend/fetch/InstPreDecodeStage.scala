@@ -35,7 +35,7 @@ object InstPreDecodePeerPort {
 
 class InstPreDecodeStage
     extends BaseStageWOSaveIn(
-      new InstPreDecodeNdPort,
+      new InstQueueEnqNdPort,
       new InstQueueEnqNdPort,
       InstPreDecodeNdPort.default,
       Some(new InstPreDecodePeerPort)
@@ -49,32 +49,32 @@ class InstPreDecodeStage
   peer.redirectPc        := 0.U
   peer.redirectFtqId     := 0.U
 
-  // select in data
-  val pcVec = Wire(Vec(Param.fetchInstMaxNum, UInt(spec.Width.Mem.addr)))
-  pcVec.zipWithIndex.foreach {
-    case (pc, index) =>
-      pc := selectedIn.ftqBlock.startPc + 4.U * index.U
-  }
-  val instVec = Wire(Vec(Param.fetchInstMaxNum, UInt(Width.Mem.data)))
-  instVec.zipWithIndex.foreach {
-    case (instVal, index) =>
-      val fetchIndex = WireDefault(
-        selectedIn.ftqBlock.startPc(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset) + index
-          .asUInt(
-            log2Ceil(Param.fetchInstMaxNum).W
-          )
-      )
-      // TODO support crossCacheline
-      instVal := selectedIn.instVec(fetchIndex)
-  }
+//  // select in data
+//  val pcVec = Wire(Vec(Param.fetchInstMaxNum, UInt(spec.Width.Mem.addr)))
+//  pcVec.zipWithIndex.foreach {
+//    case (pc, index) =>
+//      pc := selectedIn.ftqBlock.startPc + 4.U * index.U
+//  }
+//  val instVec = Wire(Vec(Param.fetchInstMaxNum, UInt(Width.Mem.data)))
+//  instVec.zipWithIndex.foreach {
+//    case (instVal, index) =>
+//      val fetchIndex = WireDefault(
+//        selectedIn.ftqBlock.startPc(Param.Width.ICache._fetchOffset - 1, Param.Width.ICache._instOffset) + index
+//          .asUInt(
+//            log2Ceil(Param.fetchInstMaxNum).W
+//          )
+//      )
+//      // TODO support crossCacheline
+//      instVal := selectedIn.instVec(fetchIndex)
+//  }
 
   // preDecode inst info
   val decodeResultVec = Wire(Vec(Param.fetchInstMaxNum, new PreDecoderResultNdPort))
   Seq.range(0, Param.fetchInstMaxNum).foreach { index =>
     val preDecoder = Module(new PreDecoder)
-    preDecoder.io.pc       := pcVec(index)
-    preDecoder.io.inst     := instVec(index)
+    preDecoder.io.pc       := selectedIn.enqInfos(index).preDecoder.io.inst := instVec(index)
     decodeResultVec(index) := preDecoder.io.result
+
   }
 
   val isImmJumpVec = Wire(Vec(Param.fetchInstMaxNum, Bool()))
@@ -94,7 +94,7 @@ class InstPreDecodeStage
   val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
 
   // peer output
-  val ftqIdReg  = RegNext(selectedIn.ftqId, 0.U)
+  val ftqIdReg  = RegNext(selectedIn.enqInfos(0).ftqId, 0.U)
   val jumpPcReg = RegNext(decodeResultVec(immJumpIndex).jumpTargetAddr, 0.U)
 
   if (Param.isPredecode) {
