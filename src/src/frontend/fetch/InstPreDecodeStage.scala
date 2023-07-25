@@ -44,6 +44,11 @@ class InstPreDecodeStage
   val peer       = io.peer.get
   val out        = resultOutReg.bits
 
+  // default
+  peer.predecodeRedirect := false.B
+  peer.redirectPc        := 0.U
+  peer.redirectFtqId     := 0.U
+
   // select in data
   val pcVec = Wire(Vec(Param.fetchInstMaxNum, UInt(spec.Width.Mem.addr)))
   pcVec.zipWithIndex.foreach {
@@ -82,15 +87,21 @@ class InstPreDecodeStage
   val immJumpIndex = PriorityEncoder(isImmJumpVec)
 
   val isPredecoderRedirect = WireDefault(false.B)
-  isPredecoderRedirect := io.in.valid && io.in.ready && isImmJumpVec.asUInt.orR && !io.isFlush && (immJumpIndex +& 1.U < selectedIn.ftqBlock.length)
+  if (Param.isPredecode) {
+    isPredecoderRedirect := io.in.valid && io.in.ready && isImmJumpVec.asUInt.orR && !io.isFlush && (immJumpIndex +& 1.U < selectedIn.ftqBlock.length)
+  }
+
   val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
 
   // peer output
   val ftqIdReg  = RegNext(selectedIn.ftqId, 0.U)
   val jumpPcReg = RegNext(decodeResultVec(immJumpIndex).jumpTargetAddr, 0.U)
-  peer.predecodeRedirect := isPredecoderRedirectReg
-  peer.redirectPc        := jumpPcReg
-  peer.redirectFtqId     := ftqIdReg
+
+  if (Param.isPredecode) {
+    peer.predecodeRedirect := isPredecoderRedirectReg
+    peer.redirectPc        := jumpPcReg
+    peer.redirectFtqId     := ftqIdReg
+  }
 
   // output
   // cut block length
@@ -121,7 +132,7 @@ class InstPreDecodeStage
         infoBundle.bits.ftqInfo.isLastInBlock := false.B
       }
   }
-dontTouch
+
   // Submit result
   when(io.in.ready && io.in.valid) {
     when(selectedIn.ftqBlock.isValid) {

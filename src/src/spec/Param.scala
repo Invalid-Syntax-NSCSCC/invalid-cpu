@@ -7,21 +7,22 @@ object Param {
   // Configurable self-defined parameters go here
 
   // These options are one-hot
-  val isChiplab = true
+  val isChiplab        = true
   val isReleasePackage = false
-  val isFullFpga = false
+  val isFullFpga       = false
 
-  val isDiffTest = false || isChiplab
-  val isOutOfOrderIssue = true
-  val isFullUncachedPatch = false || isChiplab || isFullFpga
-  val isPartialUncachedPatch = false || isReleasePackage
-  val isMmioDelay = false || isChiplab || isFullFpga
-  val isNoPrivilege = false || isReleasePackage
-  val isCacheOnPg = false
-  val isForcedCache = false || isReleasePackage
-  val isForcedUncached = false
-  val isBranchPredict = true
+  val isDiffTest                = false || isChiplab
+  val isOutOfOrderIssue         = true
+  val isFullUncachedPatch       = false || isChiplab || isFullFpga
+  val isPartialUncachedPatch    = false || isReleasePackage
+  val isMmioDelay               = false || isChiplab || isFullFpga
+  val isNoPrivilege             = false || isReleasePackage
+  val isCacheOnPg               = true
+  val isForcedCache             = false || isReleasePackage
+  val isForcedUncached          = false
+  val isBranchPredict           = true
   val isTagePredictorTagCompare = true
+  val isPredecode               = false
   val isShowBranchNum = isChiplab // need commitNum == 1. branch inst num -> pc_1 ; branch predict failed num -> wdata_1
 
   val isWritebackPassThroughWakeUp = true
