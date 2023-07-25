@@ -51,8 +51,8 @@ class TagePredictor(
   val updateMetaBundle = WireDefault(io.updateInfoPort.bpuMeta)
 
   // Signals
-  // Query
-  val takens = WireDefault(VecInit(Seq.fill(tagComponentNum + 1)(false.B)))
+  // // Query
+  // val takens = WireDefault(VecInit(Seq.fill(tagComponentNum + 1)(false.B)))
 
   // Base predictor
   val baseTaken = WireDefault(true.B)
@@ -67,7 +67,6 @@ class TagePredictor(
   // then pred is 4, and altpred is 2
   val tagTaken          = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
   val tagHit            = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
-  val queryIsUseful     = WireDefault(false.B) // Indicates whether the pred component is useful
   val queryNewEntryFlag = WireDefault(false.B) // Indicates the provider is new
 
   // Meta
@@ -98,8 +97,8 @@ class TagePredictor(
   val tagUpdateQueryUsefuls = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(3.W))))
   val tagUpdateNewTags      = WireInit(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
 
-  // Indicates the longest history component which useful is 0
-  val tagUpdateUsefulZeroId = WireDefault(0.U(tagComPtrWidth.W))
+  // // Indicates the longest history component which useful is 0
+  // val tagUpdateUsefulZeroId = WireDefault(0.U(tagComPtrWidth.W))
 
   // pingpong counter & lfsr
   // is a random number array
@@ -178,48 +177,44 @@ class TagePredictor(
     }
   }
 
-  queryIsUseful := (takens(predPredictionId) =/= takens(altPredPredctionId))
-
   // Select the longest match provider
   // predPredictionId = 0.U((tagComponentNum + 1).W)
-  Seq
-    .range(0, tagComponentNum)
-    .foreach(i =>
-      when(tagHit(i)) {
-        predPredictionId := (i + 1).U(tagComPtrWidth.W)
+  tagHit.zipWithIndex.foreach {
+    case (oneTagHit, idx) =>
+      when(oneTagHit) {
+        predPredictionId := (idx + 1).U
       }
-    )
+  }
 
   // Select altpred
   val altpredPool = WireDefault(VecInit(Seq.fill(tagComponentNum + 1)(false.B)))
   //  altpredPool    := Cat(tagHit, 1.U(1.W))
-  Seq.range(1, tagComponentNum + 1).foreach(i => altpredPool(i) := tagHit(i - 1))
-  altpredPool(0) := true.B
+  // Seq.range(1, tagComponentNum + 1).foreach(i => altpredPool(i) := tagHit(i - 1))
+  // altpredPool(0) := true.B
+  val altprePool = WireDefault(VecInit(Seq(true.B) ++ tagHit))
   when(predPredictionId =/= 0.U) {
     altpredPool(predPredictionId) := false.B
   }
 
   // altPredPredctionId = 0.U((tagComponentNum + 1).W)
-  Seq
-    .range(0, tagComponentNum + 1)
-    .foreach(i =>
-      when(altpredPool(i)) {
-        altPredPredctionId := i.U(tagComPtrWidth.W)
+  altprePool.zipWithIndex.foreach {
+    case (altPred, idx) =>
+      when(altPred) {
+        altPredPredctionId := idx.U
       }
-    )
+  }
 
   // Output logic
   io.predictValid := true.B
+
+  // Query
   //  takens          := Cat(tagTaken, baseTaken)
-  Seq.range(1, tagComponentNum + 1).foreach { i =>
-    takens(i) := tagTaken(i - 1)
-  }
-  takens(0) := baseTaken
-  queryNewEntryFlag := ((tagCtrs(predPredictionId - 1.U((tagComponentNum + 1).W)) === 3.U(3.W) ||
-    tagCtrs(predPredictionId - 1.U((tagComponentNum + 1).W)) === 4.U(3.W)) &&
-    predPredictionId =/= 0.U(1.W))
+  val takens = VecInit(Seq(baseTaken) ++ tagTaken)
+  queryNewEntryFlag := ((tagCtrs(predPredictionId - 1.U) === 3.U ||
+    tagCtrs(predPredictionId - 1.U) === 4.U)) &&
+    predPredictionId =/= 0.U
   useALtOnNaCounter := useAltOnNaCounterTablesReg(io.pc(4, 2))
-  isUseAlt          := (useALtOnNaCounter(3) === 1.U(1.W)) && queryNewEntryFlag
+  isUseAlt          := (useALtOnNaCounter(3) === true.B) && queryNewEntryFlag
 
   // assign useAlt = 0
   io.predictBranchTaken := takens(predPredictionId)
@@ -230,21 +225,17 @@ class TagePredictor(
   vecAssign(queryMetaBundle.tagPredictorHitIndex, tagHitIndexs)
   vecAssign(queryMetaBundle.tagPredictorQueryTag, tagQueryTags)
   vecAssign(queryMetaBundle.tagPredictorOriginTag, tagOriginTags)
-  queryMetaBundle.useful             := queryIsUseful
-  queryMetaBundle.providerId         := predPredictionId
-  queryMetaBundle.altProviderId      := altPredPredctionId
-  queryMetaBundle.providerCtrBits(0) := baseCtr
+  queryMetaBundle.useful := takens(predPredictionId) =/= takens(
+    altPredPredctionId
+  ) // Indicates whether the pred component is useful
+  queryMetaBundle.providerId    := predPredictionId
+  queryMetaBundle.altProviderId := altPredPredctionId
 
-  Seq
-    .range(0, tagComponentNum)
-    .foreach(i =>
-      // skip ctrBitsVec(0)
-      queryMetaBundle.providerCtrBits(i + 1) := tagCtrs(i)
-    )
-  //  queryMetaPort.providerCtrBits.drop(1).zip(tagCtrs).foreach {
-  //    case (dst, src) =>
-  //      dst := src
-  //  }
+  queryMetaBundle.providerCtrBits.zip(Seq(baseCtr) ++ tagCtrs).foreach {
+    case (dst, src) =>
+      dst := src
+  }
+
   io.bpuMetaPort          := BpuFtqMetaNdPort.default
   io.bpuMetaPort.tageMeta := queryMetaBundle
 
@@ -254,23 +245,24 @@ class TagePredictor(
 
   // USE_ALT_ON_NA
   // ctr = b100 or b011 means has no confidence;so update new entry
-  updateNewEntryFlag := (updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 3.U(3.W) ||
-    updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 4.U(3.W) &&
-    updateProviderId =/= 0.U)
+  updateNewEntryFlag :=
+    (updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 3.U ||
+      updateMetaBundle.providerCtrBits(updateProviderId - 1.U) === 4.U) &&
+      updateProviderId =/= 0.U
   when(
-    isUpdateValid && updateNewEntryFlag &&
-      updateMetaBundle.useful && !io.updateInfoPort.predictCorrect
+    isUpdateValid &&
+      updateNewEntryFlag &&
+      updateMetaBundle.useful
   ) {
     useAltOnNaCounterTablesReg(updatePc(4, 2)) := Mux(
-      useALtOnNaCounter === 15.U(4.W),
-      15.U(4.W),
-      useALtOnNaCounter + 1.U
+      io.updateInfoPort.predictCorrect,
+      Mux(useALtOnNaCounter === 0.U, 0.U, useALtOnNaCounter - 1.U),
+      Mux(
+        useALtOnNaCounter === 15.U,
+        15.U,
+        useALtOnNaCounter + 1.U
+      )
     )
-  }.elsewhen(
-    isUpdateValid && updateNewEntryFlag &&
-      updateMetaBundle.useful && io.updateInfoPort.predictCorrect
-  ) {
-    useAltOnNaCounterTablesReg(updatePc(4, 2)) := Mux(useALtOnNaCounter === 0.U(4.W), 0.U(4.W), useALtOnNaCounter - 1.U)
   }
 
   // CTR policy
@@ -297,22 +289,21 @@ class TagePredictor(
 
   // Get the ID of desired allocate component
   // This block finds the ID of useful == 0 component
-  val tagUpdateQueryUsefulsMatch = WireDefault(VecInit(Seq.fill(tagComponentNum)(false.B)))
-
-  Seq.range(0, tagComponentNum).foreach(i => tagUpdateQueryUsefulsMatch(i) := (tagUpdateQueryUsefuls(i) === 0.U(1.W)))
+  val tagUpdateQueryUsefulsMatch = VecInit(tagUpdateQueryUsefuls.map(_ === 0.U))
 
   // Allocation policy, according to TAGE essay
   // Shorter history component has a higher chance of chosen
   // foreach from high index to low index
 
-  tagUpdateUsefulZeroId := 0.U(tagComPtrWidth.W)
+  // Indicates the longest history component which useful is 0
+  val tagUpdateUsefulZeroId = WireDefault(0.U(tagComPtrWidth.W))
   tagUpdateQueryUsefulsMatch.zipWithIndex.reverse.foreach {
     case (isMatch, index) =>
       when(
         isMatch && (index.U(tagComPtrWidth.W) + 1.U > updateProviderId)
       ) {
         when(tagUpdateUsefulPingpongCounter(index)) {
-          tagUpdateUsefulZeroId := (index + 1).U(tagComPtrWidth.W)
+          tagUpdateUsefulZeroId := (index + 1).U
         }
       }
   }
@@ -361,22 +352,26 @@ class TagePredictor(
         }
       }.otherwise {
         // No slot to allocate, decrease all useful bits of longer history components
-        Seq.range(0, tagComponentNum).foreach { i =>
-          tagUpdateUseful(i)    := true.B
-          tagUpdateIncUseful(i) := false.B
+        tagUpdateUseful.lazyZip(tagUpdateIncUseful).zipWithIndex.foreach {
+          case ((useful, incUseful), idx) =>
+            when(idx.U > updateProviderId) {
+              useful    := true.B
+              incUseful := false.B
+            }
         }
       } // end otherwise
     } // end otherwise
   } // end update
 
   // generate new tag
-  Seq.range(0, tagComponentNum).foreach { i =>
-    tagUpdateNewTags(i) := Mux(
-      tagUpdateReallocEntry(i),
-      updateMetaBundle.tagPredictorQueryTag(i),
-      updateMetaBundle.tagPredictorOriginTag(i)
-    )
-  }
+  tagUpdateNewTags
+    .lazyZip(tagUpdateReallocEntry)
+    .lazyZip(updateMetaBundle.tagPredictorQueryTag)
+    .lazyZip(updateMetaBundle.tagPredictorOriginTag)
+    .foreach {
+      case (newTag, entry, queryTag, originTag) =>
+        newTag := Mux(entry, queryTag, originTag)
+    }
 
   //  // counter
   //  Seq.range(0, tagComponentNum + 1).foreach { i =>

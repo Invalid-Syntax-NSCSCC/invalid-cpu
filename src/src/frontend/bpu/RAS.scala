@@ -26,7 +26,7 @@ class RAS(
   val readIndex = RegInit(0.U(pointerWidth.W))
 
   // Index
-  newIndex  := readIndex + io.push - io.pop
+  newIndex  := readIndex + io.push.asUInt - io.pop.asUInt
   readIndex := newIndex
 
   // Data
