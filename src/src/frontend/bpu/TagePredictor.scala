@@ -168,7 +168,7 @@ class TagePredictor(
       taggedPreditor.io.updateUsefulBits := updateMetaBundle.tagPredictorUsefulBits(providerId)
       taggedPreditor.io.updateCtr        := tagIsUpdateCtrs.asBools(providerId)
       taggedPreditor.io.incCtr           := updateBranchTaken
-      taggedPreditor.io.updateCtrBits    := updateMetaBundle.providerCtrBits(providerId)
+      taggedPreditor.io.updateCtrBits    := updateMetaBundle.providerCtrBits(providerId + 1)
       taggedPreditor.io.reallocEntry     := tagUpdateisReallocEntrys(providerId)
       taggedPreditor.io.updateTag        := tagUpdateNewTags(providerId)
       taggedPreditor.io.updateIndex      := updateMetaBundle.tagPredictorHitIndexs(providerId)
