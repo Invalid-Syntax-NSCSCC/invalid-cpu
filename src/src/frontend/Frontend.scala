@@ -46,6 +46,7 @@ class Frontend extends Module {
   pc.io.newPc          := io.cuNewPc
   pc.io.mainRedirectPc := bpu.io.mainRedirectPc
   pc.io.ftqFull        := ftq.io.bpuFtqPort.ftqFull
+  pc.io.fetchNum       := bpu.io.fetchNum
 
   // Frontend pipeline structure
   // bpu(branch predict unit) => ftq(fetchTargetQueue) =>

@@ -37,10 +37,12 @@ class BPU(
 
     // PC
     val mainRedirectPc = Output(Valid(UInt(Width.Reg.data)))
+    val fetchNum       = Output(UInt(log2Ceil(Param.fetchInstMaxNum + 1).W))
 
     // PMU
     // TODO: use PMU to monitor miss-prediction rate and each component useful rate
   })
+  io.fetchNum := io.bpuFtqPort.ftqP0.length
   // P1 signals
   val mainRedirectValid = WireDefault(false.B)
 
@@ -83,12 +85,18 @@ class BPU(
       val pcFetchNum = WireDefault(Param.fetchInstMaxNum.U(log2Ceil(Param.fetchInstMaxNum + 1).W))
       if (Param.fetchInstMaxNum != 1) {
         // TODO support fix fetch num
-        when(io.pc(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset) =/= 0.U) {
+        when(
+          io.pc(
+            Param.Width.ICache._byteOffset - 1,
+            Param.Width.ICache._instOffset
+          ) + Param.fetchInstMaxNum.U < Param.fetchInstMaxNum.U
+        ) {
           pcFetchNum := Param.fetchInstMaxNum.U - io.pc(
             Param.Width.ICache._fetchOffset - 1,
             Param.Width.ICache._instOffset
           )
         }
+        when(io.pc(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset) =/= 0.U) {}
       }
       io.bpuFtqPort.ftqP0.length := pcFetchNum
     }
