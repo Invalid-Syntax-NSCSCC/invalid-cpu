@@ -27,7 +27,7 @@ class Pmu extends Module {
   inc(timer)
   when(io.instqueueFull) {
     inc(instQueueIsFull)
-    when(!io.instqueueFullValid) {
+    when(io.instqueueFullValid) {
       inc(instQueueIsFullValid)
     }
   }

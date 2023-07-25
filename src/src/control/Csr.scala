@@ -6,6 +6,7 @@ import control.bundles._
 import control.csrBundles._
 import memory.bundles.{TlbCsrWriteNdPort, TransExceptionCsrNdPort}
 import spec._
+import pmu.bundles.PmuNdPort
 
 class Csr(
   writeNum: Int = Param.csrWriteNum,
@@ -29,6 +30,9 @@ class Csr(
 
     // 外部中断
     val hardwareInterrupt = Input(UInt(8.W))
+
+    // pmu
+    val pmuPort = if (Param.usePmu) Some(Input(new PmuNdPort)) else None
   })
 
   // Util: view UInt as Bundle
@@ -448,4 +452,75 @@ class Csr(
   // Read only constants
   asid.in.asidbits           := "h_A".U
   io.csrValues.asid.asidbits := "h_A".U
+
+  if (Param.usePmu) {
+    val pmuPort = io.pmuPort.get
+    def r: UInt = {
+      dontTouch(RegInit(0.U(64.W)))
+    }
+
+    def inc(reg: UInt): Unit = {
+      reg := reg + 1.U
+    }
+
+    val timer                = r
+    val instQueueIsFull      = r
+    val instQueueIsFullValid = r // 当idle或redirect阻塞取指的时候不计入
+
+    inc(timer)
+    when(pmuPort.instqueueFull) {
+      inc(instQueueIsFull)
+      when(pmuPort.instqueueFullValid) {
+        inc(instQueueIsFullValid)
+      }
+    }
+
+    val branch                  = r
+    val branchSuccess           = r
+    val branchFail              = r
+    val unconditionalBranch     = r
+    val unconditionalBranchFail = r
+    val conditionalBranch       = r
+    val conditionalBranchFail   = r
+    val callBranch              = r
+    val callBranchFail          = r
+    val returnBranch            = r
+    val returnBranchFail        = r
+
+    when(pmuPort.branchInfo.isBranch) {
+      inc(branch)
+      when(pmuPort.branchInfo.isRedirect) {
+        inc(branchFail)
+      }.otherwise {
+        inc(branchSuccess)
+      }
+
+      switch(pmuPort.branchInfo.branchType) {
+        is(Param.BPU.BranchType.uncond) {
+          inc(unconditionalBranch)
+          when(pmuPort.branchInfo.isRedirect) {
+            inc(unconditionalBranchFail)
+          }
+        }
+        is(Param.BPU.BranchType.cond) {
+          inc(conditionalBranch)
+          when(pmuPort.branchInfo.isRedirect) {
+            inc(conditionalBranchFail)
+          }
+        }
+        is(Param.BPU.BranchType.call) {
+          inc(callBranch)
+          when(pmuPort.branchInfo.isRedirect) {
+            inc(callBranchFail)
+          }
+        }
+        is(Param.BPU.BranchType.ret) {
+          inc(returnBranch)
+          when(pmuPort.branchInfo.isRedirect) {
+            inc(returnBranchFail)
+          }
+        }
+      }
+    }
+  }
 }
