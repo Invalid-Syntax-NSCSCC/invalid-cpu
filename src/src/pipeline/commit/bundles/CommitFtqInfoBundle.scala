@@ -8,6 +8,9 @@ class CommitFtqInfoBundle extends Bundle {
   val branchType      = UInt(Param.BPU.BranchType.width.W)
   val isBranchSuccess = Bool()
   val isRedirect      = Bool()
+
+  val directionMispredict = if (Param.usePmu) Some(Bool()) else None
+  val targetMispredict    = if (Param.usePmu) Some(Bool()) else None
 }
 
 object CommitFtqInfoBundle {

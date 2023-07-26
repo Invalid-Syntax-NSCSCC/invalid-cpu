@@ -16,6 +16,7 @@ import spec._
 import control.bundles.CsrWriteNdPort
 import control.bundles.StableCounterReadPort
 import control.bundles.CsrReadPort
+import pmu.bundles.PmuBranchMisPredictExeNdPort
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -211,6 +212,11 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
         inFtqInfo.isLastInBlock &&
         fallThroughPc =/= ftqQueryPc
     )
+
+    if (Param.usePmu) {
+      resultOutReg.bits.instInfo.ftqCommitInfo.directionMispredict.get := branchDirectionMispredict
+      resultOutReg.bits.instInfo.ftqCommitInfo.targetMispredict.get    := branchTargetMispredict
+    }
 
     // is branch
     val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
