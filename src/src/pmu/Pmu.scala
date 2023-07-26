@@ -13,6 +13,7 @@ class Pmu extends Module {
     val instQueueEmpty     = Input(Bool())
     val branchInfo         = Input(new PmuBranchPredictNdPort)
     val dispatchInfos      = Input(Vec(Param.pipelineNum, new PmuDispatchBundle))
+    val robFull            = Input(Bool())
   })
 
   def r: UInt = {
@@ -58,6 +59,11 @@ class Pmu extends Module {
       when(dispatchInfo.bubbleFromRSEmpty) {
         inc(dispatchBubbleFromRSEmptys(idx))
       }
+  }
+
+  val robFull = r
+  when(io.robFull) {
+    inc(robFull)
   }
 
   val branch                  = r
