@@ -4,10 +4,11 @@ import chisel3._
 import chisel3.util._
 
 class MultiCounter(
-  maxCount:   Int,
-  maxIncNum:  Int,
-  init:       Int     = 0,
-  supportSet: Boolean = false)
+  maxCount:      Int,
+  maxIncNum:     Int,
+  init:          Int     = 0,
+  supportSet:    Boolean = false,
+  needRecurrent: Boolean = true)
     extends Module {
   require(maxCount >= maxIncNum)
   val value_w = log2Ceil(maxCount)
@@ -37,7 +38,7 @@ class MultiCounter(
 
   incResults.zipWithIndex.foreach {
     case (incResult, inc) =>
-      if (isMaxCountPow2) {
+      if (isMaxCountPow2 || !needRecurrent) {
         incResult := counter + inc.U
       } else {
         val rawAdd = Wire(UInt((value_w + 1).W))

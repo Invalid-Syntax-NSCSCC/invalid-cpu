@@ -9,10 +9,8 @@ import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import pipeline.dispatch.enums.ScoreboardState
 import pipeline.rob.bundles.InstWbNdPort
 import pipeline.dispatch.bundles.ReservationStationBundle
-import pipeline.dispatch.rs.InOrderReservationStation
 import control.enums.ExceptionPos
-import pipeline.dispatch.rs.OutOfOrderReservationStation
-import pipeline.dispatch.rs.SimpleOoOReservationStation
+import pipeline.dispatch.rs._
 import pmu.bundles.PmuDispatchBundle
 
 // class DispatchNdPort extends Bundle {
@@ -61,7 +59,15 @@ class NewDispatchStage(
   val reservationStations = Seq.range(0, pipelineNum).map { idx =>
     Module(
       if (Param.isOutOfOrderIssue && idx != Param.loadStoreIssuePipelineIndex)
-        new SimpleOoOReservationStation(
+        // new SimpleOoOReservationStation(
+        //   Param.Width.Rob._channelLength,
+        //   true
+        // )
+        new OoOReservationStation(
+          Param.Width.Rob._channelLength,
+          1,
+          1,
+          1,
           Param.Width.Rob._channelLength,
           true
         )
