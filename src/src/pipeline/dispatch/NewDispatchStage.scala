@@ -13,6 +13,7 @@ import pipeline.dispatch.rs.InOrderReservationStation
 import control.enums.ExceptionPos
 import pipeline.dispatch.rs.OutOfOrderReservationStation
 import pipeline.dispatch.rs.SimpleOoOReservationStation
+import pmu.bundles.PmuDispatchBundle
 
 // class DispatchNdPort extends Bundle {
 //   val issueEns = Vec(Param.pipelineNum, Bool())
@@ -29,6 +30,9 @@ class NewDispatchPeerPort extends Bundle {
 
   // `LSU / ALU` -> `IssueStage
   val writebacks = Input(Vec(Param.pipelineNum, new InstWbNdPort))
+
+  // pmu
+  val pmu_dispatchInfos = if (Param.usePmu) Some(Output(Vec(Param.pipelineNum, new PmuDispatchBundle))) else None
 }
 
 class NewDispatchStage(
@@ -160,6 +164,13 @@ class NewDispatchStage(
         out.bits.instInfo.exceptionPos    := ExceptionPos.backend
         out.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ipe
       }
+  }
+
+  if (Param.usePmu) {
+    io.peer.get.pmu_dispatchInfos.get.zip(reservationStations).foreach {
+      case (dst, rs) =>
+        dst := rs.io.pmu_dispatchInfo.get
+    }
   }
 
   when(io.isFlush) {

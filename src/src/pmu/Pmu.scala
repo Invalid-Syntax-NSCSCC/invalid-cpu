@@ -4,6 +4,7 @@ import spec._
 import chisel3._
 import chisel3.util._
 import pmu.bundles.PmuBranchPredictNdPort
+import pmu.bundles.PmuDispatchBundle
 
 class Pmu extends Module {
   val io = IO(new Bundle {
@@ -11,6 +12,7 @@ class Pmu extends Module {
     val instqueueFullValid = Input(Bool())
     val instQueueEmpty     = Input(Bool())
     val branchInfo         = Input(new PmuBranchPredictNdPort)
+    val dispatchInfos      = Input(Vec(Param.pipelineNum, new PmuDispatchBundle))
   })
 
   def r: UInt = {
@@ -35,6 +37,27 @@ class Pmu extends Module {
   }
   when(io.instQueueEmpty) {
     inc(instQueueEmpty)
+  }
+
+  val dispatchBubbleFromBackends        = Seq.fill(Param.pipelineNum)(r)
+  val dispatchBubbleFromDataDependences = Seq.fill(Param.pipelineNum)(r)
+  val dispatchBubbleFromRSEmptys        = Seq.fill(Param.pipelineNum)(r)
+  val dispatchRSFulls                   = Seq.fill(Param.pipelineNum)(r)
+
+  io.dispatchInfos.zipWithIndex.foreach {
+    case (dispatchInfo, idx) =>
+      when(dispatchInfo.isFull) {
+        inc(dispatchRSFulls(idx))
+      }
+      when(dispatchInfo.bubbleFromBackend) {
+        inc(dispatchBubbleFromBackends(idx))
+      }
+      when(dispatchInfo.bubbleFromDataDependence) {
+        inc(dispatchBubbleFromDataDependences(idx))
+      }
+      when(dispatchInfo.bubbleFromRSEmpty) {
+        inc(dispatchBubbleFromRSEmptys(idx))
+      }
   }
 
   val branch                  = r

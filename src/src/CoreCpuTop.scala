@@ -341,7 +341,10 @@ class CoreCpuTop extends Module {
     pmu.io.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
     pmu.io.instQueueEmpty     := instQueue.io.pmu_instqueueEmpty.get
     pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
-
+    pmu.io.dispatchInfos.zip(dispatchStage.io.peer.get.pmu_dispatchInfos.get).foreach {
+      case (dst, src) =>
+        dst := src
+    }
   }
 
   // Difftest
