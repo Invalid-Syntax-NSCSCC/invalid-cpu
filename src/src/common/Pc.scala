@@ -44,11 +44,11 @@ class Pc(
     pcReg := io.newPc.pcAddr
   }.elsewhen(io.preDecodePc.valid) {
     pcReg := io.preDecodePc.bits
-  }.elsewhen(io.ftqFull) {
-    pcReg := pcReg
   }.elsewhen(io.mainRedirectPc.valid) {
     // bpu reditect when it can predict
     pcReg := io.mainRedirectPc.bits
+  }.elsewhen(io.ftqFull) {
+    pcReg := pcReg
   }.otherwise {
     // sequential pc
     pcReg := pcReg + 4.U * io.fetchNum.asUInt
