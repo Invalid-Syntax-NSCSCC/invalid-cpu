@@ -345,7 +345,7 @@ class CoreCpuTop extends Module {
       case (dst, src) =>
         dst := src
     }
-    pmu.io.robFull := rob.io.requests.head.ready && !cu.io.backendFlush
+    pmu.io.robFull := !rob.io.requests.head.ready && !cu.io.backendFlush
 
   }
 
