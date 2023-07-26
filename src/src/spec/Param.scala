@@ -185,7 +185,9 @@ object Param {
 //      val tagComponentNum        = 15
 //      val componentHistoryLength = Seq(0, 6, 10, 18, 25, 35, 55, 69, 105, 155, 230, 354, 479, 642, 1012, 1347)
       val tagComponentNum        = 7
-      val componentHistoryLength = Seq(0, 10, 25, 55, 105, 230, 479, 1012)
+      val componentHistoryLength = Seq(0, 10, 22, 52, 130, 230, 479, 1012) // ipc 0.6426
+//      val tagComponentNum        = 7
+//      val componentHistoryLength = Seq(0, 10, 26, 52, 100, 230, 479, 1012)  //0.6415
       //      val tagComponentNum        = 3
       //      val componentHistoryLength = Seq(0, 10, 55, 230, 479, 1012)
 
