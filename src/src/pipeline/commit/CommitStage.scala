@@ -121,6 +121,64 @@ class CommitStage(
       dt.wen_1   := DontCare
       dt.wdest_1 := DontCare
       dt.wdata_1 := DontCare
+
+      if (Param.isShowBranchNum) {
+        val branchCounter                    = RegInit(zeroWord)
+        val branchPredictFailedCounter       = RegInit(zeroWord)
+        val unconditionalBranchCounter       = dontTouch(RegInit(zeroWord))
+        val unconditionalBranchFailedCounter = dontTouch(RegInit(zeroWord))
+        val condBranchCounter                = dontTouch(RegInit(zeroWord))
+        val condBranchFailedCounter          = dontTouch(RegInit(zeroWord))
+        val callBranchCounter                = dontTouch(RegInit(zeroWord))
+        val callBranchFailedCounter          = dontTouch(RegInit(zeroWord))
+        val retBranchCounter                 = dontTouch(RegInit(zeroWord))
+        val retBranchFailedCounter           = dontTouch(RegInit(zeroWord))
+        dt.pc_1    := branchCounter
+        dt.wdata_1 := branchPredictFailedCounter
+        when(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready) {
+          // all branch
+          when(inBits(0).instInfo.ftqCommitInfo.isBranch) {
+            branchCounter := branchCounter + 1.U
+            when(inBits(0).instInfo.ftqCommitInfo.isRedirect) {
+              branchPredictFailedCounter := branchPredictFailedCounter + 1.U
+            }
+
+            // uncond
+            when(inBits(0).instInfo.ftqCommitInfo.branchType === Param.BPU.BranchType.uncond) {
+              unconditionalBranchCounter := unconditionalBranchCounter + 1.U
+              when(inBits(0).instInfo.ftqCommitInfo.isRedirect) {
+                unconditionalBranchFailedCounter := unconditionalBranchFailedCounter + 1.U
+              }
+            }
+
+            // cond
+            when(inBits(0).instInfo.ftqCommitInfo.branchType === Param.BPU.BranchType.cond) {
+              condBranchCounter := condBranchCounter + 1.U
+              when(inBits(0).instInfo.ftqCommitInfo.isRedirect) {
+                condBranchFailedCounter := condBranchFailedCounter + 1.U
+              }
+            }
+
+            // call
+            when(inBits(0).instInfo.ftqCommitInfo.branchType === Param.BPU.BranchType.call) {
+              callBranchCounter := callBranchCounter + 1.U
+              when(inBits(0).instInfo.ftqCommitInfo.isRedirect) {
+                callBranchFailedCounter := callBranchFailedCounter + 1.U
+              }
+            }
+
+            // ret
+            when(inBits(0).instInfo.ftqCommitInfo.branchType === Param.BPU.BranchType.ret) {
+              retBranchCounter := retBranchCounter + 1.U
+              when(inBits(0).instInfo.ftqCommitInfo.isRedirect) {
+                retBranchFailedCounter := retBranchFailedCounter + 1.U
+              }
+            }
+          }
+
+        }
+      }
+
       if (commitNum == 2) {
         dt.valid_1 := RegNext(inBits(1).instInfo.isValid && io.ins(1).valid && io.ins(1).ready)
         dt.instr_1 := RegNext(inBits(1).instInfo.inst)

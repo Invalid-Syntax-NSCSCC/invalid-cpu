@@ -14,6 +14,9 @@ import common.bundles.BackendRedirectPcNdPort
 class InstQueueEnqNdPort extends Bundle {
   val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
 }
+object InstQueueEnqNdPort {
+  def default = 0.U.asTypeOf(new InstQueueEnqNdPort)
+}
 
 class FetchInstDecodeNdPort extends Bundle {
   val decode   = new DecodeOutNdPort
