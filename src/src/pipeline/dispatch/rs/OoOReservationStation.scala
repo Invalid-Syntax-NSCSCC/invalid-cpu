@@ -153,7 +153,7 @@ class OoOReservationStation(
 
   io.dequeuePorts.zip(selectedIndices).foreach {
     case (deq, selectedIndex) =>
-      deq.bits := ram(selectedIndex)
+      deq.bits := ramFillRes(selectedIndex)
   }
 
   // compress & update
