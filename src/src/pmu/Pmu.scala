@@ -51,6 +51,7 @@ class Pmu extends Module {
   val dispatchBubbleFromDataDependences = Seq.fill(Param.pipelineNum)(r)
   val dispatchBubbleFromRSEmptys        = Seq.fill(Param.pipelineNum)(r)
   val dispatchRSFulls                   = Seq.fill(Param.pipelineNum)(r)
+  val dispatchRSEnqueueNum              = Seq.fill(Param.pipelineNum)(r)
 
   io.dispatchInfos.zipWithIndex.foreach {
     case (dispatchInfo, idx) =>
@@ -66,6 +67,7 @@ class Pmu extends Module {
       when(dispatchInfo.bubbleFromRSEmpty) {
         inc(dispatchBubbleFromRSEmptys(idx))
       }
+      condInc(dispatchRSEnqueueNum(idx), dispatchInfo.enqueue)
   }
 
   val robFull = r
@@ -73,19 +75,19 @@ class Pmu extends Module {
     inc(robFull)
   }
 
-  val branch                  = r
-  val branchSuccess           = r
-  val branchFail              = r
-  val unconditionalBranch     = r
-  val unconditionalBranchFail = r
-  val conditionalBranch       = r
-  val conditionalBranchFail   = r
-  val callBranch              = r
-  val callBranchFail          = r
-  val returnBranch            = r
-  val returnBranchFail        = r
-  val directionMispredict     = r
-  val targetMispredict        = r
+  val branch                    = r
+  val branchSuccess             = r
+  val branchFail                = r
+  val branchUnconditional       = r
+  val branchUnconditionalFail   = r
+  val branchConditional         = r
+  val branchConditionalFail     = r
+  val branchCall                = r
+  val branchCallFail            = r
+  val branchReturn              = r
+  val branchReturnFail          = r
+  val branchDirectionMispredict = r
+  val branchTargetMispredict    = r
 
   when(io.branchInfo.isBranch) {
     inc(branch)
@@ -95,32 +97,32 @@ class Pmu extends Module {
       inc(branchSuccess)
     }
 
-    condInc(directionMispredict, io.branchInfo.directionMispredict)
-    condInc(targetMispredict, io.branchInfo.targetMispredict)
+    condInc(branchDirectionMispredict, io.branchInfo.directionMispredict)
+    condInc(branchTargetMispredict, io.branchInfo.targetMispredict)
 
     switch(io.branchInfo.branchType) {
       is(Param.BPU.BranchType.uncond) {
-        inc(unconditionalBranch)
+        inc(branchUnconditional)
         when(io.branchInfo.isRedirect) {
-          inc(unconditionalBranchFail)
+          inc(branchUnconditionalFail)
         }
       }
       is(Param.BPU.BranchType.cond) {
-        inc(conditionalBranch)
+        inc(branchConditional)
         when(io.branchInfo.isRedirect) {
-          inc(conditionalBranchFail)
+          inc(branchConditionalFail)
         }
       }
       is(Param.BPU.BranchType.call) {
-        inc(callBranch)
+        inc(branchCall)
         when(io.branchInfo.isRedirect) {
-          inc(callBranchFail)
+          inc(branchCallFail)
         }
       }
       is(Param.BPU.BranchType.ret) {
-        inc(returnBranch)
+        inc(branchReturn)
         when(io.branchInfo.isRedirect) {
-          inc(returnBranchFail)
+          inc(branchReturnFail)
         }
       }
     }

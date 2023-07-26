@@ -8,4 +8,5 @@ class PmuDispatchBundle extends Bundle {
   val bubbleFromDataDependence = Bool()
   val bubbleFromRSEmpty        = Bool()
   val isFull                   = Bool()
+  val enqueue                  = Bool()
 }
