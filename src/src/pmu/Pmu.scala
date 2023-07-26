@@ -9,6 +9,7 @@ class Pmu extends Module {
   val io = IO(new Bundle {
     val instqueueFull      = Input(Bool())
     val instqueueFullValid = Input(Bool())
+    val instQueueEmpty     = Input(Bool())
     val branchInfo         = Input(new PmuBranchPredictNdPort)
   })
 
@@ -23,6 +24,7 @@ class Pmu extends Module {
   val timer                = r
   val instQueueIsFull      = r
   val instQueueIsFullValid = r // 当idle或redirect阻塞取指的时候不计入
+  val instQueueEmpty       = r
 
   inc(timer)
   when(io.instqueueFull) {
@@ -30,6 +32,9 @@ class Pmu extends Module {
     when(io.instqueueFullValid) {
       inc(instQueueIsFullValid)
     }
+  }
+  when(io.instQueueEmpty) {
+    inc(instQueueEmpty)
   }
 
   val branch                  = r

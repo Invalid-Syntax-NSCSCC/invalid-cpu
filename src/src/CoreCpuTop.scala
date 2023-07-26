@@ -339,6 +339,7 @@ class CoreCpuTop extends Module {
     val pmu = Module(new Pmu)
     pmu.io.instqueueFull      := !instQueue.io.enqueuePort.ready
     pmu.io.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
+    pmu.io.instQueueEmpty     := instQueue.io.pmu_instqueueEmpty.get
     pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
 
   }
