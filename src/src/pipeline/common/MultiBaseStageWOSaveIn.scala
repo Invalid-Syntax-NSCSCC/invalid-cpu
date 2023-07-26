@@ -69,6 +69,7 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
         out.valid  := result.valid
         out.bits   := result.bits
     }
+    outQueues.foreach(_ <> DontCare)
   } else {
     validToOuts.lazyZip(io.outs).lazyZip(lastResultOuts).foreach {
       case (v, out, lastResultOut) =>
