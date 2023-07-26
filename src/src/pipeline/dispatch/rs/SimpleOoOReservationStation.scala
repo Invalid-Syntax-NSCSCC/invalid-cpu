@@ -213,6 +213,18 @@ class SimpleOoOReservationStation(
       }
   }
 
+  if (Param.usePmu) {
+    val pmu = io.pmu_dispatchInfo.get
+    pmu.isFull            := isFull && !io.isFlush
+    pmu.bubbleFromBackend := io.dequeuePorts.head.valid && !io.dequeuePorts.head.ready && !io.isFlush
+    pmu.bubbleFromRSEmpty := isEmpty && !io.isFlush
+    pmu.bubbleFromDataDependence := !pmu.bubbleFromRSEmpty &&
+      !pmu.bubbleFromBackend &&
+      !io.dequeuePorts.head.valid &&
+      !isEmpty &&
+      !io.isFlush
+  }
+
   when(io.isFlush) {
     ram.foreach(_.valid := false.B)
     maybeFull := false.B

@@ -6,6 +6,7 @@ import control.bundles._
 import control.csrBundles._
 import memory.bundles.{TlbCsrWriteNdPort, TransExceptionCsrNdPort}
 import spec._
+import pmu.bundles.PmuNdPort
 
 class Csr(
   writeNum: Int = Param.csrWriteNum,
@@ -29,6 +30,7 @@ class Csr(
 
     // 外部中断
     val hardwareInterrupt = Input(UInt(8.W))
+
   })
 
   // Util: view UInt as Bundle
@@ -448,4 +450,5 @@ class Csr(
   // Read only constants
   asid.in.asidbits           := "h_A".U
   io.csrValues.asid.asidbits := "h_A".U
+
 }

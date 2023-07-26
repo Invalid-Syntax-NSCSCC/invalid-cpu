@@ -50,6 +50,9 @@ class MultiInstQueue(
     val hasInterrupt = Input(Bool())
 
     val redirectRequest = Output(new BackendRedirectPcNdPort)
+
+    val pmu_instqueueFullValid = if (Param.usePmu) Some(Output(Bool())) else None
+    val pmu_instqueueEmpty     = if (Param.usePmu) Some(Output(Bool())) else None
   })
   require(queueLength > fetchNum)
   require(queueLength > issueNum)
@@ -213,4 +216,16 @@ class MultiInstQueue(
         dequeuePort.bits.instInfo.ftqCommitInfo.isRedirect := redirectRequest.en
 
     }
+
+  io.pmu_instqueueFullValid match {
+    case Some(v) =>
+      v := !io.enqueuePort.ready && !isIdle && !io.isFrontendFlush && !isBlockDequeueReg
+    case None =>
+  }
+
+  io.pmu_instqueueEmpty match {
+    case Some(v) =>
+      v := !instQueue.io.dequeuePorts.head.valid
+    case None =>
+  }
 }

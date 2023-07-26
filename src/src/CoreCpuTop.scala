@@ -14,6 +14,8 @@ import pipeline.rob.Rob
 import spec.Param
 import spec.Param.isDiffTest
 import control.Cu
+import pmu.Pmu
+import pmu.bundles.PmuNdPort
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -143,15 +145,15 @@ class CoreCpuTop extends Module {
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
   // TLB connection
-  tlb.io.csr.in.asId        := csr.io.csrValues.asid
-  tlb.io.csr.in.plv         := csr.io.csrValues.crmd.plv
-  tlb.io.csr.in.tlbidx      := csr.io.csrValues.tlbidx
-  tlb.io.csr.in.tlbehi      := csr.io.csrValues.tlbehi
+  tlb.io.csr.in.asId         := csr.io.csrValues.asid
+  tlb.io.csr.in.plv          := csr.io.csrValues.crmd.plv
+  tlb.io.csr.in.tlbidx       := csr.io.csrValues.tlbidx
+  tlb.io.csr.in.tlbehi       := csr.io.csrValues.tlbehi
   tlb.io.csr.in.tlbeloVec(0) := csr.io.csrValues.tlbelo0
   tlb.io.csr.in.tlbeloVec(1) := csr.io.csrValues.tlbelo1
-  tlb.io.csr.in.estat       := csr.io.csrValues.estat
-  tlb.io.maintenanceInfo    := addrTransStage.io.peer.get.tlbMaintenance
-  tlb.io.maintenanceTrigger := rob.io.tlbMaintenanceTrigger
+  tlb.io.csr.in.estat        := csr.io.csrValues.estat
+  tlb.io.maintenanceInfo     := addrTransStage.io.peer.get.tlbMaintenance
+  tlb.io.maintenanceTrigger  := rob.io.tlbMaintenanceTrigger
 
   // Frontend
   //   inst fetch stage
@@ -331,6 +333,19 @@ class CoreCpuTop extends Module {
   ).asUInt
   io.debug0_wb.rf.wnum  := commitStage.io.gprWritePorts(0).addr
   io.debug0_wb.rf.wdata := commitStage.io.gprWritePorts(0).data
+
+  // pmu
+  if (Param.usePmu) {
+    val pmu = Module(new Pmu)
+    pmu.io.instqueueFull      := !instQueue.io.enqueuePort.ready
+    pmu.io.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
+    pmu.io.instQueueEmpty     := instQueue.io.pmu_instqueueEmpty.get
+    pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
+    pmu.io.dispatchInfos.zip(dispatchStage.io.peer.get.pmu_dispatchInfos.get).foreach {
+      case (dst, src) =>
+        dst := src
+    }
+  }
 
   // Difftest
   // TODO: Some ports

@@ -9,6 +9,7 @@ import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.Param.isDiffTest
 import spec._
+import pmu.bundles.PmuBranchPredictNdPort
 
 class WbNdPort extends Bundle {
   val gprWrite = new RfWriteNdPort
@@ -30,6 +31,8 @@ class CommitStage(
 
     // `AddrTransStage` -> `CommitStage` -> `Cu` NO delay
     val cuInstInfoPorts = Output(Vec(commitNum, new InstInfoNdPort))
+
+    val pmu_branchInfo = if (Param.usePmu) Some(Output(new PmuBranchPredictNdPort)) else None
 
     val difftest =
       if (isDiffTest)
@@ -75,6 +78,17 @@ class CommitStage(
       dstInstInfo.isValid := in.valid && in.ready && inBit.instInfo.isValid
       dstGprWrite         := inBit.gprWrite
       dstGprWrite.en      := in.valid && in.ready && inBit.gprWrite.en
+  }
+
+  io.pmu_branchInfo match {
+    case None =>
+    case Some(br) =>
+      br.isBranch := inBits.head.instInfo.ftqCommitInfo.isBranch &&
+        inBits.head.instInfo.isValid &&
+        io.ins.head.ready &&
+        io.ins.head.valid
+      br.isRedirect := inBits.head.instInfo.ftqCommitInfo.isRedirect
+      br.branchType := inBits.head.instInfo.ftqCommitInfo.branchType
   }
 
   // Diff test connection

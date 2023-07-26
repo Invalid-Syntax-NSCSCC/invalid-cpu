@@ -151,4 +151,18 @@ class InOrderReservationStation(
             }
         }
     }
+
+  if (Param.usePmu) {
+    val pmu     = io.pmu_dispatchInfo.get
+    val isFull  = !queue.io.enqueuePorts.head.ready
+    val isEmpty = !queue.io.dequeuePorts.head.valid
+    pmu.isFull            := isFull && !io.isFlush
+    pmu.bubbleFromBackend := io.dequeuePorts.head.valid && !io.dequeuePorts.head.ready && !io.isFlush
+    pmu.bubbleFromRSEmpty := isEmpty && !io.isFlush
+    pmu.bubbleFromDataDependence := !pmu.bubbleFromRSEmpty &&
+      !pmu.bubbleFromBackend &&
+      !io.dequeuePorts.head.valid &&
+      !isEmpty &&
+      !io.isFlush
+  }
 }
