@@ -29,6 +29,7 @@ object Param {
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
+  val isWakeUpPassThroughExe       = true && !isOutOfOrderIssue
 
   val isOptimizedByMultiMux = true
 

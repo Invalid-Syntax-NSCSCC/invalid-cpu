@@ -46,7 +46,8 @@ class NewDispatchStage(
       Some(new NewDispatchPeerPort),
       issueNum,
       pipelineNum,
-      outQueueLength
+      outQueueLength,
+      passOut = Param.isWakeUpPassThroughExe
     ) {
 
   val peer = io.peer.get

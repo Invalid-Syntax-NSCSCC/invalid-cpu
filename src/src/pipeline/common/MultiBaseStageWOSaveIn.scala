@@ -12,7 +12,8 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
   peerFactory:    => Option[PT] = None,
   inNum:          Int           = Param.issueInstInfoMaxNum,
   outNum:         Int           = Param.pipelineNum,
-  outQueueLength: Int           = 1)
+  outQueueLength: Int           = 1,
+  passOut:        Boolean       = false)
     extends Module {
   val io = IO(new MultiBaseStageIo(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
 
@@ -40,9 +41,6 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
     )
   )
 
-  // Handle output
-  io.outs <> outQueues
-
   protected val selectedIns: Vec[InT] = Wire(Vec(inNum, inNdFactory)) // WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
   selectedIns.lazyZip(io.ins).foreach {
     case (selectIn, in) => {
@@ -63,9 +61,21 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
   // 由于in和out不是一一对应，需要处理in.ready
   // 模板： io.ins(src).ready := validToIns(dst) && isLastComputeds(src)
   protected val validToOuts = Wire(Vec(outNum, Bool()))
-  validToOuts.lazyZip(io.outs).lazyZip(lastResultOuts).foreach {
-    case (v, out, lastResultOut) =>
-      v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
+
+  if (passOut) {
+    io.outs.lazyZip(resultOuts).lazyZip(validToOuts).foreach {
+      case (out, result, validToOut) =>
+        validToOut := out.ready
+        out.valid  := result.valid
+        out.bits   := result.bits
+    }
+  } else {
+    validToOuts.lazyZip(io.outs).lazyZip(lastResultOuts).foreach {
+      case (v, out, lastResultOut) =>
+        v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
+    }
+    // Handle output
+    io.outs <> outQueues
   }
 
   // Handle flush (queue is already handled)
