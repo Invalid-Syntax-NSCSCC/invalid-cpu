@@ -5,6 +5,7 @@ import chisel3._
 import chisel3.util._
 import pmu.bundles.PmuBranchPredictNdPort
 import pmu.bundles.PmuDispatchBundle
+import pmu.bundles.PmuBranchMisPredictExeNdPort
 
 class Pmu extends Module {
   val io = IO(new Bundle {
@@ -13,6 +14,7 @@ class Pmu extends Module {
     val instQueueEmpty     = Input(Bool())
     val branchInfo         = Input(new PmuBranchPredictNdPort)
     val dispatchInfos      = Input(Vec(Param.pipelineNum, new PmuDispatchBundle))
+    val robFull            = Input(Bool())
   })
 
   def r: UInt = {
@@ -21,6 +23,12 @@ class Pmu extends Module {
 
   def inc(reg: UInt): Unit = {
     reg := reg + 1.U
+  }
+
+  def condInc(reg: UInt, cond: Bool): Unit = {
+    when(cond) {
+      reg := reg + 1.U
+    }
   }
 
   val timer                = r
@@ -60,6 +68,11 @@ class Pmu extends Module {
       }
   }
 
+  val robFull = r
+  when(io.robFull) {
+    inc(robFull)
+  }
+
   val branch                  = r
   val branchSuccess           = r
   val branchFail              = r
@@ -71,6 +84,11 @@ class Pmu extends Module {
   val callBranchFail          = r
   val returnBranch            = r
   val returnBranchFail        = r
+  val directionMispredict     = r
+  val targetMispredict        = r
+
+  condInc(directionMispredict, io.branchInfo.directionMispredict)
+  condInc(targetMispredict, io.branchInfo.targetMispredict)
 
   when(io.branchInfo.isBranch) {
     inc(branch)

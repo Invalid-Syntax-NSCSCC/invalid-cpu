@@ -12,14 +12,19 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
   peerFactory:    => Option[PT] = None,
   inNum:          Int           = Param.issueInstInfoMaxNum,
   outNum:         Int           = Param.pipelineNum,
-  outQueueLength: Int           = 1)
+  outQueueLength: Int           = 1,
+  passOut:        Boolean       = false)
     extends Module {
   val io = IO(new MultiBaseStageIo(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
 
-  protected val resultOutsReg: Vec[ValidIO[OutT]] = RegInit(
+  protected val resultOuts: Vec[ValidIO[OutT]] = WireDefault(
     VecInit(Seq.fill(outNum)(0.U.asTypeOf(ValidIO(outNdFactory))))
   )
-  resultOutsReg.foreach(_.valid := false.B)
+
+  private val resultOutsReg: Vec[ValidIO[OutT]] = RegInit(
+    VecInit(Seq.fill(outNum)(0.U.asTypeOf(ValidIO(outNdFactory))))
+  )
+  resultOutsReg.zip(resultOuts).foreach { case (dst, src) => dst := src }
   protected val lastResultOuts = Wire(Vec(outNum, Decoupled(outNdFactory)))
   lastResultOuts.zip(resultOutsReg).foreach {
     case (lastResultOut, resultOut) =>
@@ -35,9 +40,6 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
       flush   = Some(io.isFlush)
     )
   )
-
-  // Handle output
-  io.outs <> outQueues
 
   protected val selectedIns: Vec[InT] = Wire(Vec(inNum, inNdFactory)) // WireDefault(VecInit(Seq.fill(inNum)(blankIn)))
   selectedIns.lazyZip(io.ins).foreach {
@@ -59,9 +61,22 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
   // 由于in和out不是一一对应，需要处理in.ready
   // 模板： io.ins(src).ready := validToIns(dst) && isLastComputeds(src)
   protected val validToOuts = Wire(Vec(outNum, Bool()))
-  validToOuts.lazyZip(io.outs).lazyZip(lastResultOuts).foreach {
-    case (v, out, lastResultOut) =>
-      v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
+
+  if (passOut) {
+    io.outs.lazyZip(resultOuts).lazyZip(validToOuts).foreach {
+      case (out, result, validToOut) =>
+        validToOut := out.ready
+        out.valid  := result.valid
+        out.bits   := result.bits
+    }
+    outQueues.foreach(_ <> DontCare)
+  } else {
+    validToOuts.lazyZip(io.outs).lazyZip(lastResultOuts).foreach {
+      case (v, out, lastResultOut) =>
+        v := ((lastResultOut.ready && !lastResultOut.valid) || out.ready)
+    }
+    // Handle output
+    io.outs <> outQueues
   }
 
   // Handle flush (queue is already handled)

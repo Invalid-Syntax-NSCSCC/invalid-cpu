@@ -46,13 +46,14 @@ class NewDispatchStage(
       Some(new NewDispatchPeerPort),
       issueNum,
       pipelineNum,
-      outQueueLength
+      outQueueLength,
+      passOut = Param.isWakeUpPassThroughExe
     ) {
 
   val peer = io.peer.get
 
   io.ins.foreach(_.ready := false.B)
-  resultOutsReg.foreach { out =>
+  resultOuts.foreach { out =>
     out.valid := false.B
     out.bits  := DontCare
   }
@@ -133,7 +134,7 @@ class NewDispatchStage(
 
   // -> out queue
   val deqEns = Wire(Vec(pipelineNum, Bool()))
-  reservationStations.lazyZip(validToOuts).lazyZip(resultOutsReg).zipWithIndex.foreach {
+  reservationStations.lazyZip(validToOuts).lazyZip(resultOuts).zipWithIndex.foreach {
     case ((rs, outReady, out), idx) =>
       val rsDeqPort = rs.io.dequeuePorts(0)
       val deqEn = WireDefault(
@@ -174,7 +175,7 @@ class NewDispatchStage(
   }
 
   when(io.isFlush) {
-    resultOutsReg.foreach { out =>
+    resultOuts.foreach { out =>
       out.valid := false.B
     }
   }
