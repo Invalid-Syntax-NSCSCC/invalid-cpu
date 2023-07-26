@@ -53,9 +53,9 @@ class NewDispatchStage(
     out.bits  := DontCare
   }
 
-  val reservationStations = Seq.fill(pipelineNum)(
+  val reservationStations = Seq.range(0, pipelineNum).map { idx =>
     Module(
-      if (Param.isOutOfOrderIssue)
+      if (Param.isOutOfOrderIssue && idx != Param.loadStoreIssuePipelineIndex)
         new SimpleOoOReservationStation(
           Param.Width.Rob._channelLength,
           true
@@ -70,7 +70,7 @@ class NewDispatchStage(
           true
         )
     )
-  )
+  }
 
   reservationStations.foreach { rs =>
     rs.io.writebacks.zip(io.peer.get.writebacks).foreach {
