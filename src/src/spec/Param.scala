@@ -22,7 +22,7 @@ object Param {
   val isForcedUncached          = false
   val isBranchPredict           = true
   val isTagePredictorTagCompare = true
-  val isPredecode               = false
+  val isPredecode               = true
   val isShowBranchNum = isChiplab // need commitNum == 1. branch inst num -> pc_1 ; branch predict failed num -> wdata_1
 
   val isWritebackPassThroughWakeUp = true

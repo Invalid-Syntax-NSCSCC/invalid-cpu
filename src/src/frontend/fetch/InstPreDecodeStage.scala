@@ -74,10 +74,7 @@ class InstPreDecodeStage
     val immJumpIndex = PriorityEncoder(isImmJumpVec)
 
     val isPredecoderRedirect = WireDefault(false.B)
-    if (Param.isPredecode) {
-      isPredecoderRedirect := io.in.valid && io.in.ready && isImmJumpVec.asUInt.orR && !io.isFlush && (immJumpIndex +& 1.U < selectedIn.ftqLength)
-    }
-
+    isPredecoderRedirect := io.in.valid && io.in.ready && isImmJumpVec.asUInt.orR && !io.isFlush && (immJumpIndex +& 1.U < selectedIn.ftqLength)
     val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
 
     // peer output
@@ -103,7 +100,11 @@ class InstPreDecodeStage
           infoBundle.valid := index.asUInt(log2Ceil(Param.fetchInstMaxNum + 1).W) < selectBlockLength
         }
         when((index + 1).U === selectBlockLength) {
-          infoBundle.bits.ftqInfo.predictBranch := infoBundle.bits.ftqInfo.predictBranch || isPredecoderRedirect
+          infoBundle.bits.ftqInfo.predictBranch := selectedIn
+            .enqInfos(selectBlockLength - 1.U)
+            .bits
+            .ftqInfo
+            .predictBranch || isPredecoderRedirect
           infoBundle.bits.ftqInfo.isLastInBlock := true.B
         }.otherwise {
           infoBundle.bits.ftqInfo.predictBranch := false.B
