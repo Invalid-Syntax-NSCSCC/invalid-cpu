@@ -16,10 +16,14 @@ abstract class MultiBaseStageWOSaveIn[InT <: Data, OutT <: Data, PT <: Data](
     extends Module {
   val io = IO(new MultiBaseStageIo(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
 
-  protected val resultOutsReg: Vec[ValidIO[OutT]] = RegInit(
+  protected val resultOuts: Vec[ValidIO[OutT]] = WireDefault(
     VecInit(Seq.fill(outNum)(0.U.asTypeOf(ValidIO(outNdFactory))))
   )
-  resultOutsReg.foreach(_.valid := false.B)
+
+  private val resultOutsReg: Vec[ValidIO[OutT]] = RegInit(
+    VecInit(Seq.fill(outNum)(0.U.asTypeOf(ValidIO(outNdFactory))))
+  )
+  resultOutsReg.zip(resultOuts).foreach { case (dst, src) => dst := src }
   protected val lastResultOuts = Wire(Vec(outNum, Decoupled(outNdFactory)))
   lastResultOuts.zip(resultOutsReg).foreach {
     case (lastResultOut, resultOut) =>
