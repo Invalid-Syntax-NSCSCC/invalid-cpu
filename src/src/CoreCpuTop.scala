@@ -336,11 +336,10 @@ class CoreCpuTop extends Module {
 
   // pmu
   if (Param.usePmu) {
-    val pmu = Wire(new PmuNdPort) // Module(new Pmu)
-    csr.io.pmuPort.get     := pmu
-    pmu.instqueueFull      := !instQueue.io.enqueuePort.ready
-    pmu.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
-    pmu.branchInfo         := commitStage.io.pmu_branchInfo.get
+    val pmu = Module(new Pmu)
+    pmu.io.instqueueFull      := !instQueue.io.enqueuePort.ready
+    pmu.io.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
+    pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
 
   }
 
