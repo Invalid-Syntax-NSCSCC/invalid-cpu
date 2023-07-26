@@ -87,9 +87,6 @@ class Pmu extends Module {
   val directionMispredict     = r
   val targetMispredict        = r
 
-  condInc(directionMispredict, io.branchInfo.directionMispredict)
-  condInc(targetMispredict, io.branchInfo.targetMispredict)
-
   when(io.branchInfo.isBranch) {
     inc(branch)
     when(io.branchInfo.isRedirect) {
@@ -97,6 +94,9 @@ class Pmu extends Module {
     }.otherwise {
       inc(branchSuccess)
     }
+
+    condInc(directionMispredict, io.branchInfo.directionMispredict)
+    condInc(targetMispredict, io.branchInfo.targetMispredict)
 
     switch(io.branchInfo.branchType) {
       is(Param.BPU.BranchType.uncond) {
