@@ -71,10 +71,11 @@ class OoOReservationStation(
         }
     }
 
-  val enqEns = io.enqueuePorts.map { port => port.valid && port.ready }
-  val deqEns = io.dequeuePorts.map { port => port.valid && port.ready }
-  val ptr    = RegInit(0.U(log2Ceil(queueLength + 1).W))
-  val newPtr = WireDefault(ptr +& enqEns.map(_.asUInt).reduce(_ +& _) -& deqEns.map(_.asUInt).reduce(_ +& _))
+  val enqEns      = io.enqueuePorts.map { port => port.valid && port.ready }
+  val deqEns      = io.dequeuePorts.map { port => port.valid && port.ready }
+  val ptr         = RegInit(0.U(log2Ceil(queueLength + 1).W))
+  val enqStartPtr = WireDefault(ptr -& deqEns.map(_.asUInt).reduce(_ +& _))
+  val newPtr      = WireDefault(ptr +& enqEns.map(_.asUInt).reduce(_ +& _) -& deqEns.map(_.asUInt).reduce(_ +& _))
   ptr := newPtr
   ramValids.zipWithIndex.foreach {
     case (valid, idx) =>
@@ -171,6 +172,13 @@ class OoOReservationStation(
   ramFillRes.zip(shiftNums).zipWithIndex.foreach {
     case ((nextElem, shiftNum), idx) =>
       ram(idx.U -& shiftNum) := nextElem
+  }
+
+  enqs.zip(enqEns).zipWithIndex.foreach {
+    case ((enq, en), idx) =>
+      when(en) { // can delete ?
+        ram(enqStartPtr + idx.U) := enq.bits
+      }
   }
 
   if (Param.usePmu) {
