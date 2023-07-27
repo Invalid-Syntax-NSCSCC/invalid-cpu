@@ -30,6 +30,7 @@ object Param {
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
   val isWakeUpPassThroughExe       = false // true && !isOutOfOrderIssue
+  val instQueueCombineSel          = true // false : connect decode ; true : connect predecode
 
   val isOptimizedByMultiMux = true
 
