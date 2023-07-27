@@ -10,13 +10,10 @@ import spec._
 import pipeline.dispatch.bundles.FtqInfoBundle
 
 class InstInfoNdPort extends Bundle {
-  val isValid = Bool()
-  // val pc              = UInt(Width.Reg.data)
-  // val inst            = UInt(Width.Reg.data)
+  val isValid         = Bool()
   val exceptionPos    = ExceptionPos()
   val exceptionRecord = UInt(Csr.ExceptionIndex.width)
   val isStore         = Bool()
-  val vaddr           = UInt(Width.Mem.addr)
   val needRefetch     = Bool()
   val isCsrWrite      = Bool()
 

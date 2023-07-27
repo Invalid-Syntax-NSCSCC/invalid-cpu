@@ -16,6 +16,7 @@ import spec.Param.isDiffTest
 import control.Cu
 import pmu.Pmu
 import pmu.bundles.PmuNdPort
+import spec.ExeInst
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -301,9 +302,10 @@ class CoreCpuTop extends Module {
   cu.io.branchExe          := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
   cu.io.redirectFromDecode := instQueue.io.redirectRequest
 
-  cu.io.csrFlushRequest := csr.io.csrFlushRequest
-  cu.io.csrWriteInfo    := csrScoreBoard.io.csrWritePort
-  cu.io.majorPc         := commitStage.io.majorPc
+  cu.io.csrFlushRequest   := csr.io.csrFlushRequest
+  cu.io.csrWriteInfo      := csrScoreBoard.io.csrWritePort
+  cu.io.majorPc           := commitStage.io.majorPc
+  cu.io.exceptionVirtAddr := addrTransStage.io.peer.get.exceptionVirtAddr
 
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {

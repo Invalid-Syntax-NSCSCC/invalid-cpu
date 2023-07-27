@@ -138,7 +138,6 @@ class ExeForMemStage
   // Cache maintenance
   val cacopAddr = WireDefault(selectedIn.leftOperand + selectedIn.rightOperand)
   val isCacop   = WireDefault(selectedIn.exeOp === ExeInst.Op.cacop)
-  resultOutReg.bits.instInfo.vaddr := Mux(isCacop, cacopAddr, loadStoreAddr)
   when(isCacop) {
     resultOutReg.bits.memRequest.addr               := cacopAddr
     resultOutReg.bits.instInfo.forbidParallelCommit := true.B

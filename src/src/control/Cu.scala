@@ -51,6 +51,8 @@ class Cu(
     val ftqPort     = Output(new CuCommitFtqNdPort)
     val queryPcPort = Flipped(new QueryPcBundle)
 
+    val exceptionVirtAddr = Input(UInt(Width.Mem.addr))
+
     val isDbarFinish = Output(Bool())
 
     val difftest = if (isDiffTest) {
@@ -161,7 +163,7 @@ class Cu(
       io.csrMessage.badVAddrSet.en := true.B
       io.csrMessage.badVAddrSet.addr := Mux(
         majorInstInfo.exceptionPos === ExceptionPos.backend,
-        majorInstInfo.vaddr,
+        io.exceptionVirtAddr,
         majorPc
       )
     }

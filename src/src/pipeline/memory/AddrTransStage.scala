@@ -31,9 +31,10 @@ object AddrTransNdPort {
 }
 
 class AddrTransPeerPort extends Bundle {
-  val csr            = Input(new MemCsrNdPort)
-  val tlbTrans       = Flipped(new TlbTransPort)
-  val tlbMaintenance = Output(new TlbMaintenanceNdPort)
+  val csr               = Input(new MemCsrNdPort)
+  val tlbTrans          = Flipped(new TlbTransPort)
+  val tlbMaintenance    = Output(new TlbMaintenanceNdPort)
+  val exceptionVirtAddr = Output(UInt(Width.Mem.addr))
 }
 
 class AddrTransStage
@@ -45,7 +46,10 @@ class AddrTransStage
     ) {
   val selectedIn = io.in.bits
   val peer       = io.peer.get
-  val out        = if (isNoPrivilege) io.out.bits else resultOutReg.bits
+  val resultOut  = Wire(Valid(new MemReqNdPort))
+  resultOut.valid := false.B
+  resultOutReg    := resultOut
+  val out = if (isNoPrivilege) io.out.bits else resultOut.bits
   if (isNoPrivilege) {
     io.in.ready  := io.out.ready
     io.out.valid := io.in.valid
@@ -53,6 +57,13 @@ class AddrTransStage
 
   val tlbBlockingReg = RegInit(false.B)
   tlbBlockingReg := tlbBlockingReg
+
+  val exceptionVirtAddr = RegInit(0.U.asTypeOf(Valid(UInt(Width.Mem.addr))))
+  peer.exceptionVirtAddr := exceptionVirtAddr.bits
+  when(resultOut.valid && !exceptionVirtAddr.valid && resultOut.bits.instInfo.exceptionPos =/= ExceptionPos.none) {
+    exceptionVirtAddr.valid := true.B
+    exceptionVirtAddr.bits  := selectedIn.memRequest.addr
+  }
 
   // Fallback output
   out.instInfo                := selectedIn.instInfo
@@ -189,7 +200,8 @@ class AddrTransStage
 
   // Handle flush (actually is TLB maintenance done)
   when(io.isFlush) {
-    tlbBlockingReg := false.B
+    tlbBlockingReg          := false.B
+    exceptionVirtAddr.valid := false.B
   }
 
   if (isNoPrivilege) {
@@ -198,6 +210,6 @@ class AddrTransStage
 
   // Submit result
   when(selectedIn.instInfo.isValid && !tlbBlockingReg && io.in.ready && io.in.valid) {
-    resultOutReg.valid := true.B
+    resultOut.valid := true.B
   }
 }
