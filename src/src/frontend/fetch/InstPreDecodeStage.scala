@@ -41,7 +41,7 @@ class InstPreDecodeStage
     ) {
   val selectedIn = io.in.bits
   val peer       = io.peer.get
-  val out        = if (Param.instQueueCombineSel) resultOutReg.bits else io.out.bits
+  val out        = if (Param.instQueueCombineSel) io.out.bits else resultOutReg.bits
   if (Param.instQueueCombineSel) {
     io.out.valid := io.in.valid
     io.in.ready  := io.out.ready
