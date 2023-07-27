@@ -6,6 +6,7 @@ import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.bundles.InstWbNdPort
 import spec.Param
 import pmu.bundles.PmuDispatchBundle
+import os.read
 
 abstract class BaseReservationStation(
   queueLength:   Int,
@@ -22,4 +23,5 @@ abstract class BaseReservationStation(
 
     val pmu_dispatchInfo = if (Param.usePmu) Some(Output(new PmuDispatchBundle)) else None
   })
+  require(queueLength == channelNum * channelLength)
 }
