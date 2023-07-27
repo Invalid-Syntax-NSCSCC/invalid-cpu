@@ -67,7 +67,7 @@ class MultiInstQueue(
       channelNum,
       queueLength / channelNum,
       new FetchInstInfoBundle,
-      flow = true
+      flow = (Param.instQueueCombineSel == false)
     )
   )
 
