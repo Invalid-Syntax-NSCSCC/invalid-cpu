@@ -95,7 +95,7 @@ class NewDispatchStage(
     }
   }
 
-  // dontcare if input valid
+  // dontcare if input not valid
   val dispatchMap = WireDefault(VecInit(Seq.fill(issueNum)(VecInit(Seq.fill(pipelineNum)(false.B)))))
   val srcEns      = WireDefault(VecInit(dispatchMap.map(_.reduceTree(_ || _))))
   val dstEns = WireDefault(dispatchMap.reduce { (a, b) =>

@@ -220,6 +220,7 @@ class CoreCpuTop extends Module {
 
   exePassWbStage_1.io.peer.get.csrReadPort.get           <> csr.io.readPorts(0)
   exePassWbStage_1.io.peer.get.stableCounterReadPort.get <> stableCounter.io
+  exePassWbStage_1.io.peer.get.robQueryPcPort.get        <> rob.io.queryPcPort
   assert(Param.loadStoreIssuePipelineIndex == 0)
   exePassWbStages.zipWithIndex.foreach {
     case (exe, idx) =>
@@ -302,6 +303,7 @@ class CoreCpuTop extends Module {
 
   cu.io.csrFlushRequest := csr.io.csrFlushRequest
   cu.io.csrWriteInfo    := csrScoreBoard.io.csrWritePort
+  cu.io.majorPc         := commitStage.io.majorPc
 
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -322,8 +324,8 @@ class CoreCpuTop extends Module {
   csr.io.hardwareInterrupt := io.intrpt
 
   // Debug ports
-  io.debug0_wb.pc   := commitStage.io.ins(0).bits.instInfo.pc
-  io.debug0_wb.inst := commitStage.io.ins(0).bits.instInfo.inst
+  io.debug0_wb.pc   := commitStage.io.ins(0).bits.fetchInfo.pcAddr
+  io.debug0_wb.inst := commitStage.io.ins(0).bits.fetchInfo.inst
   io.debug0_wb.rf.wen := VecInit(
     Seq.fill(4)(
       commitStage.io.gprWritePorts(0).en && commitStage.io.ins(0).bits.instInfo.isValid && commitStage.io

@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import common.bundles.RfReadPort
 import control.enums.ExceptionPos
-import pipeline.commit.WbNdPort
+import pipeline.commit._
 import pipeline.commit.bundles._
 import pipeline.common.DistributedQueuePlus
 import pipeline.rob.bundles._
@@ -34,13 +34,16 @@ class Rob(
     val finishInsts = Vec(pipelineNum, Flipped(Decoupled(new WbNdPort)))
 
     // `Rob` -> `WbStage`
-    val commits = Vec(commitNum, Decoupled(new WbNdPort))
+    val commits = Vec(commitNum, Decoupled(new CommitNdPort))
 
     // `MemReqStage` <-> `Rob`
     val commitStore = Decoupled()
 
     // `Rob` -> `Tlb`
     val tlbMaintenanceTrigger = Output(Bool())
+
+    // `ExePassWb_1` <-> `Rob`
+    val queryPcPort = new RobQueryPcPort
 
     // `Cu` <-> `Rob`
     val isFlush = Input(Bool())
@@ -86,6 +89,8 @@ class Rob(
       dst.robId := src.bits.instInfo.robId
       dst.data  := src.bits.gprWrite.data
   }
+
+  io.queryPcPort.pc := queue.io.elems(io.queryPcPort.robId).fetchInfo.pcAddr
 
   // deal with finished insts
   if (Param.isOptimizedByMultiMux) {
@@ -170,6 +175,10 @@ class Rob(
   io.commitStore.valid     := false.B
   io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
     case ((commit, deqPort), idx) =>
+      commit.bits.fetchInfo := deqPort.bits.fetchInfo
+      commit.bits.instInfo  := deqPort.bits.wbPort.instInfo
+      commit.bits.gprWrite  := deqPort.bits.wbPort.gprWrite
+
       when(
         deqPort.valid && deqPort.bits.state === State.ready && io.commits
           .take(idx)
@@ -177,7 +186,6 @@ class Rob(
           .foldLeft(true.B)(_ && _)
       ) {
         commit.valid := deqPort.ready
-        commit.bits  := deqPort.bits.wbPort
 
         // commit
         if (idx == 0) {
@@ -219,11 +227,10 @@ class Rob(
     .foreach {
       case ((enq, req, res), idx) =>
         // enqueue
-        enq.valid                     := req.valid
-        enq.bits                      := RobInstStoreBundle.default
-        enq.bits.state                := State.busy
-        enq.bits.wbPort.gprWrite.en   := req.bits.writeRequest.en
-        enq.bits.wbPort.gprWrite.addr := req.bits.writeRequest.addr
+        enq.valid          := req.valid
+        enq.bits           := RobInstStoreBundle.default
+        enq.bits.state     := State.busy
+        enq.bits.fetchInfo := req.bits.fetchInfo
 
         // distribute rob id
         res       := RobReadResultNdPort.default

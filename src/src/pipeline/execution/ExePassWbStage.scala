@@ -17,6 +17,7 @@ import control.bundles.CsrWriteNdPort
 import control.bundles.StableCounterReadPort
 import control.bundles.CsrReadPort
 import pmu.bundles.PmuBranchMisPredictExeNdPort
+import pipeline.rob.bundles.RobQueryPcPort
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -59,6 +60,8 @@ class ExePeerPort(supportBranchCsr: Boolean) extends Bundle {
   })
 
   val feedbackFtq = if (supportBranchCsr) Some(Flipped(new ExeFtqPort)) else None
+
+  val robQueryPcPort = if (supportBranchCsr) Some(Flipped(new RobQueryPcPort)) else None
 }
 
 class ExePassWbStage(supportBranchCsr: Boolean = true)
@@ -95,6 +98,10 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
   resultOutReg.bits.gprWrite.en   := selectedIn.gprWritePort.en
   resultOutReg.bits.gprWrite.addr := selectedIn.gprWritePort.addr
 
+  if (supportBranchCsr) {
+    io.peer.get.robQueryPcPort.get.robId := selectedIn.instInfo.robId
+  }
+
   switch(selectedIn.exeSel) {
     is(Sel.logic) {
       resultOutReg.bits.gprWrite.data := alu.io.result.logic
@@ -106,7 +113,9 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       resultOutReg.bits.gprWrite.data := alu.io.result.arithmetic
     }
     is(Sel.jumpBranch) {
-      resultOutReg.bits.gprWrite.data := selectedIn.instInfo.pc + 4.U
+      if (supportBranchCsr) {
+        resultOutReg.bits.gprWrite.data := io.peer.get.robQueryPcPort.get.pc + 4.U
+      }
     }
   }
 
@@ -195,7 +204,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
     val feedbackFtq    = io.peer.get.feedbackFtq.get
     val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)
     val inFtqInfo      = WireDefault(selectedIn.instInfo.ftqInfo)
-    val fallThroughPc  = WireDefault(selectedIn.instInfo.pc + 4.U)
+    val fallThroughPc  = WireDefault(io.peer.get.robQueryPcPort.get.pc + 4.U)
 
     feedbackFtq.queryPcBundle.ftqId := selectedIn.instInfo.ftqInfo.ftqId + 1.U
     val ftqQueryPc = feedbackFtq.queryPcBundle.pc
