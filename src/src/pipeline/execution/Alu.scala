@@ -85,40 +85,28 @@ class Alu extends Module {
       jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr
     }
     is(Op.beq) {
-      when(lop === rop) {
-        jumpBranchInfo.en     := true.B
-        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-      }
+      jumpBranchInfo.en     := lop === rop
+      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
     }
     is(Op.bne) {
-      when(lop =/= rop) {
-        jumpBranchInfo.en     := true.B
-        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-      }
+      jumpBranchInfo.en     := lop =/= rop
+      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
     }
     is(Op.blt) {
-      when(lop.asSInt < rop.asSInt) {
-        jumpBranchInfo.en     := true.B
-        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-      }
+      jumpBranchInfo.en     := lop.asSInt < rop.asSInt
+      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
     }
     is(Op.bge) {
-      when(lop.asSInt >= rop.asSInt) {
-        jumpBranchInfo.en     := true.B
-        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-      }
+      jumpBranchInfo.en     := lop.asSInt >= rop.asSInt
+      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
     }
     is(Op.bltu) {
-      when(lop < rop) {
-        jumpBranchInfo.en     := true.B
-        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-      }
+      jumpBranchInfo.en     := lop < rop
+      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
     }
     is(Op.bgeu) {
-      when(lop >= rop) {
-        jumpBranchInfo.en     := true.B
-        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-      }
+      jumpBranchInfo.en     := lop >= rop
+      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
     }
   }
 
