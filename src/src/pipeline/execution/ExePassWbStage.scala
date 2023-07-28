@@ -227,16 +227,25 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       resultOutReg.bits.instInfo.ftqCommitInfo.targetMispredict.get := branchTargetMispredict && branchEnableFlag && isBranchInst
     }
 
+    branchSetPort.en    := isRedirect
+    branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
+
+    branchSetPort.pcAddr := Mux(
+      jumpBranchInfo.en,
+      jumpBranchInfo.pcAddr,
+      fallThroughPc
+    )
+
     if (Param.exeFeedBackFtqDelay) {
 
-      branchSetPort.en    := RegNext(isRedirect)
-      branchSetPort.ftqId := RegNext(selectedIn.instInfo.ftqInfo.ftqId)
+      // branchSetPort.en    := RegNext(isRedirect)
+      // branchSetPort.ftqId := RegNext(selectedIn.instInfo.ftqInfo.ftqId)
 
-      branchSetPort.pcAddr := Mux(
-        RegNext(jumpBranchInfo.en),
-        RegNext(jumpBranchInfo.pcAddr),
-        RegNext(fallThroughPc)
-      )
+      // branchSetPort.pcAddr := Mux(
+      //   RegNext(jumpBranchInfo.en),
+      //   RegNext(jumpBranchInfo.pcAddr),
+      //   RegNext(fallThroughPc)
+      // )
 
       feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst) && RegNext(branchEnableFlag)
       feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict) ||
@@ -245,15 +254,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr)
       feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc)
     } else {
-
-      branchSetPort.en    := isRedirect
-      branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
-
-      branchSetPort.pcAddr := Mux(
-        jumpBranchInfo.en,
-        jumpBranchInfo.pcAddr,
-        fallThroughPc
-      )
 
       feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
       feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||

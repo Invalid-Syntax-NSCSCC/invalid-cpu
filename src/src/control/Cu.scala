@@ -230,11 +230,9 @@ class Cu(
   io.isBranchFlush := RegNext(io.branchExe.en)
 
   // Select new pc
-  val refetchFlushDelay = RegNext(refetchFlush, false.B)
-  val isExceptionDelay  = RegNext(isException, false.B)
-  val redirectFromExeDelay =
-    if (Param.exeFeedBackFtqDelay) io.branchExe
-    else RegNext(io.branchExe, BackendRedirectPcNdPort.default)
+  val refetchFlushDelay       = RegNext(refetchFlush, false.B)
+  val isExceptionDelay        = RegNext(isException, false.B)
+  val redirectFromExeDelay    = RegNext(io.branchExe, BackendRedirectPcNdPort.default)
   val redirectFromDecodeDelay = RegNext(io.redirectFromDecode, BackendRedirectPcNdPort.default)
   val isExceptionReturnDelay  = RegNext(isExceptionReturn, false.B)
   io.newPc.en := refetchFlushDelay ||
