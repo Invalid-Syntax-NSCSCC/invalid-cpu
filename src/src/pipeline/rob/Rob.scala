@@ -69,7 +69,6 @@ class Rob(
       hasFlush = true
     )
   )
-  gprDataLvt.io <> DontCare
 
   val queue = Module(
     new DistributedQueuePlus(
@@ -154,18 +153,18 @@ class Rob(
         }
     }
 
-    if (Param.isOptimizedByLVT) {
-      io.finishInsts.zipWithIndex.foreach {
-        case (src, idx) =>
-          val dst = gprDataLvt.io.writePorts(idx)
-          dst.en   := isRegWrites(src.bits.gprWrite.addr)
-          dst.addr := src.bits.gprWrite.addr
-          dst.data := src.bits.gprWrite.data
-      }
-      gprDataLvt.io.flushPort.get.valid := io.isFlush
-      gprDataLvt.io.flushPort.get.bits.zip(io.regfileDatas).foreach {
-        case (dst, src) =>
-      }
+    // optimized by LVT
+    io.finishInsts.zipWithIndex.foreach {
+      case (src, idx) =>
+        val dst = gprDataLvt.io.writePorts(idx)
+        dst.en   := isRegWrites(src.bits.gprWrite.addr)
+        dst.addr := src.bits.gprWrite.addr
+        dst.data := src.bits.gprWrite.data
+    }
+    gprDataLvt.io.flushPort.get.valid := io.isFlush
+    gprDataLvt.io.flushPort.get.bits.zip(io.regfileDatas).foreach {
+      case (dst, src) =>
+        dst := src
     }
 
   } else {
@@ -325,7 +324,9 @@ class Rob(
     matchTable.zip(io.regfileDatas).foreach {
       case (dst, src) => {
         dst.state := RegDataState.ready
-        dst.data  := src
+        if (!Param.isOptimizedByLVT) {
+          dst.data := src
+        }
       }
     }
     isDelayedMaintenanceTrigger := false.B

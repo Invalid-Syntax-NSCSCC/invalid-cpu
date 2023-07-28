@@ -46,7 +46,11 @@ class LiveValueTable[T <: Data](
       lutRam.io.readPort.addr           := io.readPorts(readIdx).addr
       readDataBuffer(writeIdx)(readIdx) := lutRam.io.readPort.data
       if (lutHasFlush) {
-        lutRam.io.flushPort.get := io.flushPort.get
+        lutRam.io.flushPort.get.valid := io.flushPort.get.valid
+        lutRam.io.flushPort.get.bits.zip(io.flushPort.get.bits).foreach {
+          case (dst, src) =>
+            dst := src
+        }
       }
     }
   }
