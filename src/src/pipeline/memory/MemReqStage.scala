@@ -50,9 +50,10 @@ class MemReqStage
       "h_1faf".U(16.W),
       "h_bfaf".U(16.W),
       "h_1fd0".U(16.W), // Chiplab only
-      "h_1fe0".U(16.W) // Serial port
-      // "h_1fe7".U(16.W), // FPGA: NAND flash
-      // "h_1ff0".U(16.W) // FPGA: Xilinx DMFE
+      "h_1fe0".U(16.W), // Serial port
+      "h_1fe7".U(16.W), // FPGA: NAND flash
+      "h_1fe8".U(16.W), // FPGA: NAND flash
+      "h_1ff0".U(16.W) // FPGA: Xilinx DMFE
     ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
   } else if (isPartialUncachedPatch) {
     VecInit(
