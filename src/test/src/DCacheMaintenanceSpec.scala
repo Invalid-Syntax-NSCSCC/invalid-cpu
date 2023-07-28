@@ -67,7 +67,7 @@
 //        cache.clock.step()
 //        cache.io.maintenancePort.client.control.isCoherentByIndex.poke(false.B)
 //        cache.io.maintenancePort.client.control.isL1Valid.poke(false.B)
-//        cache.clock.step(15)
+//        cache.clock.step(55)
 //
 //        // Write cache (not hit)
 //        cache.io.accessPort.req.client.isValid.poke(true.B)
@@ -87,7 +87,7 @@
 //        cache.clock.step()
 //        cache.io.maintenancePort.client.control.isCoherentByHit.poke(false.B)
 //        cache.io.maintenancePort.client.control.isL1Valid.poke(false.B)
-//        cache.clock.step(15)
+//        cache.clock.step(55)
 //      }
 //    }
 //  }
