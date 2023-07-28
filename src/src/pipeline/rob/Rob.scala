@@ -12,6 +12,7 @@ import spec.Param._
 import spec._
 import pipeline.rob.enums.{RegDataState, RobDistributeSel, RobInstState => State}
 import utils.MultiMux1
+import pipeline.rob.lvt.LiveValueTable
 
 // assert: commits cannot ready 1 but not 0
 class Rob(
@@ -54,7 +55,21 @@ class Rob(
     commit.bits  := DontCare
   }
 
+  // common match table
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
+
+  // match table data optimized by LVT
+  val gprDataLvt = Module(
+    new LiveValueTable(
+      UInt(spec.Width.Reg.data),
+      0.U(spec.Width.Reg.data),
+      spec.Count.reg,
+      Param.issueInstInfoMaxNum * Param.regFileReadNum,
+      Param.pipelineNum,
+      hasFlush = true
+    )
+  )
+  gprDataLvt.io <> DontCare
 
   val queue = Module(
     new DistributedQueuePlus(
@@ -117,8 +132,9 @@ class Rob(
     }
 
     // update match table
-    matchTable.zipWithIndex.foreach {
-      case (elem, idx) =>
+    val isRegWrites = WireDefault(VecInit(Seq.fill(spec.Count.reg)(false.B)))
+    matchTable.zip(isRegWrites).foreach {
+      case (elem, isRegWrite) =>
         val mux = Module(new MultiMux1(pipelineNum, UInt(spec.Width.Reg.data), zeroWord))
         mux.io.inputs.zip(io.finishInsts).foreach {
           case (input, finishInst) =>
@@ -131,9 +147,27 @@ class Rob(
         }
         when(mux.io.output.valid && elem.state === RegDataState.busy) {
           elem.state := RegDataState.ready
-          elem.data  := mux.io.output.bits
+          isRegWrite := true.B
+          if (!Param.isOptimizedByLVT) {
+            elem.data := mux.io.output.bits
+          }
         }
     }
+
+    if (Param.isOptimizedByLVT) {
+      io.finishInsts.zipWithIndex.foreach {
+        case (src, idx) =>
+          val dst = gprDataLvt.io.writePorts(idx)
+          dst.en   := isRegWrites(src.bits.gprWrite.addr)
+          dst.addr := src.bits.gprWrite.addr
+          dst.data := src.bits.gprWrite.data
+      }
+      gprDataLvt.io.flushPort.get.valid := io.isFlush
+      gprDataLvt.io.flushPort.get.bits.zip(io.regfileDatas).foreach {
+        case (dst, src) =>
+      }
+    }
+
   } else {
     io.finishInsts.foreach { finishInst =>
       finishInst.ready := true.B
@@ -217,7 +251,7 @@ class Rob(
     .lazyZip(io.distributeResults)
     .zipWithIndex
     .foreach {
-      case ((enq, req, res), idx) =>
+      case ((enq, req, res), instIdx) =>
         // enqueue
         enq.valid                     := req.valid
         enq.bits                      := RobInstStoreBundle.default
@@ -227,27 +261,31 @@ class Rob(
 
         // distribute rob id
         res       := RobReadResultNdPort.default
-        res.robId := queue.io.enqIncResults(idx)
+        res.robId := queue.io.enqIncResults(instIdx)
         when(req.valid && req.ready && req.bits.writeRequest.en) {
           matchTable(req.bits.writeRequest.addr).state := RegDataState.busy
           matchTable(req.bits.writeRequest.addr).data  := res.robId
         }
 
         // request read data
-        req.bits.readRequests.lazyZip(res.readResults).foreach {
-          case (reqRead, resRead) =>
+        req.bits.readRequests.lazyZip(res.readResults).zipWithIndex.foreach {
+          case ((reqRead, resRead), readIdx) =>
             val isDataInRobBusy = WireDefault(matchTable(reqRead.addr).state === RegDataState.busy)
+
+            val lvtIdx      = instIdx * Param.regFileReadNum + readIdx
+            val lvtReadPort = gprDataLvt.io.readPorts(lvtIdx)
+            lvtReadPort.addr := reqRead.addr
 
             val isLocateInPrevWrite        = WireDefault(false.B)
             val dataLocateInPrevWriteRobId = WireDefault(zeroWord)
 
             // if RAW in the same time request
-            val raw = io.requests.take(idx).map(_.bits.writeRequest).map { prevWrite =>
+            val raw = io.requests.take(instIdx).map(_.bits.writeRequest).map { prevWrite =>
               prevWrite.en && (prevWrite.addr === reqRead.addr)
             }
             val selectWrite = PriorityEncoderOH(raw.reverse).reverse
             when(raw.foldLeft(false.B)(_ || _)) {
-              io.distributeResults.take(idx).zip(selectWrite).foreach {
+              io.distributeResults.take(instIdx).zip(selectWrite).foreach {
                 case (prevRes, prevEn) =>
                   when(prevEn) {
                     isLocateInPrevWrite        := true.B
@@ -266,10 +304,15 @@ class Rob(
               resRead.result := Mux(
                 isLocateInPrevWrite,
                 dataLocateInPrevWriteRobId,
-                matchTable(reqRead.addr).data
+                (if (Param.isOptimizedByLVT)
+                   Mux(isDataInRobBusy, matchTable(reqRead.addr).data, lvtReadPort.data)
+                 else matchTable(reqRead.addr).data)
               )
             } else {
-              resRead.result := matchTable(reqRead.addr).data
+              resRead.result := (if (Param.isOptimizedByLVT)
+                                   Mux(isDataInRobBusy, matchTable(reqRead.addr).data, lvtReadPort.data)
+                                 else matchTable(reqRead.addr).data)
+
             }
         }
 

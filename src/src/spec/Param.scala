@@ -33,6 +33,7 @@ object Param {
   val exeFeedBackFtqDelay          = true
 
   val isOptimizedByMultiMux = true
+  val isOptimizedByLVT      = true
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
