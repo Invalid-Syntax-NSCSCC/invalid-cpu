@@ -157,7 +157,10 @@ class Rob(
     io.finishInsts.zipWithIndex.foreach {
       case (src, idx) =>
         val dst = gprDataLvt.io.writePorts(idx)
-        dst.en   := isRegWrites(src.bits.gprWrite.addr)
+        dst.en := src.valid &&
+          src.bits.instInfo.isValid &&
+          src.bits.gprWrite.en &&
+          src.bits.instInfo.robId === matchTable(src.bits.gprWrite.addr).data
         dst.addr := src.bits.gprWrite.addr
         dst.data := src.bits.gprWrite.data
     }
