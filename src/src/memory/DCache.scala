@@ -718,10 +718,8 @@ class DCache(
               ram.io.writeAddr := queryIndex
           }
 
-          when(axiMaster.io.write.res.isComplete) {
-            // Next Stage 1
-            nextState := State.ready
-          }
+          // Next Stage 1
+          nextState := State.ready
         }
       }.otherwise {
         statusTagRams.zipWithIndex.foreach {
@@ -759,7 +757,7 @@ class DCache(
         when(isNeedWbReg) {
           handleWb(writeBackAddr, selectedDataLine)
         }.otherwise {
-          when(!isSetCountDownZero && axiMaster.io.write.res.isComplete) {
+          when(!isSetCountDownZero) {
             setCountDownReg := setCountDownReg - 1.U
           }
 
@@ -770,15 +768,13 @@ class DCache(
               ram.io.writeAddr := queryIndex
           }
 
-          when(axiMaster.io.write.res.isComplete) {
-            when(isSetCountDownZero) {
-              // Next Stage 1
-              nextState := State.ready
+          when(isSetCountDownZero) {
+            // Next Stage 1
+            nextState := State.ready
 
-            }.otherwise {
-              isNeedWbReg           := true.B
-              isWriteBackReqSentReg := false.B
-            }
+          }.otherwise {
+            isNeedWbReg           := true.B
+            isWriteBackReqSentReg := false.B
           }
         }
       }.otherwise {

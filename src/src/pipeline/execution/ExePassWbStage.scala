@@ -222,35 +222,58 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
         fallThroughPc =/= ftqQueryPc
     )
 
-    if (Param.usePmu) {
-      resultOutReg.bits.instInfo.ftqCommitInfo.directionMispredict.get := branchDirectionMispredict
-      resultOutReg.bits.instInfo.ftqCommitInfo.targetMispredict.get    := branchTargetMispredict
-    }
-
     // is branch
     val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
 
-    branchSetPort.en    := (branchDirectionMispredict || branchTargetMispredict) && branchEnableFlag && isBranchInst
-    branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
-    when(branchSetPort.en) {
+    val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && branchEnableFlag && isBranchInst
+    when(isRedirect) {
       branchEnableFlag                                 := false.B
       resultOutReg.bits.instInfo.ftqInfo.isLastInBlock := true.B
     }
+
+    if (Param.usePmu) {
+      resultOutReg.bits.instInfo.ftqCommitInfo.directionMispredict.get := branchDirectionMispredict && branchEnableFlag && isBranchInst
+      resultOutReg.bits.instInfo.ftqCommitInfo.targetMispredict.get := branchTargetMispredict && branchEnableFlag && isBranchInst
+    }
+
+    branchSetPort.en    := isRedirect
+    branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
+
     branchSetPort.pcAddr := Mux(
       jumpBranchInfo.en,
       jumpBranchInfo.pcAddr,
       fallThroughPc
     )
 
-    feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
-    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
-      (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
-    feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
-    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
-    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+    if (Param.exeFeedBackFtqDelay) {
+
+      // branchSetPort.en    := RegNext(isRedirect)
+      // branchSetPort.ftqId := RegNext(selectedIn.instInfo.ftqInfo.ftqId)
+
+      // branchSetPort.pcAddr := Mux(
+      //   RegNext(jumpBranchInfo.en),
+      //   RegNext(jumpBranchInfo.pcAddr),
+      //   RegNext(fallThroughPc)
+      // )
+
+      feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst) && RegNext(branchEnableFlag)
+      feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict) ||
+        (RegNext(jumpBranchInfo.en) && !RegNext(inFtqInfo.isLastInBlock))
+      feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId)
+      feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr)
+      feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc)
+    } else {
+
+      feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
+      feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
+        (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
+      feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
+      feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+      feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+    }
 
     resultOutReg.bits.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
-    resultOutReg.bits.instInfo.ftqCommitInfo.isRedirect := branchSetPort.en || selectedIn.instInfo.ftqCommitInfo.isRedirect
+    resultOutReg.bits.instInfo.ftqCommitInfo.isRedirect := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
     val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
     val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)

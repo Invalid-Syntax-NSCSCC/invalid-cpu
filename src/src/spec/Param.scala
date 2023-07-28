@@ -11,7 +11,7 @@ object Param {
   val isReleasePackage = false
   val isFullFpga       = false
 
-  val usePmu = true // 性能计数器
+  val usePmu = false || isChiplab // 性能计数器
 
   val isDiffTest                = false || isChiplab
   val isOutOfOrderIssue         = true
@@ -25,14 +25,15 @@ object Param {
   val isBranchPredict           = true
   val isTagePredictorTagCompare = true
   val isPredecode               = true
-  val isShowBranchNum = isChiplab // need commitNum == 1. branch inst num -> pc_1 ; branch predict failed num -> wdata_1
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
   val isWakeUpPassThroughExe       = false // true && !isOutOfOrderIssue
   val instQueueCombineSel          = true // false : connect decode ; true : connect predecode
+  val exeFeedBackFtqDelay          = true
 
   val isOptimizedByMultiMux = true
+  val isOptimizedByLVT      = true
 
   val instQueueLength        = 16
   val instQueueChannelNum    = 4
