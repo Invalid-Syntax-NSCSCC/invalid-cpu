@@ -7,11 +7,8 @@ import spec._
 import chisel3.util.Valid
 
 class RobMatchBundle extends Bundle {
-  // val locate     = RegDataLocateSel()
-  // val robId      = UInt(Param.Width.Rob.id)
-  // val robResData = Valid(UInt(Width.Reg.data))
   val state = RegDataState()
-  val data  = UInt(Width.Reg.data)
+  val data  = if (Param.isOptimizedByLVT) UInt(Param.Width.Rob.id) else UInt(Width.Reg.data)
 }
 
 object RobMatchBundle {

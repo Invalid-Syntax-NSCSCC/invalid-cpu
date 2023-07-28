@@ -249,7 +249,7 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
       feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst) && RegNext(branchEnableFlag)
       feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict) ||
-        RegNext((jumpBranchInfo.en) && !RegNext(inFtqInfo.isLastInBlock))
+        (RegNext(jumpBranchInfo.en) && !RegNext(inFtqInfo.isLastInBlock))
       feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId)
       feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr)
       feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc)
