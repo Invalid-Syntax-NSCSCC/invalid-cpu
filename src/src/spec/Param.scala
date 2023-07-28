@@ -90,7 +90,7 @@ object Param {
     }
 
     object DCache {
-      val _addr           = 10 // TODO: Choose an optimal value (small value is suitible for difftest)
+      val _addr = if (isFullFpga) 8 else 10 // TODO: Choose an optimal value (small value is suitible for difftest)
       val _byteOffset     = log2Ceil(Count.DCache.dataPerLine) + log2Ceil(wordLength / byteLength)
       val _dataLine       = Count.DCache.dataPerLine * spec.Width.Mem._data
       val _tag            = spec.Width.Mem._addr - _addr - _byteOffset
@@ -103,7 +103,7 @@ object Param {
     }
 
     object ICache {
-      val _addr           = 10 // TODO: Choose an optimal value (small value is suitible for difftest)
+      val _addr = if (isFullFpga) 8 else 10 // TODO: Choose an optimal value (small value is suitible for difftest)
       val _instOffset     = log2Ceil(wordLength / byteLength)
       val _fetchOffset    = log2Ceil(fetchInstMaxNum) + log2Ceil(wordLength / byteLength)
       val _byteOffset     = log2Ceil(Count.ICache.dataPerLine) + log2Ceil(wordLength / byteLength)
