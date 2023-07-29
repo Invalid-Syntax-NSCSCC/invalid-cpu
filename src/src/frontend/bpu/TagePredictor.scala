@@ -71,7 +71,7 @@ class TagePredictor(
 
   // Meta
   val tagCtrbits    = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(3.W))))
-  val tagUsefulbits = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(3.W))))
+  val tagUsefulbits = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(componentUsefulWidth(1).W))))
   val tagQueryTags  = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
   val tagOriginTags = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
   val tagHitIndexs  = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(10.W))))
