@@ -19,7 +19,7 @@ object Param {
   val isPartialUncachedPatch    = false || isReleasePackage
   val isMmioDelay               = false || isChiplab || isFullFpga
   val isNoPrivilege             = false || isReleasePackage
-  val isCacheOnPg               = false
+  val isCacheOnPg               = true
   val isForcedCache             = false || isReleasePackage
   val isForcedUncached          = false
   val isBranchPredict           = true
@@ -186,17 +186,18 @@ object Param {
       val tagComponentTagWidth = 12
 //      val tagComponentNum        = 15
 //      val componentHistoryLength = Seq(0, 6, 10, 18, 25, 35, 55, 69, 105, 155, 230, 354, 479, 642, 1012, 1347)
-      val tagComponentNum        = 7
-      val componentHistoryLength = Seq(0, 10, 22, 52, 130, 230, 479, 1012) // ipc 0.6426
-//      val tagComponentNum        = 7
-//      val componentHistoryLength = Seq(0, 10, 26, 52, 100, 230, 479, 1012)  //0.6415
+      val tagComponentNum        = 4
+      val componentHistoryLength = Seq(0, 10, 22, 52, 130, 230, 479, 1012) // ipc 0.6452
+//      val componentHistoryLength = Seq(0, 10, 22, 52, 130, 230, 479, 1012) // ipc 0.6438
+
       //      val tagComponentNum        = 3
       //      val componentHistoryLength = Seq(0, 10, 55, 230, 479, 1012)
 
       val componentTableDepth =
         Seq(16384, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
       val componentCtrWidth    = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
-      val componentUsefulWidth = Seq(0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+      val componentUsefulWidth = Seq(0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
+//      val componentUsefulWidth = Seq(0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
 
     }
 
