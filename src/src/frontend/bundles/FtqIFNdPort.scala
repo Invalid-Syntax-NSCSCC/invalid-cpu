@@ -5,7 +5,7 @@ import chisel3.util._
 class FtqIFNdPort extends Bundle {
   val ftqBlockBundle = new FtqBlockBundle
   val redirect       = Bool()
-  val ftqId          = UInt(Param.BPU.ftqPtrWitdh.W)
+  val ftqId          = UInt(Param.BPU.ftqPtrWidth.W)
 }
 
 object FtqIFNdPort {

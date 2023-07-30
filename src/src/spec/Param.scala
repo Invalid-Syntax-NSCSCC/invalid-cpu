@@ -173,7 +173,7 @@ object Param {
     val isDebug     = true
     val fetchWidth  = fetchInstMaxNum
     val ftqSize     = 16
-    val ftqPtrWitdh = log2Ceil(ftqSize)
+    val ftqPtrWidth = log2Ceil(ftqSize)
 
     object Width {
       val id = log2Ceil(ftqSize).W

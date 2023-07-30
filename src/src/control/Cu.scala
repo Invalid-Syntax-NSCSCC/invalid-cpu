@@ -42,7 +42,7 @@ class Cu(
 
     val isBranchFlush      = Output(Bool())
     val frontendFlush      = Output(Bool())
-    val frontendFlushFtqId = Output(UInt(Param.BPU.ftqPtrWitdh.W))
+    val frontendFlushFtqId = Output(UInt(Param.BPU.ftqPtrWidth.W))
     val backendFlush       = Output(Bool())
     val idleFlush          = Output(Bool())
 

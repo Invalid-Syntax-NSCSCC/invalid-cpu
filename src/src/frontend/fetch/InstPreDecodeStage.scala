@@ -12,7 +12,7 @@ import spec.{Param, Width}
 class InstPreDecodeNdPort extends Bundle {
   val enqInfos  = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
   val ftqLength = UInt(log2Ceil(Param.fetchInstMaxNum + 1).W)
-  val ftqId     = UInt(Param.BPU.ftqPtrWitdh.W)
+  val ftqId     = UInt(Param.BPU.ftqPtrWidth.W)
 }
 
 object InstPreDecodeNdPort {
@@ -20,12 +20,12 @@ object InstPreDecodeNdPort {
 }
 
 class preDecodeRedirectBundle extends Bundle {
-  val redirectFtqId = UInt(Param.BPU.ftqPtrWitdh.W)
+  val redirectFtqId = UInt(Param.BPU.ftqPtrWidth.W)
   val redirectPc    = UInt(spec.Width.Mem.addr)
 }
 class InstPreDecodePeerPort extends Bundle {
   val predecodeRedirect = Bool()
-  val redirectFtqId     = UInt(Param.BPU.ftqPtrWitdh.W)
+  val redirectFtqId     = UInt(Param.BPU.ftqPtrWidth.W)
   val redirectPc        = UInt(spec.Width.Mem.addr)
 }
 object InstPreDecodePeerPort {

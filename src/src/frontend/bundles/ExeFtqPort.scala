@@ -8,7 +8,7 @@ class ExeFtqPort extends Bundle {
 }
 
 class QueryPcBundle extends Bundle {
-  val ftqId = Input(UInt(spec.Param.BPU.ftqPtrWitdh.W))
+  val ftqId = Input(UInt(spec.Param.BPU.ftqPtrWidth.W))
   val pc    = Output(UInt(spec.Width.Mem.addr))
 }
 
