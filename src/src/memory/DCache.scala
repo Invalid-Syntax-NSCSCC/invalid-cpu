@@ -231,7 +231,6 @@ class DCache(
     val writeData      = UInt(Width.Mem.data)
     val writeMask      = UInt(Width.Mem.data)
     val isWrite        = Bool()
-    val writeDataLine  = Vec(Param.Count.DCache.dataPerLine, UInt(Width.Mem.data))
   }))
   lastReg         := lastReg // Fallback: Keep data
   lastReg.isWrite := false.B
@@ -326,7 +325,7 @@ class DCache(
         lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset)
       val lastQueryIndex = queryIndexFromMemAddr(lastReg.memAddr)
       when(isLastMatched && lastReg.isWrite) {
-        selectedDataLine := lastReg.writeDataLine
+        selectedDataLine := lastReg.dataLine
       }
       when(lastQueryIndex === queryIndex) {
         statusTagLines.zipWithIndex.foreach {
@@ -376,7 +375,7 @@ class DCache(
                 case (data, index) =>
                   Mux(index.U === dataIndex, newData, data)
               }))
-              lastReg.writeDataLine := writeDataLine
+              lastReg.dataLine := writeDataLine
 
               // Set dirty bit
               writeStatusTag.isDirty := true.B
@@ -442,7 +441,7 @@ class DCache(
           lastReg.setIndex := refillSetIndex
           lastReg.dataLine := toDataLine(dataLines(refillSetIndex))
           when(lastReg.isWrite && refillSetIndex === lastReg.setIndex && queryIndex === lastQueryIndex) {
-            lastReg.dataLine := lastReg.writeDataLine
+            lastReg.dataLine := lastReg.dataLine
           }
 
           // Init refill state regs
