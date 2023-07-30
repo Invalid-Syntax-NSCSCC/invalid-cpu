@@ -43,7 +43,7 @@ class BPU(
     // TODO: use PMU to monitor miss-prediction rate and each component useful rate
   })
   io.fetchNum := io.bpuFtqPort.ftqP0.length
-  // P1 signals  (the next clock of getting origin input)
+  // P1 signals
   val mainRedirectValid = WireDefault(false.B)
 
   // FTB fetch target buffer
@@ -122,11 +122,8 @@ class BPU(
     io.bpuFtqPort.ftqP1.isCrossCacheline := ftbEntry.isCrossCacheline
     io.bpuFtqPort.ftqP1.startPc          := p1Pc
     // when a fetch block has branch inst,cut fetch num
-    io.bpuFtqPort.ftqP1.length := (ftbEntry.partialFallThroughAddr -
-      p1Pc(
-        Param.Width.ICache._fetchOffset,
-        2
-      )) // Use 1 +  log(fetchNum) bits minus to ensure no overflow
+    io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddress(Param.Width.ICache._fetchOffset, 2) -
+      p1Pc(Param.Width.ICache._fetchOffset, 2)) // Use 1 + log(fetchNum) bits minus to ensure no overflow
     io.bpuFtqPort.ftqP1.predictValid := true.B
     //  switch ftbEntry.BranchType
     io.bpuFtqPort.ftqP1.predictTaken := true.B // (Param.BPU.BranchType.call, Param.BPU.BranchType.ret, Param.BPU.BranchType.cond)
@@ -147,17 +144,14 @@ class BPU(
   // Pc output
   io.mainRedirectPc.valid            := mainRedirectValid
   io.bpuFtqPort.mainBpuRedirectValid := mainRedirectValid
-  io.mainRedirectPc.bits             := ftbEntry.jumpTargetAddr
-  // Ftb only store part of fallThroughAddr
-  val fallThroughAddr =
-    Cat(p1Pc(Width.Mem._addr - 1, Param.Width.ICache._byteOffset), ftbEntry.partialFallThroughAddr, 0.U(2.W))
+  io.mainRedirectPc.bits             := ftbEntry.jumpTargetAddress
   //  case branchType
   switch(ftbEntry.branchType) {
     is(Param.BPU.BranchType.cond) {
-      io.mainRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddr, fallThroughAddr)
+      io.mainRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddress, ftbEntry.fallThroughAddress)
     }
     is(Param.BPU.BranchType.call, Param.BPU.BranchType.uncond) {
-      io.mainRedirectPc.bits := ftbEntry.jumpTargetAddr
+      io.mainRedirectPc.bits := ftbEntry.jumpTargetAddress
     }
     is(Param.BPU.BranchType.ret) {
       // io.mainRedirectPc.bits := rasTopAddr // TODO RAS
@@ -199,13 +193,12 @@ class BPU(
   tageUpdateInfo.branchTaken    := io.bpuFtqPort.ftqTrainMeta.isTaken
   tageUpdateInfo.bpuMeta        := io.bpuFtqPort.ftqTrainMeta.tageMeta
 
-  ftbEntryUpdate.valid            := ~(io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
-  ftbEntryUpdate.tag              := io.bpuFtqPort.ftqTrainMeta.startPc(addr - 1, log2Ceil(ftbNset) + 2)
-  ftbEntryUpdate.branchType       := io.bpuFtqPort.ftqTrainMeta.branchType
-  ftbEntryUpdate.isCrossCacheline := io.bpuFtqPort.ftqTrainMeta.isCrossCacheline
-  ftbEntryUpdate.jumpTargetAddr   := io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress
-  ftbEntryUpdate.partialFallThroughAddr := io.bpuFtqPort.ftqTrainMeta
-    .fallThroughAddress(Param.Width.ICache._byteOffset, 2)
+  ftbEntryUpdate.valid              := ~(io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
+  ftbEntryUpdate.tag                := io.bpuFtqPort.ftqTrainMeta.startPc(addr - 1, log2Ceil(ftbNset) + 2)
+  ftbEntryUpdate.branchType         := io.bpuFtqPort.ftqTrainMeta.branchType
+  ftbEntryUpdate.isCrossCacheline   := io.bpuFtqPort.ftqTrainMeta.isCrossCacheline
+  ftbEntryUpdate.jumpTargetAddress  := io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress
+  ftbEntryUpdate.fallThroughAddress := io.bpuFtqPort.ftqTrainMeta.fallThroughAddress
 
   // connect fetch target buffer module
   // assign ftbHit = 0
