@@ -11,7 +11,7 @@ class TaggedPreditor(
   phtDepth:       Int = 2048,
   phtTagWidth:    Int = Param.BPU.TagePredictor.tagComponentTagWidth,
   phtCtrWidth:    Int = 3,
-  phtUsefulWidth: Int = 2,
+  phtUsefulWidth: Int = 3,
   addr:           Int = spec.Width.Mem._addr)
     extends Module {
   // param
