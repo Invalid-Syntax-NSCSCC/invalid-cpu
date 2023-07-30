@@ -70,7 +70,8 @@ object Param {
       val _length        = 16
       val _channelNum    = 4
       val _channelLength = _length / _channelNum
-      val id             = log2Ceil(_length).W
+      val _id            = log2Ceil(_length)
+      val id             = _id.W
     }
 
     object Axi {
