@@ -45,11 +45,7 @@ class AddrTransStage
     ) {
   val selectedIn = io.in.bits
   val peer       = io.peer.get
-  val out        = if (isNoPrivilege) io.out.bits else resultOutReg.bits
-  if (isNoPrivilege) {
-    io.in.ready  := io.out.ready
-    io.out.valid := io.in.valid
-  }
+  val out        = resultOutReg.bits
 
   val tlbBlockingReg = RegInit(false.B)
   tlbBlockingReg := tlbBlockingReg
@@ -193,7 +189,7 @@ class AddrTransStage
   }
 
   if (isNoPrivilege) {
-    tlbBlockingReg := true.B
+    tlbBlockingReg := false.B
   }
 
   // Submit result
