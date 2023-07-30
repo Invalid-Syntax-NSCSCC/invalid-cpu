@@ -214,14 +214,12 @@ class Cu(
       isException || io.branchExe.en || io.redirectFromDecode.en || refetchFlush || isExceptionReturn,
       false.B
     )
-  val frontendFlushFtqId = WireDefault(
-    Mux(
-      isException || refetchFlush || isExceptionReturn,
-      majorInstInfo.ftqInfo.ftqId,
-      Mux(io.branchExe.en, io.branchExe.ftqId, io.redirectFromDecode.ftqId)
-    )
+  val frontendFlushFtqId = Mux(
+    isException || refetchFlush || isExceptionReturn,
+    majorInstInfo.ftqInfo.ftqId,
+    Mux(io.branchExe.en, io.branchExe.ftqId, io.redirectFromDecode.ftqId)
   )
-  io.frontendFlushFtqId := RegNext(frontendFlushFtqId)
+  io.frontendFlushFtqId := RegNext(frontendFlushFtqId, 0.U)
   io.backendFlush := RegNext(
     isException || redirectCommit || refetchFlush || isExceptionReturn,
     false.B
