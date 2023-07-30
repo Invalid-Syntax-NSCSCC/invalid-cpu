@@ -13,7 +13,6 @@ class MultiMux1[T <: Data](length: Int, tFactory: => T, blankT: => T) extends Mo
   val flatten = Wire(Vec(length, tFactory))
   for (i <- 0 until length) {
     flatten(i) := Mux(io.inputs(i).valid, io.inputs(i).bits, blankT)
-
   }
   io.output.bits := VecInit(flatten.map(_.asUInt)).reduceTree(_ | _).asTypeOf(tFactory)
 }

@@ -10,6 +10,7 @@ import pipeline.queue.bundles.DecodeOutNdPort
 import pipeline.queue.decode._
 import spec._
 import common.bundles.BackendRedirectPcNdPort
+import pipeline.commit.bundles.PcInstBundle
 
 class InstQueueEnqNdPort extends Bundle {
   val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
@@ -19,8 +20,9 @@ object InstQueueEnqNdPort {
 }
 
 class FetchInstDecodeNdPort extends Bundle {
-  val decode   = new DecodeOutNdPort
-  val instInfo = new InstInfoNdPort
+  val decode    = new DecodeOutNdPort
+  val instInfo  = new InstInfoNdPort
+  val fetchInfo = new PcInstBundle
 }
 
 object FetchInstDecodeNdPort {
@@ -173,9 +175,10 @@ class MultiInstQueue(
     .zipWithIndex
     .foreach {
       case ((dequeuePort, selectedDecoder, decodeInstInfo, redirectRequest), index) =>
-        dequeuePort.bits.instInfo      := InstInfoNdPort.default
-        dequeuePort.bits.instInfo.pc   := decodeInstInfo.pcAddr
-        dequeuePort.bits.instInfo.inst := decodeInstInfo.inst
+        dequeuePort.bits.instInfo         := InstInfoNdPort.default
+        dequeuePort.bits.fetchInfo.pcAddr := decodeInstInfo.pcAddr
+        dequeuePort.bits.fetchInfo.inst   := decodeInstInfo.inst
+
         val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
         dequeuePort.bits.instInfo.isValid                  := true.B
         dequeuePort.bits.instInfo.isCsrWrite               := selectedDecoder.info.csrWriteEn

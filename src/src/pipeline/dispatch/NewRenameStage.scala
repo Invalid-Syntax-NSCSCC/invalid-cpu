@@ -123,6 +123,7 @@ class NewRenameStage(
         case (dst, src) =>
           dst := src
       }
+      req.bits.fetchInfo := in.fetchInfo
   }
 
   // -> reservation station

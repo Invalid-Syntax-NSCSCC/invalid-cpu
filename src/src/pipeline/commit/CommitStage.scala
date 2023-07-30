@@ -10,6 +10,8 @@ import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.Param.isDiffTest
 import spec._
 import pmu.bundles.PmuBranchPredictNdPort
+import pipeline.dispatch.bundles.FetchInstInfoBundle
+import pipeline.commit.bundles.PcInstBundle
 
 class WbNdPort extends Bundle {
   val gprWrite = new RfWriteNdPort
@@ -20,17 +22,26 @@ object WbNdPort {
   def default = 0.U.asTypeOf(new WbNdPort)
 }
 
+class CommitNdPort extends Bundle {
+  val gprWrite  = new RfWriteNdPort
+  val instInfo  = new InstInfoNdPort
+  val fetchInfo = new PcInstBundle
+}
+
+object CommitNdPort {
+  def default = 0.U.asTypeOf(new CommitNdPort)
+}
+
 class CommitStage(
   commitNum: Int = Param.commitNum)
     extends Module {
   val io = IO(new Bundle {
-    val ins = Vec(commitNum, Flipped(Decoupled(new WbNdPort)))
+    val ins = Vec(commitNum, Flipped(Decoupled(new CommitNdPort)))
 
     // `CommitStage` -> `Cu` NO delay
-    val gprWritePorts = Output(Vec(commitNum, new RfWriteNdPort))
-
-    // `AddrTransStage` -> `CommitStage` -> `Cu` NO delay
+    val gprWritePorts   = Output(Vec(commitNum, new RfWriteNdPort))
     val cuInstInfoPorts = Output(Vec(commitNum, new InstInfoNdPort))
+    val majorPc         = Output(UInt(Width.Reg.data))
 
     val pmu_branchInfo = if (Param.usePmu) Some(Output(new PmuBranchPredictNdPort)) else None
 
@@ -79,6 +90,7 @@ class CommitStage(
       dstGprWrite         := inBit.gprWrite
       dstGprWrite.en      := in.valid && in.ready && inBit.gprWrite.en
   }
+  io.majorPc := inBits.head.fetchInfo.pcAddr
 
   io.pmu_branchInfo match {
     case None =>
@@ -97,14 +109,14 @@ class CommitStage(
   io.difftest match {
     case Some(dt) =>
       dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready, false.B) // && nextCommit)
-      dt.pc    := RegNext(inBits(0).instInfo.pc, 0.U)
-      dt.instr := RegNext(inBits(0).instInfo.inst, 0.U)
+      dt.pc    := RegNext(inBits(0).fetchInfo.pcAddr, 0.U)
+      dt.instr := RegNext(inBits(0).fetchInfo.inst, 0.U)
       dt.wen   := RegNext(inBits(0).gprWrite.en, false.B)
       dt.wdest := RegNext(inBits(0).gprWrite.addr, 0.U)
       dt.wdata := RegNext(inBits(0).gprWrite.data, 0.U)
       dt.csr_rstat := RegNext(
-        inBits(0).instInfo.inst(31, 24) === Inst._2RI14.csr_ &&
-          inBits(0).instInfo.inst(23, 10) === "h5".U,
+        inBits(0).fetchInfo.inst(31, 24) === Inst._2RI14.csr_ &&
+          inBits(0).fetchInfo.inst(23, 10) === "h5".U,
         false.B
       ) && io.ins(0).valid && io.ins(0).ready
       dt.ld_en    := RegNext(inBits(0).instInfo.load.get.en, false.B)
@@ -127,8 +139,8 @@ class CommitStage(
 
       if (commitNum == 2) {
         dt.valid_1 := RegNext(inBits(1).instInfo.isValid && io.ins(1).valid && io.ins(1).ready, false.B)
-        dt.instr_1 := RegNext(inBits(1).instInfo.inst, 0.U)
-        dt.pc_1    := RegNext(inBits(1).instInfo.pc, 0.U)
+        dt.instr_1 := RegNext(inBits(1).fetchInfo.inst, 0.U)
+        dt.pc_1    := RegNext(inBits(1).fetchInfo.pcAddr, 0.U)
         dt.wen_1   := RegNext(inBits(1).gprWrite.en, false.B)
         dt.wdest_1 := RegNext(inBits(1).gprWrite.addr, 0.U)
         dt.wdata_1 := RegNext(inBits(1).gprWrite.data, 0.U)
