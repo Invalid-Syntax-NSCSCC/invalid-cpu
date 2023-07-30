@@ -46,10 +46,10 @@ class FTB(
     bundle.branchType       := line(FtbEntryNdPort.width - 3, FtbEntryNdPort.width - 2 - Param.BPU.BranchType.width)
     bundle.tag := line(
       FtbEntryNdPort.width - 3 - Param.BPU.BranchType.width,
-      spec.Width.Mem._addr + Param.Width.ICache._byteOffset - 1
+      spec.Width.Mem._addr + Param.Width.ICache._byteOffset
     )
     bundle.partialFallThroughAddr := line(
-      spec.Width.Mem._addr + Param.Width.ICache._byteOffset - 2,
+      spec.Width.Mem._addr + Param.Width.ICache._byteOffset - 1,
       spec.Width.Mem._addr
     )
     bundle.jumpTargetAddr := line(spec.Width.Mem._addr - 1, 0)
