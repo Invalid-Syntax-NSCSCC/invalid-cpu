@@ -48,12 +48,8 @@ class AddrTransStage
   val selectedInVirtAddr = Cat(selectedIn.memRequest.addr(wordLength - 1, 2), 0.U(2.W))
   val peer               = io.peer.get
   val resultOut          = WireDefault(0.U.asTypeOf(Valid(new MemReqNdPort)))
+  val out                = resultOut.bits
   resultOutReg := resultOut
-  val out = if (isNoPrivilege) io.out.bits else resultOut.bits
-  if (isNoPrivilege) {
-    io.in.ready  := io.out.ready
-    io.out.valid := io.in.valid
-  }
 
   val tlbBlockingReg = RegInit(false.B)
   tlbBlockingReg := tlbBlockingReg
@@ -207,7 +203,7 @@ class AddrTransStage
   }
 
   if (isNoPrivilege) {
-    tlbBlockingReg := true.B
+    tlbBlockingReg := false.B
   }
 
   // Submit result
