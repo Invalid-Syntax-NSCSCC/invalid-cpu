@@ -100,7 +100,7 @@ class ExeForMemStage
     }
   }
   resultOutReg.bits.memRequest.isValid         := isValidLoadStore
-  resultOutReg.bits.memRequest.addr            := Cat(loadStoreAddr(wordLength - 1, 2), 0.U(2.W))
+  resultOutReg.bits.memRequest.addr            := loadStoreAddr
   resultOutReg.bits.memRequest.read.isUnsigned := VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp)
   resultOutReg.bits.memRequest.rw              := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
   resultOutReg.bits.isAtomicStore              := selectedIn.exeOp === ExeInst.Op.sc
@@ -138,7 +138,6 @@ class ExeForMemStage
   // Cache maintenance
   val cacopAddr = WireDefault(selectedIn.leftOperand + selectedIn.rightOperand)
   val isCacop   = WireDefault(selectedIn.exeOp === ExeInst.Op.cacop)
-  resultOutReg.bits.instInfo.vaddr := Mux(isCacop, cacopAddr, loadStoreAddr)
   when(isCacop) {
     resultOutReg.bits.memRequest.addr               := cacopAddr
     resultOutReg.bits.instInfo.forbidParallelCommit := true.B

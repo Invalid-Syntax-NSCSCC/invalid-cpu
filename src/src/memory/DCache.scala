@@ -340,7 +340,6 @@ class DCache(
       lastReg.memAddr        := reqMemAddr
       lastReg.statusTagLines := statusTagLines
       lastReg.setIndex       := setIndex
-      lastReg.dataLine       := selectedDataLine
       lastReg.writeData      := reqWriteData
       lastReg.writeMask      := reqWriteMask
 
