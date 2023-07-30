@@ -58,18 +58,6 @@ class Rob(
   // common match table
   val matchTable = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
 
-  // match table data optimized by LVT
-  val gprDataLvt = Module(
-    new LiveValueTable(
-      UInt(spec.Width.Reg.data),
-      0.U(spec.Width.Reg.data),
-      spec.Count.reg,
-      Param.issueInstInfoMaxNum * Param.regFileReadNum,
-      Param.pipelineNum,
-      hasFlush = true
-    )
-  )
-
   val queue = Module(
     new DistributedQueuePlus(
       issueNum,
@@ -131,43 +119,21 @@ class Rob(
     }
 
     // update match table
-    val isRegWrites = WireDefault(VecInit(Seq.fill(spec.Count.reg)(false.B)))
-    matchTable.zip(isRegWrites).foreach {
-      case (elem, isRegWrite) =>
+    matchTable.foreach {
+      case elem =>
         val mux = Module(new MultiMux1(pipelineNum, UInt(spec.Width.Reg.data), zeroWord))
         mux.io.inputs.zip(io.finishInsts).foreach {
           case (input, finishInst) =>
             input.valid := finishInst.valid &&
               finishInst.bits.instInfo.isValid &&
               finishInst.bits.gprWrite.en &&
-              // matchTable(finishInst.bits.gprWrite.addr).state === RegDataState.busy &&
-              finishInst.bits.instInfo.robId === elem.data
+              finishInst.bits.instInfo.robId === elem.robId
             input.bits := finishInst.bits.gprWrite.data
         }
         when(mux.io.output.valid && elem.state === RegDataState.busy) {
           elem.state := RegDataState.ready
-          isRegWrite := true.B
-          if (!Param.isOptimizedByLVT) {
-            elem.data := mux.io.output.bits
-          }
+          elem.data  := mux.io.output.bits
         }
-    }
-
-    // optimized by LVT
-    io.finishInsts.zipWithIndex.foreach {
-      case (src, idx) =>
-        val dst = gprDataLvt.io.writePorts(idx)
-        dst.en := src.valid &&
-          src.bits.instInfo.isValid &&
-          src.bits.gprWrite.en &&
-          src.bits.instInfo.robId === matchTable(src.bits.gprWrite.addr).data
-        dst.addr := src.bits.gprWrite.addr
-        dst.data := src.bits.gprWrite.data
-    }
-    gprDataLvt.io.flushPort.get.valid := io.isFlush
-    gprDataLvt.io.flushPort.get.bits.zip(io.regfileDatas).foreach {
-      case (dst, src) =>
-        dst := src
     }
 
   } else {
@@ -266,17 +232,13 @@ class Rob(
         res.robId := queue.io.enqIncResults(instIdx)
         when(req.valid && req.ready && req.bits.writeRequest.en) {
           matchTable(req.bits.writeRequest.addr).state := RegDataState.busy
-          matchTable(req.bits.writeRequest.addr).data  := res.robId
+          matchTable(req.bits.writeRequest.addr).robId := res.robId
         }
 
         // request read data
         req.bits.readRequests.lazyZip(res.readResults).zipWithIndex.foreach {
           case ((reqRead, resRead), readIdx) =>
             val isDataInRobBusy = WireDefault(matchTable(reqRead.addr).state === RegDataState.busy)
-
-            val lvtIdx      = instIdx * Param.regFileReadNum + readIdx
-            val lvtReadPort = gprDataLvt.io.readPorts(lvtIdx)
-            lvtReadPort.addr := reqRead.addr
 
             val isLocateInPrevWrite        = WireDefault(false.B)
             val dataLocateInPrevWriteRobId = WireDefault(zeroWord)
@@ -306,14 +268,18 @@ class Rob(
               resRead.result := Mux(
                 isLocateInPrevWrite,
                 dataLocateInPrevWriteRobId,
-                (if (Param.isOptimizedByLVT)
-                   Mux(isDataInRobBusy, matchTable(reqRead.addr).data, lvtReadPort.data)
-                 else matchTable(reqRead.addr).data)
+                Mux(
+                  isDataInRobBusy,
+                  matchTable(reqRead.addr).robId,
+                  matchTable(reqRead.addr).data
+                )
               )
             } else {
-              resRead.result := (if (Param.isOptimizedByLVT)
-                                   Mux(isDataInRobBusy, matchTable(reqRead.addr).data, lvtReadPort.data)
-                                 else matchTable(reqRead.addr).data)
+              resRead.result := Mux(
+                isDataInRobBusy,
+                matchTable(reqRead.addr).robId,
+                matchTable(reqRead.addr).data
+              )
 
             }
         }
@@ -327,9 +293,7 @@ class Rob(
     matchTable.zip(io.regfileDatas).foreach {
       case (dst, src) => {
         dst.state := RegDataState.ready
-        if (!Param.isOptimizedByLVT) {
-          dst.data := src
-        }
+        dst.data  := src
       }
     }
     isDelayedMaintenanceTrigger := false.B
