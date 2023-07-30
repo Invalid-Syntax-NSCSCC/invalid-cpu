@@ -124,7 +124,7 @@ class BPU(
     // when a fetch block has branch inst,cut fetch num
     io.bpuFtqPort.ftqP1.length := (ftbEntry.partialFallThroughAddr -
       p1Pc(
-        Param.Width.ICache._fetchOffset + 1,
+        Param.Width.ICache._fetchOffset,
         2
       )) // Use 1 +  log(fetchNum) bits minus to ensure no overflow
     io.bpuFtqPort.ftqP1.predictValid := true.B
@@ -150,7 +150,7 @@ class BPU(
   io.mainRedirectPc.bits             := ftbEntry.jumpTargetAddr
   // Ftb only store part of fallThroughAddr
   val fallThroughAddr =
-    Cat(p1Pc(Width.Mem._addr - 1, Param.Width.ICache._byteOffset + 2), ftbEntry.partialFallThroughAddr, 0.U(2.W))
+    Cat(p1Pc(Width.Mem._addr - 1, Param.Width.ICache._byteOffset), ftbEntry.partialFallThroughAddr, 0.U(2.W))
   //  case branchType
   switch(ftbEntry.branchType) {
     is(Param.BPU.BranchType.cond) {
@@ -205,7 +205,7 @@ class BPU(
   ftbEntryUpdate.isCrossCacheline := io.bpuFtqPort.ftqTrainMeta.isCrossCacheline
   ftbEntryUpdate.jumpTargetAddr   := io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress
   ftbEntryUpdate.partialFallThroughAddr := io.bpuFtqPort.ftqTrainMeta
-    .fallThroughAddress(Param.Width.ICache._byteOffset + 1, 2)
+    .fallThroughAddress(Param.Width.ICache._byteOffset, 2)
 
   // connect fetch target buffer module
   // assign ftbHit = 0
