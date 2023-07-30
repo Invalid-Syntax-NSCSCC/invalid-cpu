@@ -12,7 +12,7 @@ import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemReq
 import pipeline.memory.enums.AddrTransType
 import spec.Param.{isCacheOnPg, isDiffTest, isForcedCache, isForcedUncached, isNoPrivilege}
 import spec.Value.Csr
-import spec.Width
+import spec._
 
 import scala.collection.immutable
 import pipeline.common.BaseStageWOSaveIn
@@ -31,9 +31,10 @@ object AddrTransNdPort {
 }
 
 class AddrTransPeerPort extends Bundle {
-  val csr            = Input(new MemCsrNdPort)
-  val tlbTrans       = Flipped(new TlbTransPort)
-  val tlbMaintenance = Output(new TlbMaintenanceNdPort)
+  val csr               = Input(new MemCsrNdPort)
+  val tlbTrans          = Flipped(new TlbTransPort)
+  val tlbMaintenance    = Output(new TlbMaintenanceNdPort)
+  val exceptionVirtAddr = Output(UInt(Width.Mem.addr))
 }
 
 class AddrTransStage
@@ -43,12 +44,27 @@ class AddrTransStage
       AddrTransNdPort.default,
       Some(new AddrTransPeerPort)
     ) {
-  val selectedIn = io.in.bits
-  val peer       = io.peer.get
-  val out        = resultOutReg.bits
+  val selectedIn         = io.in.bits
+  val selectedInVirtAddr = Cat(selectedIn.memRequest.addr(wordLength - 1, 2), 0.U(2.W))
+  val peer               = io.peer.get
+  val resultOut          = WireDefault(0.U.asTypeOf(Valid(new MemReqNdPort)))
+  val out                = resultOut.bits
+  resultOutReg := resultOut
+  if (isNoPrivilege) {
+    io.in.ready  := io.out.ready
+    io.out.valid := io.in.valid
+    io.out.bits  := resultOut.bits
+  }
 
   val tlbBlockingReg = RegInit(false.B)
   tlbBlockingReg := tlbBlockingReg
+
+  val exceptionVirtAddr = RegInit(0.U.asTypeOf(Valid(UInt(Width.Mem.addr))))
+  peer.exceptionVirtAddr := exceptionVirtAddr.bits
+  when(resultOut.valid && !exceptionVirtAddr.valid && resultOut.bits.instInfo.exceptionPos =/= ExceptionPos.none) {
+    exceptionVirtAddr.valid := true.B
+    exceptionVirtAddr.bits  := selectedIn.memRequest.addr
+  }
 
   // Fallback output
   out.instInfo                := selectedIn.instInfo
@@ -73,11 +89,13 @@ class AddrTransStage
     case (target, window) =>
       target.isHit := ((peer.csr.crmd.plv === Csr.Crmd.Plv.high && window.plv0) ||
         (peer.csr.crmd.plv === Csr.Crmd.Plv.low && window.plv3)) &&
-        window.vseg === selectedIn.memRequest
-          .addr(selectedIn.memRequest.addr.getWidth - 1, selectedIn.memRequest.addr.getWidth - 3)
+        window.vseg === selectedInVirtAddr(
+          selectedInVirtAddr.getWidth - 1,
+          selectedInVirtAddr.getWidth - 3
+        )
       target.mappedAddr := Cat(
         window.pseg,
-        selectedIn.memRequest.addr(selectedIn.memRequest.addr.getWidth - 4, 0)
+        selectedInVirtAddr(selectedInVirtAddr.getWidth - 4, 0)
       )
   }
 
@@ -100,7 +118,7 @@ class AddrTransStage
     selectedIn.cacheMaintenance.control.isCoherentByIndex ||
     selectedIn.cacheMaintenance.control.isCoherentByHit
   val isCanTlbException = selectedIn.memRequest.isValid || selectedIn.cacheMaintenance.control.isCoherentByHit
-  val translatedAddr    = WireDefault(selectedIn.memRequest.addr)
+  val translatedAddr    = WireDefault(selectedInVirtAddr)
   if (isDiffTest) {
     out.instInfo.load.get.paddr := Cat(translatedAddr(Width.Mem._addr - 1, 2), selectedIn.instInfo.load.get.vaddr(1, 0))
     out.instInfo.store.get.paddr := Cat(
@@ -118,11 +136,11 @@ class AddrTransStage
       ReadWriteSel.write -> TlbMemType.store
     )
   )
-  peer.tlbTrans.virtAddr := selectedIn.memRequest.addr
+  peer.tlbTrans.virtAddr := selectedInVirtAddr
   peer.tlbTrans.isValid  := !tlbBlockingReg
   switch(transMode) {
     is(AddrTransType.direct) {
-      translatedAddr := selectedIn.memRequest.addr
+      translatedAddr := selectedInVirtAddr
     }
     is(AddrTransType.directMapping) {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
@@ -185,7 +203,8 @@ class AddrTransStage
 
   // Handle flush (actually is TLB maintenance done)
   when(io.isFlush) {
-    tlbBlockingReg := false.B
+    tlbBlockingReg          := false.B
+    exceptionVirtAddr.valid := false.B
   }
 
   if (isNoPrivilege) {
@@ -194,6 +213,6 @@ class AddrTransStage
 
   // Submit result
   when(selectedIn.instInfo.isValid && !tlbBlockingReg && io.in.ready && io.in.valid) {
-    resultOutReg.valid := true.B
+    resultOut.valid := true.B
   }
 }

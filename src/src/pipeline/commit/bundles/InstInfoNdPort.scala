@@ -11,15 +11,11 @@ import pipeline.dispatch.bundles.FtqInfoBundle
 
 class InstInfoNdPort extends Bundle {
   val isValid         = Bool()
-  val pc              = UInt(Width.Reg.data)
-  val inst            = UInt(Width.Reg.data)
   val exceptionPos    = ExceptionPos()
   val exceptionRecord = UInt(Csr.ExceptionIndex.width)
   val isStore         = Bool()
-  val vaddr           = UInt(Width.Mem.addr)
   val needRefetch     = Bool()
   val isCsrWrite      = Bool()
-  val branchSuccess   = Bool()
 
   val exeOp = UInt(Param.Width.exeOp)
   val robId = UInt(Param.Width.Rob.id)
@@ -48,7 +44,6 @@ object InstInfoNdPort {
     instInfo.isTlb                := false.B
     instInfo.isStore              := false.B
     instInfo.forbidParallelCommit := false.B
-    instInfo.branchSuccess        := false.B
 
     if (isDiffTest) {
       instInfo.load.get.en  := false.B

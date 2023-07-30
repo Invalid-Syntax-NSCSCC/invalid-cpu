@@ -10,6 +10,7 @@ import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param}
 import frontend.bundles.CuCommitFtqNdPort
 import frontend.bundles.QueryPcBundle
+import spec.Width
 
 // Note. Exception只从第0个提交
 class Cu(
@@ -21,6 +22,7 @@ class Cu(
     // `WbStage` -> `Cu` -> `Regfile`
     val gprWritePassThroughPorts = new PassThroughPort(Vec(commitNum, new RfWriteNdPort))
     val instInfoPorts            = Input(Vec(commitNum, new InstInfoNdPort))
+    val majorPc                  = Input(UInt(Width.Reg.data))
     // `Cu` -> `Csr`, 软件写
     val csrWritePorts = Output(Vec(writeNum, new CsrWriteNdPort))
     // `Cu` -> `Csr`, 硬件写
@@ -49,6 +51,8 @@ class Cu(
     val ftqPort     = Output(new CuCommitFtqNdPort)
     val queryPcPort = Flipped(new QueryPcBundle)
 
+    val exceptionVirtAddr = Input(UInt(Width.Mem.addr))
+
     val isDbarFinish = Output(Bool())
 
     val difftest = if (isDiffTest) {
@@ -65,7 +69,7 @@ class Cu(
   // Values
   val majorInstInfo = io.instInfoPorts.head
   io.queryPcPort.ftqId := majorInstInfo.ftqInfo.ftqId
-  val majorPc: UInt = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
+  val majorPc     = io.majorPc // : UInt = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
   val isException = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
   // Write GPR
@@ -159,7 +163,7 @@ class Cu(
       io.csrMessage.badVAddrSet.en := true.B
       io.csrMessage.badVAddrSet.addr := Mux(
         majorInstInfo.exceptionPos === ExceptionPos.backend,
-        majorInstInfo.vaddr,
+        io.exceptionVirtAddr,
         majorPc
       )
     }
