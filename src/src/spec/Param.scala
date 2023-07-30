@@ -7,8 +7,8 @@ object Param {
   // Configurable self-defined parameters go here
 
   // These options are one-hot
-  val isChiplab        = false
-  val isReleasePackage = true
+  val isChiplab        = true
+  val isReleasePackage = false
   val isFullFpga       = false
 
   val usePmu = false || isChiplab // 性能计数器
