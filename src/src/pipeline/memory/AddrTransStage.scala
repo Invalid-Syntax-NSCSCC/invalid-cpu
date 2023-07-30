@@ -48,7 +48,7 @@ class AddrTransStage
   val selectedInVirtAddr = Cat(selectedIn.memRequest.addr(wordLength - 1, 2), 0.U(2.W))
   val peer               = io.peer.get
   val resultOut          = WireDefault(0.U.asTypeOf(Valid(new MemReqNdPort)))
-  val out                = resultOut.bits // if (isNoPrivilege) io.out.bits else resultOutReg.bits
+  val out                = resultOut.bits
   resultOutReg := resultOut
   if (isNoPrivilege) {
     io.in.ready  := io.out.ready
