@@ -127,7 +127,7 @@ class Rob(
             input.valid := finishInst.valid &&
               finishInst.bits.instInfo.isValid &&
               finishInst.bits.gprWrite.en &&
-              finishInst.bits.instInfo.robId === elem.robId
+              finishInst.bits.instInfo.robId(Param.Width.Rob._id - 1, 0) === elem.data(Param.Width.Rob._id - 1, 0)
             input.bits := finishInst.bits.gprWrite.data
         }
         when(mux.io.output.valid && elem.state === RegDataState.busy) {
@@ -155,7 +155,8 @@ class Rob(
         when(
           finishInst.bits.gprWrite.en &&
             matchTable(finishInst.bits.gprWrite.addr).state === RegDataState.busy &&
-            finishInst.bits.instInfo.robId === matchTable(finishInst.bits.gprWrite.addr).data
+            finishInst.bits.instInfo.robId === matchTable(finishInst.bits.gprWrite.addr)
+              .data(Param.Width.Rob._id - 1, 0)
         ) {
           matchTable(finishInst.bits.gprWrite.addr).state := RegDataState.ready
           matchTable(finishInst.bits.gprWrite.addr).data  := finishInst.bits.gprWrite.data
@@ -232,7 +233,7 @@ class Rob(
         res.robId := queue.io.enqIncResults(instIdx)
         when(req.valid && req.ready && req.bits.writeRequest.en) {
           matchTable(req.bits.writeRequest.addr).state := RegDataState.busy
-          matchTable(req.bits.writeRequest.addr).robId := res.robId
+          matchTable(req.bits.writeRequest.addr).data  := res.robId
         }
 
         // request read data
@@ -268,18 +269,11 @@ class Rob(
               resRead.result := Mux(
                 isLocateInPrevWrite,
                 dataLocateInPrevWriteRobId,
-                Mux(
-                  isDataInRobBusy,
-                  matchTable(reqRead.addr).robId,
-                  matchTable(reqRead.addr).data
-                )
-              )
-            } else {
-              resRead.result := Mux(
-                isDataInRobBusy,
-                matchTable(reqRead.addr).robId,
                 matchTable(reqRead.addr).data
               )
+            } else {
+              resRead.result :=
+                matchTable(reqRead.addr).data
 
             }
         }

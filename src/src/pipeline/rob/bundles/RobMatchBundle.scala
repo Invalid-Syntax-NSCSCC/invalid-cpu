@@ -8,8 +8,8 @@ import chisel3.util.Valid
 
 class RobMatchBundle extends Bundle {
   val state = RegDataState()
-  val robId = UInt(Param.Width.Rob.id)
-  val data  = UInt(Width.Reg.data)
+  // val robId = UInt(Param.Width.Rob.id)
+  val data = UInt(Width.Reg.data)
 }
 
 object RobMatchBundle {
