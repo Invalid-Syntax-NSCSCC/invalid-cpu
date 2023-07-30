@@ -44,12 +44,13 @@ class AddrTransStage
       AddrTransNdPort.default,
       Some(new AddrTransPeerPort)
     ) {
-  val selectedIn         = io.in.bits
-  val selectedInVirtAddr = Cat(selectedIn.memRequest.addr(wordLength - 1, 2), 0.U(2.W))
-  val peer               = io.peer.get
-  val resultOut          = WireDefault(0.U.asTypeOf(Valid(new MemReqNdPort)))
-  val out                = resultOut.bits
-  resultOutReg := resultOut
+  val selectedIn = io.in.bits
+  val peer       = io.peer.get
+  val out        = if (isNoPrivilege) io.out.bits else resultOutReg.bits
+  if (isNoPrivilege) {
+    io.in.ready  := io.out.ready
+    io.out.valid := io.in.valid
+  }
 
   val tlbBlockingReg = RegInit(false.B)
   tlbBlockingReg := tlbBlockingReg
