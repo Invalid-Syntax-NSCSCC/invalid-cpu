@@ -108,26 +108,27 @@ class CommitStage(
   // Diff test connection
   io.difftest match {
     case Some(dt) =>
-      dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready) // && nextCommit)
-      dt.pc    := RegNext(inBits(0).fetchInfo.pcAddr)
-      dt.instr := RegNext(inBits(0).fetchInfo.inst)
-      dt.wen   := RegNext(inBits(0).gprWrite.en)
-      dt.wdest := RegNext(inBits(0).gprWrite.addr)
-      dt.wdata := RegNext(inBits(0).gprWrite.data)
+      dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready, false.B) // && nextCommit)
+      dt.pc    := RegNext(inBits(0).instInfo.pc, 0.U)
+      dt.instr := RegNext(inBits(0).instInfo.inst, 0.U)
+      dt.wen   := RegNext(inBits(0).gprWrite.en, false.B)
+      dt.wdest := RegNext(inBits(0).gprWrite.addr, 0.U)
+      dt.wdata := RegNext(inBits(0).gprWrite.data, 0.U)
       dt.csr_rstat := RegNext(
-        inBits(0).fetchInfo.inst(31, 24) === Inst._2RI14.csr_ &&
-          inBits(0).fetchInfo.inst(23, 10) === "h5".U
+        inBits(0).instInfo.inst(31, 24) === Inst._2RI14.csr_ &&
+          inBits(0).instInfo.inst(23, 10) === "h5".U,
+        false.B
       ) && io.ins(0).valid && io.ins(0).ready
-      dt.ld_en    := RegNext(inBits(0).instInfo.load.get.en)
-      dt.ld_vaddr := RegNext(inBits(0).instInfo.load.get.vaddr)
-      dt.ld_paddr := RegNext(inBits(0).instInfo.load.get.paddr)
-      dt.st_en    := RegNext(inBits(0).instInfo.store.get.en)
-      dt.st_vaddr := RegNext(inBits(0).instInfo.store.get.vaddr)
-      dt.st_paddr := RegNext(inBits(0).instInfo.store.get.paddr)
-      dt.st_data  := RegNext(inBits(0).instInfo.store.get.data)
+      dt.ld_en    := RegNext(inBits(0).instInfo.load.get.en, false.B)
+      dt.ld_vaddr := RegNext(inBits(0).instInfo.load.get.vaddr, 0.U)
+      dt.ld_paddr := RegNext(inBits(0).instInfo.load.get.paddr, 0.U)
+      dt.st_en    := RegNext(inBits(0).instInfo.store.get.en, false.B)
+      dt.st_vaddr := RegNext(inBits(0).instInfo.store.get.vaddr, 0.U)
+      dt.st_paddr := RegNext(inBits(0).instInfo.store.get.paddr, 0.U)
+      dt.st_data  := RegNext(inBits(0).instInfo.store.get.data, 0.U)
 
-      dt.cnt_inst := RegNext(inBits(0).instInfo.timerInfo.get.isCnt)
-      dt.timer_64 := RegNext(inBits(0).instInfo.timerInfo.get.timer64)
+      dt.cnt_inst := RegNext(inBits(0).instInfo.timerInfo.get.isCnt, false.B)
+      dt.timer_64 := RegNext(inBits(0).instInfo.timerInfo.get.timer64, 0.U)
 
       dt.valid_1 := false.B
       dt.instr_1 := DontCare
@@ -137,18 +138,19 @@ class CommitStage(
       dt.wdata_1 := DontCare
 
       if (commitNum == 2) {
-        dt.valid_1 := RegNext(inBits(1).instInfo.isValid && io.ins(1).valid && io.ins(1).ready)
-        dt.instr_1 := RegNext(inBits(1).fetchInfo.inst)
-        dt.pc_1    := RegNext(inBits(1).fetchInfo.pcAddr)
-        dt.wen_1   := RegNext(inBits(1).gprWrite.en)
-        dt.wdest_1 := RegNext(inBits(1).gprWrite.addr)
-        dt.wdata_1 := RegNext(inBits(1).gprWrite.data)
+        dt.valid_1 := RegNext(inBits(1).instInfo.isValid && io.ins(1).valid && io.ins(1).ready, false.B)
+        dt.instr_1 := RegNext(inBits(1).instInfo.inst, 0.U)
+        dt.pc_1    := RegNext(inBits(1).instInfo.pc, 0.U)
+        dt.wen_1   := RegNext(inBits(1).gprWrite.en, false.B)
+        dt.wdest_1 := RegNext(inBits(1).gprWrite.addr, 0.U)
+        dt.wdata_1 := RegNext(inBits(1).gprWrite.data, 0.U)
       }
 
       dt.is_TLBFILL := RegNext(
-        inBits(0).instInfo.tlbFill.get.valid && inBits(0).instInfo.exceptionPos === ExceptionPos.none
+        inBits(0).instInfo.tlbFill.get.valid && inBits(0).instInfo.exceptionPos === ExceptionPos.none,
+        false.B
       )
-      dt.TLBFILL_index := RegNext(inBits(0).instInfo.tlbFill.get.fillIndex)
+      dt.TLBFILL_index := RegNext(inBits(0).instInfo.tlbFill.get.fillIndex, 0.U)
     case _ =>
   }
 }

@@ -42,22 +42,24 @@ class NewDiv extends Module {
   val quotientReg  = RegInit(zeroWord)
   val remainderReg = RegInit(zeroWord)
 
-  val quotientSignReg  = RegNext(isSigned && (dividendSign ^ divisorSign))
-  val remainderSignReg = RegNext(isSigned && dividendSign)
+  val quotientSignReg  = RegNext(isSigned && (dividendSign ^ divisorSign), false.B)
+  val remainderSignReg = RegNext(isSigned && dividendSign, false.B)
 
   val dividendAbsReg = RegNext(
     Mux(
       isSigned && dividendSign,
       ~dividend + 1.U,
       dividend
-    )
+    ),
+    0.U
   )
   val divisorAbsReg = RegNext(
     Mux(
       isSigned && divisorSign,
       ~divisor + 1.U,
       divisor
-    )
+    ),
+    0.U
   )
 
   // State : clz

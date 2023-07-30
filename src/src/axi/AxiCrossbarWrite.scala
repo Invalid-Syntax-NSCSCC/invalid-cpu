@@ -133,9 +133,9 @@ class AxiCrossbarWrite(
 
     // write command handling
     val wSelectNext      = Wire(UInt(log2Ceil(masterCount).W))
-    val wSelectReg       = RegNext(wSelectNext)
+    val wSelectReg       = RegNext(wSelectNext, 0.U)
     val wDropNext        = Wire(Bool())
-    val wDropReg         = RegNext(wDropNext)
+    val wDropReg         = RegNext(wDropNext, false.B)
     val wSelectValidNext = Wire(Bool())
     val wSelectValidReg  = RegNext(wSelectValidNext, false.B)
     wDropReg        := false.B
@@ -292,7 +292,7 @@ class AxiCrossbarWrite(
 
     // address arbitration
     val wSelectNext      = Wire(UInt(log2Ceil(slaveCount).W))
-    val wSelectReg       = RegNext(wSelectNext)
+    val wSelectReg       = RegNext(wSelectNext, 0.U)
     val wSelectValidNext = Wire(Bool())
     val wSelectValidReg  = RegNext(wSelectValidNext, false.B)
     val wSelectNewNext   = Wire(Bool())

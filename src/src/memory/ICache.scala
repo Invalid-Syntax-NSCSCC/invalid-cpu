@@ -166,7 +166,7 @@ class ICache(
   )
 
   val isHasReqReg = RegNext(false.B, false.B) // Fallback: Not valid
-  val reqMemAddr  = RegNext(currentMemAddr) // Fallback: Current memory access address
+  val reqMemAddr  = RegNext(currentMemAddr, 0.U) // Fallback: Current memory access address
 
   // Keep request and cache query information
   val lastReg = RegInit(0.U.asTypeOf(new Bundle {

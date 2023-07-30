@@ -113,10 +113,10 @@ class AxiCrossbarRead(
 
     // decode error handling
     val decerrMasterRidNext = Wire(UInt(slaveCount.W))
-    val decerrMasterRidReg  = RegNext(decerrMasterRidNext)
+    val decerrMasterRidReg  = RegNext(decerrMasterRidNext, 0.U)
     decerrMasterRidReg := 0.U
     val decerrMasterRlastNext = Wire(Bool())
-    val decerrMasterRlastReg  = RegNext(decerrMasterRlastNext)
+    val decerrMasterRlastReg  = RegNext(decerrMasterRlastNext, false.B)
     decerrMasterRlastReg := false.B
     val decerrMasterRvalidNext = Wire(Bool())
     val decerrMasterRvalidReg  = RegNext(decerrMasterRvalidNext, false.B)
@@ -124,7 +124,7 @@ class AxiCrossbarRead(
     val decerrMasterRready = Wire(Bool())
 
     val decerrLenNext = Wire(UInt(8.W))
-    val decerrLenReg  = RegNext(decerrLenNext)
+    val decerrLenReg  = RegNext(decerrLenNext, 0.U)
     decerrLenReg := 0.U
 
     masterRcReady := !decerrMasterRvalidReg

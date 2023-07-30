@@ -425,7 +425,7 @@ class CoreCpuTop extends Module {
       t.csr_pgdh_diff_0      := c.pgdh.asUInt
 
       t.cmt_csr_ecode := c.estat.ecode
-      t.cmt_csr_data  := RegNext(c.estat.asUInt)
+      t.cmt_csr_data  := RegNext(c.estat.asUInt, 0.U)
     case _ =>
   }
 }

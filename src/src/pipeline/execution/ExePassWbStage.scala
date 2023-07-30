@@ -256,12 +256,12 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       //   RegNext(fallThroughPc)
       // )
 
-      feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst) && RegNext(branchEnableFlag)
-      feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict) ||
-        (RegNext(jumpBranchInfo.en) && !RegNext(inFtqInfo.isLastInBlock))
-      feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId)
-      feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr)
-      feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc)
+      feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst, false.B) && RegNext(branchEnableFlag, false.B)
+      feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
+        (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B))
+      feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
+      feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
+      feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
     } else {
 
       feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag

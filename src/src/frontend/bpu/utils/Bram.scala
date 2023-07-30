@@ -29,27 +29,27 @@ class Bram(
 
   // Read logic
   when(io.ena & io.wea) {
-    io.douta := RegNext(io.dina)
+    io.douta := RegNext(io.dina, 0.U)
   }.elsewhen(io.ena) {
-    io.douta := RegNext(datas(io.addra))
+    io.douta := RegNext(datas(io.addra), 0.U)
   }.otherwise {
-    io.douta := RegNext(0.U(dataDepth.W))
+    io.douta := RegNext(0.U(dataDepth.W), 0.U)
   }
 
   when(io.enb & io.web) {
-    io.doutb := RegNext(io.dinb)
+    io.doutb := RegNext(io.dinb, 0.U)
   }.elsewhen(io.enb) {
-    io.doutb := RegNext(datas(io.addrb))
+    io.doutb := RegNext(datas(io.addrb), 0.U)
   }.otherwise {
-    io.doutb := RegNext(0.U(dataDepth.W))
+    io.doutb := RegNext(0.U(dataDepth.W), 0.U)
   }
 
   // Write logic
   when(io.enb & io.web) {
-    datas(io.addrb) := RegNext(io.dinb)
+    datas(io.addrb) := RegNext(io.dinb, 0.U)
   }
 
   when(io.ena & io.wea) {
-    datas(io.addra) := RegNext(io.dinb)
+    datas(io.addra) := RegNext(io.dinb, 0.U)
   }
 }

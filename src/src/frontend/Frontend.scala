@@ -18,7 +18,7 @@ class Frontend extends Module {
     // pc
     val cuNewPc    = Input(new BackendRedirectPcNdPort)
     val isFlush    = Input(Bool())
-    val ftqFlushId = Input(UInt(Param.BPU.ftqPtrWitdh.W))
+    val ftqFlushId = Input(UInt(Param.BPU.ftqPtrWidth.W))
 
     // ftq <-> exe
     val exeFtqPort = new ExeFtqPort
