@@ -109,14 +109,14 @@ class CommitStage(
   io.difftest match {
     case Some(dt) =>
       dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready, false.B) // && nextCommit)
-      dt.pc    := RegNext(inBits(0).instInfo.pc, 0.U)
-      dt.instr := RegNext(inBits(0).instInfo.inst, 0.U)
+      dt.pc    := RegNext(inBits(0).fetchInfo.pcAddr, 0.U)
+      dt.instr := RegNext(inBits(0).fetchInfo.inst, 0.U)
       dt.wen   := RegNext(inBits(0).gprWrite.en, false.B)
       dt.wdest := RegNext(inBits(0).gprWrite.addr, 0.U)
       dt.wdata := RegNext(inBits(0).gprWrite.data, 0.U)
       dt.csr_rstat := RegNext(
-        inBits(0).instInfo.inst(31, 24) === Inst._2RI14.csr_ &&
-          inBits(0).instInfo.inst(23, 10) === "h5".U,
+        inBits(0).fetchInfo.inst(31, 24) === Inst._2RI14.csr_ &&
+          inBits(0).fetchInfo.inst(23, 10) === "h5".U,
         false.B
       ) && io.ins(0).valid && io.ins(0).ready
       dt.ld_en    := RegNext(inBits(0).instInfo.load.get.en, false.B)
@@ -139,8 +139,8 @@ class CommitStage(
 
       if (commitNum == 2) {
         dt.valid_1 := RegNext(inBits(1).instInfo.isValid && io.ins(1).valid && io.ins(1).ready, false.B)
-        dt.instr_1 := RegNext(inBits(1).instInfo.inst, 0.U)
-        dt.pc_1    := RegNext(inBits(1).instInfo.pc, 0.U)
+        dt.instr_1 := RegNext(inBits(1).fetchInfo.inst, 0.U)
+        dt.pc_1    := RegNext(inBits(1).fetchInfo.pcAddr, 0.U)
         dt.wen_1   := RegNext(inBits(1).gprWrite.en, false.B)
         dt.wdest_1 := RegNext(inBits(1).gprWrite.addr, 0.U)
         dt.wdata_1 := RegNext(inBits(1).gprWrite.data, 0.U)
