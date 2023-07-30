@@ -224,8 +224,8 @@ class Cu(
     isException || redirectCommit || refetchFlush || isExceptionReturn,
     false.B
   )
-  io.idleFlush     := RegNext(idleFlush)
-  io.isBranchFlush := RegNext(io.branchExe.en)
+  io.idleFlush     := RegNext(idleFlush, false.B)
+  io.isBranchFlush := RegNext(io.branchExe.en, false.B)
 
   // Select new pc
   val refetchFlushDelay       = RegNext(refetchFlush, false.B)
@@ -241,7 +241,7 @@ class Cu(
 
   io.newPc.ftqId := Mux(
     refetchFlushDelay || isExceptionDelay || isExceptionReturnDelay,
-    RegNext(majorInstInfo.ftqInfo.ftqId),
+    RegNext(majorInstInfo.ftqInfo.ftqId, 0.U),
     Mux(redirectFromExeDelay.en, redirectFromExeDelay.ftqId, redirectFromDecodeDelay.ftqId)
   )
 
@@ -252,14 +252,15 @@ class Cu(
         majorInstInfo.exceptionRecord === Csr.ExceptionIndex.tlbr,
         io.csrValues.tlbrentry.asUInt,
         io.csrValues.eentry.asUInt
-      )
+      ),
+      0.U
     ),
     Mux(
       isExceptionReturnDelay,
-      RegNext(io.csrValues.era.pc),
+      RegNext(io.csrValues.era.pc, 0.U),
       Mux(
         refetchFlushDelay,
-        RegNext(majorPc + 4.U),
+        RegNext(majorPc + 4.U, 0.U),
         Mux(redirectFromExeDelay.en, redirectFromExeDelay.pcAddr, redirectFromDecodeDelay.pcAddr)
       )
     )
@@ -303,8 +304,8 @@ class Cu(
 
   io.difftest match {
     case Some(dt) =>
-      dt.cmt_ertn       := RegNext(isExceptionReturn)
-      dt.cmt_excp_flush := RegNext(isException)
+      dt.cmt_ertn       := RegNext(isExceptionReturn, false.B)
+      dt.cmt_excp_flush := RegNext(isException, false.B)
     case _ =>
   }
 }

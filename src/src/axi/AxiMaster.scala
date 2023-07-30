@@ -78,7 +78,7 @@ class AxiMaster(val Id: Int = 0) extends Module {
   arvalidMod.io.clr := io.axi.ar.ready
   io.axi.ar.valid   := arvalidMod.io.result
 
-  val rdataReg = RegNext(io.axi.r.bits.data)
+  val rdataReg = RegNext(io.axi.r.bits.data, 0.U)
   when(io.axi.r.valid) {
     io.dataOut := rdataReg
   }

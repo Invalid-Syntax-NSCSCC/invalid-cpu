@@ -31,8 +31,8 @@ class StableCounter extends Module {
   // if (isDiffTest) {
   //   io.difftest match {
   //     case Some(d) =>
-  //       d.isCnt := RegNext(io.isMatch)
-  //       d.value := RegNext(timer64)
+  //       d.isCnt := RegNext(io.isMatch, false.B)
+  //       d.value := RegNext(timer64, 0.U)
   //     case None =>
   //   }
   // }

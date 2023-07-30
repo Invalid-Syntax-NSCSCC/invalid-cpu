@@ -59,7 +59,7 @@ class Lfsr(
   }
 
   when(io.en) {
-    value := RegNext(Cat(value(width - 2, 0), feedback))
+    value := RegNext(Cat(value(width - 2, 0), feedback), 0.U)
   }
   io.value := value
 

@@ -28,7 +28,7 @@ class Pc(
   io.pc := pcReg
 
   // keep pc signal
-  val ftqFullReg = RegNext(io.ftqFull)
+  val ftqFullReg = RegNext(io.ftqFull, false.B)
 
   // TODO change to fixed fetchNum
   // sequential pc

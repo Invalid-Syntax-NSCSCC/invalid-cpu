@@ -217,10 +217,10 @@ class DCache(
   )
 
   val isHasReqReg     = RegNext(false.B, false.B) // Fallback: Not valid
-  val readWriteReqReg = RegNext(io.accessPort.req.client.rw) // Fallback: Current R/W
-  val reqMemAddr      = RegNext(currentMemAddr) // Fallback: Current memory access address
-  val reqWriteData    = RegNext(io.accessPort.req.client.write.data) // Fallback: Current write data
-  val reqWriteMask    = RegNext(toWriteMaskBits(io.accessPort.req.client.mask)) // Fallback: Current write mask
+  val readWriteReqReg = RegNext(io.accessPort.req.client.rw, ReadWriteSel.read) // Fallback: Current R/W
+  val reqMemAddr      = RegNext(currentMemAddr, 0.U) // Fallback: Current memory access address
+  val reqWriteData    = RegNext(io.accessPort.req.client.write.data, 0.U) // Fallback: Current write data
+  val reqWriteMask    = RegNext(toWriteMaskBits(io.accessPort.req.client.mask), 0.U) // Fallback: Current write mask
 
   // Keep request and cache query information
   val lastReg = RegInit(0.U.asTypeOf(new Bundle {

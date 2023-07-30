@@ -18,12 +18,12 @@ class Mul extends Module {
 
   val stateReg = RegInit(MulState.free)
 
-  val lopReg      = RegNext(io.mulInst.bits.leftOperand)
-  val ropReg      = RegNext(io.mulInst.bits.rightOperand)
-  val isSignedReg = RegNext(io.mulInst.bits.isSigned)
+  val lopReg      = RegNext(io.mulInst.bits.leftOperand, 0.U)
+  val ropReg      = RegNext(io.mulInst.bits.rightOperand, 0.U)
+  val isSignedReg = RegNext(io.mulInst.bits.isSigned, false.B)
 
-  val signedResult   = RegNext(lopReg.asSInt * ropReg.asSInt)
-  val unsignedResult = RegNext(lopReg * ropReg)
+  val signedResult   = RegNext(lopReg.asSInt * ropReg.asSInt, 0.S)
+  val unsignedResult = RegNext(lopReg * ropReg, 0.U)
 
   io.mulResult.valid := false.B
   io.mulResult.bits  := DontCare

@@ -38,7 +38,7 @@ class SimpleDualBRam(size: Int, dataWidth: Int) extends Module {
   val data = RegInit(VecInit(Seq.fill(size)(0.U(dataWidth.W))))
 
   // Read
-  io.dataOut := RegNext(data(io.readAddr))
+  io.dataOut := RegNext(data(io.readAddr), 0.U)
 
   // Write
   when(io.isWrite) {
