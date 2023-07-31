@@ -4,8 +4,10 @@ import chisel3._
 import spec.Param
 
 class PreDecoderResultNdPort extends Bundle {
+  val isJump       = Bool()
   val isImmJump      = Bool()
-  val branchType     = UInt(Param.BPU.BranchType.width.W)
+  val isCall         = Bool()
+  val isRet          = Bool()
   val jumpTargetAddr = UInt(spec.Width.Reg.data)
 }
 

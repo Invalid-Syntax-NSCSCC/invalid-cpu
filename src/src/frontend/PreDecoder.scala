@@ -26,25 +26,21 @@ class PreDecoder extends Module {
 
   switch(opcode) {
     is(Inst.b_) {
+      io.result.isJump       := true.B
       io.result.isImmJump      := true.B
       io.result.jumpTargetAddr := imm26SextShift2.asUInt + io.pc
     }
     is(Inst.bl) {
+      io.result.isJump       := true.B
       io.result.isImmJump      := true.B
       io.result.jumpTargetAddr := imm26SextShift2.asUInt + io.pc
-      io.result.branchType     := BranchType.call
+      io.result.isCall         := true.B
     }
     is(Inst.jirl) {
+      io.result.isJump  := true.B
       io.result.isImmJump := false.B
-      io.result.branchType := Mux(
-        rd === 0.U && rj === 1.U,
-        BranchType.ret,
-        Mux(
-          rd === 1.U,
-          BranchType.call,
-          BranchType.uncond
-        )
-      )
+      io.result.isRet     := rd === 0.U && rj === 1.U
+      io.result.isCall    := rd === 1.U
     }
   }
 }

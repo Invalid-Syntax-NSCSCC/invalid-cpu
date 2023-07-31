@@ -19,7 +19,7 @@ object Param {
   val isPartialUncachedPatch    = false || isReleasePackage
   val isMmioDelay               = false || isChiplab || isFullFpga
   val isNoPrivilege             = false || isReleasePackage
-  val isCacheOnPg               = false
+  val isCacheOnPg               = true
   val isForcedCache             = false || isReleasePackage
   val isForcedUncached          = false
   val isBranchPredict           = true
