@@ -304,8 +304,8 @@ class ICache(
 
         axiMaster.io.read.req.isValid := true.B
         axiMaster.io.read.req.addr := Cat(
-          lastReg.memAddr(Width.Mem._addr - 1, Param.Width.DCache._byteOffset),
-          0.U(Param.Width.DCache.byteOffset)
+          lastReg.memAddr(Width.Mem._addr - 1, Param.Width.ICache._byteOffset),
+          0.U(Param.Width.ICache.byteOffset)
         )
 
         when(axiMaster.io.read.req.isReady) {
