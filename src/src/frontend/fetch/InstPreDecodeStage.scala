@@ -2,11 +2,12 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.{FtqBlockBundle, PreDecoderResultNdPort}
+import frontend.bundles.PreDecoderResultNdPort
 import frontend.PreDecoder
-import pipeline.common.{BaseStage, BaseStageWOSaveIn}
+import pipeline.common.BaseStageWOSaveIn
 import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.InstQueueEnqNdPort
+import spec.Param.BPU.BranchType
 import spec.{Param, Width}
 
 class InstPreDecodeNdPort extends Bundle {
@@ -43,6 +44,7 @@ class InstPreDecodeStage
   val peer       = io.peer.get
   val out        = if (Param.instQueueCombineSel) io.out.bits else resultOutReg.bits
   if (Param.instQueueCombineSel) {
+    // support write through when instQueue is empty
     io.out.valid := io.in.valid
     io.in.ready  := io.out.ready
   }
@@ -59,6 +61,8 @@ class InstPreDecodeStage
     // default output
     out.enqInfos := io.in.bits.enqInfos
 
+    val isDataValid = io.in.valid && io.in.ready && !io.isFlush
+
     // preDecode inst info
     val decodeResultVec = Wire(Vec(Param.fetchInstMaxNum, new PreDecoderResultNdPort))
     Seq.range(0, Param.fetchInstMaxNum).foreach { index =>
@@ -71,14 +75,30 @@ class InstPreDecodeStage
     val isImmJumpVec = Wire(Vec(Param.fetchInstMaxNum, Bool()))
     isImmJumpVec.zip(decodeResultVec).foreach {
       case (isImmJump, decodeResult) =>
-        isImmJump := decodeResult.isUnconditionalJump && !decodeResult.isRegJump
+        isImmJump := decodeResult.isImmJump
+    }
+    val isCallVec = Wire(Vec(Param.fetchInstMaxNum, Bool()))
+    isCallVec.zip(decodeResultVec).foreach {
+      case (isCall, decodeResult) =>
+        isCall := decodeResult.branchType === BranchType.call
+    }
+    val isRetVec = Wire(Vec(Param.fetchInstMaxNum, Bool()))
+    isRetVec.zip(decodeResultVec).foreach {
+      case (isRet, decodeResult) =>
+        isRet := decodeResult.branchType === BranchType.ret
     }
 
     // select the first immJump inst
     val immJumpIndex = PriorityEncoder(isImmJumpVec)
+    val callIndex    = PriorityEncoder(isCallVec)
+    val retIndex     = PriorityEncoder(isRetVec)
+
+    val isImmJump = isImmJumpVec.asUInt.orR && (immJumpIndex +& 1.U < selectedIn.ftqLength)
+    val isRetJump = isRetVec.asUInt.orR && (retIndex +& 1.U < selectedIn.ftqLength)
 
     val isPredecoderRedirect = WireDefault(false.B)
-    isPredecoderRedirect := io.in.valid && io.in.ready && isImmJumpVec.asUInt.orR && !io.isFlush && (immJumpIndex +& 1.U < selectedIn.ftqLength)
+    //    isPredecoderRedirect := isDataValid && (isImmJump || isRetJump)
+    isPredecoderRedirect := isDataValid && (isImmJump)
     val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
 
     // peer output
