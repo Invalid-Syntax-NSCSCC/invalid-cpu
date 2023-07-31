@@ -84,5 +84,4 @@ class Frontend extends Module {
   instFetch.io.isFlush         := io.isFlush
   instFetch.io.csr             := io.csr
   instFetch.io.tlbTrans        <> io.tlbTrans
-
 }
