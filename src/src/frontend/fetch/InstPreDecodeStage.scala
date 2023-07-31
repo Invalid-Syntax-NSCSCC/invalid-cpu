@@ -25,10 +25,17 @@ class preDecodeRedirectBundle extends Bundle {
   val redirectFtqId = UInt(Param.BPU.ftqPtrWidth.W)
   val redirectPc    = UInt(spec.Width.Mem.addr)
 }
+class ftqPreDecodeFixRasNdPort extends Bundle {
+  val isPush       = Bool()
+  val isPop        = Bool()
+  val callAddr     = UInt(spec.Width.Mem.addr)
+  val predictError = Bool()
+}
 class InstPreDecodePeerPort extends Bundle {
-  val predecodeRedirect = Bool()
-  val redirectFtqId     = UInt(Param.BPU.ftqPtrWidth.W)
-  val redirectPc        = UInt(spec.Width.Mem.addr)
+  val predecodeRedirect = Output(Bool())
+  val redirectFtqId     = Output(UInt(Param.BPU.ftqPtrWidth.W))
+  val redirectPc        = Output(UInt(spec.Width.Mem.addr))
+  val commitRasPort     = Input(Valid(new ftqPreDecodeFixRasNdPort))
 }
 object InstPreDecodePeerPort {
   def default = 0.U.asTypeOf(new InstPreDecodePeerPort)
@@ -76,7 +83,7 @@ class InstPreDecodeStage
     val isJumpVec = Wire(Vec(Param.fetchInstMaxNum, Bool()))
     isJumpVec.zip(decodeResultVec).foreach {
       case (isImmJump, decodeResult) =>
-        isImmJump := decodeResult.isImmJump
+        isImmJump := decodeResult.isJump
     }
 
     // select the first immJump inst
@@ -84,8 +91,7 @@ class InstPreDecodeStage
     val isJump    = isJumpVec.asUInt.orR && (jumpIndex +& 1.U < selectedIn.ftqLength)
 
     // only immJump or ret can jump; indirect call would not jump
-    val canJump = WireDefault(false.B)
-    canJump := (decodeResultVec(jumpIndex).isImmJump || decodeResultVec(
+    val canJump = (decodeResultVec(jumpIndex).isImmJump || decodeResultVec(
       jumpIndex
     ).isRet)
     val isPredecoderRedirect = WireDefault(false.B)
@@ -94,11 +100,17 @@ class InstPreDecodeStage
 
     // connect return address stack module
     val rasModule = Module(new RAS)
-    rasModule.io.push     := isDataValid && isJump && decodeResultVec(jumpIndex).isCall
-    rasModule.io.callAddr := selectedIn.enqInfos(jumpIndex).bits.pcAddr + 4.U
-    rasModule.io.pop := isDataValid && isJump && decodeResultVec(
+    // connect predict result
+    rasModule.io.predictPush     := isDataValid && isJump && decodeResultVec(jumpIndex).isCall
+    rasModule.io.predictCallAddr := selectedIn.enqInfos(jumpIndex).bits.pcAddr + 4.U
+    rasModule.io.predictPop := isDataValid && isJump && decodeResultVec(
       jumpIndex
     ).isRet
+    // connect actual result
+    rasModule.io.push         := peer.commitRasPort.valid && peer.commitRasPort.bits.isPush
+    rasModule.io.pop          := peer.commitRasPort.valid && peer.commitRasPort.bits.isPop
+    rasModule.io.callAddr     := peer.commitRasPort.bits.callAddr
+    rasModule.io.predictError := peer.commitRasPort.valid && peer.commitRasPort.bits.predictError
 
     // peer output
     // delay 1 circle
@@ -115,10 +127,15 @@ class InstPreDecodeStage
 
     // output
     // cut block length
-    val selectBlockLength = WireDefault(selectedIn.ftqLength)
-    when(isPredecoderRedirect) {
-      selectBlockLength := jumpIndex +& 1.U
-    }
+    val selectBlockLength = Mux(
+      isPredecoderRedirect,
+      jumpIndex +& 1.U,
+      selectedIn.ftqLength
+    )
+//    WireDefault(selectedIn.ftqLength)
+//    when(isPredecoderRedirect) {
+//      selectBlockLength := jumpIndex +& 1.U
+//    }
     // when redirect,change output instOutput
     out.enqInfos.zipWithIndex.foreach {
       case (infoBundle, index) =>

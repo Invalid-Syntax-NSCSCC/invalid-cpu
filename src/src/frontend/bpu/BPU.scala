@@ -229,10 +229,10 @@ class BPU(
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 
   // connect return address stack module
-  val rasModule = Module(new RAS)
-  rasModule.io.push     := rasPush
-  rasModule.io.callAddr := rasPushAddr
-  rasModule.io.pop      := rasPop
-  rasTopAddr            := rasModule.io.topAddr
+//  val rasModule = Module(new RAS)
+//  rasModule.io.push     := rasPush
+//  rasModule.io.callAddr := rasPushAddr
+//  rasModule.io.pop      := rasPop
+//  rasTopAddr            := rasModule.io.topAddr
 
 }
