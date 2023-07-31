@@ -46,20 +46,29 @@ class RAS(
   // Index
   predictNewIndex  := predictReadIndex + io.predictPush - io.predictPop
   predictReadIndex := predictNewIndex
+
   // Data
-//  when(io.predictPush) {
-//    lutram(predictNewIndex) := io.predictCallAddr
-//  }
-  when(io.predictPush) {
-    predictLutram(predictNewIndex) := io.predictCallAddr
+  if (Param.isOverideRas) {
+    when(io.predictPush) {
+      predictLutram(predictNewIndex) := io.predictCallAddr
+    }
+  } else {
+    when(io.predictPush) {
+      lutram(predictNewIndex) := io.predictCallAddr
+    }
   }
 
   // when branch predict error, reset ptr
   when(io.predictError) {
     predictNewIndex := newIndex
-    predictLutram   := lutram
+    if (Param.isOverideRas) {
+      predictLutram := lutram
+    }
   }
   // Output
-//  io.topAddr := lutram(predictReadIndex)
-  io.topAddr := Mux(io.predictError, lutram(readIndex), predictLutram(predictReadIndex))
+  if (Param.isOverideRas) {
+    io.topAddr := Mux(io.predictError, lutram(readIndex), predictLutram(predictReadIndex))
+  } else {
+    io.topAddr := lutram(predictReadIndex)
+  }
 }
