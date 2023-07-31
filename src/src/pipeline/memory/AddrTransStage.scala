@@ -112,11 +112,11 @@ class AddrTransStage
       }
     }
   }
+  when(selectedIn.cacheMaintenance.control.isInit || selectedIn.cacheMaintenance.control.isCoherentByIndex) {
+    transMode := AddrTransType.directMapping
+  }
 
   // Translate address
-  val isCacheMaintenance = selectedIn.cacheMaintenance.control.isInit ||
-    selectedIn.cacheMaintenance.control.isCoherentByIndex ||
-    selectedIn.cacheMaintenance.control.isCoherentByHit
   val isCanTlbException = selectedIn.memRequest.isValid || selectedIn.cacheMaintenance.control.isCoherentByHit
   val translatedAddr    = WireDefault(selectedInVirtAddr)
   if (isDiffTest) {
@@ -149,6 +149,8 @@ class AddrTransStage
       if (!isNoPrivilege) {
         translatedAddr               := peer.tlbTrans.physAddr
         out.translatedMemReq.isValid := !peer.tlbTrans.exception.valid && selectedIn.memRequest.isValid
+        out.cacheMaintenance.control.isL1Valid := !peer.tlbTrans.exception.valid && selectedIn.cacheMaintenance.control.isL1Valid
+        out.cacheMaintenance.control.isL2Valid := !peer.tlbTrans.exception.valid && selectedIn.cacheMaintenance.control.isL2Valid
 
         // Handle exception
         val exceptionIndex = peer.tlbTrans.exception.bits

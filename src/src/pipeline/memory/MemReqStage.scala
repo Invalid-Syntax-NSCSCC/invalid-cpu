@@ -10,7 +10,7 @@ import pipeline.common.{BaseStage, LookupQueue}
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort, StoreInfoBundle}
 import pipeline.memory.enums.CacheMaintenanceTargetType
 import spec._
-import spec.Param.{isFullUncachedPatch, isMmioDelay, isPartialUncachedPatch}
+import spec.Param.{isFullUncachedPatch, isMmioDelay}
 
 class MemReqNdPort extends Bundle {
   val isAtomicStore           = new Bool()
@@ -47,19 +47,14 @@ class MemReqStage
   // Workaround
   val isUncachedAddressRange = if (isFullUncachedPatch) {
     VecInit(
-      "h_1faf".U(16.W),
-      "h_bfaf".U(16.W),
-      "h_1fd0".U(16.W), // Chiplab only
-      "h_1fe0".U(16.W), // Serial port
-      "h_1fe7".U(16.W), // FPGA: NAND flash
-      "h_1fe8".U(16.W), // FPGA: NAND flash
-      "h_1ff0".U(16.W) // FPGA: Xilinx DMFE
-    ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
-  } else if (isPartialUncachedPatch) {
-    VecInit(
-      "h_1faf".U(16.W),
-      "h_bfaf".U(16.W)
-    ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 16))
+      "h_1f".U(8.W),
+      "h_bf".U(8.W)
+//      "h_1fd0".U(16.W), // Chiplab only
+//      "h_1fe0".U(16.W), // Serial port
+//      "h_1fe7".U(16.W), // FPGA: NAND flash
+//      "h_1fe8".U(16.W), // FPGA: NAND flash
+//      "h_1ff0".U(16.W) // FPGA: Xilinx DMFE
+    ).contains(selectedIn.translatedMemReq.addr(Width.Mem._addr - 1, Width.Mem._addr - 8))
   } else {
     false.B
   }
@@ -173,9 +168,8 @@ class MemReqStage
     }
 
     // Handle cache maintenance
-    val isCacheMaintenance = selectedIn.cacheMaintenance.control.isInit ||
-      selectedIn.cacheMaintenance.control.isCoherentByIndex ||
-      selectedIn.cacheMaintenance.control.isCoherentByHit
+    val isCacheMaintenance =
+      selectedIn.cacheMaintenance.control.isL1Valid || selectedIn.cacheMaintenance.control.isL2Valid
 
     cacheMaintenanceCountDownReg.foreach { reg =>
       peer.dCacheMaintenance.client.addr := Cat(
@@ -231,6 +225,17 @@ class MemReqStage
             }
           }
         }
+      }
+
+      // No cache maintenance for uncached address
+      when(
+        isCacheMaintenance && (
+          selectedIn.cacheMaintenance.control.isCoherentByIndex || selectedIn.cacheMaintenance.control.isCoherentByHit
+        ) && isUncachedAddressRange
+      ) {
+        peer.dCacheMaintenance.client.control.isL1Valid := false.B
+        peer.iCacheMaintenance.client.control.isL2Valid := false.B
+        isComputed                                      := true.B
       }
     }
   }
