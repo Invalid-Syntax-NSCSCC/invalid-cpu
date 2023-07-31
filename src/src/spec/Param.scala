@@ -15,8 +15,7 @@ object Param {
 
   val isDiffTest                = false || isChiplab
   val isOutOfOrderIssue         = true
-  val isFullUncachedPatch       = false || isChiplab || isFullFpga
-  val isPartialUncachedPatch    = false || isReleasePackage
+  val isFullUncachedPatch       = true
   val isMmioDelay               = false || isChiplab || isFullFpga
   val isNoPrivilege             = false || isReleasePackage
   val isCacheOnPg               = false
