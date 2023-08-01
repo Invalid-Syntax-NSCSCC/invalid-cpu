@@ -40,7 +40,12 @@ class InstPreDecodePeerPort extends Bundle {
 object InstPreDecodePeerPort {
   def default = 0.U.asTypeOf(new InstPreDecodePeerPort)
 }
-
+//InstPreDecodeStage
+// 1.when bpu do not predict unconditonal direct jump(include call),predecode Stage would trigger a redirect, else not
+// 2.Stage would select the first branch (call ,ret, uncond) to do something
+// 3.whether the call inst has predicted the correct addr
+//           1:bpu predict call(may be direct or indirect); 2:bpu not predict,predecode predict direct call jump;
+//          ; the return addr must be push
 class InstPreDecodeStage
     extends BaseStageWOSaveIn(
       new InstPreDecodeNdPort,
@@ -86,7 +91,7 @@ class InstPreDecodeStage
         isImmJump := decodeResult.isJump
     }
 
-    // select the first immJump inst
+    // select the first branch inst ( call ,ret ,unconditional)
     val jumpIndex = PriorityEncoder(isJumpVec)
     val isJump    = isJumpVec.asUInt.orR && (jumpIndex +& 1.U < selectedIn.ftqLength)
 
@@ -101,12 +106,13 @@ class InstPreDecodeStage
     // connect return address stack module
     val rasModule = Module(new RAS)
     // connect predict result
-    rasModule.io.predictPush     := isDataValid && isJump && decodeResultVec(jumpIndex).isCall
+    // when bpu predecict call;predecode would not trigger redirect,but still need to push
+    rasModule.io.predictPush     := isDataValid && decodeResultVec(jumpIndex).isCall
     rasModule.io.predictCallAddr := selectedIn.enqInfos(jumpIndex).bits.pcAddr + 4.U
     rasModule.io.predictPop := isDataValid && isJump && decodeResultVec(
       jumpIndex
     ).isRet
-    // connect actual result
+    // connect actual result; when branchPredict error, use commit info to fix RAS
     rasModule.io.push         := peer.commitRasPort.valid && peer.commitRasPort.bits.isPush
     rasModule.io.pop          := peer.commitRasPort.valid && peer.commitRasPort.bits.isPop
     rasModule.io.callAddr     := peer.commitRasPort.bits.callAddr
