@@ -8,6 +8,7 @@ import chisel3.util.random.LFSR
 import frontend.bundles.ICacheAccessPort
 import memory.bundles.{CacheMaintenanceHandshakePort, ICacheStatusTagBundle}
 import memory.enums.{ICacheState => State}
+import pmu.bundles.PmuCacheNdPort
 import spec._
 
 class ICache(
@@ -21,6 +22,7 @@ class ICache(
     val maintenancePort = new CacheMaintenanceHandshakePort
     val accessPort      = new ICacheAccessPort
     val axiMasterPort   = new AxiMasterInterface
+    val pmu             = Option.when(Param.usePmu)(Output(new PmuCacheNdPort))
   })
 
   // Read cache hit diagram:
@@ -181,6 +183,14 @@ class ICache(
   val isReadReqSentReg = RegInit(false.B)
   isReadReqSentReg := isReadReqSentReg // Fallback: Keep data
 
+  // PMU output fallback
+  io.pmu.foreach { p =>
+    p.newReq      := io.accessPort.req.isReady && io.accessPort.req.client.isValid
+    p.cacheHit    := false.B
+    p.cacheMiss   := false.B
+    p.lineReplace := false.B
+  }
+
   switch(stateReg) {
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
@@ -238,6 +248,8 @@ class ICache(
         when(isCacheHit) {
           // Cache hit
 
+          io.pmu.foreach(_.cacheHit := true.B)
+
           // Step 2: Read result in same cycle output
           io.accessPort.res.isComplete   := true.B
           io.accessPort.res.read.dataVec := selectedDataLine
@@ -248,6 +260,8 @@ class ICache(
           nextState := State.ready
         }.otherwise {
           // Cache miss
+
+          io.pmu.foreach(_.cacheMiss := true.B)
 
           io.accessPort.req.isReady    := false.B
           io.accessPort.res.isComplete := false.B
@@ -261,6 +275,8 @@ class ICache(
           val isInvalidHit   = WireDefault(isInvalidVec.reduce(_ || _))
           val refillSetIndex = WireDefault(PriorityEncoder(isInvalidVec))
           when(!isInvalidHit) {
+            io.pmu.foreach(_.lineReplace := true.B)
+
             // Finally, select randomly (using LFSR)
             refillSetIndex := randomNum(log2Ceil(Param.Count.ICache.setLen) - 1, 0)
 

@@ -3,9 +3,13 @@ package pmu
 import spec._
 import chisel3._
 import chisel3.util._
-import pmu.bundles.PmuBranchPredictNdPort
-import pmu.bundles.PmuDispatchBundle
-import pmu.bundles.PmuBranchMisPredictExeNdPort
+import pmu.bundles.{
+  PmuBranchMisPredictExeNdPort,
+  PmuBranchPredictNdPort,
+  PmuCacheNdPort,
+  PmuDispatchBundle,
+  PmuStoreQueueNdPort
+}
 
 class Pmu extends Module {
   val io = IO(new Bundle {
@@ -15,6 +19,9 @@ class Pmu extends Module {
     val branchInfo         = Input(new PmuBranchPredictNdPort)
     val dispatchInfos      = Input(Vec(Param.pipelineNum, new PmuDispatchBundle))
     val robFull            = Input(Bool())
+    val storeQueue         = Input(new PmuStoreQueueNdPort)
+    val dCache             = Input(new PmuCacheNdPort)
+    val iCache             = Input(new PmuCacheNdPort)
   })
 
   def r: UInt = {
@@ -126,5 +133,51 @@ class Pmu extends Module {
         }
       }
     }
+  }
+
+  val storeQueueOutValid = r
+  val storeQueueFull     = r
+
+  when(io.storeQueue.storeOutValid) {
+    inc(storeQueueOutValid)
+  }
+  when(io.storeQueue.storeFull) {
+    inc(storeQueueFull)
+  }
+
+  val dCacheReq         = r
+  val dCacheHit         = r
+  val dCacheMiss        = r
+  val dCacheLineReplace = r
+
+  when(io.dCache.newReq) {
+    inc(dCacheReq)
+  }
+  when(io.dCache.cacheHit) {
+    inc(dCacheHit)
+  }
+  when(io.dCache.cacheMiss) {
+    inc(dCacheMiss)
+  }
+  when(io.dCache.lineReplace) {
+    inc(dCacheLineReplace)
+  }
+
+  val iCacheReq         = r
+  val iCacheHit         = r
+  val iCacheMiss        = r
+  val iCacheLineReplace = r
+
+  when(io.iCache.newReq) {
+    inc(iCacheReq)
+  }
+  when(io.iCache.cacheHit) {
+    inc(iCacheHit)
+  }
+  when(io.iCache.cacheMiss) {
+    inc(iCacheMiss)
+  }
+  when(io.iCache.lineReplace) {
+    inc(iCacheLineReplace)
   }
 }

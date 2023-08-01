@@ -9,6 +9,7 @@ import pipeline.commit.bundles.InstInfoNdPort
 import pipeline.common.{BaseStage, LookupQueue}
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort, StoreInfoBundle}
 import pipeline.memory.enums.CacheMaintenanceTargetType
+import pmu.bundles.PmuStoreQueueNdPort
 import spec._
 import spec.Param.{isFullUncachedPatch, isMmioDelay}
 
@@ -32,6 +33,7 @@ class MemReqPeerPort extends Bundle {
   val dCacheMaintenance = Flipped(new CacheMaintenanceHandshakePort)
   val iCacheMaintenance = Flipped(new CacheMaintenanceHandshakePort)
   val commitStore       = Flipped(Decoupled())
+  val pmu               = Option.when(Param.usePmu)(Output(new PmuStoreQueueNdPort))
 }
 
 class MemReqStage
@@ -281,5 +283,11 @@ class MemReqStage
   // Handle flush
   when(io.isFlush) {
     cacheMaintenanceCountDownReg.foreach(_ := maxCacheMaintenanceCount.U)
+  }
+
+  // Performance monitor
+  peer.pmu.foreach { p =>
+    p.storeOutValid := storeOut.valid
+    p.storeFull     := !storeIn.ready
   }
 }

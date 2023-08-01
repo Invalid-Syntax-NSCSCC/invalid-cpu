@@ -8,6 +8,7 @@ import chisel3.util.random.LFSR
 import common.enums.ReadWriteSel
 import memory.bundles.{CacheMaintenanceHandshakePort, MemAccessPort, StatusTagBundle}
 import memory.enums.{DCacheState => State}
+import pmu.bundles.PmuCacheNdPort
 import spec._
 
 class DCache(
@@ -21,6 +22,7 @@ class DCache(
     val maintenancePort = new CacheMaintenanceHandshakePort
     val accessPort      = new MemAccessPort
     val axiMasterPort   = new AxiMasterInterface
+    val pmu             = Option.when(Param.usePmu)(Output(new PmuCacheNdPort))
   })
 
   // Read cache hit diagram:
@@ -281,6 +283,14 @@ class DCache(
     }
   }
 
+  // PMU output fallback
+  io.pmu.foreach { p =>
+    p.newReq      := io.accessPort.req.isReady && io.accessPort.req.client.isValid
+    p.cacheHit    := false.B
+    p.cacheMiss   := false.B
+    p.lineReplace := false.B
+  }
+
   switch(stateReg) {
     // Note: Can accept request when in the second cycle of write (hit),
     //       as long as the write information is passed to cache query
@@ -350,6 +360,9 @@ class DCache(
       when(isHasReqReg) {
         when(isCacheHit) {
           // Cache hit
+
+          io.pmu.foreach(_.cacheHit := true.B)
+
           switch(readWriteReqReg) {
             is(ReadWriteSel.read) {
               // Step 2: Read result in same cycle output
@@ -406,6 +419,8 @@ class DCache(
         }.otherwise {
           // Cache miss
 
+          io.pmu.foreach(_.cacheMiss := true.B)
+
           io.accessPort.req.isReady    := false.B
           io.accessPort.res.isComplete := false.B
           isCanMaintenance             := false.B
@@ -419,6 +434,8 @@ class DCache(
           val isInvalidHit   = WireDefault(isInvalidVec.reduce(_ || _))
           val refillSetIndex = WireDefault(PriorityEncoder(isInvalidVec))
           when(!isInvalidHit) {
+            io.pmu.foreach(_.lineReplace := true.B)
+
             // Second, select from not dirty, if it can
             val isNotDirtyVec = statusTagLines.map(!_.isDirty)
             val isNotDirtyHit = isNotDirtyVec.reduce(_ || _)

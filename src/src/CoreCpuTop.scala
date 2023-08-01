@@ -8,7 +8,7 @@ import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.commit.CommitStage
 import pipeline.dispatch._
 import pipeline.execution._
-import pipeline.memory.{AddrTransStage, MemReqStage, MemResStage}
+import pipeline.memory.{AddrTransStage, ExeForMemStage, MemReqStage, MemResStage}
 import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
@@ -349,8 +349,10 @@ class CoreCpuTop extends Module {
       case (dst, src) =>
         dst := src
     }
-    pmu.io.robFull := !rob.io.requests.head.ready && !cu.io.backendFlush
-
+    pmu.io.robFull    := !rob.io.requests.head.ready && !cu.io.backendFlush
+    pmu.io.storeQueue := memReqStage.peer.pmu.get
+    pmu.io.dCache     := dCache.io.pmu.get
+    pmu.io.iCache     := iCache.io.pmu.get
   }
 
   // Difftest
