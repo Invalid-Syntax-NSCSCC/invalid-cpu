@@ -1,4 +1,4 @@
-package pipeline.execution
+package pipeline.memory
 
 import chisel3._
 import chisel3.util._
@@ -7,10 +7,9 @@ import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import memory.bundles.CacheMaintenanceControlNdPort
 import pipeline.common.BaseStage
-import pipeline.dispatch.bundles.ScoreboardChangeNdPort
-import pipeline.memory.AddrTransNdPort
+import pipeline.execution.ExeNdPort
 import pipeline.memory.enums.CacheMaintenanceTargetType
-import spec.Param.isDiffTest
+import spec.Param.{isDiffTest, isNoPrivilege}
 import spec._
 
 import scala.collection.immutable
@@ -30,19 +29,25 @@ class ExeForMemStage
       ExeNdPort.default,
       Some(new ExeForMemPeerPort)
     ) {
+  val out = if (Param.isNoPrivilege) io.out.bits else resultOutReg.bits
 
   // Fallback
-  resultOutReg.bits                             := DontCare
-  resultOutReg.bits.instInfo                    := selectedIn.instInfo
-  resultOutReg.bits.cacheMaintenance.control    := CacheMaintenanceControlNdPort.default
-  resultOutReg.bits.isAtomicStore               := false.B
-  resultOutReg.bits.tlbMaintenance.isRead       := false.B
-  resultOutReg.bits.tlbMaintenance.isSearch     := false.B
-  resultOutReg.bits.tlbMaintenance.isFill       := false.B
-  resultOutReg.bits.tlbMaintenance.isWrite      := false.B
-  resultOutReg.bits.tlbMaintenance.isInvalidate := false.B
-  resultOutReg.bits.gprAddr                     := selectedIn.gprWritePort.addr
-  resultOutReg.valid                            := isComputed && selectedIn.instInfo.isValid
+  out                             := DontCare
+  out.instInfo                    := selectedIn.instInfo
+  out.cacheMaintenance.control    := CacheMaintenanceControlNdPort.default
+  out.isAtomicStore               := false.B
+  out.tlbMaintenance.isRead       := false.B
+  out.tlbMaintenance.isSearch     := false.B
+  out.tlbMaintenance.isFill       := false.B
+  out.tlbMaintenance.isWrite      := false.B
+  out.tlbMaintenance.isInvalidate := false.B
+  out.gprAddr                     := selectedIn.gprWritePort.addr
+  if (isNoPrivilege) {
+    io.in.ready  := io.out.ready
+    io.out.valid := isComputed && selectedIn.instInfo.isValid
+  } else {
+    resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
+  }
 
   val isDbarBlockingReg = RegInit(false.B)
   // dbar start
@@ -51,8 +56,7 @@ class ExeForMemStage
   }
   // dbar execute and finish
   when(isDbarBlockingReg) {
-    isComputed         := false.B
-    resultOutReg.valid := false.B
+    isComputed := false.B
     when(io.peer.get.dbarFinish) {
       isDbarBlockingReg := false.B
     }
@@ -69,10 +73,10 @@ class ExeForMemStage
   val isWrite =
     VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w).contains(selectedIn.exeOp) || isAtomicStoreValid
   val isValidLoadStore = (isRead || isWrite) && !isAddrNotAligned
-  resultOutReg.bits.memRequest.write.data := selectedIn.rightOperand
+  out.memRequest.write.data := selectedIn.rightOperand
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-      resultOutReg.bits.memRequest.mask := Mux(
+      out.memRequest.mask := Mux(
         maskEncode(1),
         Mux(maskEncode(0), "b1000".U, "b0100".U),
         Mux(maskEncode(0), "b0010".U, "b0001".U)
@@ -82,56 +86,56 @@ class ExeForMemStage
       when(maskEncode(0)) {
         isAddrNotAligned := true.B
       }
-      resultOutReg.bits.memRequest.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+      out.memRequest.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
     }
     is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-      isAddrNotAligned                  := maskEncode.orR
-      resultOutReg.bits.memRequest.mask := "b1111".U
+      isAddrNotAligned    := maskEncode.orR
+      out.memRequest.mask := "b1111".U
     }
   }
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.st_b) {
-      resultOutReg.bits.memRequest.write.data := Cat(
+      out.memRequest.write.data := Cat(
         Seq.fill(wordLength / byteLength)(selectedIn.rightOperand(byteLength - 1, 0))
       )
     }
     is(ExeInst.Op.st_h) {
-      resultOutReg.bits.memRequest.write.data := Cat(Seq.fill(2)(selectedIn.rightOperand(wordLength / 2 - 1, 0)))
+      out.memRequest.write.data := Cat(Seq.fill(2)(selectedIn.rightOperand(wordLength / 2 - 1, 0)))
     }
   }
-  resultOutReg.bits.memRequest.isValid         := isValidLoadStore
-  resultOutReg.bits.memRequest.addr            := loadStoreAddr
-  resultOutReg.bits.memRequest.read.isUnsigned := VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp)
-  resultOutReg.bits.memRequest.rw              := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
-  resultOutReg.bits.isAtomicStore              := selectedIn.exeOp === ExeInst.Op.sc
-  resultOutReg.bits.instInfo.forbidParallelCommit := isValidLoadStore
-  resultOutReg.bits.instInfo.isStore              := isWrite && !isAddrNotAligned
+  out.memRequest.isValid            := isValidLoadStore
+  out.memRequest.addr               := loadStoreAddr
+  out.memRequest.read.isUnsigned    := VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp)
+  out.memRequest.rw                 := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
+  out.isAtomicStore                 := selectedIn.exeOp === ExeInst.Op.sc
+  out.instInfo.forbidParallelCommit := isValidLoadStore
+  out.instInfo.isStore              := isWrite && !isAddrNotAligned
 
   // Handle exception
   when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && isAddrNotAligned) {
-    resultOutReg.bits.instInfo.exceptionPos    := ExceptionPos.backend
-    resultOutReg.bits.instInfo.exceptionRecord := Csr.ExceptionIndex.ale
+    out.instInfo.exceptionPos    := ExceptionPos.backend
+    out.instInfo.exceptionRecord := Csr.ExceptionIndex.ale
   }
 
   // Handle TLB maintenance
-  resultOutReg.bits.tlbMaintenance.registerAsid   := selectedIn.leftOperand(9, 0)
-  resultOutReg.bits.tlbMaintenance.virtAddr       := selectedIn.rightOperand
-  resultOutReg.bits.tlbMaintenance.invalidateInst := selectedIn.tlbInvalidateInst
+  out.tlbMaintenance.registerAsid   := selectedIn.leftOperand(9, 0)
+  out.tlbMaintenance.virtAddr       := selectedIn.rightOperand
+  out.tlbMaintenance.invalidateInst := selectedIn.tlbInvalidateInst
   switch(selectedIn.exeOp) {
     is(ExeInst.Op.tlbfill) {
-      resultOutReg.bits.tlbMaintenance.isFill := true.B
+      out.tlbMaintenance.isFill := true.B
     }
     is(ExeInst.Op.tlbrd) {
-      resultOutReg.bits.tlbMaintenance.isRead := true.B
+      out.tlbMaintenance.isRead := true.B
     }
     is(ExeInst.Op.tlbsrch) {
-      resultOutReg.bits.tlbMaintenance.isSearch := true.B
+      out.tlbMaintenance.isSearch := true.B
     }
     is(ExeInst.Op.tlbwr) {
-      resultOutReg.bits.tlbMaintenance.isWrite := true.B
+      out.tlbMaintenance.isWrite := true.B
     }
     is(ExeInst.Op.invtlb) {
-      resultOutReg.bits.tlbMaintenance.isInvalidate := true.B
+      out.tlbMaintenance.isInvalidate := true.B
     }
   }
 
@@ -139,39 +143,39 @@ class ExeForMemStage
   val cacopAddr = WireDefault(selectedIn.leftOperand + selectedIn.rightOperand)
   val isCacop   = WireDefault(selectedIn.exeOp === ExeInst.Op.cacop)
   when(isCacop) {
-    resultOutReg.bits.memRequest.addr               := cacopAddr
-    resultOutReg.bits.instInfo.forbidParallelCommit := true.B
+    out.memRequest.addr               := cacopAddr
+    out.instInfo.forbidParallelCommit := true.B
 
     switch(selectedIn.code(2, 0)) {
       is(0.U) {
-        resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.inst
-        resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+        out.cacheMaintenance.target            := CacheMaintenanceTargetType.inst
+        out.cacheMaintenance.control.isL1Valid := true.B
       }
       is(1.U) {
-        resultOutReg.bits.cacheMaintenance.target            := CacheMaintenanceTargetType.data
-        resultOutReg.bits.cacheMaintenance.control.isL1Valid := true.B
+        out.cacheMaintenance.target            := CacheMaintenanceTargetType.data
+        out.cacheMaintenance.control.isL1Valid := true.B
       }
       is(2.U) {
-        resultOutReg.bits.cacheMaintenance.control.isL2Valid := true.B
+        out.cacheMaintenance.control.isL2Valid := true.B
       }
     }
 
     switch(selectedIn.code(4, 3)) {
       is(0.U) {
-        resultOutReg.bits.cacheMaintenance.control.isInit := true.B
+        out.cacheMaintenance.control.isInit := true.B
       }
       is(1.U) {
-        resultOutReg.bits.cacheMaintenance.control.isCoherentByIndex := true.B
+        out.cacheMaintenance.control.isCoherentByIndex := true.B
       }
       is(2.U) {
-        resultOutReg.bits.cacheMaintenance.control.isCoherentByHit := true.B
+        out.cacheMaintenance.control.isCoherentByHit := true.B
       }
     }
   }
 
   // Difftest
   if (isDiffTest) {
-    resultOutReg.bits.instInfo.load.get.en := Mux(
+    out.instInfo.load.get.en := Mux(
       isAddrNotAligned,
       0.U,
       Cat(
@@ -184,7 +188,7 @@ class ExeForMemStage
         selectedIn.exeOp === ExeInst.Op.ld_b
       )
     )
-    resultOutReg.bits.instInfo.store.get.en := Mux(
+    out.instInfo.store.get.en := Mux(
       isAddrNotAligned,
       0.U,
       Cat(
@@ -195,9 +199,9 @@ class ExeForMemStage
         selectedIn.exeOp === ExeInst.Op.st_b
       )
     )
-    resultOutReg.bits.instInfo.load.get.vaddr  := loadStoreAddr
-    resultOutReg.bits.instInfo.store.get.vaddr := loadStoreAddr
-    resultOutReg.bits.instInfo.store.get.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
+    out.instInfo.load.get.vaddr  := loadStoreAddr
+    out.instInfo.store.get.vaddr := loadStoreAddr
+    out.instInfo.store.get.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
       immutable.Seq(
         ExeInst.Op.st_b -> Mux(
           maskEncode(1),
