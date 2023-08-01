@@ -148,7 +148,7 @@ class Alu extends Module {
     ).contains(io.aluInst.op)
   )
 
-  val divStage = Module(new NewDiv)
+  val divStage = Module(new Div)
 
   val divisorValid = WireDefault(rop =/= 0.U)
 
