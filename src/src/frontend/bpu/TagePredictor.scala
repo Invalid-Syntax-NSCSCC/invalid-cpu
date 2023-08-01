@@ -150,7 +150,7 @@ class TagePredictor(
       )
       // Query
       taggedPreditor.io.isGlobalHistoryUpdate := isUpdateValid
-      taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1), 0)
+      taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1)-1, 0)
       taggedPreditor.io.pc                    := io.pc
       tagUsefulbits(providerId)               := taggedPreditor.io.usefulBits
       tagCtrbits(providerId)                  := taggedPreditor.io.ctrBits

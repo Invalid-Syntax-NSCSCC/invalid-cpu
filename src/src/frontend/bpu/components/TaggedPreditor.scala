@@ -8,7 +8,7 @@ import spec.{Param, Width}
 
 class TaggedPreditor(
   ghrLength:      Int = 4,
-  phtDepth:       Int = 2048,
+  phtDepth:       Int = 1024,
   phtTagWidth:    Int = Param.BPU.TagePredictor.tagComponentTagWidth,
   phtCtrWidth:    Int = 3,
   phtUsefulWidth: Int = 2,
@@ -36,7 +36,7 @@ class TaggedPreditor(
   val io = IO(new Bundle {
     // Query signal
     val isGlobalHistoryUpdate = Input(Bool())
-    val globalHistory         = Input(UInt((ghrLength + 1).W))
+    val globalHistory         = Input(UInt((ghrLength).W))
     val pc                    = Input(UInt(spec.Width.Mem.addr))
 
     // Meta
@@ -158,25 +158,24 @@ class TaggedPreditor(
   when(io.reallocEntry) {
     // Reset
     phtUpdateResult := PhtEntey.default
-    if (Param.isTagePredictorTagCompare) {
-      phtUpdateResult.tag := io.updateTag
-    }
+    phtUpdateResult.tag := io.updateTag
+
     // when realocEntry,clear ctr and useful
     // when realloc ,use query tag; else use origin tag
   }
 
   // to do  connect CSR hash
-  val ghtHashCsrHash = Module(new CsrHash(ghrLength + 1, phtAddrWidth))
+  val ghtHashCsrHash = Module(new CsrHash(ghrLength , phtAddrWidth))
   ghtHashCsrHash.io.data       := io.globalHistory
   ghtHashCsrHash.io.dataUpdate := io.isGlobalHistoryUpdate
   hashedGhtInput               := ghtHashCsrHash.io.hash
 
-  val pcHashCsrHash1 = Module(new CsrHash(ghrLength + 1, phtTagWidth))
+  val pcHashCsrHash1 = Module(new CsrHash(ghrLength , phtTagWidth))
   pcHashCsrHash1.io.data       := io.globalHistory
   pcHashCsrHash1.io.dataUpdate := io.isGlobalHistoryUpdate
   tagHashCsr1                  := pcHashCsrHash1.io.hash
 
-  val pcHashCsrHash2 = Module(new CsrHash(ghrLength + 1, phtTagWidth - 1))
+  val pcHashCsrHash2 = Module(new CsrHash(ghrLength , phtTagWidth - 1))
   pcHashCsrHash2.io.data       := io.globalHistory
   pcHashCsrHash2.io.dataUpdate := io.isGlobalHistoryUpdate
   tagHashCsr2                  := pcHashCsrHash2.io.hash

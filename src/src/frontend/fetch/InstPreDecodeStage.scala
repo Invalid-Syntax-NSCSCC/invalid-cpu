@@ -93,10 +93,16 @@ class InstPreDecodeStage
 
     // select the first branch inst ( call ,ret ,unconditional)
     val jumpIndex = PriorityEncoder(isJumpVec)
-    val isJump    = isJumpVec.asUInt.orR && (jumpIndex +& 1.U < selectedIn.ftqLength)
+    val isJump    = isJumpVec.asUInt.orR && (jumpIndex +& 1.U <= selectedIn.ftqLength)
 
     // only immJump or ret can jump; indirect call would not jump
-    val canJump = (decodeResultVec(jumpIndex).isImmJump || decodeResultVec(
+    // when met immediately jump but bpu do not predict jump, then triger a redirect
+    // when met ret jump; redirect
+    val canJump = ((decodeResultVec(jumpIndex).isImmJump && !selectedIn
+      .enqInfos(jumpIndex)
+      .bits
+      .ftqInfo
+      .predictBranch) || decodeResultVec(
       jumpIndex
     ).isRet)
     val isPredecoderRedirect = WireDefault(false.B)
@@ -107,7 +113,7 @@ class InstPreDecodeStage
     val rasModule = Module(new RAS)
     // connect predict result
     // when bpu predecict call;predecode would not trigger redirect,but still need to push
-    rasModule.io.predictPush     := isDataValid && decodeResultVec(jumpIndex).isCall
+    rasModule.io.predictPush := isDataValid && decodeResultVec(jumpIndex).isCall && selectedIn.enqInfos(jumpIndex).valid
     rasModule.io.predictCallAddr := selectedIn.enqInfos(jumpIndex).bits.pcAddr + 4.U
     rasModule.io.predictPop := isDataValid && isJump && decodeResultVec(
       jumpIndex
