@@ -6,7 +6,7 @@ import common.enums.ReadWriteSel
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import memory.bundles.CacheMaintenanceControlNdPort
-import pipeline.common.BaseStage
+import common.BaseStage
 import pipeline.execution.ExeNdPort
 import pipeline.memory.enums.CacheMaintenanceTargetType
 import spec.Param.isDiffTest

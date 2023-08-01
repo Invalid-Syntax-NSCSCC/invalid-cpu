@@ -3,7 +3,7 @@ package frontend.fetch
 import chisel3._
 import chisel3.util._
 import frontend.bundles.{FtqBlockBundle, ICacheRequestHandshakePort, ICacheRequestNdPort}
-import pipeline.common.BaseStage
+import common.BaseStage
 import spec.{Csr, Param, Width}
 
 class InstReqNdPort extends Bundle {
