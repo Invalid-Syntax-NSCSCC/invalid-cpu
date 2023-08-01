@@ -2,7 +2,7 @@ package pipeline.dispatch.rs
 
 import chisel3._
 import chisel3.util._
-import pipeline.common.DistributedQueuePlus
+import common.DistributedQueuePlus
 import pipeline.dispatch.bundles.ReservationStationBundle
 import pipeline.rob.enums.RobDistributeSel
 import spec.Param.isWritebackPassThroughWakeUp

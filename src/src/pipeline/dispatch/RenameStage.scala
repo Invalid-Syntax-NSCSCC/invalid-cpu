@@ -3,7 +3,7 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import control.bundles.CsrReadPort
-import pipeline.common.{MultiBaseStageWOSaveIn, MultiQueue}
+import common.{MultiBaseStageWOSaveIn, MultiQueue}
 import pipeline.dispatch.bundles._
 import pipeline.commit.bundles._
 import pipeline.dispatch.enums.ScoreboardState
@@ -13,7 +13,7 @@ import pipeline.rob.enums.RobDistributeSel
 import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
 import spec._
 import control.enums.ExceptionPos
-import pipeline.common.SimpleMultiBaseStage
+import common.SimpleMultiBaseStage
 import pipeline.dispatch.rs._
 import pipeline.dispatch._
 import pipeline.queue._

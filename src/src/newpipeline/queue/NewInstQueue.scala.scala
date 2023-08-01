@@ -1,36 +1,23 @@
+package newpipeline.queue
+
 package pipeline.queue
 
 import chisel3._
 import chisel3.util._
 import control.enums.ExceptionPos
-import pipeline.commit.bundles.InstInfoNdPort
-import common.DistributedQueue
-import pipeline.dispatch.bundles.FetchInstInfoBundle
-import pipeline.queue.bundles.DecodeOutNdPort
-import pipeline.queue.decode._
+import _root_.pipeline.queue.decode._
 import spec._
 import common.bundles.BackendRedirectPcNdPort
-import pipeline.commit.bundles.PcInstBundle
-
-class InstQueueEnqNdPort extends Bundle {
-  val enqInfos = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
-}
-object InstQueueEnqNdPort {
-  def default = 0.U.asTypeOf(new InstQueueEnqNdPort)
-}
-
-class FetchInstDecodeNdPort extends Bundle {
-  val decode    = new DecodeOutNdPort
-  val instInfo  = new InstInfoNdPort
-  val fetchInfo = new PcInstBundle
-}
-
-object FetchInstDecodeNdPort {
-  def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
-}
+import _root_.pipeline.queue.InstQueueEnqNdPort
+import _root_.pipeline.queue.FetchInstDecodeNdPort
+import common.DistributedQueue
+import _root_.pipeline.dispatch.bundles._
+import _root_.pipeline.queue.bundles.DecodeOutNdPort
+import _root_.pipeline.commit.bundles.InstInfoNdPort
+import common.DistributedQueue
 
 // assert: enqueuePorts总是最低的几位有效
-class MultiInstQueue(
+class NewInstQueue(
   val queueLength: Int = Param.instQueueLength,
   val channelNum:  Int = Param.instQueueChannelNum,
   val fetchNum:    Int = Param.fetchInstMaxNum,

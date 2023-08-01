@@ -5,7 +5,7 @@ import chisel3.util._
 import frontend.bundles.PreDecoderResultNdPort
 import frontend.PreDecoder
 import frontend.bpu.RAS
-import pipeline.common.BaseStageWOSaveIn
+import common.BaseStageWOSaveIn
 import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.InstQueueEnqNdPort
 import spec.Param.BPU.BranchType

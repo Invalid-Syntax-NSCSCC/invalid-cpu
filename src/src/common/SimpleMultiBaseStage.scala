@@ -1,9 +1,10 @@
-package pipeline.common
+package common
 
 import chisel3._
 import chisel3.util._
 import pipeline.common.bundles.MultiBaseStageIo
 import spec._
+import common.DistributedQueue
 
 abstract class SimpleMultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   inNdFactory:  => InT,

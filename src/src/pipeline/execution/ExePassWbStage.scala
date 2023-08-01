@@ -7,7 +7,7 @@ import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import pipeline.commit.WbNdPort
 import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.common.BaseStage
+import common.BaseStage
 import pipeline.dispatch.bundles.ScoreboardChangeNdPort
 import spec.ExeInst.Sel
 import spec.Param.isDiffTest
@@ -256,7 +256,10 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       //   RegNext(fallThroughPc)
       // )
 
-      feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst, false.B) && RegNext(branchEnableFlag, false.B)
+      feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst, false.B) && RegNext(
+        branchEnableFlag,
+        false.B
+      )
       feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
         (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B))
       feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
