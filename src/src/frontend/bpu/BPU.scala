@@ -6,6 +6,7 @@ import frontend.bpu.bundles._
 import frontend.bpu.components.Bundles.FtbEntryNdPort
 import frontend.bpu.components.FTB
 import frontend.bundles.{BpuFtqPort, FtqBlockBundle, FtqBpuMetaPort}
+import spec.Param.BPU.BranchType
 import spec._
 
 // BPU is the Branch Predicting Unit
@@ -112,7 +113,7 @@ class BPU(
   }
 
   // p1 (the next clock of p0)
-  mainRedirectValid := ftbHit && !flushDelay && !ftqFullDelay
+  mainRedirectValid := ftbHit && !flushDelay && !ftqFullDelay && ftbEntry.branchType =/= BranchType.ret
   val p1Pc = RegNext(io.pc, 0.U(addr.W))
 
   // p1git  FTQ output
@@ -154,7 +155,7 @@ class BPU(
       io.mainRedirectPc.bits := ftbEntry.jumpTargetAddress
     }
     is(Param.BPU.BranchType.ret) {
-      // io.mainRedirectPc.bits := rasTopAddr // TODO RAS
+//      io.mainRedirectPc.bits := rasTopAddr // TODO RAS
     }
   }
 
@@ -229,10 +230,10 @@ class BPU(
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 
   // connect return address stack module
-  val rasModule = Module(new RAS)
-  rasModule.io.push     := rasPush
-  rasModule.io.callAddr := rasPushAddr
-  rasModule.io.pop      := rasPop
-  rasTopAddr            := rasModule.io.topAddr
+//  val rasModule = Module(new RAS)
+//  rasModule.io.push     := rasPush
+//  rasModule.io.callAddr := rasPushAddr
+//  rasModule.io.pop      := rasPop
+//  rasTopAddr            := rasModule.io.topAddr
 
 }

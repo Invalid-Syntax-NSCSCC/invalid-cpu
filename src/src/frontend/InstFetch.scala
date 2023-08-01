@@ -28,7 +28,7 @@ class InstFetch extends Module {
     val csr = Input(new MemCsrNdPort)
 
     // <-> Frontend <-> Pc,Ftq,
-    val preDecodeRedirectPort = Output(new InstPreDecodePeerPort)
+    val preDecodeRedirectPort = new InstPreDecodePeerPort
   })
 
   // InstAddr translate and mem stages

@@ -7,6 +7,8 @@ import frontend.bpu.bundles._
 import chisel3.experimental.Param
 import frontend.bundles.{BpuFtqPort, CuCommitFtqNdPort, ExeFtqPort, FtqBlockBundle, FtqBpuMetaPort, FtqIFNdPort}
 import frontend.bundles.QueryPcBundle
+import frontend.fetch.ftqPreDecodeFixRasNdPort
+import spec.Param.BPU.BranchType
 
 class FetchTargetQueue(
   val queueSize: Int = Param.BPU.ftqSize,
@@ -34,6 +36,9 @@ class FetchTargetQueue(
 
     // <-> IFU
     val ftqIFPort = Decoupled(new FtqIFNdPort)
+
+    // <-> RAS (in predecode stage)
+    val ftqRasPort = Valid(new ftqPreDecodeFixRasNdPort)
   })
 
   // Signals
@@ -213,7 +218,7 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqTrainMeta.valid       := io.cuCommitFtqPort.blockBitmask(0) && io.cuCommitFtqPort.meta.isBranch
   io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaRegs(commitFtqId).ftbHit
   io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaRegs(commitFtqId).ftbHitIndex
-  io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaRegs(commitFtqId).ftbDirty
+  io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaRegs(commitFtqId).ftbDirty // jumpTargetAddr error
   // Must use accuraate decoded info passed from backend
   io.bpuFtqPort.ftqTrainMeta.isBranch       := io.cuCommitFtqPort.meta.isBranch
   io.bpuFtqPort.ftqTrainMeta.branchType     := io.cuCommitFtqPort.meta.branchType
@@ -222,9 +227,18 @@ class FetchTargetQueue(
 
   io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVecReg(commitFtqId).startPc
   io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVecReg(commitFtqId).isCrossCacheline
-  io.bpuFtqPort.ftqTrainMeta.tageMeta            := ftqBpuMetaRegs(commitFtqId).tageMeta
+  io.bpuFtqPort.ftqTrainMeta.tageMeta           := ftqBpuMetaRegs(commitFtqId).tageMeta
   io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
   io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
+
+  // commit to ras
+  io.ftqRasPort.valid         := io.cuCommitFtqPort.blockBitmask(0) && io.cuCommitFtqPort.meta.isBranch
+  io.ftqRasPort.bits.isPush   := io.cuCommitFtqPort.meta.branchType === BranchType.call
+  io.ftqRasPort.bits.isPop    := io.cuCommitFtqPort.meta.branchType === BranchType.ret
+  io.ftqRasPort.bits.callAddr := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
+  io.ftqRasPort.bits.predictError := ftqBranchMetaRegs(
+    commitFtqId
+  ).ftbDirty || (io.cuCommitFtqPort.meta.predictedTaken ^ io.cuCommitFtqPort.meta.isTaken)
 //  }
 
   // Bpu meta ram

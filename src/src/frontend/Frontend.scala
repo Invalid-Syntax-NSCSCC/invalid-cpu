@@ -73,9 +73,10 @@ class Frontend extends Module {
   ftq.io.backendFlushFtqId := io.ftqFlushId
   ftq.io.instFetchFlush    := instFetch.io.preDecodeRedirectPort.predecodeRedirect // TODO add predecoder stage
   ftq.io.instFetchFtqId    := instFetch.io.preDecodeRedirectPort.redirectFtqId
-  ftq.io.cuCommitFtqPort   := io.cuCommitFtqPort
-  ftq.io.cuQueryPcBundle   <> io.cuQueryPcBundle
-  ftq.io.exeFtqPort        <> io.exeFtqPort
+  instFetch.io.preDecodeRedirectPort.commitRasPort := ftq.io.ftqRasPort
+  ftq.io.cuCommitFtqPort                           := io.cuCommitFtqPort
+  ftq.io.cuQueryPcBundle                           <> io.cuQueryPcBundle
+  ftq.io.exeFtqPort                                <> io.exeFtqPort
 
   // stage 2-4
   instFetch.io.ftqIFPort       <> ftq.io.ftqIFPort

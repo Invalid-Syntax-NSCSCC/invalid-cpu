@@ -1,11 +1,14 @@
 package frontend.bundles
 
 import chisel3._
+import spec.Param
 
 class PreDecoderResultNdPort extends Bundle {
-  val isUnconditionalJump = Bool()
-  val isRegJump           = Bool()
-  val jumpTargetAddr      = UInt(spec.Width.Reg.data)
+  val isJump       = Bool()
+  val isImmJump      = Bool()
+  val isCall         = Bool()
+  val isRet          = Bool()
+  val jumpTargetAddr = UInt(spec.Width.Reg.data)
 }
 
 object PreDecoderResultNdPort {

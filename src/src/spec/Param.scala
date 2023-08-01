@@ -24,6 +24,7 @@ object Param {
   val isBranchPredict           = true
   val isTagePredictorTagCompare = true
   val isPredecode               = true
+  val isOverideRas              = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
