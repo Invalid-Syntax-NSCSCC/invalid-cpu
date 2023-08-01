@@ -10,7 +10,7 @@ object DivState extends ChiselEnum {
 }
 
 // Attention : 如果运行时输入数据，输入无效
-class NewDiv extends Module {
+class Div extends Module {
 
   val io = IO(new Bundle {
     val divInst = Input(Valid(new MulDivInstNdPort))

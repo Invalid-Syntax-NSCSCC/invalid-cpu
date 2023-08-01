@@ -22,7 +22,7 @@ import pmu.bundles.PmuDispatchBundle
 //   def default = 0.U.asTypeOf(new DispatchNdPort)
 // }
 
-class NewDispatchPeerPort extends Bundle {
+class DispatchPeerPort extends Bundle {
 
   val plv = Input(UInt(2.W))
 
@@ -33,7 +33,7 @@ class NewDispatchPeerPort extends Bundle {
   val pmu_dispatchInfos = if (Param.usePmu) Some(Output(Vec(Param.pipelineNum, new PmuDispatchBundle))) else None
 }
 
-class NewDispatchStage(
+class DispatchStage(
   issueNum:       Int = Param.issueInstInfoMaxNum,
   pipelineNum:    Int = Param.pipelineNum,
   outQueueLength: Int = Param.dispatchOutQueueLength)
@@ -41,7 +41,7 @@ class NewDispatchStage(
       new ReservationStationBundle,
       new ExeNdPort,
       ReservationStationBundle.default,
-      Some(new NewDispatchPeerPort),
+      Some(new DispatchPeerPort),
       issueNum,
       pipelineNum,
       outQueueLength,

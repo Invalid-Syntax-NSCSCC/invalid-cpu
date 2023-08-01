@@ -31,7 +31,7 @@ object RegReadNdPort {
   )
 }
 
-class NewRenamePeerPort(
+class RenamePeerPort(
   issueNum:    Int = Param.issueInstInfoMaxNum,
   pipelineNum: Int = Param.pipelineNum)
     extends Bundle {
@@ -44,7 +44,7 @@ class NewRenamePeerPort(
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
 }
 
-class NewRenameStage(
+class RenameStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
   reservationLength: Int = Param.Width.ReservationStation._length)
@@ -52,7 +52,7 @@ class NewRenameStage(
   val io = IO(new Bundle {
     val ins     = Vec(issueNum, Flipped(Decoupled(new FetchInstDecodeNdPort)))
     val outs    = Vec(issueNum, Decoupled(new ReservationStationBundle))
-    val peer    = Some(new NewRenamePeerPort)
+    val peer    = Some(new RenamePeerPort)
     val isFlush = Input(Bool())
   })
   protected val selectedIns: Vec[FetchInstDecodeNdPort] = Wire(
