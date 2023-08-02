@@ -7,7 +7,7 @@ import control.enums.ExceptionPos
 import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
 import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.common.BaseStage
+import common.BaseStage
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
 import pipeline.memory.enums.AddrTransType
 import spec.Param.{isCacheOnPg, isDiffTest, isForcedCache, isForcedUncached, isNoPrivilege}
@@ -15,7 +15,7 @@ import spec.Value.Csr
 import spec._
 
 import scala.collection.immutable
-import pipeline.common.BaseStageWOSaveIn
+import common.BaseStageWOSaveIn
 
 class AddrTransNdPort extends Bundle {
   val isAtomicStore    = Bool()

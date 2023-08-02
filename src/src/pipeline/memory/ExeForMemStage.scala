@@ -6,10 +6,10 @@ import common.enums.ReadWriteSel
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import memory.bundles.CacheMaintenanceControlNdPort
-import pipeline.common.BaseStage
+import common.BaseStage
 import pipeline.execution.ExeNdPort
 import pipeline.memory.enums.CacheMaintenanceTargetType
-import spec.Param.{isDiffTest, isNoPrivilege}
+import spec.Param.isDiffTest
 import spec._
 
 import scala.collection.immutable
@@ -29,7 +29,7 @@ class ExeForMemStage
       ExeNdPort.default,
       Some(new ExeForMemPeerPort)
     ) {
-  val out = if (Param.isNoPrivilege) io.out.bits else resultOutReg.bits
+  val out = resultOutReg.bits
 
   // Fallback
   out                             := DontCare
@@ -42,12 +42,7 @@ class ExeForMemStage
   out.tlbMaintenance.isWrite      := false.B
   out.tlbMaintenance.isInvalidate := false.B
   out.gprAddr                     := selectedIn.gprWritePort.addr
-  if (isNoPrivilege) {
-    io.in.ready  := io.out.ready
-    io.out.valid := isComputed && selectedIn.instInfo.isValid
-  } else {
-    resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
-  }
+  resultOutReg.valid              := isComputed && selectedIn.instInfo.isValid
 
   val isDbarBlockingReg = RegInit(false.B)
   // dbar start

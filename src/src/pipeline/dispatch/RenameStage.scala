@@ -3,7 +3,7 @@ package pipeline.dispatch
 import chisel3._
 import chisel3.util._
 import control.bundles.CsrReadPort
-import pipeline.common.{MultiBaseStageWOSaveIn, MultiQueue}
+import common.{MultiBaseStageWOSaveIn, MultiQueue}
 import pipeline.dispatch.bundles._
 import pipeline.commit.bundles._
 import pipeline.dispatch.enums.ScoreboardState
@@ -13,7 +13,7 @@ import pipeline.rob.enums.RobDistributeSel
 import spec.Param.{csrIssuePipelineIndex, loadStoreIssuePipelineIndex}
 import spec._
 import control.enums.ExceptionPos
-import pipeline.common.SimpleMultiBaseStage
+import common.SimpleMultiBaseStage
 import pipeline.dispatch.rs._
 import pipeline.dispatch._
 import pipeline.queue._
@@ -31,7 +31,7 @@ object RegReadNdPort {
   )
 }
 
-class NewRenamePeerPort(
+class RenamePeerPort(
   issueNum:    Int = Param.issueInstInfoMaxNum,
   pipelineNum: Int = Param.pipelineNum)
     extends Bundle {
@@ -44,7 +44,7 @@ class NewRenamePeerPort(
   val writebacks = Input(Vec(pipelineNum, new InstWbNdPort))
 }
 
-class NewRenameStage(
+class RenameStage(
   issueNum:          Int = Param.issueInstInfoMaxNum,
   pipelineNum:       Int = Param.pipelineNum,
   reservationLength: Int = Param.Width.ReservationStation._length)
@@ -52,7 +52,7 @@ class NewRenameStage(
   val io = IO(new Bundle {
     val ins     = Vec(issueNum, Flipped(Decoupled(new FetchInstDecodeNdPort)))
     val outs    = Vec(issueNum, Decoupled(new ReservationStationBundle))
-    val peer    = Some(new NewRenamePeerPort)
+    val peer    = Some(new RenamePeerPort)
     val isFlush = Input(Bool())
   })
   protected val selectedIns: Vec[FetchInstDecodeNdPort] = Wire(

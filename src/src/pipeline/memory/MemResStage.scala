@@ -5,7 +5,7 @@ import chisel3.util._
 import memory.bundles.MemResponseNdPort
 import pipeline.commit.WbNdPort
 import pipeline.commit.bundles.InstInfoNdPort
-import pipeline.common.BaseStage
+import common.BaseStage
 import spec._
 
 class MemResNdPort extends Bundle {

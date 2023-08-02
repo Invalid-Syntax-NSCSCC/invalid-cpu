@@ -5,7 +5,7 @@ import chisel3.util._
 import frontend.bundles.PreDecoderResultNdPort
 import frontend.PreDecoder
 import frontend.bpu.RAS
-import pipeline.common.BaseStageWOSaveIn
+import common.BaseStageWOSaveIn
 import pipeline.dispatch.bundles.FetchInstInfoBundle
 import pipeline.queue.InstQueueEnqNdPort
 import spec.Param.BPU.BranchType
@@ -98,9 +98,8 @@ class InstPreDecodeStage
     // only immJump or ret can jump; indirect call would not jump
     // when met immediately jump but bpu do not predict jump, then triger a redirect
     // when met ret jump; redirect
-    val canJump = ((decodeResultVec(jumpIndex).isImmJump  || decodeResultVec(
-      jumpIndex
-    ).isRet)&& ! selectedIn
+    val canJump = ((decodeResultVec(jumpIndex).isImmJump  || decodeResultVec(jumpIndex).isRet)
+                   && ! selectedIn
       .enqInfos(jumpIndex)
       .bits
       .ftqInfo

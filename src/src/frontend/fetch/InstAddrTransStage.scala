@@ -9,7 +9,7 @@ import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import pipeline.memory.enums.AddrTransType
 import frontend.bundles.{FetchCsrNdPort, FtqBlockBundle, FtqIFNdPort}
 import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
-import pipeline.common.BaseStage
+import common.BaseStage
 import pipeline.memory.MemReqNdPort
 import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
 import spec.Param.{isDiffTest, isNoPrivilege}
@@ -17,7 +17,7 @@ import spec.Value.Csr
 import spec.{Param, Width}
 
 import scala.collection.immutable
-import pipeline.common.BaseStageWOSaveIn
+import common.BaseStageWOSaveIn
 
 class InstAddrTransPeerPort extends Bundle {
   val csr      = Input(new FetchCsrNdPort)

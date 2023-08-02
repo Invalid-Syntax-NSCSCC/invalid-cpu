@@ -6,7 +6,7 @@ import common.bundles.RfReadPort
 import control.enums.ExceptionPos
 import pipeline.commit._
 import pipeline.commit.bundles._
-import pipeline.common.DistributedQueuePlus
+import common.DistributedQueuePlus
 import pipeline.rob.bundles._
 import spec.Param._
 import spec._

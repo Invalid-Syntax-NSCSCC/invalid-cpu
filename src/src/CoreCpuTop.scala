@@ -12,7 +12,7 @@ import pipeline.memory.{AddrTransStage, ExeForMemStage, MemReqStage, MemResStage
 import pipeline.queue.MultiInstQueue
 import pipeline.rob.Rob
 import spec.Param
-import spec.Param.isDiffTest
+import spec.Param.{isDiffTest, isNoPrivilege}
 import control.Cu
 import pmu.Pmu
 import pmu.bundles.PmuNdPort
@@ -103,8 +103,8 @@ class CoreCpuTop extends Module {
   val iCache           = Module(new ICache)
   val frontend         = Module(new Frontend)
   val instQueue        = Module(new MultiInstQueue)
-  val renameStage      = Module(new NewRenameStage)
-  val dispatchStage    = Module(new NewDispatchStage)
+  val renameStage      = Module(new RenameStage)
+  val dispatchStage    = Module(new DispatchStage)
   val exeForMemStage   = Module(new ExeForMemStage)
   val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
   val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))
@@ -139,22 +139,24 @@ class CoreCpuTop extends Module {
   // Memory related modules
   val dCache        = Module(new DCache)
   val uncachedAgent = Module(new UncachedAgent)
-  val tlb           = Module(new Tlb)
+  val tlb           = Option.when(!Param.isNoPrivilege)(Module(new Tlb))
 
   // Connection for memory related modules
   crossbar.io.slave(1) <> dCache.io.axiMasterPort
   crossbar.io.slave(2) <> uncachedAgent.io.axiMasterPort
 
   // TLB connection
-  tlb.io.csr.in.asId         := csr.io.csrValues.asid
-  tlb.io.csr.in.plv          := csr.io.csrValues.crmd.plv
-  tlb.io.csr.in.tlbidx       := csr.io.csrValues.tlbidx
-  tlb.io.csr.in.tlbehi       := csr.io.csrValues.tlbehi
-  tlb.io.csr.in.tlbeloVec(0) := csr.io.csrValues.tlbelo0
-  tlb.io.csr.in.tlbeloVec(1) := csr.io.csrValues.tlbelo1
-  tlb.io.csr.in.estat        := csr.io.csrValues.estat
-  tlb.io.maintenanceInfo     := addrTransStage.io.peer.get.tlbMaintenance
-  tlb.io.maintenanceTrigger  := rob.io.tlbMaintenanceTrigger
+  tlb.foreach { tlb =>
+    tlb.io.csr.in.asId         := csr.io.csrValues.asid
+    tlb.io.csr.in.plv          := csr.io.csrValues.crmd.plv
+    tlb.io.csr.in.tlbidx       := csr.io.csrValues.tlbidx
+    tlb.io.csr.in.tlbehi       := csr.io.csrValues.tlbehi
+    tlb.io.csr.in.tlbeloVec(0) := csr.io.csrValues.tlbelo0
+    tlb.io.csr.in.tlbeloVec(1) := csr.io.csrValues.tlbelo1
+    tlb.io.csr.in.estat        := csr.io.csrValues.estat
+    tlb.io.maintenanceInfo     := addrTransStage.io.peer.get.tlbMaintenance
+    tlb.io.maintenanceTrigger  := rob.io.tlbMaintenanceTrigger
+  }
 
   // Frontend
   //   inst fetch stage
@@ -162,7 +164,11 @@ class CoreCpuTop extends Module {
   frontend.io.ftqFlushId := cu.io.frontendFlushFtqId
   frontend.io.accessPort <> iCache.io.accessPort
   frontend.io.cuNewPc    := cu.io.newPc
-  frontend.io.tlbTrans   <> tlb.io.tlbTransPorts(1)
+  if (isNoPrivilege) {
+    frontend.io.tlbTrans <> DontCare
+  } else {
+    frontend.io.tlbTrans <> tlb.get.io.tlbTransPorts(1)
+  }
   frontend.io.csr.crmd   := csr.io.csrValues.crmd
   frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
@@ -234,7 +240,11 @@ class CoreCpuTop extends Module {
   addrTransStage.io.in      <> exeForMemStage.io.out
   addrTransStage.io.isFlush := cu.io.backendFlush
   addrTransStage.io.peer.foreach { p =>
-    p.tlbTrans   <> tlb.io.tlbTransPorts(0)
+    if (isNoPrivilege) {
+      p.tlbTrans <> DontCare
+    } else {
+      p.tlbTrans <> tlb.get.io.tlbTransPorts(0)
+    }
     p.csr.dmw(0) := csr.io.csrValues.dmw0
     p.csr.dmw(1) := csr.io.csrValues.dmw1
     p.csr.crmd   := csr.io.csrValues.crmd
@@ -273,7 +283,12 @@ class CoreCpuTop extends Module {
   rob.io.isFlush     := cu.io.backendFlush
   rob.io.commitStore <> memReqStage.io.peer.get.commitStore
   if (isDiffTest) {
-    rob.io.tlbDifftest.get := tlb.io.difftest.get
+    if (isNoPrivilege) {
+      rob.io.tlbDifftest.get.valid     := false.B
+      rob.io.tlbDifftest.get.fillIndex := DontCare
+    } else {
+      rob.io.tlbDifftest.get := tlb.get.io.difftest.get
+    }
   }
   rob.io.regfileDatas.zip(regFile.io.regfileDatas).foreach {
     case (dst, src) =>
@@ -312,15 +327,22 @@ class CoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
-  csr.io.tlbMaintenanceWritePort.valid := cu.io.tlbMaintenanceCsrWriteValid
-  csr.io.tlbMaintenanceWritePort.bits  := tlb.io.csr.out
-  csr.io.tlbExceptionWritePorts.map(_.valid).zip(cu.io.tlbExceptionCsrWriteValidVec).foreach {
-    case (dst, src) =>
-      dst := src
-  }
-  csr.io.tlbExceptionWritePorts.map(_.bits).zip(tlb.io.transExceptionCsrPorts).foreach {
-    case (dst, src) =>
-      dst := src
+  if (isNoPrivilege) {
+    csr.io.tlbMaintenanceWritePort.valid := false.B
+    csr.io.tlbMaintenanceWritePort.bits  := DontCare
+    csr.io.tlbExceptionWritePorts.map(_.valid).foreach(_ := false.B)
+    csr.io.tlbExceptionWritePorts.map(_.bits).foreach(_ := DontCare)
+  } else {
+    csr.io.tlbMaintenanceWritePort.valid := cu.io.tlbMaintenanceCsrWriteValid
+    csr.io.tlbMaintenanceWritePort.bits  := tlb.get.io.csr.out
+    csr.io.tlbExceptionWritePorts.map(_.valid).zip(cu.io.tlbExceptionCsrWriteValidVec).foreach {
+      case (dst, src) =>
+        dst := src
+    }
+    csr.io.tlbExceptionWritePorts.map(_.bits).zip(tlb.get.io.transExceptionCsrPorts).foreach {
+      case (dst, src) =>
+        dst := src
+    }
   }
   csr.io.csrMessage        := cu.io.csrMessage
   csr.io.hardwareInterrupt := io.intrpt
