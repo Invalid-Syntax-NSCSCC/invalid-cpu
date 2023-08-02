@@ -24,7 +24,7 @@ object Param {
   val isBranchPredict     = true
   val isPredecode         = true
   val isOverideRas        = true
-  val isFTBupdateRet     = true
+  val isFTBupdateRet      = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
@@ -182,14 +182,15 @@ object Param {
     object TagePredictor {
       //        ComponentTableDepth
       // predictor num = tagComponentNum + 1 (BasePredictor)
-      val ghrLength            = 140
-      val tagComponentTagWidth = 12
+      val ghrLength              = 140
+      val tagComponentTagWidth   = 12
       val tagComponentNum        = 4
       val componentHistoryLength = Seq(0, 11, 23, 53, 131, 230, 479, 1012) // ipc 0.6452
       val componentTableDepth =
         Seq(8192, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
-      val componentCtrWidth    = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
-      val componentUsefulWidth = Seq(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1) // tage paper suggest 2, but in order to save source, we use 1 bit(won't decrease ipc)
+      val componentCtrWidth = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+      val componentUsefulWidth = Seq(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1) // tage paper suggest 2, but in order to save source, we use 1 bit(won't decrease ipc)
     }
 
     object FTB {
