@@ -82,7 +82,7 @@ class TaggedPreditor(
   // query_index is Fold(GHR) ^ PC[low] ^ PC[high]
   val queryIndex = WireDefault(io.pc(phtAddrWidth - 1, 0) ^ io.pc(2 * phtAddrWidth - 1, phtAddrWidth) ^ hashedGhtInput)
 //  val queryIndex = WireDefault(
-//    io.pc(phtAddrWidth + 1, 2) ^ io.pc(2 * phtAddrWidth + 1, phtAddrWidth + 2) ^ hashedGhtInput
+//    io.pc(phtAddrWidth , 1) ^ io.pc(2 * phtAddrWidth + 2, phtAddrWidth + 1) ^ hashedGhtInput
 //  )
   val queryIndexReg = RegNext(queryIndex, 0.U(phtTagWidth.W))
 

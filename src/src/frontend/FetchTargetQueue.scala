@@ -179,7 +179,7 @@ class FetchTargetQueue(
   // -> IFU
   // default value
   io.ftqIFPort.valid               := ifSendValid
-  io.ftqIFPort.bits.ftqBlockBundle := RegNext(ftqNextVec(nextIfPtr), FtqBlockBundle.default)
+  io.ftqIFPort.bits.ftqBlockBundle := RegNext(ftqNextVec(nextIfPtr), FtqBlockBundle.default) //use RegNext and nextPtr to decrease net delay
   // design 1 : wtire through  ( has been abandoned)
   // feat: increase flush log;but easy to result in flush instfetch
 //  when(((ifPtr === bpuMetaWritePtr)||(lastIfPtr === bpuMetaWritePtr)) && bpuMetaWriteValid) {
