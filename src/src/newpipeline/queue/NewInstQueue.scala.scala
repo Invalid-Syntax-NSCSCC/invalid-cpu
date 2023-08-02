@@ -55,8 +55,6 @@ class NewInstQueue(
 
     val plv = Input(UInt(2.W))
 
-    // val ne
-
     val pmu_instqueueFullValid = if (Param.usePmu) Some(Output(Bool())) else None
     val pmu_instqueueEmpty     = if (Param.usePmu) Some(Output(Bool())) else None
   })

@@ -27,6 +27,7 @@ import control.bundles.StableCounterReadPort
 import control.bundles.CsrReadPort
 import frontend.bundles.ExeFtqPort
 import pipeline.rob.bundles.RobQueryPcPort
+import common.common.BaseStageWOOutReg
 
 class MainExePeerPort extends Bundle {
   val csr = Input(new Bundle {
@@ -48,30 +49,31 @@ class MainExePeerPort extends Bundle {
 
 }
 
-class NewAddrTransNdPort extends Bundle {
+class MainExeResultNdPort extends Bundle {
   val isAtomicStore    = Bool()
   val memRequest       = new MemRequestNdPort
   val tlbMaintenance   = new TlbMaintenanceNdPort
   val cacheMaintenance = new CacheMaintenanceInstNdPort
   val wb               = new WbNdPort
+  val isLoadStore      = Bool()
 }
 
 // support all insts
 class MainExeStage
-    extends BaseStage(
+    extends BaseStageWOOutReg(
       new ExeNdPort,
-      new NewAddrTransNdPort,
+      new MainExeResultNdPort,
       ExeNdPort.default,
       Some(new MainExePeerPort)
     ) {
-  val out  = resultOutReg.bits
+  val out  = io.out.bits
   val peer = io.peer.get
 
   // Fallback
   // ALU module
   val alu = Module(new Alu)
 
-  isComputed                      := alu.io.outputValid
+  isComputed                      := alu.io.outputValid && !(out.isLoadStore && !io.out.ready)
   out                             := DontCare
   out.cacheMaintenance.control    := CacheMaintenanceControlNdPort.default
   out.isAtomicStore               := false.B
@@ -83,8 +85,7 @@ class MainExeStage
   out.wb.instInfo                 := selectedIn.instInfo
   out.wb.gprWrite.en              := selectedIn.gprWritePort.en
   out.wb.gprWrite.addr            := selectedIn.gprWritePort.addr
-//   out.gprAddr                     := selectedIn.gprWritePort.addr
-  resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
+  io.out.valid                    := isComputed && selectedIn.instInfo.isValid
 
   // memory
 
@@ -211,6 +212,8 @@ class MainExeStage
       }
     }
   }
+
+  out.isLoadStore := selectedIn.exeSel === ExeInst.Sel.loadStore && out.wb.instInfo.exceptionPos === ExceptionPos.none
 
   // Difftest
   if (isDiffTest) {

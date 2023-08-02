@@ -18,6 +18,8 @@ import pmu.Pmu
 import pmu.bundles.PmuNdPort
 import spec.ExeInst
 import pipeline.Backend
+import scopt.Opt
+import newpipeline.NewBackend
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -103,7 +105,8 @@ class CoreCpuTop extends Module {
 
   val iCache      = Module(new ICache)
   val frontend    = Module(new Frontend)
-  val backend     = Module(new Backend)
+  val oldBackend  = Option.when(!Param.useNewBackend)(Module(new Backend))
+  val newBackend  = Option.when(Param.useNewBackend)(Module(new NewBackend))
   val cu          = Module(new Cu)
   val csr         = Module(new Csr)
   val commitStage = Module(new CommitStage)
@@ -135,8 +138,6 @@ class CoreCpuTop extends Module {
     tlb.io.csr.in.tlbeloVec(0) := csr.io.csrValues.tlbelo0
     tlb.io.csr.in.tlbeloVec(1) := csr.io.csrValues.tlbelo1
     tlb.io.csr.in.estat        := csr.io.csrValues.estat
-    tlb.io.maintenanceInfo     := backend.io.tlbMaintenancePort
-    tlb.io.maintenanceTrigger  := backend.io.tlbMaintenanceTrigger
   }
 
   // Frontend
@@ -155,55 +156,88 @@ class CoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // TODO: Connect frontend
-  frontend.io.exeFtqPort      <> backend.io.exeFeedBackFtqPort
   frontend.io.cuCommitFtqPort := cu.io.ftqPort
   frontend.io.cuQueryPcBundle <> cu.io.queryPcPort
 
   // backend
-  backend.io.instQueueEnqueuePort <> frontend.io.instDequeuePort
 
-  backend.io.frontendFlush := cu.io.frontendFlush
-  backend.io.backendFlush  := cu.io.backendFlush
-  backend.io.idleFlush     := cu.io.idleFlush
-  backend.io.hasInterrupt  := csr.io.hasInterrupt
-  backend.io.isDbarFinish  := cu.io.isDbarFinish
-
-  backend.io.csrValues := csr.io.csrValues
-
-  backend.io.csrReadPort <> csr.io.readPorts.head
-
-  if (isNoPrivilege) {
-    backend.io.tlbTransPort <> DontCare
+  if (Param.useNewBackend) {
+    // TODO : connect new backend
+    val backend = newBackend.get
   } else {
-    backend.io.tlbTransPort <> tlb.get.io.tlbTransPorts(0)
-  }
 
-  backend.io.memReqPeerPort.dCacheReq         <> dCache.io.accessPort.req
-  backend.io.memReqPeerPort.uncachedReq       <> uncachedAgent.io.accessPort.req
-  backend.io.memReqPeerPort.dCacheMaintenance <> dCache.io.maintenancePort
-  backend.io.memReqPeerPort.iCacheMaintenance <> iCache.io.maintenancePort
+    val backend = oldBackend.get
 
-  backend.io.memResPeerPort.dCacheRes   := dCache.io.accessPort.res
-  backend.io.memResPeerPort.uncachedRes := uncachedAgent.io.accessPort.res
+    tlb.foreach { tlb =>
+      tlb.io.maintenanceInfo    := backend.io.tlbMaintenancePort
+      tlb.io.maintenanceTrigger := backend.io.tlbMaintenanceTrigger
+    }
 
-  backend.io.tlbDifftestPort.foreach { p =>
-    p := tlb.get.io.difftest.get
-  }
+    frontend.io.exeFtqPort          <> backend.io.exeFeedBackFtqPort
+    backend.io.instQueueEnqueuePort <> frontend.io.instDequeuePort
 
-  regFile.io.writePorts.zip(cu.io.gprWritePassThroughPorts.out).foreach {
-    case (dst, src) =>
-      dst <> src
-  }
+    backend.io.frontendFlush := cu.io.frontendFlush
+    backend.io.backendFlush  := cu.io.backendFlush
+    backend.io.idleFlush     := cu.io.idleFlush
+    backend.io.hasInterrupt  := csr.io.hasInterrupt
+    backend.io.isDbarFinish  := cu.io.isDbarFinish
 
-  backend.io.regfileDatas.zip(regFile.io.regfileDatas).foreach {
-    case (dst, src) =>
-      dst := src
-  }
+    backend.io.csrValues := csr.io.csrValues
 
-  // commit stage
-  commitStage.io.ins.zip(backend.io.commitPorts).foreach {
-    case (dst, src) =>
-      dst <> src
+    backend.io.csrReadPort <> csr.io.readPorts.head
+
+    if (isNoPrivilege) {
+      backend.io.tlbTransPort <> DontCare
+    } else {
+      backend.io.tlbTransPort <> tlb.get.io.tlbTransPorts(0)
+    }
+
+    backend.io.memReqPeerPort.dCacheReq         <> dCache.io.accessPort.req
+    backend.io.memReqPeerPort.uncachedReq       <> uncachedAgent.io.accessPort.req
+    backend.io.memReqPeerPort.dCacheMaintenance <> dCache.io.maintenancePort
+    backend.io.memReqPeerPort.iCacheMaintenance <> iCache.io.maintenancePort
+
+    backend.io.memResPeerPort.dCacheRes   := dCache.io.accessPort.res
+    backend.io.memResPeerPort.uncachedRes := uncachedAgent.io.accessPort.res
+
+    backend.io.tlbDifftestPort.foreach { p =>
+      p := tlb.get.io.difftest.get
+    }
+
+    backend.io.regfileDatas.zip(regFile.io.regfileDatas).foreach {
+      case (dst, src) =>
+        dst := src
+    }
+
+    cu.io.branchExe          := backend.io.exeRedirectRequest
+    cu.io.redirectFromDecode := backend.io.decodeRedirectRequest
+    cu.io.csrWriteInfo       := backend.io.csrWritePort
+    cu.io.exceptionVirtAddr  := backend.io.exceptionVirtAddr
+
+    // commit stage
+    commitStage.io.ins.zip(backend.io.commitPorts).foreach {
+      case (dst, src) =>
+        dst <> src
+    }
+
+    // pmu
+    if (Param.usePmu) {
+      val pmu        = Module(new Pmu)
+      val backendPmu = backend.io.pmu.get
+      pmu.io.instqueueFull      := backendPmu.instqueueFull
+      pmu.io.instqueueFullValid := backendPmu.instqueueFullValid
+      pmu.io.instQueueEmpty     := backendPmu.instQueueEmpty
+      pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
+      pmu.io.dispatchInfos.zip(backendPmu.dispatchInfos).foreach {
+        case (dst, src) =>
+          dst := src
+      }
+      pmu.io.robFull    := backendPmu.robFull
+      pmu.io.storeQueue := backendPmu.storeQueue
+      pmu.io.dCache     := dCache.io.pmu.get
+      pmu.io.iCache     := iCache.io.pmu.get
+    }
+
   }
 
   // Control unit
@@ -216,13 +250,15 @@ class CoreCpuTop extends Module {
   cu.io.csrValues := csr.io.csrValues
 
   require(Param.jumpBranchPipelineIndex != 0)
-  cu.io.branchExe          := backend.io.exeRedirectRequest
-  cu.io.redirectFromDecode := backend.io.decodeRedirectRequest
 
-  cu.io.csrFlushRequest   := csr.io.csrFlushRequest
-  cu.io.csrWriteInfo      := backend.io.csrWritePort
-  cu.io.majorPc           := commitStage.io.majorPc
-  cu.io.exceptionVirtAddr := backend.io.exceptionVirtAddr
+  cu.io.csrFlushRequest := csr.io.csrFlushRequest
+
+  cu.io.majorPc := commitStage.io.majorPc
+
+  regFile.io.writePorts.zip(cu.io.gprWritePassThroughPorts.out).foreach {
+    case (dst, src) =>
+      dst <> src
+  }
 
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -261,24 +297,6 @@ class CoreCpuTop extends Module {
   ).asUInt
   io.debug0_wb.rf.wnum  := commitStage.io.gprWritePorts(0).addr
   io.debug0_wb.rf.wdata := commitStage.io.gprWritePorts(0).data
-
-  // pmu
-  if (Param.usePmu) {
-    val pmu        = Module(new Pmu)
-    val backendPmu = backend.io.pmu.get
-    pmu.io.instqueueFull      := backendPmu.instqueueFull
-    pmu.io.instqueueFullValid := backendPmu.instqueueFullValid
-    pmu.io.instQueueEmpty     := backendPmu.instQueueEmpty
-    pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
-    pmu.io.dispatchInfos.zip(backendPmu.dispatchInfos).foreach {
-      case (dst, src) =>
-        dst := src
-    }
-    pmu.io.robFull    := backendPmu.robFull
-    pmu.io.storeQueue := backendPmu.storeQueue
-    pmu.io.dCache     := dCache.io.pmu.get
-    pmu.io.iCache     := iCache.io.pmu.get
-  }
 
   // Difftest
   // TODO: Some ports

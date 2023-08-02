@@ -27,27 +27,28 @@ import control.bundles.StableCounterReadPort
 import control.bundles.CsrReadPort
 import frontend.bundles.ExeFtqPort
 import pipeline.rob.bundles.RobQueryPcPort
+import common.common.BaseStageWOOutReg
 
 // support all insts
 class SimpleExeStage
-    extends BaseStage(
+    extends BaseStageWOOutReg(
       new ExeNdPort,
       new WbNdPort,
       ExeNdPort.default,
       None
     ) {
-  val out  = resultOutReg.bits
+  val out  = io.out.bits
   val peer = io.peer.get
 
   // ALU module
   val alu = Module(new Alu)
 
-  isComputed         := alu.io.outputValid
-  out                := DontCare
-  out.instInfo       := selectedIn.instInfo
-  out.gprWrite.en    := selectedIn.gprWritePort.en
-  out.gprWrite.addr  := selectedIn.gprWritePort.addr
-  resultOutReg.valid := isComputed && selectedIn.instInfo.isValid
+  isComputed        := alu.io.outputValid
+  out               := DontCare
+  out.instInfo      := selectedIn.instInfo
+  out.gprWrite.en   := selectedIn.gprWritePort.en
+  out.gprWrite.addr := selectedIn.gprWritePort.addr
+  io.out.valid      := isComputed && selectedIn.instInfo.isValid
 
   // alu
 
