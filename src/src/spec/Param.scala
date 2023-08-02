@@ -7,8 +7,8 @@ object Param {
   // Configurable self-defined parameters go here
 
   // These options are one-hot
-  val isChiplab        = true
-  val isReleasePackage = false
+  val isChiplab        = false
+  val isReleasePackage = true
   val isFullFpga       = false
 
   val usePmu = false || isChiplab // 性能计数器
@@ -179,12 +179,8 @@ object Param {
     }
 
     object TagePredictor {
-      //        ComponentTableDepth
-      // predictor num = tagComponentNum + 1 (BasePredictor)
       val ghrLength            = 140
       val tagComponentTagWidth = 12
-//      val tagComponentNum        = 15
-//      val componentHistoryLength = Seq(0, 6, 10, 18, 25, 35, 55, 69, 105, 155, 230, 354, 479, 642, 1012, 1347)
       val tagComponentNum        = 4
       val componentHistoryLength = Seq(0, 11, 23, 53, 131, 230, 479, 1012) // ipc 0.6452
 
@@ -192,7 +188,6 @@ object Param {
         Seq(8192, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
       val componentCtrWidth    = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
       val componentUsefulWidth = Seq(0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
-
     }
 
     object FTB {
