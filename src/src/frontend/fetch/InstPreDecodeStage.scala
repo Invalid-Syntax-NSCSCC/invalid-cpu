@@ -98,13 +98,12 @@ class InstPreDecodeStage
     // only immJump or ret can jump; indirect call would not jump
     // when met immediately jump but bpu do not predict jump, then triger a redirect
     // when met ret jump; redirect
-    val canJump = ((decodeResultVec(jumpIndex).isImmJump && !selectedIn
+    val canJump = ((decodeResultVec(jumpIndex).isImmJump  || decodeResultVec(jumpIndex).isRet)
+                   && ! selectedIn
       .enqInfos(jumpIndex)
       .bits
       .ftqInfo
-      .predictBranch) || decodeResultVec(
-      jumpIndex
-    ).isRet)
+      .predictBranch)
     val isPredecoderRedirect = WireDefault(false.B)
     isPredecoderRedirect := isDataValid && isJump && canJump
     val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
