@@ -17,6 +17,7 @@ import control.Cu
 import pmu.Pmu
 import pmu.bundles.PmuNdPort
 import spec.ExeInst
+import pipeline.Backend
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -100,35 +101,15 @@ class CoreCpuTop extends Module {
       else None
   })
 
-  val iCache           = Module(new ICache)
-  val frontend         = Module(new Frontend)
-  val instQueue        = Module(new MultiInstQueue)
-  val renameStage      = Module(new RenameStage)
-  val dispatchStage    = Module(new DispatchStage)
-  val exeForMemStage   = Module(new ExeForMemStage)
-  val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
-  val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))
-  val exePassWbStages  = Seq(exePassWbStage_1, exePassWbStage_2)
-  val commitStage      = Module(new CommitStage)
-  val rob              = Module(new Rob)
-  val cu               = Module(new Cu)
-  val csr              = Module(new Csr)
-  val stableCounter    = Module(new StableCounter)
-
-  // TODO: Finish mem stages connection
-  val addrTransStage = Module(new AddrTransStage)
-  val memReqStage    = Module(new MemReqStage)
-  val memResStage    = Module(new MemResStage)
-
-  // Passthrough
-  memReqStage.io.out.ready := true.B
-  exePassWbStages.foreach(_.io.out.ready := true.B)
+  val iCache      = Module(new ICache)
+  val frontend    = Module(new Frontend)
+  val backend     = Module(new Backend)
+  val cu          = Module(new Cu)
+  val csr         = Module(new Csr)
+  val commitStage = Module(new CommitStage)
+  val regFile     = Module(new RegFile)
 
   val crossbar = Module(new Axi3x1Crossbar)
-
-  val csrScoreBoard = Module(new CsrScoreboard)
-
-  val regFile = Module(new RegFile)
 
   // AXI top <> AXI crossbar
   crossbar.io.master(0) <> io.axi
@@ -154,8 +135,8 @@ class CoreCpuTop extends Module {
     tlb.io.csr.in.tlbeloVec(0) := csr.io.csrValues.tlbelo0
     tlb.io.csr.in.tlbeloVec(1) := csr.io.csrValues.tlbelo1
     tlb.io.csr.in.estat        := csr.io.csrValues.estat
-    tlb.io.maintenanceInfo     := addrTransStage.io.peer.get.tlbMaintenance
-    tlb.io.maintenanceTrigger  := rob.io.tlbMaintenanceTrigger
+    tlb.io.maintenanceInfo     := backend.io.tlbMaintenancePort
+    tlb.io.maintenanceTrigger  := backend.io.tlbMaintenanceTrigger
   }
 
   // Frontend
@@ -174,135 +155,56 @@ class CoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // TODO: Connect frontend
-  frontend.io.exeFtqPort      <> exePassWbStage_1.io.peer.get.feedbackFtq.get
+  frontend.io.exeFtqPort      <> backend.io.exeFeedBackFtqPort
   frontend.io.cuCommitFtqPort := cu.io.ftqPort
   frontend.io.cuQueryPcBundle <> cu.io.queryPcPort
 
-  // Instruction queue
-  instQueue.io.enqueuePort <> frontend.io.instDequeuePort
+  // backend
+  backend.io.instQueueEnqueuePort <> frontend.io.instDequeuePort
 
-  instQueue.io.isFrontendFlush := cu.io.frontendFlush
-  instQueue.io.isBackendFlush  := cu.io.backendFlush
-  instQueue.io.idleBlocking    := cu.io.idleFlush
-  instQueue.io.hasInterrupt    := csr.io.hasInterrupt
+  backend.io.frontendFlush := cu.io.frontendFlush
+  backend.io.backendFlush  := cu.io.backendFlush
+  backend.io.idleFlush     := cu.io.idleFlush
+  backend.io.hasInterrupt  := csr.io.hasInterrupt
+  backend.io.isDbarFinish  := cu.io.isDbarFinish
 
-  // rename stage
-  renameStage.io.ins.zip(instQueue.io.dequeuePorts).foreach {
+  backend.io.csrValues := csr.io.csrValues
+
+  backend.io.csrReadPort <> csr.io.readPorts.head
+
+  if (isNoPrivilege) {
+    backend.io.tlbTransPort <> DontCare
+  } else {
+    backend.io.tlbTransPort <> tlb.get.io.tlbTransPorts(0)
+  }
+
+  backend.io.memReqPeerPort.dCacheReq         <> dCache.io.accessPort.req
+  backend.io.memReqPeerPort.uncachedReq       <> uncachedAgent.io.accessPort.req
+  backend.io.memReqPeerPort.dCacheMaintenance <> dCache.io.maintenancePort
+  backend.io.memReqPeerPort.iCacheMaintenance <> iCache.io.maintenancePort
+
+  backend.io.memResPeerPort.dCacheRes   := dCache.io.accessPort.res
+  backend.io.memResPeerPort.uncachedRes := uncachedAgent.io.accessPort.res
+
+  backend.io.tlbDifftestPort.foreach { p =>
+    p := tlb.get.io.difftest.get
+  }
+
+  regFile.io.writePorts.zip(cu.io.gprWritePassThroughPorts.out).foreach {
     case (dst, src) =>
       dst <> src
   }
-  renameStage.io.isFlush := cu.io.backendFlush
-  renameStage.io.peer.get.results.zip(rob.io.distributeResults).foreach {
-    case (dst, src) =>
-      dst := src
-  }
-  renameStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
-    case (dst, src) =>
-      dst := src
-  }
-  // renameStage.io.peer.get.plv := csr.io.csrValues.crmd.plv
 
-  // dispatch
-  dispatchStage.io.ins.zip(renameStage.io.outs).foreach {
-    case (dst, src) =>
-      dst <> src
-  }
-  dispatchStage.io.isFlush      := cu.io.backendFlush
-  dispatchStage.io.peer.get.plv := csr.io.csrValues.crmd.plv
-  dispatchStage.io.peer.get.writebacks.zip(rob.io.instWbBroadCasts).foreach {
-    case (dst, src) =>
-      dst := src
-  }
-
-  // Scoreboards
-  csrScoreBoard.io.csrWriteStorePort := exePassWbStage_1.io.peer.get.csrWriteStorePort.get
-  csrScoreBoard.io.isFlush           := cu.io.backendFlush
-
-  // Execution stage
-  exeForMemStage.io.in                  <> dispatchStage.io.outs(Param.loadStoreIssuePipelineIndex)
-  exeForMemStage.io.isFlush             := cu.io.backendFlush
-  exeForMemStage.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
-  exeForMemStage.io.peer.get.csr.era    := csr.io.csrValues.era
-  exeForMemStage.io.peer.get.dbarFinish := cu.io.isDbarFinish
-
-  exePassWbStage_1.io.peer.get.csrReadPort.get           <> csr.io.readPorts(0)
-  exePassWbStage_1.io.peer.get.stableCounterReadPort.get <> stableCounter.io
-  exePassWbStage_1.io.peer.get.robQueryPcPort.get        <> rob.io.queryPcPort
-  assert(Param.loadStoreIssuePipelineIndex == 0)
-  exePassWbStages.zipWithIndex.foreach {
-    case (exe, idx) =>
-      exe.io.in                  <> dispatchStage.io.outs(idx + 1)
-      exe.io.isFlush             := cu.io.backendFlush
-      exe.io.peer.get.csr.llbctl := csr.io.csrValues.llbctl
-      exe.io.peer.get.csr.era    := csr.io.csrValues.era
-  }
-  // Mem stages
-  addrTransStage.io.in      <> exeForMemStage.io.out
-  addrTransStage.io.isFlush := cu.io.backendFlush
-  addrTransStage.io.peer.foreach { p =>
-    if (isNoPrivilege) {
-      p.tlbTrans <> DontCare
-    } else {
-      p.tlbTrans <> tlb.get.io.tlbTransPorts(0)
-    }
-    p.csr.dmw(0) := csr.io.csrValues.dmw0
-    p.csr.dmw(1) := csr.io.csrValues.dmw1
-    p.csr.crmd   := csr.io.csrValues.crmd
-  }
-
-  memReqStage.io.isFlush := cu.io.backendFlush
-  memReqStage.io.in      <> addrTransStage.io.out
-  memReqStage.io.peer.foreach { p =>
-    p.dCacheReq         <> dCache.io.accessPort.req
-    p.uncachedReq       <> uncachedAgent.io.accessPort.req
-    p.dCacheMaintenance <> dCache.io.maintenancePort
-    p.iCacheMaintenance <> iCache.io.maintenancePort
-  }
-
-  memResStage.io.isFlush := cu.io.backendFlush
-  memResStage.io.in      <> memReqStage.io.out
-  memResStage.io.peer.foreach { p =>
-    p.dCacheRes   := dCache.io.accessPort.res
-    p.uncachedRes := uncachedAgent.io.accessPort.res
-  }
-
-  // ROB
-  require(Param.loadStoreIssuePipelineIndex == 0)
-  rob.io.finishInsts.zipWithIndex.foreach {
-    case (dst, idx) =>
-      if (idx == Param.loadStoreIssuePipelineIndex) {
-        dst <> memResStage.io.out
-      } else {
-        dst <> exePassWbStages(idx - 1).io.out
-      }
-  }
-  rob.io.requests.zip(renameStage.io.peer.get.requests).foreach {
-    case (dst, src) =>
-      dst <> src
-  }
-  rob.io.isFlush     := cu.io.backendFlush
-  rob.io.commitStore <> memReqStage.io.peer.get.commitStore
-  if (isDiffTest) {
-    if (isNoPrivilege) {
-      rob.io.tlbDifftest.get.valid     := false.B
-      rob.io.tlbDifftest.get.fillIndex := DontCare
-    } else {
-      rob.io.tlbDifftest.get := tlb.get.io.difftest.get
-    }
-  }
-  rob.io.regfileDatas.zip(regFile.io.regfileDatas).foreach {
+  backend.io.regfileDatas.zip(regFile.io.regfileDatas).foreach {
     case (dst, src) =>
       dst := src
   }
 
   // commit stage
-  commitStage.io.ins.zip(rob.io.commits).foreach {
+  commitStage.io.ins.zip(backend.io.commitPorts).foreach {
     case (dst, src) =>
       dst <> src
   }
-
-  // Register file (GPR file)
-  regFile.io.writePorts <> cu.io.gprWritePassThroughPorts.out
 
   // Control unit
   cu.io.instInfoPorts.zip(commitStage.io.cuInstInfoPorts).foreach {
@@ -314,13 +216,13 @@ class CoreCpuTop extends Module {
   cu.io.csrValues := csr.io.csrValues
 
   require(Param.jumpBranchPipelineIndex != 0)
-  cu.io.branchExe          := exePassWbStages(Param.jumpBranchPipelineIndex - 1).io.peer.get.branchSetPort.get
-  cu.io.redirectFromDecode := instQueue.io.redirectRequest
+  cu.io.branchExe          := backend.io.exeRedirectRequest
+  cu.io.redirectFromDecode := backend.io.decodeRedirectRequest
 
   cu.io.csrFlushRequest   := csr.io.csrFlushRequest
-  cu.io.csrWriteInfo      := csrScoreBoard.io.csrWritePort
+  cu.io.csrWriteInfo      := backend.io.csrWritePort
   cu.io.majorPc           := commitStage.io.majorPc
-  cu.io.exceptionVirtAddr := addrTransStage.io.peer.get.exceptionVirtAddr
+  cu.io.exceptionVirtAddr := backend.io.exceptionVirtAddr
 
   // CSR
   csr.io.writePorts.zip(cu.io.csrWritePorts).foreach {
@@ -362,17 +264,18 @@ class CoreCpuTop extends Module {
 
   // pmu
   if (Param.usePmu) {
-    val pmu = Module(new Pmu)
-    pmu.io.instqueueFull      := !instQueue.io.enqueuePort.ready
-    pmu.io.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
-    pmu.io.instQueueEmpty     := instQueue.io.pmu_instqueueEmpty.get
+    val pmu        = Module(new Pmu)
+    val backendPmu = backend.io.pmu.get
+    pmu.io.instqueueFull      := backendPmu.instqueueFull
+    pmu.io.instqueueFullValid := backendPmu.instqueueFullValid
+    pmu.io.instQueueEmpty     := backendPmu.instQueueEmpty
     pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
-    pmu.io.dispatchInfos.zip(dispatchStage.io.peer.get.pmu_dispatchInfos.get).foreach {
+    pmu.io.dispatchInfos.zip(backendPmu.dispatchInfos).foreach {
       case (dst, src) =>
         dst := src
     }
-    pmu.io.robFull    := !rob.io.requests.head.ready && !cu.io.backendFlush
-    pmu.io.storeQueue := memReqStage.peer.pmu.get
+    pmu.io.robFull    := backendPmu.robFull
+    pmu.io.storeQueue := backendPmu.storeQueue
     pmu.io.dCache     := dCache.io.pmu.get
     pmu.io.iCache     := iCache.io.pmu.get
   }
