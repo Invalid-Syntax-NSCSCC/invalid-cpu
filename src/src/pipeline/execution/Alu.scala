@@ -6,7 +6,7 @@ import pipeline.execution.bundles.{AluInstNdPort, AluResultNdPort, JumpBranchInf
 import spec.ExeInst.Op
 import spec._
 
-class Alu extends Module {
+class Alu(supportBranch: Boolean = true) extends Module {
   val io = IO(new Bundle {
     val inputValid = Input(Bool())
     val aluInst    = Input(new AluInstNdPort)
@@ -75,38 +75,43 @@ class Alu extends Module {
 
   // jump and branch computation
 
-  switch(io.aluInst.op) {
-    is(Op.b, Op.bl) {
-      jumpBranchInfo.en     := true.B
-      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-    }
-    is(Op.jirl) {
-      jumpBranchInfo.en     := true.B
-      jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr
-    }
-    is(Op.beq) {
-      jumpBranchInfo.en     := lop === rop
-      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-    }
-    is(Op.bne) {
-      jumpBranchInfo.en     := lop =/= rop
-      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-    }
-    is(Op.blt) {
-      jumpBranchInfo.en     := lop.asSInt < rop.asSInt
-      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-    }
-    is(Op.bge) {
-      jumpBranchInfo.en     := lop.asSInt >= rop.asSInt
-      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-    }
-    is(Op.bltu) {
-      jumpBranchInfo.en     := lop < rop
-      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
-    }
-    is(Op.bgeu) {
-      jumpBranchInfo.en     := lop >= rop
-      jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+  jumpBranchInfo := DontCare
+
+  if (supportBranch) {
+
+    switch(io.aluInst.op) {
+      is(Op.b, Op.bl) {
+        jumpBranchInfo.en     := true.B
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+      is(Op.jirl) {
+        jumpBranchInfo.en     := true.B
+        jumpBranchInfo.pcAddr := lop + io.aluInst.jumpBranchAddr
+      }
+      is(Op.beq) {
+        jumpBranchInfo.en     := lop === rop
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+      is(Op.bne) {
+        jumpBranchInfo.en     := lop =/= rop
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+      is(Op.blt) {
+        jumpBranchInfo.en     := lop.asSInt < rop.asSInt
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+      is(Op.bge) {
+        jumpBranchInfo.en     := lop.asSInt >= rop.asSInt
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+      is(Op.bltu) {
+        jumpBranchInfo.en     := lop < rop
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
+      is(Op.bgeu) {
+        jumpBranchInfo.en     := lop >= rop
+        jumpBranchInfo.pcAddr := io.aluInst.jumpBranchAddr
+      }
     }
   }
 
