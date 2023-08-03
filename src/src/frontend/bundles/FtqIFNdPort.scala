@@ -1,7 +1,6 @@
 package frontend.bundles
-import spec._
 import chisel3._
-import chisel3.util._
+import spec._
 class FtqIFNdPort extends Bundle {
   val ftqBlockBundle = new FtqBlockBundle
   val redirect       = Bool()

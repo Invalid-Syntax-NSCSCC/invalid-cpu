@@ -1,7 +1,7 @@
 package pmu.bundles
 
-import spec._
 import chisel3._
+import spec._
 
 class PmuBranchPredictNdPort extends Bundle {
   val isBranch            = Bool()

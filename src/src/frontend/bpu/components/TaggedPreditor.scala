@@ -2,9 +2,9 @@ package frontend.bpu.components
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util._
-import frontend.bpu.utils.{Bram, CsrHash}
+import frontend.bpu.utils.CsrHash
 import memory.VSimpleDualBRam
-import spec.{Param, Width}
+import spec.Param
 
 class TaggedPreditor(
   ghrLength:      Int = 4,
@@ -157,7 +157,7 @@ class TaggedPreditor(
   // Alocate new entry
   when(io.reallocEntry) {
     // Reset
-    phtUpdateResult := PhtEntey.default
+    phtUpdateResult     := PhtEntey.default
     phtUpdateResult.tag := io.updateTag
 
     // when realocEntry,clear ctr and useful
@@ -165,17 +165,17 @@ class TaggedPreditor(
   }
 
   // to do  connect CSR hash
-  val ghtHashCsrHash = Module(new CsrHash(ghrLength , phtAddrWidth))
+  val ghtHashCsrHash = Module(new CsrHash(ghrLength, phtAddrWidth))
   ghtHashCsrHash.io.data       := io.globalHistory
   ghtHashCsrHash.io.dataUpdate := io.isGlobalHistoryUpdate
   hashedGhtInput               := ghtHashCsrHash.io.hash
 
-  val pcHashCsrHash1 = Module(new CsrHash(ghrLength , phtTagWidth))
+  val pcHashCsrHash1 = Module(new CsrHash(ghrLength, phtTagWidth))
   pcHashCsrHash1.io.data       := io.globalHistory
   pcHashCsrHash1.io.dataUpdate := io.isGlobalHistoryUpdate
   tagHashCsr1                  := pcHashCsrHash1.io.hash
 
-  val pcHashCsrHash2 = Module(new CsrHash(ghrLength , phtTagWidth - 1))
+  val pcHashCsrHash2 = Module(new CsrHash(ghrLength, phtTagWidth - 1))
   pcHashCsrHash2.io.data       := io.globalHistory
   pcHashCsrHash2.io.dataUpdate := io.isGlobalHistoryUpdate
   tagHashCsr2                  := pcHashCsrHash2.io.hash

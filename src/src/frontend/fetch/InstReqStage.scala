@@ -2,9 +2,9 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.{FtqBlockBundle, ICacheRequestHandshakePort, ICacheRequestNdPort}
 import common.BaseStage
-import spec.{Csr, Param, Width}
+import frontend.bundles.{FtqBlockBundle, ICacheRequestHandshakePort, ICacheRequestNdPort}
+import spec.{Param, Width}
 
 class InstReqNdPort extends Bundle {
   val translatedMemReq = new ICacheRequestNdPort

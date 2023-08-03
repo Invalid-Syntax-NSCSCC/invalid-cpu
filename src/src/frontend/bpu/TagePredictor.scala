@@ -5,9 +5,8 @@ import chisel3.util._
 import chisel3.util.random.LFSR
 import frontend.bpu.bundles.{BpuFtqMetaNdPort, TagePredictorUpdateInfoPort}
 import frontend.bpu.components.Bundles.TageMetaPort
-import spec._
 import frontend.bpu.components._
-import frontend.bpu.utils.Lfsr
+import spec._
 
 // TAGE predictor
 // This is the main predictor
@@ -150,7 +149,7 @@ class TagePredictor(
       )
       // Query
       taggedPreditor.io.isGlobalHistoryUpdate := isUpdateValid
-      taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1)-1, 0)
+      taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1) - 1, 0)
       taggedPreditor.io.pc                    := io.pc
       tagUsefulbits(providerId)               := taggedPreditor.io.usefulBits
       tagCtrbits(providerId)                  := taggedPreditor.io.ctrBits

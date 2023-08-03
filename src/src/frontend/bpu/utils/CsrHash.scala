@@ -20,7 +20,9 @@ class CsrHash(
 //  nextCSR           := Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0))
 //  nextCSR(residual) := nextCSR(residual, residual) ^ io.data(inputLength - 1)
 
-  nextCSR := Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0)) ^ (io.data(inputLength - 1) << residual)
+  nextCSR := Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0)) ^ (io.data(
+    inputLength - 1
+  ) << residual).asUInt
 
   when(io.dataUpdate) {
     csr := nextCSR

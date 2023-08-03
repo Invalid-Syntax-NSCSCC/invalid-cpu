@@ -2,11 +2,8 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.{FtqBlockBundle, InstMemResponseNdPort}
-import memory.bundles.MemResponseNdPort
 import common.BaseStage
-import pipeline.dispatch.bundles.FetchInstInfoBundle
-import pipeline.queue.InstQueueEnqNdPort
+import frontend.bundles.{FtqBlockBundle, InstMemResponseNdPort}
 import spec.{Param, Width}
 
 class InstResNdPort extends Bundle {

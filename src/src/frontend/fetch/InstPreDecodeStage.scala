@@ -2,14 +2,12 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import frontend.bundles.PreDecoderResultNdPort
+import common.NoSavedInBaseStage
 import frontend.PreDecoder
 import frontend.bpu.RAS
-import common.BaseStageWOSaveIn
-import pipeline.dispatch.bundles.FetchInstInfoBundle
-import pipeline.queue.InstQueueEnqNdPort
-import spec.Param.BPU.BranchType
-import spec.{Param, Width}
+import frontend.bundles.PreDecoderResultNdPort
+import pipeline.common.bundles.{FetchInstInfoBundle, InstQueueEnqNdPort}
+import spec.Param
 
 class InstPreDecodeNdPort extends Bundle {
   val enqInfos  = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
@@ -47,7 +45,7 @@ object InstPreDecodePeerPort {
 //           1:bpu predict call(may be direct or indirect); 2:bpu not predict,predecode predict direct call jump;
 //          ; the return addr must be push
 class InstPreDecodeStage
-    extends BaseStageWOSaveIn(
+    extends NoSavedInBaseStage(
       new InstPreDecodeNdPort,
       new InstQueueEnqNdPort,
       InstPreDecodeNdPort.default,
@@ -98,12 +96,12 @@ class InstPreDecodeStage
     // only immJump or ret can jump; indirect call would not jump
     // when met immediately jump but bpu do not predict jump, then triger a redirect
     // when met ret jump; redirect
-    val canJump = ((decodeResultVec(jumpIndex).isImmJump  || decodeResultVec(jumpIndex).isRet)
-                   && ! selectedIn
-      .enqInfos(jumpIndex)
-      .bits
-      .ftqInfo
-      .predictBranch)
+    val canJump = ((decodeResultVec(jumpIndex).isImmJump || decodeResultVec(jumpIndex).isRet)
+      && !selectedIn
+        .enqInfos(jumpIndex)
+        .bits
+        .ftqInfo
+        .predictBranch)
     val isPredecoderRedirect = WireDefault(false.B)
     isPredecoderRedirect := isDataValid && isJump && canJump
     val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)

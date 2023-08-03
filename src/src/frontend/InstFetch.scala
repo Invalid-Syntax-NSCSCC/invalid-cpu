@@ -5,10 +5,7 @@ import chisel3.util._
 import frontend.bundles.{FtqIFNdPort, ICacheAccessPort}
 import frontend.fetch._
 import memory.bundles.TlbTransPort
-import pipeline.dispatch.bundles.FetchInstInfoBundle
-import pipeline.memory.bundles.MemCsrNdPort
-import pipeline.queue.InstQueueEnqNdPort
-import spec._
+import pipeline.common.bundles.{InstQueueEnqNdPort, MemCsrNdPort}
 
 class InstFetch extends Module {
   val io = IO(new Bundle {
@@ -66,5 +63,4 @@ class InstFetch extends Module {
   instPreDecodeStage.io.peer.foreach { p =>
     p <> io.preDecodeRedirectPort
   }
-
 }

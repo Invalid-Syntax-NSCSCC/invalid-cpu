@@ -6,7 +6,6 @@ import control.bundles._
 import control.csrBundles._
 import memory.bundles.{TlbCsrWriteNdPort, TransExceptionCsrNdPort}
 import spec._
-import pmu.bundles.PmuNdPort
 
 class Csr(
   writeNum: Int = Param.csrWriteNum,

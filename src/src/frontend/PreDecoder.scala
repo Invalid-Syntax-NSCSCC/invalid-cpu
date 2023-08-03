@@ -2,9 +2,8 @@ package frontend
 
 import chisel3._
 import chisel3.util._
-import spec.Inst.{_2RI16 => Inst}
 import frontend.bundles.PreDecoderResultNdPort
-import spec.Param.BPU.BranchType
+import spec.Inst.{_2RI16 => Inst}
 import spec.Width
 
 class PreDecoder extends Module {
@@ -26,18 +25,18 @@ class PreDecoder extends Module {
 
   switch(opcode) {
     is(Inst.b_) {
-      io.result.isJump       := true.B
+      io.result.isJump         := true.B
       io.result.isImmJump      := true.B
       io.result.jumpTargetAddr := imm26SextShift2.asUInt + io.pc
     }
     is(Inst.bl) {
-      io.result.isJump       := true.B
+      io.result.isJump         := true.B
       io.result.isImmJump      := true.B
       io.result.jumpTargetAddr := imm26SextShift2.asUInt + io.pc
       io.result.isCall         := true.B
     }
     is(Inst.jirl) {
-      io.result.isJump  := true.B
+      io.result.isJump    := true.B
       io.result.isImmJump := false.B
       io.result.isRet     := rd === 0.U && rj === 1.U
       io.result.isCall    := rd === 1.U

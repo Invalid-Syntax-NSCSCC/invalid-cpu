@@ -1,6 +1,5 @@
 package pmu.bundles
 
-import spec._
 import chisel3._
 
 class PmuDispatchBundle extends Bundle {

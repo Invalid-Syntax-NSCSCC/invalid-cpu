@@ -2,21 +2,18 @@ import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
 import common.RegFile
-import control.{Csr, StableCounter}
+import control.{Csr, Cu, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
-import pipeline.commit.CommitStage
-import pipeline.dispatch._
-import pipeline.execution._
-import pipeline.memory.{AddrTransStage, ExeForMemStage, MemReqStage, MemResStage}
-import pipeline.queue.MultiInstQueue
-import pipeline.rob.Rob
+import pipeline.complex.commit.CommitStage
+import pipeline.complex.dispatch._
+import pipeline.complex.execution._
+import pipeline.complex.memory._
+import pipeline.complex.queue._
+import pipeline.complex.rob._
+import pmu.Pmu
 import spec.Param
 import spec.Param.{isDiffTest, isNoPrivilege}
-import control.Cu
-import pmu.Pmu
-import pmu.bundles.PmuNdPort
-import spec.ExeInst
 
 class CoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -104,7 +101,7 @@ class CoreCpuTop extends Module {
   val frontend         = Module(new Frontend)
   val instQueue        = Module(new MultiInstQueue)
   val renameStage      = Module(new RenameStage)
-  val dispatchStage    = Module(new DispatchStage)
+  val dispatchStage    = Module(new DispatchStageMultiBaseStage)
   val exeForMemStage   = Module(new ExeForMemStage)
   val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
   val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))

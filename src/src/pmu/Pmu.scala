@@ -1,15 +1,9 @@
 package pmu
 
-import spec._
 import chisel3._
 import chisel3.util._
-import pmu.bundles.{
-  PmuBranchMisPredictExeNdPort,
-  PmuBranchPredictNdPort,
-  PmuCacheNdPort,
-  PmuDispatchBundle,
-  PmuStoreQueueNdPort
-}
+import pmu.bundles.{PmuBranchPredictNdPort, PmuCacheNdPort, PmuDispatchBundle, PmuStoreQueueNdPort}
+import spec._
 
 class Pmu extends Module {
   val io = IO(new Bundle {
