@@ -2,13 +2,16 @@ package pipeline.simple
 
 import chisel3._
 import chisel3.util._
+import spec.ExeInst.Sel
 import common.BaseStage
 import execution.Alu
+import pipeline.simple.ExeNdPort
+import pipeline.simple.bundles.WbNdPort
 
 class SimpleExeStage
     extends BaseStage(
       new ExeNdPort,
-      new DummyPort,
+      new WbNdPort,
       ExeNdPort.default,
       None
     ) {

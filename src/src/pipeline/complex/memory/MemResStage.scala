@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import common.BaseStage
 import memory.bundles.MemResponseNdPort
-import pipeline.common.bundles.InstInfoNdPort
+import pipeline.complex.bundles.InstInfoNdPort
 import pipeline.complex.commit.WbNdPort
 import spec._
 

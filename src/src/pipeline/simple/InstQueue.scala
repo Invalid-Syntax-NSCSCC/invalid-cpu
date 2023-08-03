@@ -5,7 +5,8 @@ import chisel3.util._
 import common.DistributedQueue
 import common.bundles.BackendRedirectPcNdPort
 import control.enums.ExceptionPos
-import pipeline.common.bundles.{FetchInstInfoBundle, InstInfoNdPort, InstQueueEnqNdPort, PcInstBundle}
+import pipeline.common.bundles.{FetchInstInfoBundle, InstQueueEnqNdPort, PcInstBundle}
+import pipeline.simple.bundles.InstInfoNdPort
 import pipeline.simple.bundles.RobRequestPort
 import pipeline.simple.decode._
 import pipeline.simple.decode.bundles._
@@ -226,12 +227,6 @@ class NewInstQueue(
         }
 
         dequeuePort.bits.decode := selectedDecoder
-        when(!isMatched) {
-          dequeuePort.bits.decode.info.issueEn.zipWithIndex.foreach {
-            case (en, idx) =>
-              en := (idx != Param.loadStoreIssuePipelineIndex).B
-          }
-        }
 
         redirectRequest.en := !selectedDecoder.info.isBranch && decodeInstInfo.ftqInfo.predictBranch && dequeuePort.valid && dequeuePort.ready
         redirectRequest.pcAddr := decodeInstInfo.pcAddr + 4.U

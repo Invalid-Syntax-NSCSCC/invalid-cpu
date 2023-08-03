@@ -47,22 +47,29 @@ class DispatchStage
   selectedIns.lazyZip(dispatchMap).lazyZip(peer.regReadPorts).zipWithIndex.foreach {
     case ((in, dispatchSel, readPort), src_idx) =>
       val dstReady = Wire(Vec(pipelineNum, Bool()))
-      val srcValid = readPort.map(_.data.valid).reduce(_ && _) &&
-        !selectedIns
-          .take(src_idx)
-          .map { prevIn =>
-            (
-              prevIn.decode.info.gprWritePort.addr === in.decode.info.gprWritePort.addr &&
-                in.decode.info.gprWritePort.en
-            ) ||
-            in.decode.info.gprReadPorts.map { r =>
-              r.en && r.addr === prevIn.decode.info.gprWritePort.addr
-            }.reduce(_ || _)
-          }
-          .reduce(_ || _)
-      dstReady.lazyZip(validToOuts).lazyZip(in.decode.info.issueEn).zipWithIndex.foreach {
-        case ((dispatchEn, outReady, issueEn), dst_idx) =>
-          dispatchEn := outReady && issueEn && srcValid &&
+      val srcValid = WireDefault(
+        readPort.map(_.data.valid).reduce(_ && _) &&
+          !selectedIns
+            .take(src_idx)
+            .map { prevIn =>
+              // (
+              //   prevIn.decode.info.gprWritePort.addr === in.decode.info.gprWritePort.addr &&
+              //     in.decode.info.gprWritePort.en
+              // ) ||
+              in.decode.info.gprReadPorts.map { r =>
+                r.en && r.addr === prevIn.decode.info.gprWritePort.addr
+              }.reduce(_ || _)
+            }
+            .reduce(_ || _)
+      )
+      if (src_idx != 0) {
+        when(in.decode.info.isIssueMainPipeline) {
+          srcValid := false.B
+        }
+      }
+      dstReady.lazyZip(validToOuts).zipWithIndex.foreach {
+        case ((dispatchEn, outReady), dst_idx) =>
+          dispatchEn := outReady && srcValid &&
             !dispatchMap
               .take(src_idx)
               .map(_(dst_idx))

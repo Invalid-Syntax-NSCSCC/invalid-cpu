@@ -18,8 +18,8 @@ class Decoder_2R extends BaseDecoder {
 
   switch(opcode) {
     is(Inst.rdcnt_id_vl) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
       when(rj.orR) {
         io.out.info.csrReadEn         := true.B
         io.out.info.csrAddr           := Csr.Index.tid
@@ -33,11 +33,11 @@ class Decoder_2R extends BaseDecoder {
       }
     }
     is(Inst.rdcnt_vh) {
-      io.out.info.forbidOutOfOrder  := true.B
-      io.out.isMatched              := true.B
-      io.out.info.gprWritePort.en   := rdIsNotZero
-      io.out.info.gprWritePort.addr := rd
-      io.out.info.exeOp             := ExeInst.Op.rdcntvh_w
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      io.out.info.gprWritePort.en     := rdIsNotZero
+      io.out.info.gprWritePort.addr   := rd
+      io.out.info.exeOp               := ExeInst.Op.rdcntvh_w
     }
   }
 }

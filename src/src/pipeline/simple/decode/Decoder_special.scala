@@ -77,71 +77,71 @@ class Decoder_special extends BaseDecoder {
 
   switch(opcode17) {
     is(Inst.dbar) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.dbar
-      outInfo.exeSel               := ExeInst.Sel.loadStore
-      outInfo.isHasImm             := true.B
-      immZext                      := hint
-      outInfo.imm                  := immZext
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.dbar
+      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      outInfo.isHasImm                := true.B
+      immZext                         := hint
+      outInfo.imm                     := immZext
     }
     is(Inst.ibar) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.ibar
-      outInfo.exeSel               := ExeInst.Sel.loadStore
-      outInfo.isHasImm             := true.B
-      immZext                      := hint
-      outInfo.imm                  := immZext
-      io.out.info.needRefetch      := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.ibar
+      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      outInfo.isHasImm                := true.B
+      immZext                         := hint
+      outInfo.imm                     := immZext
+      io.out.info.needRefetch         := true.B
     }
   }
 
   // TODO: match only 31 : 20
   switch(opcode32) {
     is(Inst.ertn) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.ertn
-      outInfo.exeSel               := ExeInst.Sel.jumpBranch
-      io.out.info.isPrivilege      := true.B
-      outInfo.needRefetch          := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.ertn
+      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      io.out.info.isPrivilege         := true.B
+      outInfo.needRefetch             := true.B
     }
     is(Inst.tlbsrch) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.tlbsrch
-      outInfo.isTlb                := true.B
-      io.out.info.needRefetch      := true.B
-      outInfo.exeSel               := ExeInst.Sel.loadStore
-      io.out.info.isPrivilege      := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.tlbsrch
+      outInfo.isTlb                   := true.B
+      io.out.info.needRefetch         := true.B
+      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      io.out.info.isPrivilege         := true.B
     }
     is(Inst.tlbrd) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.tlbrd
-      outInfo.isTlb                := true.B
-      io.out.info.needRefetch      := true.B
-      outInfo.exeSel               := ExeInst.Sel.loadStore
-      io.out.info.isPrivilege      := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.tlbrd
+      outInfo.isTlb                   := true.B
+      io.out.info.needRefetch         := true.B
+      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      io.out.info.isPrivilege         := true.B
     }
     is(Inst.tlbwr) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.tlbwr
-      outInfo.isTlb                := true.B
-      io.out.info.needRefetch      := true.B
-      outInfo.exeSel               := ExeInst.Sel.loadStore
-      io.out.info.isPrivilege      := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.tlbwr
+      outInfo.isTlb                   := true.B
+      io.out.info.needRefetch         := true.B
+      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      io.out.info.isPrivilege         := true.B
     }
     is(Inst.tlbfill) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.tlbfill
-      outInfo.isTlb                := true.B
-      io.out.info.needRefetch      := true.B
-      outInfo.exeSel               := ExeInst.Sel.loadStore
-      io.out.info.isPrivilege      := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.tlbfill
+      outInfo.isTlb                   := true.B
+      io.out.info.needRefetch         := true.B
+      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      io.out.info.isPrivilege         := true.B
     }
   }
 }

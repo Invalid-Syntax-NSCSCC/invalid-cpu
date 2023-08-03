@@ -2,12 +2,15 @@ package pipeline.simple
 
 import chisel3._
 import chisel3.util._
+import pipeline.simple.bundles.WbNdPort
 import common.DistributedQueuePlus
 import control.enums.ExceptionPos
 import pipeline.common.bundles.{DifftestTlbFillNdPort, RobInstStoreBundle, RobQueryPcPort}
-import pipeline.common.enums.RegDataState
+import pipeline.common.enums.{RegDataState, RobDistributeSel, RobInstState => State}
 import pipeline.simple.bundles.{RegReadPort, RobMatchBundle, RobOccupyNdPort, RobRequestPort}
+import pipeline.simple.commit.CommitNdPort
 import spec._
+import utils.MultiMux1
 
 class Rob extends Module {
   val issueNum    = Param.issueInstInfoMaxNum
@@ -22,13 +25,13 @@ class Rob extends Module {
     val regReadPorts = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RegReadPort)))
 
     // `ExeStage / LSU` -> `Rob`
-    val finishInsts = Vec(pipelineNum + 1, Flipped(Decoupled(new DummyNdPort)))
+    val finishInsts = Vec(pipelineNum + 1, Flipped(Decoupled(new WbNdPort)))
 
     // `Rob` <-> `Regfile`
     val regfileDatas = Input(Vec(wordLength, UInt(spec.Width.Reg.data)))
 
     // `Rob` -> `WbStage`
-    val commits = Vec(commitNum, Decoupled(new DummyNdPort))
+    val commits = Vec(commitNum, Decoupled(new CommitNdPort))
 
     // `ExePassWb_1` <-> `Rob`
     val queryPcPort = new RobQueryPcPort
@@ -94,7 +97,7 @@ class Rob extends Module {
   // finish insts
 
   io.finishInsts.foreach(_.ready := true.B)
-  val finishInstFillRobBundles = Wire(Vec(pipelineNum + 1, Valid(new DummyNdPort)))
+  val finishInstFillRobBundles = Wire(Vec(pipelineNum + 1, Valid(new WbNdPort)))
   finishInstFillRobBundles.zip(io.finishInsts).foreach {
     case (dst, src) =>
       dst.valid := src.valid
@@ -107,7 +110,7 @@ class Rob extends Module {
   // set rob queue
   queue.io.elems.zip(queue.io.setPorts).zipWithIndex.foreach {
     case ((elem, set), idx) =>
-      val mux = Module(new MultiMux1(pipelineNum, new DummyNdPort, DummyNdPort.default))
+      val mux = Module(new MultiMux1(pipelineNum, new WbNdPort, WbNdPort.default))
       mux.io.inputs.zip(finishInstFillRobBundles).foreach {
         case (input, finishInst) =>
           input.valid := idx.U === finishInst.bits.instInfo.robId &&

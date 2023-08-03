@@ -9,7 +9,8 @@ import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
 import execution.Alu
 import frontend.bundles.ExeFtqPort
-import pipeline.common.bundles.{InstInfoNdPort, RobQueryPcPort}
+import pipeline.common.bundles.RobQueryPcPort
+import pipeline.complex.bundles.InstInfoNdPort
 import pipeline.complex.commit.WbNdPort
 import spec.ExeInst.Sel
 import spec.Param.isDiffTest

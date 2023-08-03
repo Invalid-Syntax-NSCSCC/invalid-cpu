@@ -80,47 +80,47 @@ class Decoder_2RI12 extends BaseDecoder {
     }
     // LoadStore: read0: rj, read1: store reg src, loadStoreImm: offset
     is(Inst.ld_b) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      io.out.info.exeOp            := ExeInst.Op.ld_b
-      io.out.info.exeSel           := ExeInst.Sel.loadStore
-      io.out.info.isHasImm         := false.B
-      io.out.info.loadStoreImm     := immSext.asUInt
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      io.out.info.exeOp               := ExeInst.Op.ld_b
+      io.out.info.exeSel              := ExeInst.Sel.loadStore
+      io.out.info.isHasImm            := false.B
+      io.out.info.loadStoreImm        := immSext.asUInt
     }
     is(Inst.ld_h) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      io.out.info.exeOp            := ExeInst.Op.ld_h
-      io.out.info.exeSel           := ExeInst.Sel.loadStore
-      io.out.info.isHasImm         := false.B
-      io.out.info.loadStoreImm     := immSext.asUInt
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      io.out.info.exeOp               := ExeInst.Op.ld_h
+      io.out.info.exeSel              := ExeInst.Sel.loadStore
+      io.out.info.isHasImm            := false.B
+      io.out.info.loadStoreImm        := immSext.asUInt
     }
     is(Inst.ld_w) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      io.out.info.exeOp            := ExeInst.Op.ld_w
-      io.out.info.exeSel           := ExeInst.Sel.loadStore
-      io.out.info.isHasImm         := false.B
-      io.out.info.loadStoreImm     := immSext.asUInt
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      io.out.info.exeOp               := ExeInst.Op.ld_w
+      io.out.info.exeSel              := ExeInst.Sel.loadStore
+      io.out.info.isHasImm            := false.B
+      io.out.info.loadStoreImm        := immSext.asUInt
     }
     is(Inst.ld_bu) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      io.out.info.exeOp            := ExeInst.Op.ld_bu
-      io.out.info.exeSel           := ExeInst.Sel.loadStore
-      io.out.info.isHasImm         := false.B
-      io.out.info.loadStoreImm     := immSext.asUInt
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      io.out.info.exeOp               := ExeInst.Op.ld_bu
+      io.out.info.exeSel              := ExeInst.Sel.loadStore
+      io.out.info.isHasImm            := false.B
+      io.out.info.loadStoreImm        := immSext.asUInt
     }
     is(Inst.ld_hu) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      io.out.info.exeOp            := ExeInst.Op.ld_hu
-      io.out.info.exeSel           := ExeInst.Sel.loadStore
-      io.out.info.isHasImm         := false.B
-      io.out.info.loadStoreImm     := immSext.asUInt
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      io.out.info.exeOp               := ExeInst.Op.ld_hu
+      io.out.info.exeSel              := ExeInst.Sel.loadStore
+      io.out.info.isHasImm            := false.B
+      io.out.info.loadStoreImm        := immSext.asUInt
     }
     is(Inst.st_b) {
-      io.out.info.forbidOutOfOrder     := true.B
+      io.out.info.isIssueMainPipeline  := true.B
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_b
       io.out.info.exeSel               := ExeInst.Sel.loadStore
@@ -132,7 +132,7 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.gprWritePort.addr    := DontCare
     }
     is(Inst.st_h) {
-      io.out.info.forbidOutOfOrder     := true.B
+      io.out.info.isIssueMainPipeline  := true.B
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_h
       io.out.info.exeSel               := ExeInst.Sel.loadStore
@@ -144,7 +144,7 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.gprWritePort.addr    := DontCare
     }
     is(Inst.st_w) {
-      io.out.info.forbidOutOfOrder     := true.B
+      io.out.info.isIssueMainPipeline  := true.B
       io.out.isMatched                 := true.B
       io.out.info.exeOp                := ExeInst.Op.st_w
       io.out.info.exeSel               := ExeInst.Sel.loadStore
@@ -156,27 +156,27 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.gprWritePort.addr    := DontCare
     }
     is(Inst.cacop) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      io.out.info.exeOp            := ExeInst.Op.cacop
-      io.out.info.exeSel           := ExeInst.Sel.loadStore
-      io.out.info.gprWritePort.en  := false.B
-      io.out.info.isHasImm         := true.B
-      io.out.info.imm              := immSext.asUInt
-      io.out.info.code             := rd
-      io.out.info.isPrivilege      := rd(4, 1) =/= "b0100".U // (rd =/= 8.U) && (rd =/= 9.U)
-      io.out.info.needRefetch      := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      io.out.info.exeOp               := ExeInst.Op.cacop
+      io.out.info.exeSel              := ExeInst.Sel.loadStore
+      io.out.info.gprWritePort.en     := false.B
+      io.out.info.isHasImm            := true.B
+      io.out.info.imm                 := immSext.asUInt
+      io.out.info.code                := rd
+      io.out.info.isPrivilege         := rd(4, 1) =/= "b0100".U // (rd =/= 8.U) && (rd =/= 9.U)
+      io.out.info.needRefetch         := true.B
     }
     is(Inst.preld) {
-      io.out.info.forbidOutOfOrder  := true.B
-      io.out.isMatched              := true.B
-      io.out.info.exeOp             := ExeInst.Op.preld
-      io.out.info.exeSel            := ExeInst.Sel.loadStore
-      io.out.info.isHasImm          := true.B
-      io.out.info.imm               := rd // hint
-      io.out.info.loadStoreImm      := immSext.asUInt
-      io.out.info.gprWritePort.en   := false.B
-      io.out.info.gprWritePort.addr := DontCare
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      io.out.info.exeOp               := ExeInst.Op.preld
+      io.out.info.exeSel              := ExeInst.Sel.loadStore
+      io.out.info.isHasImm            := true.B
+      io.out.info.imm                 := rd // hint
+      io.out.info.loadStoreImm        := immSext.asUInt
+      io.out.info.gprWritePort.en     := false.B
+      io.out.info.gprWritePort.addr   := DontCare
     }
   }
 }

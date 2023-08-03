@@ -49,39 +49,39 @@ class Decoder_2RI14 extends BaseDecoder {
 
   switch(opcode) {
     is(Inst.ll) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.ll
-      outInfo.exeSel               := ExeInst.Sel.loadStore
-      outInfo.gprReadPorts(0).en   := true.B
-      outInfo.gprReadPorts(0).addr := rj
-      outInfo.gprWritePort.en      := rdIsNotZero // true.B
-      outInfo.gprWritePort.addr    := rd
-      outInfo.loadStoreImm         := immSext.asUInt << 2
-      outInfo.needRefetch          := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.ll
+      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      outInfo.gprReadPorts(0).en      := true.B
+      outInfo.gprReadPorts(0).addr    := rj
+      outInfo.gprWritePort.en         := rdIsNotZero // true.B
+      outInfo.gprWritePort.addr       := rd
+      outInfo.loadStoreImm            := immSext.asUInt << 2
+      outInfo.needRefetch             := true.B
     }
     is(Inst.sc) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.sc
-      outInfo.exeSel               := ExeInst.Sel.loadStore
-      outInfo.gprReadPorts(0).en   := true.B
-      outInfo.gprReadPorts(0).addr := rj
-      outInfo.gprReadPorts(1).en   := true.B
-      outInfo.gprReadPorts(1).addr := rd
-      outInfo.gprWritePort.en      := true.B
-      outInfo.gprWritePort.addr    := rd
-      outInfo.loadStoreImm         := immSext.asUInt << 2
-      outInfo.needRefetch          := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.sc
+      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      outInfo.gprReadPorts(0).en      := true.B
+      outInfo.gprReadPorts(0).addr    := rj
+      outInfo.gprReadPorts(1).en      := true.B
+      outInfo.gprReadPorts(1).addr    := rd
+      outInfo.gprWritePort.en         := true.B
+      outInfo.gprWritePort.addr       := rd
+      outInfo.loadStoreImm            := immSext.asUInt << 2
+      outInfo.needRefetch             := true.B
     }
     // csr读写指令
     is(Inst.csr_) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeSel               := ExeInst.Sel.none
-      outInfo.csrAddr              := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
-      outInfo.csrReadEn            := true.B
-      io.out.info.isPrivilege      := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeSel                  := ExeInst.Sel.none
+      outInfo.csrAddr                 := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
+      outInfo.csrReadEn               := true.B
+      io.out.info.isPrivilege         := true.B
       when(rj === "b00000".U) { // csrrd csr -> rd
         outInfo.exeOp             := ExeInst.Op.csrrd
         outInfo.gprWritePort.en   := rdIsNotZero // true.B

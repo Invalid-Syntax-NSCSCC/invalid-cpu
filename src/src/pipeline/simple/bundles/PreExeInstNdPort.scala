@@ -32,11 +32,10 @@ class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   val needRefetch = Bool()
   val isTlb       = Bool()
 
-  val issueEn          = Vec(Param.pipelineNum, Bool())
-  val forbidOutOfOrder = Bool()
-  val isPrivilege      = Bool()
-  val isBranch         = Bool()
-  val branchType       = UInt(Param.BPU.BranchType.width.W)
+  val isIssueMainPipeline = Bool()
+  val isPrivilege         = Bool()
+  val isBranch            = Bool()
+  val branchType          = UInt(Param.BPU.BranchType.width.W)
 }
 
 object PreExeInstNdPort {

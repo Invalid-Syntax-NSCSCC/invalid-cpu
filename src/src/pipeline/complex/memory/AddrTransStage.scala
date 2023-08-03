@@ -7,7 +7,8 @@ import common.enums.ReadWriteSel
 import control.enums.ExceptionPos
 import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
-import pipeline.common.bundles.{InstInfoNdPort, MemCsrNdPort, MemRequestNdPort}
+import pipeline.common.bundles.{MemCsrNdPort, MemRequestNdPort}
+import pipeline.complex.bundles.InstInfoNdPort
 import pipeline.common.enums.AddrTransType
 import pipeline.complex.memory.bundles.CacheMaintenanceInstNdPort
 import spec.Param._

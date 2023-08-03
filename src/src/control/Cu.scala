@@ -6,7 +6,7 @@ import common.bundles.{BackendRedirectPcNdPort, PassThroughPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort}
 import control.enums.ExceptionPos
 import frontend.bundles.{CuCommitFtqNdPort, QueryPcBundle}
-import pipeline.common.bundles.InstInfoNdPort
+import pipeline.simple.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param, Width}
 

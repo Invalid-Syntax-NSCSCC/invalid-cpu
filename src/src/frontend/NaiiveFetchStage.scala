@@ -5,6 +5,7 @@ import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
 import spec.Param.{NaiiveFetchStageState => State}
+import pipeline.common.bundles.FetchInstInfoBundle
 import spec._
 
 class NaiiveFetchStage extends Module {

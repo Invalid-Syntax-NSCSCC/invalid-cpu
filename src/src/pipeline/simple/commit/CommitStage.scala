@@ -1,23 +1,14 @@
-package pipeline.complex.commit
+package pipeline.simple.commit
 
 import chisel3._
 import chisel3.util._
 import common.bundles.RfWriteNdPort
 import control.enums.ExceptionPos
 import pipeline.common.bundles.PcInstBundle
-import pipeline.complex.bundles.InstInfoNdPort
+import pipeline.simple.bundles.InstInfoNdPort
 import pmu.bundles.PmuBranchPredictNdPort
 import spec.Param.isDiffTest
 import spec._
-
-class WbNdPort extends Bundle {
-  val gprWrite = new RfWriteNdPort
-  val instInfo = new InstInfoNdPort
-}
-
-object WbNdPort {
-  def default = 0.U.asTypeOf(new WbNdPort)
-}
 
 class CommitNdPort extends Bundle {
   val gprWrite  = new RfWriteNdPort

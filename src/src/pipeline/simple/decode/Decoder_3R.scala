@@ -37,8 +37,8 @@ class Decoder_3R extends BaseDecoder {
 
   switch(opcode) {
     is(Inst.idle) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
       outInfo.gprReadPorts.foreach(_.en := false.B)
       outInfo.gprWritePort.en := false.B
       outInfo.exeOp           := ExeInst.Op.idle
@@ -47,7 +47,7 @@ class Decoder_3R extends BaseDecoder {
       io.out.info.needRefetch := true.B
     }
     is(Inst.invtlb) {
-      io.out.info.forbidOutOfOrder := true.B
+      io.out.info.isIssueMainPipeline := true.B
       when(invtlbOp <= 6.U) {
         io.out.isMatched          := true.B
         outInfo.exeOp             := ExeInst.Op.invtlb
@@ -178,28 +178,28 @@ class Decoder_3R extends BaseDecoder {
       outInfo.imm                  := ui5
     }
     is(Inst.break_) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.break_
-      outInfo.gprReadPorts(0).en   := false.B
-      outInfo.gprReadPorts(0).addr := DontCare
-      outInfo.gprReadPorts(1).en   := false.B
-      outInfo.gprReadPorts(1).addr := DontCare
-      outInfo.gprWritePort.en      := false.B
-      outInfo.gprWritePort.addr    := DontCare
-      outInfo.needRefetch          := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.break_
+      outInfo.gprReadPorts(0).en      := false.B
+      outInfo.gprReadPorts(0).addr    := DontCare
+      outInfo.gprReadPorts(1).en      := false.B
+      outInfo.gprReadPorts(1).addr    := DontCare
+      outInfo.gprWritePort.en         := false.B
+      outInfo.gprWritePort.addr       := DontCare
+      outInfo.needRefetch             := true.B
     }
     is(Inst.syscall) {
-      io.out.info.forbidOutOfOrder := true.B
-      io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.syscall
-      outInfo.gprReadPorts(0).en   := false.B
-      outInfo.gprReadPorts(0).addr := DontCare
-      outInfo.gprReadPorts(1).en   := false.B
-      outInfo.gprReadPorts(1).addr := DontCare
-      outInfo.gprWritePort.en      := false.B
-      outInfo.gprWritePort.addr    := DontCare
-      outInfo.needRefetch          := true.B
+      io.out.info.isIssueMainPipeline := true.B
+      io.out.isMatched                := true.B
+      outInfo.exeOp                   := ExeInst.Op.syscall
+      outInfo.gprReadPorts(0).en      := false.B
+      outInfo.gprReadPorts(0).addr    := DontCare
+      outInfo.gprReadPorts(1).en      := false.B
+      outInfo.gprReadPorts(1).addr    := DontCare
+      outInfo.gprWritePort.en         := false.B
+      outInfo.gprWritePort.addr       := DontCare
+      outInfo.needRefetch             := true.B
     }
   }
 }

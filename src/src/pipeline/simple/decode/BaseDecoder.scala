@@ -10,9 +10,4 @@ abstract class BaseDecoder extends Module {
   // 3) Something else...
 
   val io = IO(new DecodePort)
-
-  io.out.info.issueEn.zipWithIndex.foreach {
-    case (en, idx) =>
-      en := false.B
-  }
 }
