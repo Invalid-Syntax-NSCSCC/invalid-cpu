@@ -11,8 +11,6 @@ object Param {
   val isReleasePackage = false
   val isFullFpga       = false
 
-  val useNewBackend = false
-
   val usePmu = false || isChiplab // 性能计数器
 
   val isDiffTest          = false || isChiplab
