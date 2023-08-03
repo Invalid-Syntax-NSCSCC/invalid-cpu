@@ -406,8 +406,8 @@ class MainExeStage
   // branch
 
   // val branchEnableFlag = RegInit(true.B)
-  val blockingReg = RegInit(false.B)
-  when(blockingReg) {
+  val branchBlockingReg = RegInit(false.B)
+  when(branchBlockingReg) {
     isComputed := false.B
   }
 
@@ -441,7 +441,7 @@ class MainExeStage
 
   val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && isBranchInst
   when(isRedirect) {
-    blockingReg                           := true.B
+    branchBlockingReg                     := true.B
     out.wb.instInfo.ftqInfo.isLastInBlock := true.B
   }
 
@@ -463,7 +463,7 @@ class MainExeStage
 
     feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
-      !blockingReg,
+      !branchBlockingReg,
       false.B
     )
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
@@ -474,7 +474,7 @@ class MainExeStage
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
   } else {
 
-    feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !blockingReg
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
@@ -493,6 +493,6 @@ class MainExeStage
   }
 
   when(io.isFlush) {
-    blockingReg := false.B
+    branchBlockingReg := false.B
   }
 }
