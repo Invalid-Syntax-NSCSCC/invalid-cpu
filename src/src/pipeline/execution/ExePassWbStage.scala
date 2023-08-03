@@ -256,20 +256,22 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       //   RegNext(fallThroughPc)
       // )
 
-      feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst, false.B) && RegNext(
+      feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
+        (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
         branchEnableFlag,
         false.B
       )
       feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
-        (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B))
+        (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
+        (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
       feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
       feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
       feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
     } else {
 
-      feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
+      feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && branchEnableFlag
       feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
-        (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
+        (jumpBranchInfo.en && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
       feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
       feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
       feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
