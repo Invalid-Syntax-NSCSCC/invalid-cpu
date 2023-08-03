@@ -7,7 +7,9 @@ import common.DistributedQueuePlus
 import control.enums.ExceptionPos
 import pipeline.common.bundles.{DifftestTlbFillNdPort, RobInstStoreBundle, RobQueryPcPort}
 import pipeline.common.enums.{RegDataState, RobDistributeSel, RobInstState => State}
-import pipeline.simple.bundles.{RegReadPort, RobMatchBundle, RobOccupyNdPort, RobRequestPort}
+import pipeline.simple.bundles.{RegReadPort, RobRequestPort}
+import pipeline.simple.bundles.RegMatchBundle
+
 import pipeline.simple.commit.CommitNdPort
 import spec._
 import utils.MultiMux1
@@ -21,14 +23,8 @@ class Rob extends Module {
   val io = IO(new Bundle {
     val requests = Vec(issueNum, new RobRequestPort)
 
-    val occupyPorts  = Input(Vec(issueNum, new RobOccupyNdPort))
-    val regReadPorts = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RegReadPort)))
-
     // `ExeStage / LSU` -> `Rob`
-    val finishInsts = Vec(pipelineNum + 1, Flipped(Decoupled(new WbNdPort)))
-
-    // `Rob` <-> `Regfile`
-    val regfileDatas = Input(Vec(wordLength, UInt(spec.Width.Reg.data)))
+    val finishInsts = Vec(pipelineNum, Flipped(Decoupled(new WbNdPort)))
 
     // `Rob` -> `WbStage`
     val commits = Vec(commitNum, Decoupled(new CommitNdPort))
@@ -47,25 +43,6 @@ class Rob extends Module {
   io.commits.foreach { commit =>
     commit.valid := false.B
     commit.bits  := DontCare
-  }
-
-  // common match table
-  val matchTable           = RegInit(VecInit(Seq.fill(spec.Count.reg)(RobMatchBundle.default)))
-  val wbNextMatchTableData = WireDefault(Vec(Count.reg, Valid(UInt(Width.Reg.data))))
-  matchTable.zip(wbNextMatchTableData).foreach {
-    case (dst, src) =>
-      src.valid := dst.state === RegDataState.ready
-      src.bits  := dst.data
-      dst.state := Mux(src.valid, RegDataState.ready, RegDataState.busy)
-      dst.data  := src.bits
-      dst.robId := dst.robId
-  }
-
-  io.regReadPorts.foreach { readPorts =>
-    readPorts.foreach { r =>
-      r.data.valid := wbNextMatchTableData(r.addr).valid
-      r.data.bits  := wbNextMatchTableData(r.addr).bits
-    }
   }
 
   val queue = Module(
@@ -97,7 +74,7 @@ class Rob extends Module {
   // finish insts
 
   io.finishInsts.foreach(_.ready := true.B)
-  val finishInstFillRobBundles = Wire(Vec(pipelineNum + 1, Valid(new WbNdPort)))
+  val finishInstFillRobBundles = Wire(Vec(pipelineNum, Valid(new WbNdPort)))
   finishInstFillRobBundles.zip(io.finishInsts).foreach {
     case (dst, src) =>
       dst.valid := src.valid
@@ -121,24 +98,6 @@ class Rob extends Module {
       set.valid       := elem.state === State.busy && mux.io.output.valid
       set.bits.state  := State.ready
       set.bits.wbPort := mux.io.output.bits
-  }
-
-  // update match table
-  matchTable.zip(wbNextMatchTableData).foreach {
-    case (elem, nextElem) =>
-      val mux = Module(new MultiMux1(pipelineNum, UInt(spec.Width.Reg.data), zeroWord))
-      mux.io.inputs.zip(io.finishInsts).foreach {
-        case (input, finishInst) =>
-          input.valid := finishInst.valid &&
-            finishInst.bits.instInfo.isValid &&
-            finishInst.bits.gprWrite.en &&
-            finishInst.bits.instInfo.robId(Param.Width.Rob._id - 1, 0) === elem.robId(Param.Width.Rob._id - 1, 0)
-          input.bits := finishInst.bits.gprWrite.data
-      }
-      when(mux.io.output.valid && elem.state === RegDataState.busy) {
-        nextElem.valid := true.B
-        nextElem.bits  := mux.io.output.bits
-      }
   }
 
   // Commit
@@ -198,24 +157,9 @@ class Rob extends Module {
       enq.bits.fetchInfo := req.request.bits
   }
 
-  // occupy port for dispatch
-  io.occupyPorts.foreach { occupy =>
-    when(occupy.valid) {
-      matchTable(occupy.addr).state := RegDataState.busy
-      matchTable(occupy.addr).robId := occupy.addr
-    }
-  }
-
   // flush
 
   when(io.isFlush) {
-    // Reset registers
-    matchTable.zip(io.regfileDatas).foreach {
-      case (dst, src) => {
-        dst.state := RegDataState.ready
-        dst.data  := src
-      }
-    }
 
     if (Param.isDiffTest) {
       io.commits.map(_.bits.instInfo).foreach { info =>

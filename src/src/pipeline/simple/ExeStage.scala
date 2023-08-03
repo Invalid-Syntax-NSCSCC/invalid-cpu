@@ -2,6 +2,7 @@ package pipeline.simple
 
 import chisel3._
 import chisel3.util._
+import scala.collection.immutable
 import common.BaseStage
 import common.bundles._
 import control.bundles._
@@ -11,6 +12,16 @@ import frontend.bundles._
 import pipeline.common.bundles.RobQueryPcPort
 import pipeline.simple.bundles.InstInfoNdPort
 import spec._
+import spec.ExeInst.Sel
+import pipeline.common.bundles.MemRequestNdPort
+import memory.bundles.TlbMaintenanceNdPort
+import pipeline.complex.memory.bundles.CacheMaintenanceInstNdPort
+import pipeline.simple.bundles.WbNdPort
+import memory.bundles.CacheMaintenanceControlNdPort
+import common.enums.ReadWriteSel
+import control.enums.ExceptionPos
+import pipeline.common.enums.CacheMaintenanceTargetType
+import pipeline.simple.bundles.RegWakeUpNdPort
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -54,407 +65,434 @@ class ExePeerPort extends Bundle {
   val feedbackFtq = Flipped(new ExeFtqPort)
 
   val robQueryPcPort = Flipped(new RobQueryPcPort)
+
+  val regWakeUpPort = Output(new RegWakeUpNdPort)
 }
 
-// class MainExeStage
-//     extends BaseStage(
-//       new ExeNdPort,
-//       // new DummyNdPort,
-//       ExeNdPort.default,
-//       Some(new ExePeerPort)
-//     ) {
-//   val out  = io.out.bits
-//   val peer = io.peer.get
+// TODO : modify and move this port to AddrTransStage
+class AddrTransNdPort extends Bundle {
+  val isAtomicStore    = Bool()
+  val memRequest       = new MemRequestNdPort
+  val tlbMaintenance   = new TlbMaintenanceNdPort
+  val cacheMaintenance = new CacheMaintenanceInstNdPort
+  val wb               = new WbNdPort
+}
 
-//   // Fallback
-//   // ALU module
-//   val alu = Module(new Alu)
+class MainExeStage
+    extends BaseStage(
+      new ExeNdPort,
+      new AddrTransNdPort, // TODO : change to addr trans port
+      ExeNdPort.default,
+      Some(new ExePeerPort)
+    ) {
+  val out      = Wire(new AddrTransNdPort)
+  val outValid = Wire(Bool())
+  resultOutReg.valid := outValid
+  resultOutReg.bits  := out
+  val peer = io.peer.get
 
-//   isComputed                      := alu.io.outputValid && !(out.isLoadStore && !io.out.ready)
-//   out                             := DontCare
-//   out.cacheMaintenance.control    := CacheMaintenanceControlNdPort.default
-//   out.isAtomicStore               := false.B
-//   out.tlbMaintenance.isRead       := false.B
-//   out.tlbMaintenance.isSearch     := false.B
-//   out.tlbMaintenance.isFill       := false.B
-//   out.tlbMaintenance.isWrite      := false.B
-//   out.tlbMaintenance.isInvalidate := false.B
-//   out.wb.instInfo                 := selectedIn.instInfo
-//   out.wb.gprWrite.en              := selectedIn.gprWritePort.en
-//   out.wb.gprWrite.addr            := selectedIn.gprWritePort.addr
-//   io.out.valid                    := isComputed && selectedIn.instInfo.isValid
+  // Fallback
+  // ALU module
+  val alu = Module(new Alu)
 
-//   // memory
+  isComputed                      := alu.io.outputValid
+  out                             := DontCare
+  out.cacheMaintenance.control    := CacheMaintenanceControlNdPort.default
+  out.isAtomicStore               := false.B
+  out.tlbMaintenance.isRead       := false.B
+  out.tlbMaintenance.isSearch     := false.B
+  out.tlbMaintenance.isFill       := false.B
+  out.tlbMaintenance.isWrite      := false.B
+  out.tlbMaintenance.isInvalidate := false.B
+  out.wb.instInfo                 := selectedIn.instInfo
+  out.wb.gprWrite.en              := selectedIn.gprWritePort.en
+  out.wb.gprWrite.addr            := selectedIn.gprWritePort.addr
+  outValid                        := isComputed && selectedIn.instInfo.isValid
 
-//   val isDbarBlockingReg = RegInit(false.B)
-//   // dbar start
-//   when(selectedIn.instInfo.isValid && selectedIn.exeOp === ExeInst.Op.dbar) {
-//     isDbarBlockingReg := true.B
-//   }
-//   // dbar execute and finish
-//   when(isDbarBlockingReg) {
-//     isComputed := false.B
-//     when(io.peer.get.dbarFinish) {
-//       isDbarBlockingReg := false.B
-//     }
-//   }
+  // memory
 
-//   // Generate address
-//   val isAddrNotAligned   = WireDefault(false.B)
-//   val loadStoreAddr      = selectedIn.leftOperand + selectedIn.loadStoreImm
-//   val maskEncode         = loadStoreAddr(1, 0)
-//   val isAtomicStoreValid = io.peer.get.csr.llbctl.rollb && selectedIn.exeOp === ExeInst.Op.sc
-//   val isRead =
-//     VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
-//       .contains(selectedIn.exeOp)
-//   val isWrite =
-//     VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w).contains(selectedIn.exeOp) || isAtomicStoreValid
-//   val isValidLoadStore = (isRead || isWrite) && !isAddrNotAligned
-//   out.memRequest.write.data := selectedIn.rightOperand
-//   switch(selectedIn.exeOp) {
-//     is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
-//       out.memRequest.mask := Mux(
-//         maskEncode(1),
-//         Mux(maskEncode(0), "b1000".U, "b0100".U),
-//         Mux(maskEncode(0), "b0010".U, "b0001".U)
-//       )
-//     }
-//     is(ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.st_h) {
-//       when(maskEncode(0)) {
-//         isAddrNotAligned := true.B
-//       }
-//       out.memRequest.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
-//     }
-//     is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
-//       isAddrNotAligned    := maskEncode.orR
-//       out.memRequest.mask := "b1111".U
-//     }
-//   }
-//   switch(selectedIn.exeOp) {
-//     is(ExeInst.Op.st_b) {
-//       out.memRequest.write.data := Cat(
-//         Seq.fill(wordLength / byteLength)(selectedIn.rightOperand(byteLength - 1, 0))
-//       )
-//     }
-//     is(ExeInst.Op.st_h) {
-//       out.memRequest.write.data := Cat(Seq.fill(2)(selectedIn.rightOperand(wordLength / 2 - 1, 0)))
-//     }
-//   }
-//   out.memRequest.isValid               := isValidLoadStore
-//   out.memRequest.addr                  := loadStoreAddr
-//   out.memRequest.read.isUnsigned       := VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp)
-//   out.memRequest.rw                    := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
-//   out.isAtomicStore                    := selectedIn.exeOp === ExeInst.Op.sc
-//   out.wb.instInfo.forbidParallelCommit := isValidLoadStore
-//   out.wb.instInfo.isStore              := isWrite && !isAddrNotAligned
+  val isDbarBlockingReg = RegInit(false.B)
+  // dbar start
+  when(selectedIn.instInfo.isValid && selectedIn.exeOp === ExeInst.Op.dbar) {
+    isDbarBlockingReg := true.B
+  }
+  // dbar execute and finish
+  when(isDbarBlockingReg) {
+    isComputed := false.B
+    when(io.peer.get.dbarFinish) {
+      isDbarBlockingReg := false.B
+    }
+  }
 
-//   // Handle exception
-//   when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && isAddrNotAligned) {
-//     out.wb.instInfo.exceptionPos    := ExceptionPos.backend
-//     out.wb.instInfo.exceptionRecord := Csr.ExceptionIndex.ale
-//   }
+  // Generate address
+  val isAddrNotAligned   = WireDefault(false.B)
+  val loadStoreAddr      = selectedIn.leftOperand + selectedIn.loadStoreImm
+  val maskEncode         = loadStoreAddr(1, 0)
+  val isAtomicStoreValid = io.peer.get.csr.llbctl.rollb && selectedIn.exeOp === ExeInst.Op.sc
+  val isRead =
+    VecInit(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.ld_w, ExeInst.Op.ll)
+      .contains(selectedIn.exeOp)
+  val isWrite =
+    VecInit(ExeInst.Op.st_b, ExeInst.Op.st_h, ExeInst.Op.st_w).contains(selectedIn.exeOp) || isAtomicStoreValid
+  val isValidLoadStore = (isRead || isWrite) && !isAddrNotAligned
+  out.memRequest.write.data := selectedIn.rightOperand
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.ld_b, ExeInst.Op.ld_bu, ExeInst.Op.st_b) {
+      out.memRequest.mask := Mux(
+        maskEncode(1),
+        Mux(maskEncode(0), "b1000".U, "b0100".U),
+        Mux(maskEncode(0), "b0010".U, "b0001".U)
+      )
+    }
+    is(ExeInst.Op.ld_h, ExeInst.Op.ld_hu, ExeInst.Op.st_h) {
+      when(maskEncode(0)) {
+        isAddrNotAligned := true.B
+      }
+      out.memRequest.mask := Mux(maskEncode(1), "b1100".U, "b0011".U)
+    }
+    is(ExeInst.Op.ld_w, ExeInst.Op.ll, ExeInst.Op.st_w, ExeInst.Op.sc) {
+      isAddrNotAligned    := maskEncode.orR
+      out.memRequest.mask := "b1111".U
+    }
+  }
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.st_b) {
+      out.memRequest.write.data := Cat(
+        Seq.fill(wordLength / byteLength)(selectedIn.rightOperand(byteLength - 1, 0))
+      )
+    }
+    is(ExeInst.Op.st_h) {
+      out.memRequest.write.data := Cat(Seq.fill(2)(selectedIn.rightOperand(wordLength / 2 - 1, 0)))
+    }
+  }
+  out.memRequest.isValid               := isValidLoadStore
+  out.memRequest.addr                  := loadStoreAddr
+  out.memRequest.read.isUnsigned       := VecInit(ExeInst.Op.ld_bu, ExeInst.Op.ld_hu).contains(selectedIn.exeOp)
+  out.memRequest.rw                    := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
+  out.isAtomicStore                    := selectedIn.exeOp === ExeInst.Op.sc
+  out.wb.instInfo.forbidParallelCommit := isValidLoadStore
+  out.wb.instInfo.isStore              := isWrite && !isAddrNotAligned
 
-//   // Handle TLB maintenance
-//   out.tlbMaintenance.registerAsid   := selectedIn.leftOperand(9, 0)
-//   out.tlbMaintenance.virtAddr       := selectedIn.rightOperand
-//   out.tlbMaintenance.invalidateInst := selectedIn.tlbInvalidateInst
-//   switch(selectedIn.exeOp) {
-//     is(ExeInst.Op.tlbfill) {
-//       out.tlbMaintenance.isFill := true.B
-//     }
-//     is(ExeInst.Op.tlbrd) {
-//       out.tlbMaintenance.isRead := true.B
-//     }
-//     is(ExeInst.Op.tlbsrch) {
-//       out.tlbMaintenance.isSearch := true.B
-//     }
-//     is(ExeInst.Op.tlbwr) {
-//       out.tlbMaintenance.isWrite := true.B
-//     }
-//     is(ExeInst.Op.invtlb) {
-//       out.tlbMaintenance.isInvalidate := true.B
-//     }
-//   }
+  // Handle exception
+  when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && isAddrNotAligned) {
+    out.wb.instInfo.exceptionPos    := ExceptionPos.backend
+    out.wb.instInfo.exceptionRecord := Csr.ExceptionIndex.ale
+  }
 
-//   // Cache maintenance
-//   val cacopAddr = WireDefault(selectedIn.leftOperand + selectedIn.rightOperand)
-//   val isCacop   = WireDefault(selectedIn.exeOp === ExeInst.Op.cacop)
-//   when(isCacop) {
-//     out.memRequest.addr                  := cacopAddr
-//     out.wb.instInfo.forbidParallelCommit := true.B
+  // Handle TLB maintenance
+  out.tlbMaintenance.registerAsid   := selectedIn.leftOperand(9, 0)
+  out.tlbMaintenance.virtAddr       := selectedIn.rightOperand
+  out.tlbMaintenance.invalidateInst := selectedIn.tlbInvalidateInst
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.tlbfill) {
+      out.tlbMaintenance.isFill := true.B
+    }
+    is(ExeInst.Op.tlbrd) {
+      out.tlbMaintenance.isRead := true.B
+    }
+    is(ExeInst.Op.tlbsrch) {
+      out.tlbMaintenance.isSearch := true.B
+    }
+    is(ExeInst.Op.tlbwr) {
+      out.tlbMaintenance.isWrite := true.B
+    }
+    is(ExeInst.Op.invtlb) {
+      out.tlbMaintenance.isInvalidate := true.B
+    }
+  }
 
-//     switch(selectedIn.code(2, 0)) {
-//       is(0.U) {
-//         out.cacheMaintenance.target            := CacheMaintenanceTargetType.inst
-//         out.cacheMaintenance.control.isL1Valid := true.B
-//       }
-//       is(1.U) {
-//         out.cacheMaintenance.target            := CacheMaintenanceTargetType.data
-//         out.cacheMaintenance.control.isL1Valid := true.B
-//       }
-//       is(2.U) {
-//         out.cacheMaintenance.control.isL2Valid := true.B
-//       }
-//     }
+  // Cache maintenance
+  val cacopAddr = WireDefault(selectedIn.leftOperand + selectedIn.rightOperand)
+  val isCacop   = WireDefault(selectedIn.exeOp === ExeInst.Op.cacop)
+  when(isCacop) {
+    out.memRequest.addr                  := cacopAddr
+    out.wb.instInfo.forbidParallelCommit := true.B
 
-//     switch(selectedIn.code(4, 3)) {
-//       is(0.U) {
-//         out.cacheMaintenance.control.isInit := true.B
-//       }
-//       is(1.U) {
-//         out.cacheMaintenance.control.isCoherentByIndex := true.B
-//       }
-//       is(2.U) {
-//         out.cacheMaintenance.control.isCoherentByHit := true.B
-//       }
-//     }
-//   }
+    switch(selectedIn.code(2, 0)) {
+      is(0.U) {
+        out.cacheMaintenance.target            := CacheMaintenanceTargetType.inst
+        out.cacheMaintenance.control.isL1Valid := true.B
+      }
+      is(1.U) {
+        out.cacheMaintenance.target            := CacheMaintenanceTargetType.data
+        out.cacheMaintenance.control.isL1Valid := true.B
+      }
+      is(2.U) {
+        out.cacheMaintenance.control.isL2Valid := true.B
+      }
+    }
 
-//   out.isLoadStore := selectedIn.exeSel === ExeInst.Sel.loadStore && out.wb.instInfo.exceptionPos === ExceptionPos.none
+    switch(selectedIn.code(4, 3)) {
+      is(0.U) {
+        out.cacheMaintenance.control.isInit := true.B
+      }
+      is(1.U) {
+        out.cacheMaintenance.control.isCoherentByIndex := true.B
+      }
+      is(2.U) {
+        out.cacheMaintenance.control.isCoherentByHit := true.B
+      }
+    }
+  }
 
-//   // Difftest
-//   if (isDiffTest) {
-//     out.wb.instInfo.load.get.en := Mux(
-//       isAddrNotAligned,
-//       0.U,
-//       Cat(
-//         0.U(2.W),
-//         selectedIn.exeOp === ExeInst.Op.ll,
-//         selectedIn.exeOp === ExeInst.Op.ld_w,
-//         selectedIn.exeOp === ExeInst.Op.ld_hu,
-//         selectedIn.exeOp === ExeInst.Op.ld_h,
-//         selectedIn.exeOp === ExeInst.Op.ld_bu,
-//         selectedIn.exeOp === ExeInst.Op.ld_b
-//       )
-//     )
-//     out.wb.instInfo.store.get.en := Mux(
-//       isAddrNotAligned,
-//       0.U,
-//       Cat(
-//         0.U(4.W),
-//         isAtomicStoreValid,
-//         selectedIn.exeOp === ExeInst.Op.st_w,
-//         selectedIn.exeOp === ExeInst.Op.st_h,
-//         selectedIn.exeOp === ExeInst.Op.st_b
-//       )
-//     )
-//     out.wb.instInfo.load.get.vaddr  := loadStoreAddr
-//     out.wb.instInfo.store.get.vaddr := loadStoreAddr
-//     out.wb.instInfo.store.get.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
-//       immutable.Seq(
-//         ExeInst.Op.st_b -> Mux(
-//           maskEncode(1),
-//           Mux(
-//             maskEncode(0),
-//             Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
-//             Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
-//           ),
-//           Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
-//         ),
-//         ExeInst.Op.st_h -> Mux(
-//           maskEncode(1),
-//           Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
-//           selectedIn.rightOperand(15, 0)
-//         )
-//       )
-//     )
-//   }
+  // wake up
 
-//   // alu
+  val isLoadStore = selectedIn.exeSel === ExeInst.Sel.loadStore && out.wb.instInfo.exceptionPos === ExceptionPos.none
+  val wakeUp      = io.peer.get.regWakeUpPort
+  wakeUp.en    := outValid && selectedIn.gprWritePort.en && !isLoadStore
+  wakeUp.addr  := selectedIn.gprWritePort.addr
+  wakeUp.data  := out.wb.gprWrite.data
+  wakeUp.robId := selectedIn.instInfo.robId
 
-//   // ALU input
-//   alu.io.isFlush                := io.isFlush
-//   alu.io.inputValid             := selectedIn.instInfo.isValid
-//   alu.io.aluInst.op             := selectedIn.exeOp
-//   alu.io.aluInst.leftOperand    := selectedIn.leftOperand
-//   alu.io.aluInst.rightOperand   := selectedIn.rightOperand
-//   alu.io.aluInst.jumpBranchAddr := selectedIn.jumpBranchAddr // also load-store imm
+  // Difftest
+  if (Param.isDiffTest) {
+    out.wb.instInfo.load.get.en := Mux(
+      isAddrNotAligned,
+      0.U,
+      Cat(
+        0.U(2.W),
+        selectedIn.exeOp === ExeInst.Op.ll,
+        selectedIn.exeOp === ExeInst.Op.ld_w,
+        selectedIn.exeOp === ExeInst.Op.ld_hu,
+        selectedIn.exeOp === ExeInst.Op.ld_h,
+        selectedIn.exeOp === ExeInst.Op.ld_bu,
+        selectedIn.exeOp === ExeInst.Op.ld_b
+      )
+    )
+    out.wb.instInfo.store.get.en := Mux(
+      isAddrNotAligned,
+      0.U,
+      Cat(
+        0.U(4.W),
+        isAtomicStoreValid,
+        selectedIn.exeOp === ExeInst.Op.st_w,
+        selectedIn.exeOp === ExeInst.Op.st_h,
+        selectedIn.exeOp === ExeInst.Op.st_b
+      )
+    )
+    out.wb.instInfo.load.get.vaddr  := loadStoreAddr
+    out.wb.instInfo.store.get.vaddr := loadStoreAddr
+    out.wb.instInfo.store.get.data := MuxLookup(selectedIn.exeOp, selectedIn.rightOperand)(
+      immutable.Seq(
+        ExeInst.Op.st_b -> Mux(
+          maskEncode(1),
+          Mux(
+            maskEncode(0),
+            Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
+            Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
+          ),
+          Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
+        ),
+        ExeInst.Op.st_h -> Mux(
+          maskEncode(1),
+          Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
+          selectedIn.rightOperand(15, 0)
+        )
+      )
+    )
+  }
 
-//   out.wb.gprWrite.data      := DontCare
-//   peer.robQueryPcPort.robId := selectedIn.instInfo.robId
+  // alu
 
-//   when(io.isFlush) {
-//     isDbarBlockingReg := false.B
-//   }
+  // ALU input
+  alu.io.isFlush                := io.isFlush
+  alu.io.inputValid             := selectedIn.instInfo.isValid
+  alu.io.aluInst.op             := selectedIn.exeOp
+  alu.io.aluInst.leftOperand    := selectedIn.leftOperand
+  alu.io.aluInst.rightOperand   := selectedIn.rightOperand
+  alu.io.aluInst.jumpBranchAddr := selectedIn.jumpBranchAddr // also load-store imm
 
-//   val fallThroughPc = peer.robQueryPcPort.pc + 4.U
+  out.wb.gprWrite.data      := DontCare
+  peer.robQueryPcPort.robId := selectedIn.instInfo.robId
 
-//   switch(selectedIn.exeSel) {
-//     is(Sel.logic) {
-//       out.wb.gprWrite.data := alu.io.result.logic
-//     }
-//     is(Sel.shift) {
-//       out.wb.gprWrite.data := alu.io.result.shift
-//     }
-//     is(Sel.arithmetic) {
-//       out.wb.gprWrite.data := alu.io.result.arithmetic
-//     }
-//     is(Sel.jumpBranch) {
-//       out.wb.gprWrite.data := fallThroughPc
-//     }
-//   }
+  when(io.isFlush) {
+    isDbarBlockingReg := false.B
+  }
 
-//   // excp
+  val fallThroughPc = peer.robQueryPcPort.pc + 4.U
 
-//   val isSyscall = selectedIn.exeOp === ExeInst.Op.syscall
-//   val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
+  switch(selectedIn.exeSel) {
+    is(Sel.logic) {
+      out.wb.gprWrite.data := alu.io.result.logic
+    }
+    is(Sel.shift) {
+      out.wb.gprWrite.data := alu.io.result.shift
+    }
+    is(Sel.arithmetic) {
+      out.wb.gprWrite.data := alu.io.result.arithmetic
+    }
+    is(Sel.jumpBranch) {
+      out.wb.gprWrite.data := fallThroughPc
+    }
+  }
 
-//   when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
-//     when(isSyscall) {
-//       out.wb.instInfo.exceptionPos    := ExceptionPos.backend
-//       out.wb.instInfo.exceptionRecord := Csr.ExceptionIndex.sys
-//     }.elsewhen(isBreak) {
-//       out.wb.instInfo.exceptionPos    := ExceptionPos.backend
-//       out.wb.instInfo.exceptionRecord := Csr.ExceptionIndex.brk
-//     }
-//   }
+  // excp
 
-//   // cnt
+  val isSyscall = selectedIn.exeOp === ExeInst.Op.syscall
+  val isBreak   = selectedIn.exeOp === ExeInst.Op.break_
 
-//   if (isDiffTest) {
-//     out.wb.instInfo.timerInfo.get.isCnt := VecInit(ExeInst.Op.rdcntvl_w, ExeInst.Op.rdcntvh_w)
-//       .contains(selectedIn.exeOp)
-//     out.wb.instInfo.timerInfo.get.timer64 := peer.stableCounterReadPort.output
-//   }
+  when(selectedIn.instInfo.exceptionPos === ExceptionPos.none) {
+    when(isSyscall) {
+      out.wb.instInfo.exceptionPos    := ExceptionPos.backend
+      out.wb.instInfo.exceptionRecord := Csr.ExceptionIndex.sys
+    }.elsewhen(isBreak) {
+      out.wb.instInfo.exceptionPos    := ExceptionPos.backend
+      out.wb.instInfo.exceptionRecord := Csr.ExceptionIndex.brk
+    }
+  }
 
-//   switch(selectedIn.exeOp) {
-//     is(ExeInst.Op.rdcntvl_w) {
-//       out.wb.gprWrite.data := io.peer.get.stableCounterReadPort.output(wordLength - 1, 0)
-//     }
+  // cnt
 
-//     is(ExeInst.Op.rdcntvh_w) {
-//       out.wb.gprWrite.data := io.peer.get.stableCounterReadPort
-//         .output(doubleWordLength - 1, wordLength)
-//     }
-//   }
+  if (Param.isDiffTest) {
+    out.wb.instInfo.timerInfo.get.isCnt := VecInit(ExeInst.Op.rdcntvl_w, ExeInst.Op.rdcntvh_w)
+      .contains(selectedIn.exeOp)
+    out.wb.instInfo.timerInfo.get.timer64 := peer.stableCounterReadPort.output
+  }
 
-//   // csr
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.rdcntvl_w) {
+      out.wb.gprWrite.data := io.peer.get.stableCounterReadPort.output(wordLength - 1, 0)
+    }
 
-//   def csrAddr = selectedIn.csrAddr
+    is(ExeInst.Op.rdcntvh_w) {
+      out.wb.gprWrite.data := io.peer.get.stableCounterReadPort
+        .output(doubleWordLength - 1, wordLength)
+    }
+  }
 
-//   io.peer.get.csrReadPort.en   := true.B
-//   io.peer.get.csrReadPort.addr := csrAddr
+  // csr
 
-//   val csrReadData = Mux(csrAddr(31), zeroWord, io.peer.get.csrReadPort.data)
+  def csrAddr = selectedIn.csrAddr
 
-//   def csrWriteStorePort = io.peer.get.csrWriteStorePort
-//   csrWriteStorePort.valid     := false.B
-//   csrWriteStorePort.bits.en   := false.B
-//   csrWriteStorePort.bits.addr := csrAddr
-//   csrWriteStorePort.bits.data := DontCare
+  io.peer.get.csrReadPort.en   := true.B
+  io.peer.get.csrReadPort.addr := csrAddr
 
-//   switch(selectedIn.exeOp) {
-//     is(ExeInst.Op.csrrd) {
-//       out.wb.gprWrite.data := csrReadData
-//     }
-//     is(ExeInst.Op.csrwr) {
-//       io.peer.get.csrWriteStorePort.valid   := true.B
-//       io.peer.get.csrWriteStorePort.bits.en := true.B
-//       csrWriteStorePort.bits.data           := selectedIn.leftOperand
-//       out.wb.gprWrite.data                  := csrReadData
-//     }
-//     is(ExeInst.Op.csrxchg) {
-//       io.peer.get.csrWriteStorePort.valid   := true.B
-//       io.peer.get.csrWriteStorePort.bits.en := true.B
-//       // lop: write value  rop: mask
-//       val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
-//       selectedIn.leftOperand.asBools
-//         .lazyZip(selectedIn.rightOperand.asBools)
-//         .lazyZip(csrReadData.asBools)
-//         .lazyZip(gprWriteDataVec)
-//         .foreach {
-//           case (write, mask, origin, target) =>
-//             target := Mux(mask, write, origin)
-//         }
-//       csrWriteStorePort.bits.data := gprWriteDataVec.asUInt
-//       out.wb.gprWrite.data        := csrReadData
-//     }
-//   }
+  val csrReadData = Mux(csrAddr(31), zeroWord, io.peer.get.csrReadPort.data)
 
-//   // branch
+  def csrWriteStorePort = io.peer.get.csrWriteStorePort
+  csrWriteStorePort.valid     := false.B
+  csrWriteStorePort.bits.en   := false.B
+  csrWriteStorePort.bits.addr := csrAddr
+  csrWriteStorePort.bits.data := DontCare
 
-//   val branchEnableFlag = RegInit(true.B)
+  switch(selectedIn.exeOp) {
+    is(ExeInst.Op.csrrd) {
+      out.wb.gprWrite.data := csrReadData
+    }
+    is(ExeInst.Op.csrwr) {
+      io.peer.get.csrWriteStorePort.valid   := true.B
+      io.peer.get.csrWriteStorePort.bits.en := true.B
+      csrWriteStorePort.bits.data           := selectedIn.leftOperand
+      out.wb.gprWrite.data                  := csrReadData
+    }
+    is(ExeInst.Op.csrxchg) {
+      io.peer.get.csrWriteStorePort.valid   := true.B
+      io.peer.get.csrWriteStorePort.bits.en := true.B
+      // lop: write value  rop: mask
+      val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
+      selectedIn.leftOperand.asBools
+        .lazyZip(selectedIn.rightOperand.asBools)
+        .lazyZip(csrReadData.asBools)
+        .lazyZip(gprWriteDataVec)
+        .foreach {
+          case (write, mask, origin, target) =>
+            target := Mux(mask, write, origin)
+        }
+      csrWriteStorePort.bits.data := gprWriteDataVec.asUInt
+      out.wb.gprWrite.data        := csrReadData
+    }
+  }
 
-//   val branchSetPort = io.peer.get.branchSetPort
+  // branch
 
-//   // branch set
-//   branchSetPort := BackendRedirectPcNdPort.default
+  // val branchEnableFlag = RegInit(true.B)
+  val blockingReg = RegInit(false.B)
+  when(blockingReg) {
+    isComputed := false.B
+  }
 
-//   val feedbackFtq    = io.peer.get.feedbackFtq
-//   val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)
-//   val inFtqInfo      = WireDefault(selectedIn.instInfo.ftqInfo)
+  val branchSetPort = io.peer.get.branchSetPort
 
-//   feedbackFtq.queryPcBundle.ftqId := selectedIn.instInfo.ftqInfo.ftqId + 1.U
-//   val ftqQueryPc = feedbackFtq.queryPcBundle.pc
+  // branch set
+  branchSetPort := BackendRedirectPcNdPort.default
 
-//   // mis predict
-//   val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
-//   val branchTargetMispredict = (
-//     jumpBranchInfo.en &&
-//       inFtqInfo.predictBranch &&
-//       jumpBranchInfo.pcAddr =/= ftqQueryPc
-//   ) || (
-//     !jumpBranchInfo.en &&
-//       !inFtqInfo.predictBranch &&
-//       inFtqInfo.isLastInBlock &&
-//       fallThroughPc =/= ftqQueryPc
-//   )
+  val feedbackFtq    = io.peer.get.feedbackFtq
+  val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)
+  val inFtqInfo      = WireDefault(selectedIn.instInfo.ftqInfo)
 
-//   // is branch
-//   val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
+  feedbackFtq.queryPcBundle.ftqId := selectedIn.instInfo.ftqInfo.ftqId + 1.U
+  val ftqQueryPc = feedbackFtq.queryPcBundle.pc
 
-//   val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && branchEnableFlag && isBranchInst
-//   when(isRedirect) {
-//     branchEnableFlag                      := false.B
-//     out.wb.instInfo.ftqInfo.isLastInBlock := true.B
-//   }
+  // mis predict
+  val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
+  val branchTargetMispredict = (
+    jumpBranchInfo.en &&
+      inFtqInfo.predictBranch &&
+      jumpBranchInfo.pcAddr =/= ftqQueryPc
+  ) || (
+    !jumpBranchInfo.en &&
+      !inFtqInfo.predictBranch &&
+      inFtqInfo.isLastInBlock &&
+      fallThroughPc =/= ftqQueryPc
+  )
 
-//   if (Param.usePmu) {
-//     out.wb.instInfo.ftqCommitInfo.directionMispredict.get := branchDirectionMispredict && branchEnableFlag && isBranchInst
-//     out.wb.instInfo.ftqCommitInfo.targetMispredict.get := branchTargetMispredict && branchEnableFlag && isBranchInst
-//   }
+  // is branch
+  val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
 
-//   branchSetPort.en    := isRedirect
-//   branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
+  val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && isBranchInst
+  when(isRedirect) {
+    blockingReg                           := true.B
+    out.wb.instInfo.ftqInfo.isLastInBlock := true.B
+  }
 
-//   branchSetPort.pcAddr := Mux(
-//     jumpBranchInfo.en,
-//     jumpBranchInfo.pcAddr,
-//     fallThroughPc
-//   )
+  if (Param.usePmu) {
+    out.wb.instInfo.ftqCommitInfo.directionMispredict.get := branchDirectionMispredict && isBranchInst
+    out.wb.instInfo.ftqCommitInfo.targetMispredict.get    := branchTargetMispredict && isBranchInst
+  }
 
-//   if (Param.exeFeedBackFtqDelay) {
+  branchSetPort.en    := isRedirect
+  branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
 
-//     feedbackFtq.commitBundle.ftqMetaUpdateValid := RegNext(isBranchInst, false.B) && RegNext(
-//       branchEnableFlag,
-//       false.B
-//     )
-//     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
-//       (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B))
-//     feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
-//     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
-//     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
-//   } else {
+  branchSetPort.pcAddr := Mux(
+    jumpBranchInfo.en,
+    jumpBranchInfo.pcAddr,
+    fallThroughPc
+  )
 
-//     feedbackFtq.commitBundle.ftqMetaUpdateValid := isBranchInst && branchEnableFlag
-//     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
-//       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock)
-//     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
-//     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
-//     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
-//   }
+  if (Param.exeFeedBackFtqDelay) {
 
-//   out.wb.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
-//   out.wb.instInfo.ftqCommitInfo.isRedirect      := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
+      (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
+      !blockingReg,
+      false.B
+    )
+    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
+      (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
+      (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
+    feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
+    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
+    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
+  } else {
 
-//   val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
-//   val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !blockingReg
+    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
+      (jumpBranchInfo.en && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
+    feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
+    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+  }
 
-//   when(isBranchInst || isIdle || isErtn) {
-//     out.wb.instInfo.forbidParallelCommit := true.B
-//   }
+  out.wb.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
+  out.wb.instInfo.ftqCommitInfo.isRedirect      := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
-//   when(io.isFlush) {
-//     branchEnableFlag := true.B
-//   }
-// }
+  val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
+  val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
+
+  when(isBranchInst || isIdle || isErtn) {
+    out.wb.instInfo.forbidParallelCommit := true.B
+  }
+
+  when(io.isFlush) {
+    blockingReg := false.B
+  }
+}

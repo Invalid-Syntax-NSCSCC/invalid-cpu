@@ -7,16 +7,25 @@ import common.BaseStage
 import execution.Alu
 import pipeline.simple.ExeNdPort
 import pipeline.simple.bundles.WbNdPort
+import pipeline.simple.bundles.RegWakeUpNdPort
 
 class SimpleExeStage
     extends BaseStage(
       new ExeNdPort,
       new WbNdPort,
       ExeNdPort.default,
-      None
+      Some(new RegWakeUpNdPort)
     ) {
-  val out  = io.out.bits
+  val out      = Wire(new WbNdPort)
+  val outValid = Wire(Bool())
+  resultOutReg.bits  := out
+  resultOutReg.valid := outValid
+
   val peer = io.peer.get
+  peer.en    := outValid && selectedIn.gprWritePort.en
+  peer.addr  := selectedIn.gprWritePort.addr
+  peer.data  := out.gprWrite.data
+  peer.robId := selectedIn.instInfo.robId
 
   // ALU module
   val alu = Module(new Alu)
@@ -26,7 +35,7 @@ class SimpleExeStage
   out.instInfo      := selectedIn.instInfo
   out.gprWrite.en   := selectedIn.gprWritePort.en
   out.gprWrite.addr := selectedIn.gprWritePort.addr
-  io.out.valid      := isComputed && selectedIn.instInfo.isValid
+  outValid          := isComputed && selectedIn.instInfo.isValid
 
   // alu
 

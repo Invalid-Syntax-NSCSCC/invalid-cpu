@@ -23,11 +23,11 @@ object FetchInstDecodeNdPort {
 }
 
 // assert: enqueuePorts总是最低的几位有效
-class NewInstQueue(
-  val queueLength: Int = Param.instQueueLength,
-  val channelNum:  Int = Param.instQueueChannelNum,
-  val fetchNum:    Int = Param.fetchInstMaxNum,
-  val issueNum:    Int = Param.issueInstInfoMaxNum)
+class InstQueue(
+  queueLength: Int = Param.instQueueLength,
+  channelNum:  Int = Param.instQueueChannelNum,
+  fetchNum:    Int = Param.fetchInstMaxNum,
+  issueNum:    Int = Param.issueInstInfoMaxNum)
     extends Module {
   val io = IO(new Bundle {
     val isFrontendFlush = Input(Bool())

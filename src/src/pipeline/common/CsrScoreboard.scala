@@ -1,4 +1,4 @@
-package pipeline.complex.dispatch
+package pipeline.common
 
 import chisel3._
 import chisel3.util.Valid

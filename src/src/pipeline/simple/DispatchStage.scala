@@ -4,12 +4,12 @@ import chisel3._
 import chisel3.util._
 import common.NoSavedInMultiBaseStage
 import control.enums.ExceptionPos
-import pipeline.simple.bundles.{RegReadPort, RobOccupyNdPort}
+import pipeline.simple.bundles.{RegOccupyNdPort, RegReadPort}
 import spec._
 
 class DispatchPeerPort extends Bundle {
   val regReadPorts = Vec(Param.issueInstInfoMaxNum, Vec(Param.regFileReadNum, Flipped(new RegReadPort)))
-  val occupyPorts  = Input(Vec(Param.issueInstInfoMaxNum, new RobOccupyNdPort))
+  val occupyPorts  = Input(Vec(Param.issueInstInfoMaxNum, new RegOccupyNdPort))
 }
 
 class DispatchStage

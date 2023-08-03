@@ -244,15 +244,6 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
     if (Param.exeFeedBackFtqDelay) {
 
-      // branchSetPort.en    := RegNext(isRedirect)
-      // branchSetPort.ftqId := RegNext(selectedIn.instInfo.ftqInfo.ftqId)
-
-      // branchSetPort.pcAddr := Mux(
-      //   RegNext(jumpBranchInfo.en),
-      //   RegNext(jumpBranchInfo.pcAddr),
-      //   RegNext(fallThroughPc)
-      // )
-
       feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
         (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
         branchEnableFlag,
