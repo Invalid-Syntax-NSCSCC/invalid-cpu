@@ -147,7 +147,7 @@ class DispatchStage
       case (pmuInfo, in, out, regReadPort) =>
         pmuInfo.isIssueInst        := out.ready && out.valid && !io.isFlush
         pmuInfo.bubbleFromBackend  := out.valid && !out.ready && !io.isFlush
-        pmuInfo.bubbleFromFrontend := in.ready && !in.valid && !io.isFlush
+        pmuInfo.bubbleFromFrontend := !in.valid && !io.isFlush
         pmuInfo.bubbleFromDataDependence :=
           in.valid &&
             in.bits.decode.info.gprReadPorts
