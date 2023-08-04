@@ -1,4 +1,4 @@
-package pipeline.simple.commit.bundles
+package pipeline.simple.bundles
 
 import chisel3._
 import spec._

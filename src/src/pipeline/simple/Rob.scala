@@ -9,8 +9,6 @@ import pipeline.common.bundles.{DifftestTlbFillNdPort, RobInstStoreBundle, RobQu
 import pipeline.common.enums.{RegDataState, RobDistributeSel, RobInstState => State}
 import pipeline.simple.bundles.{RegReadPort, RobRequestPort}
 import pipeline.simple.bundles.RegMatchBundle
-
-import pipeline.simple.commit.CommitNdPort
 import spec._
 import utils.MultiMux1
 
