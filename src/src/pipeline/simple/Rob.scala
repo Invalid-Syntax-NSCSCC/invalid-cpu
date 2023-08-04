@@ -5,7 +5,9 @@ import chisel3.util._
 import pipeline.simple.bundles.WbNdPort
 import common.DistributedQueuePlus
 import control.enums.ExceptionPos
-import pipeline.common.bundles.{DifftestTlbFillNdPort, RobInstStoreBundle, RobQueryPcPort}
+import pipeline.common.bundles.{DifftestTlbFillNdPort, RobQueryPcPort}
+import pipeline.simple.bundles.RobInstStoreBundle
+
 import pipeline.common.enums.{RegDataState, RobDistributeSel, RobInstState => State}
 import pipeline.simple.bundles.{RegReadPort, RobRequestPort}
 import pipeline.simple.bundles.RegMatchBundle

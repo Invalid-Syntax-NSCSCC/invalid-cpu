@@ -4,10 +4,11 @@ import chisel3._
 import chisel3.util._
 import common.DistributedQueuePlus
 import control.enums.ExceptionPos
-import pipeline.common.bundles.{DifftestTlbFillNdPort, RobInstStoreBundle, RobQueryPcPort}
+import pipeline.common.bundles.{DifftestTlbFillNdPort, RobQueryPcPort}
+import pipeline.complex.bundles.RobInstStoreBundle
+
 import pipeline.common.enums.{RegDataState, RobDistributeSel, RobInstState => State}
 import pipeline.complex.commit._
-import pipeline.complex.commit.bundles._
 import pipeline.complex.rob.bundles._
 import spec.Param._
 import spec._
