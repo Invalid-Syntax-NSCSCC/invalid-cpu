@@ -6,10 +6,10 @@ import common.enums.ReadWriteSel
 import common.{BaseStage, LookupQueue}
 import control.enums.ExceptionPos
 import memory.bundles.{CacheMaintenanceControlNdPort, CacheMaintenanceHandshakePort, MemRequestHandshakePort}
-import pipeline.common.bundles.MemRequestNdPort
+import pipeline.common.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort}
 import pipeline.complex.bundles.InstInfoNdPort
 import pipeline.common.enums.CacheMaintenanceTargetType
-import pipeline.complex.memory.bundles.{CacheMaintenanceInstNdPort, StoreInfoBundle}
+import pipeline.complex.memory.bundles.StoreInfoBundle
 import pmu.bundles.PmuStoreQueueNdPort
 import spec.Param.{isFullUncachedPatch, isMmioDelay}
 import spec._

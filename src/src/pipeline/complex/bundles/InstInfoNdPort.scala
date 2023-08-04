@@ -3,7 +3,6 @@ package pipeline.complex.bundles
 import chisel3._
 import control.bundles._
 import control.enums.ExceptionPos
-import pipeline.complex.commit.bundles.CommitFtqInfoBundle
 import spec.Param.isDiffTest
 import pipeline.common.bundles._
 import spec._

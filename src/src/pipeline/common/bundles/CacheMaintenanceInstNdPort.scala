@@ -1,4 +1,4 @@
-package pipeline.complex.memory.bundles
+package pipeline.common.bundles
 
 import chisel3._
 import memory.bundles.CacheMaintenanceControlNdPort

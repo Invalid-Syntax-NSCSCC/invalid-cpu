@@ -9,13 +9,12 @@ import control.bundles._
 import control.csrBundles._
 import execution.Alu
 import frontend.bundles._
-import pipeline.common.bundles.RobQueryPcPort
+import pipeline.common.bundles.{CacheMaintenanceInstNdPort, RobQueryPcPort}
 import pipeline.simple.bundles.InstInfoNdPort
 import spec._
 import spec.ExeInst.Sel
 import pipeline.common.bundles.MemRequestNdPort
 import memory.bundles.TlbMaintenanceNdPort
-import pipeline.complex.memory.bundles.CacheMaintenanceInstNdPort
 import pipeline.simple.bundles.WbNdPort
 import memory.bundles.CacheMaintenanceControlNdPort
 import common.enums.ReadWriteSel
@@ -67,15 +66,6 @@ class ExePeerPort extends Bundle {
   val robQueryPcPort = Flipped(new RobQueryPcPort)
 
   val regWakeUpPort = Output(new RegWakeUpNdPort)
-}
-
-// TODO : modify and move this port to AddrTransStage
-class AddrTransNdPort extends Bundle {
-  val isAtomicStore    = Bool()
-  val memRequest       = new MemRequestNdPort
-  val tlbMaintenance   = new TlbMaintenanceNdPort
-  val cacheMaintenance = new CacheMaintenanceInstNdPort
-  val wb               = new WbNdPort
 }
 
 class MainExeStage
