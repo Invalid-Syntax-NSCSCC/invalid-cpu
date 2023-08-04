@@ -6,7 +6,7 @@ import common.bundles.RfWriteNdPort
 import control.enums.ExceptionPos
 import pipeline.common.bundles.PcInstBundle
 import pipeline.simple.bundles.InstInfoNdPort
-import pipeline.complex.pmu.bundles.PmuBranchPredictNdPort
+import pipeline.simple.pmu.bundles.PmuBranchPredictNdPort
 import spec.Param.isDiffTest
 import spec._
 

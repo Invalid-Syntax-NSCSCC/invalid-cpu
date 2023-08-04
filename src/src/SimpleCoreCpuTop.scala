@@ -2,7 +2,7 @@ import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
 import common.RegFile
-import control.{Csr, CsrScoreboard, Cu, StableCounter}
+import control.{Csr, CsrScoreboard, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.simple._
