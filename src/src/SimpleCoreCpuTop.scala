@@ -10,9 +10,7 @@ import pmu.Pmu
 import spec.Param
 import spec.Param.{isDiffTest, isNoPrivilege}
 
-class SimpleCoreCpuTop extends Module {
-
-  this.suggestName("CoreCpuTop")
+class CoreCpuTop extends Module {
 
   val io = IO(new Bundle {
     val intrpt = Input(UInt(8.W))

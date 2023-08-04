@@ -15,7 +15,7 @@ import pmu.Pmu
 import spec.Param
 import spec.Param.{isDiffTest, isNoPrivilege}
 
-class CoreCpuTop extends Module {
+class ComplexCoreCpuTop extends Module {
   val io = IO(new Bundle {
     val intrpt = Input(UInt(8.W))
     val axi    = new AxiMasterInterface

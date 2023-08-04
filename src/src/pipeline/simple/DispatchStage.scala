@@ -82,6 +82,9 @@ class DispatchStage
               .map(_(dst_idx))
               .foldLeft(false.B)(_ || _) &&
             srcEns.take(src_idx).foldLeft(true.B)(_ && _)
+          if (dst_idx > src_idx) {
+            dispatchEn := false.B
+          }
       }
       // select one
       dispatchSel.zip(PriorityEncoderOH(dstReady)).foreach {
