@@ -1,8 +1,8 @@
-package pmu
+package pipeline.complex.pmu
 
 import chisel3._
 import chisel3.util._
-import pmu.bundles.{PmuBranchPredictNdPort, PmuCacheNdPort, PmuDispatchBundle, PmuStoreQueueNdPort}
+import pipeline.complex.pmu.bundles.{PmuBranchPredictNdPort, PmuCacheNdPort, PmuDispatchBundle, PmuStoreQueueNdPort}
 import spec._
 
 class Pmu extends Module {

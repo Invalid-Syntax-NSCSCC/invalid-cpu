@@ -8,7 +8,7 @@ import chisel3.util.random.LFSR
 import frontend.bundles.ICacheAccessPort
 import memory.bundles.{CacheMaintenanceHandshakePort, ICacheStatusTagBundle}
 import memory.enums.{ICacheState => State}
-import pmu.bundles.PmuCacheNdPort
+import pipeline.complex.pmu.bundles.PmuCacheNdPort
 import spec._
 
 class ICache(

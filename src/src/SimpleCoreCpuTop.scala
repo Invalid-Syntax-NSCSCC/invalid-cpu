@@ -6,7 +6,7 @@ import control.{Csr, CsrScoreboard, Cu, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.simple._
-import pmu.Pmu
+import pipeline.complex.pmu.Pmu
 import spec.Param
 import spec.Param.{isDiffTest, isNoPrivilege}
 

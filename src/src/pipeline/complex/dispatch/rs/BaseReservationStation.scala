@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import pipeline.complex.dispatch.bundles.ReservationStationBundle
 import pipeline.complex.rob.bundles.InstWbNdPort
-import pmu.bundles.PmuDispatchBundle
+import pipeline.complex.pmu.bundles.PmuDispatchBundle
 import spec.Param
 
 abstract class BaseReservationStation(

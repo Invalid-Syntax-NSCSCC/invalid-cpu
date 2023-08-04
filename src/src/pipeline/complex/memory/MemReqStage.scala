@@ -10,7 +10,7 @@ import pipeline.common.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort}
 import pipeline.complex.bundles.InstInfoNdPort
 import pipeline.common.enums.CacheMaintenanceTargetType
 import pipeline.complex.memory.bundles.StoreInfoBundle
-import pmu.bundles.PmuStoreQueueNdPort
+import pipeline.complex.pmu.bundles.PmuStoreQueueNdPort
 import spec.Param.{isFullUncachedPatch, isMmioDelay}
 import spec._
 

@@ -1,4 +1,4 @@
-package pmu.bundles
+package pipeline.complex.pmu.bundles
 
 import chisel3._
 

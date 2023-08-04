@@ -11,7 +11,7 @@ import pipeline.complex.execution._
 import pipeline.complex.memory._
 import pipeline.complex.queue._
 import pipeline.complex.rob._
-import pmu.Pmu
+import pipeline.complex.pmu.Pmu
 import spec.Param
 import spec.Param.{isDiffTest, isNoPrivilege}
 import axi.Axi3x1Crossbar
