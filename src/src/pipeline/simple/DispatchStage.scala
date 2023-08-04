@@ -6,10 +6,12 @@ import common.NoSavedInMultiBaseStage
 import control.enums.ExceptionPos
 import pipeline.simple.bundles.{RegOccupyNdPort, RegReadPort}
 import spec._
+import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
 
 class DispatchPeerPort extends Bundle {
   val regReadPorts = Vec(Param.issueInstInfoMaxNum, Vec(Param.regFileReadNum, Flipped(new RegReadPort)))
   val occupyPorts  = Output(Vec(Param.issueInstInfoMaxNum, new RegOccupyNdPort))
+  val pmu          = Option.when(Param.usePmu)(Vec(Param.issueInstInfoMaxNum, new PmuDispatchInfoBundle))
 }
 
 class DispatchStage
@@ -137,6 +139,28 @@ class DispatchStage
     }.reduce(_ || _)
   ) {
     blockReg := true.B
+  }
+
+  if (Param.usePmu) {
+    val pmu = io.peer.get.pmu.get
+    pmu.lazyZip(io.ins).lazyZip(io.outs.take(issueNum)).lazyZip(io.peer.get.regReadPorts).foreach {
+      case (pmuInfo, in, out, regReadPort) =>
+        pmuInfo.isIssueInst        := out.ready && out.valid && !io.isFlush
+        pmuInfo.bubbleFromBackend  := out.valid && !out.ready && !io.isFlush
+        pmuInfo.bubbleFromFrontend := in.ready && !in.valid && !io.isFlush
+        pmuInfo.bubbleFromDataDependence :=
+          in.valid &&
+            in.bits.decode.info.gprReadPorts
+              .zip(regReadPort)
+              .map {
+                case (inRead, r) =>
+                  inRead.en && !r.data.valid
+              }
+              .reduce(_ || _) &&
+            !pmuInfo.bubbleFromBackend &&
+            !pmuInfo.bubbleFromFrontend &&
+            !io.isFlush
+    }
   }
 
   when(io.isFlush) {

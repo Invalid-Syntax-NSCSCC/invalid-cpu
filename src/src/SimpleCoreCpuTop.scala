@@ -6,7 +6,7 @@ import control.{Csr, CsrScoreboard, Cu, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.simple._
-import pipeline.complex.pmu.Pmu
+import pipeline.simple.pmu.Pmu
 import spec.Param
 import spec.Param.{isDiffTest, isNoPrivilege}
 
@@ -353,21 +353,17 @@ class CoreCpuTop extends Module {
   io.debug0_wb.rf.wdata := commitStage.io.gprWritePorts(0).data
 
   // pmu
-  // if (Param.usePmu) {
-  //   val pmu = Module(new Pmu)
-  //   pmu.io.instqueueFull      := !instQueue.io.enqueuePort.ready
-  //   pmu.io.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
-  //   pmu.io.instQueueEmpty     := instQueue.io.pmu_instqueueEmpty.get
-  //   pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
-  //   pmu.io.dispatchInfos.zip(dispatchStage.io.peer.get.pmu_dispatchInfos.get).foreach {
-  //     case (dst, src) =>
-  //       dst := src
-  //   }
-  //   pmu.io.robFull    := !rob.io.requests.head.ready && !cu.io.backendFlush
-  //   pmu.io.storeQueue := memReqStage.peer.pmu.get
-  //   pmu.io.dCache     := dCache.io.pmu.get
-  //   pmu.io.iCache     := iCache.io.pmu.get
-  // }
+  if (Param.usePmu) {
+    val pmu = Module(new Pmu)
+    pmu.io.instqueueFull      := !instQueue.io.enqueuePort.ready
+    pmu.io.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
+    pmu.io.instQueueEmpty     := instQueue.io.pmu_instqueueEmpty.get
+    pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
+    pmu.io.robFull            := !rob.io.requests.head.result.valid && !cu.io.backendFlush
+    pmu.io.dCache             := dCache.io.pmu.get
+    pmu.io.iCache             := iCache.io.pmu.get
+    connectVec(pmu.io.dispatchInfos, dispatchStage.io.peer.get.pmu.get)
+  }
 
   // Difftest
   // TODO: Some ports
