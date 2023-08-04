@@ -67,7 +67,7 @@ class DispatchStage
                 r.en && r.addr === prevIn.decode.info.gprWritePort.addr
               }.reduce(_ || _)
             }
-            .reduce(_ || _)
+            .foldLeft(false.B)(_ || _)
       )
       if (src_idx != 0) {
         when(in.decode.info.isIssueMainPipeline) {

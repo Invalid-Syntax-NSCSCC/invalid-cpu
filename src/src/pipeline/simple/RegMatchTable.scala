@@ -18,7 +18,7 @@ class RegMatchTable(
   val io = IO(new Bundle {
 
     val occupyPorts  = Input(Vec(issueNum, new RegOccupyNdPort))
-    val regReadPorts = Vec(issueNum, Vec(Param.regFileReadNum, Flipped(new RegReadPort)))
+    val regReadPorts = Vec(issueNum, Vec(Param.regFileReadNum, new RegReadPort))
 
     val wakeUpPorts = Input(Vec(pipelineNum + 1, new RegWakeUpNdPort))
 
@@ -29,7 +29,7 @@ class RegMatchTable(
 
   // common match table
   val matchTable           = RegInit(VecInit(Seq.fill(spec.Count.reg)(RegMatchBundle.default)))
-  val wbNextMatchTableData = WireDefault(Vec(Count.reg, Valid(UInt(Width.Reg.data))))
+  val wbNextMatchTableData = Wire(Vec(Count.reg, Valid(UInt(Width.Reg.data))))
   matchTable.zip(wbNextMatchTableData).foreach {
     case (dst, src) =>
       src.valid := dst.state === RegDataState.ready
