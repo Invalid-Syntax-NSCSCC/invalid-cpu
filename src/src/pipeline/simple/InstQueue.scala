@@ -165,9 +165,9 @@ class InstQueue(
         src.ready := false.B
       }
 
-      robIdReq.request.valid       := src.valid
+      robIdReq.request.valid       := src.valid && src.ready
       robIdReq.request.bits.pcAddr := src.bits.pcAddr
-      robIdReq.request.bits.inst   := src.bits.pcAddr
+      robIdReq.request.bits.inst   := src.bits.inst
   }
 
   io.dequeuePorts.zip(resultQueue.io.dequeuePorts).foreach {
