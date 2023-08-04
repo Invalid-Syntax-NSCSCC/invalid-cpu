@@ -161,7 +161,6 @@ class MainExeStage
   out.memRequest.rw                    := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
   out.isAtomicStore                    := selectedIn.exeOp === ExeInst.Op.sc
   out.wb.instInfo.forbidParallelCommit := isValidLoadStore
-  out.wb.instInfo.isStore              := isWrite && !isAddrNotAligned
 
   // Handle exception
   when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && isAddrNotAligned) {

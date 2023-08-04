@@ -235,6 +235,11 @@ class InstQueue(
         dequeuePort.bits.instInfo.ftqCommitInfo.isRedirect := redirectRequest.en
         dequeuePort.bits.instInfo.robId                    := robIdReq.result.bits
 
+        if (Param.isDiffTest) {
+          dequeuePort.bits.instInfo.pc.get   := decodeInstInfo.pcAddr
+          dequeuePort.bits.instInfo.inst.get := decodeInstInfo.inst
+        }
+
     }
 
   io.pmu_instqueueFullValid match {

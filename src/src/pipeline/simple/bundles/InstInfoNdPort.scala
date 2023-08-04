@@ -8,10 +8,11 @@ import pipeline.common.bundles.{CommitFtqInfoBundle, _}
 import spec._
 
 class InstInfoNdPort extends Bundle {
+  val pc              = if (isDiffTest) Some(UInt(Width.Reg.data)) else None
+  val inst            = if (isDiffTest) Some(UInt(Width.Reg.data)) else None
   val isValid         = Bool()
   val exceptionPos    = ExceptionPos()
   val exceptionRecord = UInt(Csr.ExceptionIndex.width)
-  val isStore         = Bool()
   val needRefetch     = Bool()
   val isCsrWrite      = Bool()
 
@@ -40,7 +41,6 @@ object InstInfoNdPort {
     instInfo.exeOp                := ExeInst.Op.nop
     instInfo.isCsrWrite           := false.B
     instInfo.isTlb                := false.B
-    instInfo.isStore              := false.B
     instInfo.forbidParallelCommit := false.B
 
     if (isDiffTest) {
