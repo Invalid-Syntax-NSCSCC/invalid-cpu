@@ -55,7 +55,13 @@ class DispatchStage
     case ((in, dispatchSel, readPort), src_idx) =>
       val dstReady = Wire(Vec(pipelineNum, Bool()))
       val srcValid = WireDefault(
-        readPort.map(_.data.valid).reduce(_ && _) &&
+        in.decode.info.gprReadPorts
+          .zip(readPort)
+          .map {
+            case (inRead, r) =>
+              !(inRead.en && !r.data.valid)
+          }
+          .reduce(_ && _) &&
           !selectedIns
             .take(src_idx)
             .map { prevIn =>
