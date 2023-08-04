@@ -439,7 +439,7 @@ class MainExeStage
     out.wb.instInfo.ftqCommitInfo.targetMispredict.get    := branchTargetMispredict && isBranchInst
   }
 
-  branchSetPort.en    := isRedirect
+  branchSetPort.en    := isRedirect && !branchBlockingReg && !isDbarBlockingReg
   branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
 
   branchSetPort.pcAddr := Mux(
