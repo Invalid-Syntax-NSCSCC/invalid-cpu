@@ -9,7 +9,7 @@ import spec._
 
 class DispatchPeerPort extends Bundle {
   val regReadPorts = Vec(Param.issueInstInfoMaxNum, Vec(Param.regFileReadNum, Flipped(new RegReadPort)))
-  val occupyPorts  = Input(Vec(Param.issueInstInfoMaxNum, new RegOccupyNdPort))
+  val occupyPorts  = Output(Vec(Param.issueInstInfoMaxNum, new RegOccupyNdPort))
 }
 
 class DispatchStage
@@ -33,6 +33,13 @@ class DispatchStage
         case (dst, src) =>
           dst.addr := src.addr
       }
+  }
+
+  peer.occupyPorts.zip(io.ins).foreach {
+    case (occupyPort, in) =>
+      occupyPort.en    := in.bits.decode.info.gprWritePort.en && in.valid && in.ready
+      occupyPort.addr  := in.bits.decode.info.gprWritePort.addr
+      occupyPort.robId := in.bits.instInfo.robId
   }
 
   // dontcare if input not valid

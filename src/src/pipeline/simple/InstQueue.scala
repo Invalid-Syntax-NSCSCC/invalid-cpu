@@ -91,7 +91,7 @@ class InstQueue(
 
   // Select a decoder
 
-  val decoderss = Seq.fill(issueNum)(
+  val decoderMatrix = Seq.fill(issueNum)(
     Seq(
       Module(new Decoder_2RI12),
       Module(new Decoder_2RI14),
@@ -102,13 +102,13 @@ class InstQueue(
     )
   )
 
-  decoderss.zip(decodeInstInfos).foreach {
+  decoderMatrix.zip(decodeInstInfos).foreach {
     case (decoders, decodeInstInfo) =>
       decoders.foreach(_.io.instInfoPort := decodeInstInfo)
   }
 
-  val decoderWires = Wire(Vec(issueNum, Vec(decoderss.head.length, new DecodeOutNdPort)))
-  decoderWires.zip(decoderss).foreach {
+  val decoderWires = Wire(Vec(issueNum, Vec(decoderMatrix.head.length, new DecodeOutNdPort)))
+  decoderWires.zip(decoderMatrix).foreach {
     case (decoderWire, decoders) =>
       decoderWire.zip(decoders).foreach {
         case (port, decoder) =>

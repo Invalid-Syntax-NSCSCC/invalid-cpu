@@ -12,11 +12,12 @@ import pipeline.simple.bundles.RegMatchBundle
 import spec._
 import utils.MultiMux1
 
-class Rob extends Module {
-  val issueNum    = Param.issueInstInfoMaxNum
-  val robLength   = Param.Width.Rob._length
-  val commitNum   = Param.commitNum
-  val pipelineNum = Param.pipelineNum
+class Rob(
+  issueNum:    Int = Param.issueInstInfoMaxNum,
+  robLength:   Int = Param.Width.Rob._length,
+  commitNum:   Int = Param.commitNum,
+  pipelineNum: Int = Param.pipelineNum)
+    extends Module {
 
   val io = IO(new Bundle {
     val requests = Vec(issueNum, new RobRequestPort)
