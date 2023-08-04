@@ -6,6 +6,7 @@ import frontend.bpu.bundles._
 import frontend.bpu.components.Bundles.FtbEntryNdPort
 import frontend.bpu.components.FTB
 import frontend.bundles.{BpuFtqPort, FtqBlockBundle}
+import spec.Param.BPU.BranchType
 import spec._
 
 // BPU is the Branch Predicting Unit
@@ -172,7 +173,7 @@ class BPU(
   val ftbUpdateEntry = Wire(new FtbEntryNdPort)
 
   // Only following conditions will trigger a FTB update:
-  // 1. This is a conditional branch
+  // 1. This is a conditional branch or the first time of direct Immediately Jump
   // 2. First time a branch jumped
   // 3. A FTB pollution is detected
   //     dirty case 1: target error || fallThroughAddr error;
@@ -180,12 +181,16 @@ class BPU(
 
   val ftbUpdateValid = if (Param.isFTBupdateRet) {
     WireDefault(
-      io.bpuFtqPort.ftqTrainMeta.valid && ((directionPredictError && (!io.bpuFtqPort.ftqTrainMeta.ftbHit)) || io.bpuFtqPort.ftqTrainMeta.ftbDirty)
+      io.bpuFtqPort.ftqTrainMeta.valid &&
+        (((directionPredictError || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.call || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqTrainMeta.ftbHit))
+          || io.bpuFtqPort.ftqTrainMeta.ftbDirty)
     )
     // all kinds of target error can update
   } else {
     WireDefault(
-      io.bpuFtqPort.ftqTrainMeta.valid && ((directionPredictError && (!io.bpuFtqPort.ftqTrainMeta.ftbHit)) || (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit))
+      io.bpuFtqPort.ftqTrainMeta.valid &&
+        (((directionPredictError || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.call || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqTrainMeta.ftbHit)) ||
+          (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit))
     )
     // case 1: the first time of a branch inst taken ( include conditon branch, indirect jump that hasn't been predicted taken),
     // case 2: hit and dirty
