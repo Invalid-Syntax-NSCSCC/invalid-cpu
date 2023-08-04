@@ -96,19 +96,17 @@ class MemReqStage
   // Handle pipelined input
   when(selectedIn.wb.instInfo.isValid) {
     when(selectedIn.translatedMemReq.isValid) {
-      switch(selectedIn.translatedMemReq.rw) {
-        // Whether last memory request is submitted
-        when(io.out.ready) {
-          when(isTrueCached) {
-            peer.dCacheReq.client.isValid := true.B
-            isComputed                    := peer.dCacheReq.isReady
-          }.otherwise {
-            peer.uncachedReq.client.isValid := true.B
-            isComputed                      := peer.uncachedReq.isReady
-          }
+      // Whether last memory request is submitted
+      when(io.out.ready) {
+        when(isTrueCached) {
+          peer.dCacheReq.client.isValid := true.B
+          isComputed                    := peer.dCacheReq.isReady
         }.otherwise {
-          isComputed := false.B
+          peer.uncachedReq.client.isValid := true.B
+          isComputed                      := peer.uncachedReq.isReady
         }
+      }.otherwise {
+        isComputed := false.B
       }
     }
 
