@@ -31,7 +31,7 @@ class DispatchPeerPort extends Bundle {
   val pmu_dispatchInfos = if (Param.usePmu) Some(Output(Vec(Param.pipelineNum, new PmuDispatchBundle))) else None
 }
 
-class DispatchStageMultiBaseStage(
+class DispatchStage(
   issueNum:       Int = Param.issueInstInfoMaxNum,
   pipelineNum:    Int = Param.pipelineNum,
   outQueueLength: Int = Param.dispatchOutQueueLength)

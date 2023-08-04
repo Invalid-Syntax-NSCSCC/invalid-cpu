@@ -1,4 +1,4 @@
-import axi.Axi3x1Crossbar
+import pipeline.complex.dispatch.DispatchStage
 import axi.bundles.AxiMasterInterface
 import chisel3._
 import common.RegFile
@@ -14,6 +14,7 @@ import pipeline.complex.rob._
 import pmu.Pmu
 import spec.Param
 import spec.Param.{isDiffTest, isNoPrivilege}
+import axi.Axi3x1Crossbar
 
 class ComplexCoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -101,7 +102,7 @@ class ComplexCoreCpuTop extends Module {
   val frontend         = Module(new Frontend)
   val instQueue        = Module(new MultiInstQueue)
   val renameStage      = Module(new RenameStage)
-  val dispatchStage    = Module(new DispatchStageMultiBaseStage)
+  val dispatchStage    = Module(new DispatchStage)
   val exeForMemStage   = Module(new ExeForMemStage)
   val exePassWbStage_1 = Module(new ExePassWbStage(supportBranchCsr = true))
   val exePassWbStage_2 = Module(new ExePassWbStage(supportBranchCsr = false))

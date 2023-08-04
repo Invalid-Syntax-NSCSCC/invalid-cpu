@@ -117,8 +117,8 @@ class DispatchStage
     }
   }
 
-  val excpBlockReg = RegInit(false.B)
-  when(excpBlockReg) {
+  val blockReg = RegInit(false.B)
+  when(blockReg) {
     io.ins.foreach(_.ready := false.B)
     resultOuts.foreach(_.valid := false.B)
   }
@@ -127,13 +127,13 @@ class DispatchStage
       in.ready &&
       in.valid &&
       (in.bits.instInfo.exceptionPos =/= ExceptionPos.none ||
-        !in.bits.instInfo.needRefetch)
+        in.bits.instInfo.needRefetch)
     }.reduce(_ || _)
   ) {
-    excpBlockReg := true.B
+    blockReg := true.B
   }
 
   when(io.isFlush) {
-    excpBlockReg := false.B
+    blockReg := false.B
   }
 }
