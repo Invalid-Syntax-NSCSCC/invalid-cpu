@@ -1,6 +1,5 @@
 package frontend.bpu.utils
 import chisel3._
-import chisel3.util._
 // simulate BRAM IP in simulation without Vivado
 // data read latency is 1 cycle
 class Bram(

@@ -2,22 +2,14 @@ package frontend.fetch
 
 import chisel3._
 import chisel3.util._
-import common.enums.ReadWriteSel
-import control.enums.ExceptionPos
+import common.NoSavedInBaseStage
+import frontend.bundles.{FetchCsrNdPort, FtqIFNdPort}
+import memory.bundles.TlbTransPort
 import memory.enums.TlbMemType
-import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
-import pipeline.memory.enums.AddrTransType
-import frontend.bundles.{FetchCsrNdPort, FtqBlockBundle, FtqIFNdPort}
-import pipeline.commit.bundles.{DifftestTlbFillNdPort, InstInfoNdPort}
-import common.BaseStage
-import pipeline.memory.MemReqNdPort
-import pipeline.memory.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
-import spec.Param.{isDiffTest, isNoPrivilege}
+import pipeline.common.enums.AddrTransType
+import spec.Param.isNoPrivilege
 import spec.Value.Csr
-import spec.{Param, Width}
-
-import scala.collection.immutable
-import common.BaseStageWOSaveIn
+import spec.Width
 
 class InstAddrTransPeerPort extends Bundle {
   val csr      = Input(new FetchCsrNdPort)
@@ -28,7 +20,7 @@ object InstAddTransPeerPort {
 }
 
 class InstAddrTransStage
-    extends BaseStageWOSaveIn(
+    extends NoSavedInBaseStage(
       new FtqIFNdPort,
       new InstReqNdPort,
       FtqIFNdPort.default,

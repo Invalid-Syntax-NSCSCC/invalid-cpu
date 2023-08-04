@@ -8,7 +8,7 @@ import chisel3.util.random.LFSR
 import common.enums.ReadWriteSel
 import memory.bundles.{CacheMaintenanceHandshakePort, MemAccessPort, StatusTagBundle}
 import memory.enums.{DCacheState => State}
-import pmu.bundles.PmuCacheNdPort
+import pipeline.complex.pmu.bundles.PmuCacheNdPort
 import spec._
 
 class DCache(

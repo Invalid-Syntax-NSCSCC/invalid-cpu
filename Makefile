@@ -10,7 +10,7 @@ test:
 verilog:
 	mkdir -p $(BUILD_DIR)/final
 	./millw -i __.test.runMain Elaborate -td $(BUILD_DIR)
-	cp -f $(BUILD_DIR)/CoreCpuTop.* $(BUILD_DIR)/final/
+	cp -f $(BUILD_DIR)/*CoreCpuTop.* $(BUILD_DIR)/final/
 	cp -f ./verilog/* $(BUILD_DIR)/final/
 
 chiplab:

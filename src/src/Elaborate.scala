@@ -2,6 +2,8 @@ import chisel3.stage._
 import circt.stage.{CIRCTTarget, CIRCTTargetAnnotation}
 
 object Elaborate extends App {
+
+  class CoreCpuTop extends SimpleCoreCpuTop
   def top = new CoreCpuTop
 
   val useMFC    = true // Use MLIR-based firrtl compiler

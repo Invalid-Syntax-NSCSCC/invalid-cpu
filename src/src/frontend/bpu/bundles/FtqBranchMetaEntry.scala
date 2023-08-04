@@ -1,9 +1,7 @@
 package frontend.bpu.bundles
 
-import spec._
 import chisel3._
-import chisel3.util._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import spec._
 class FtqBranchMetaEntry(
   addr: Int = wordLength)
     extends Bundle {

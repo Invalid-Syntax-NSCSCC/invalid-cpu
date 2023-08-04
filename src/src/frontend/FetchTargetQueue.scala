@@ -1,14 +1,12 @@
 package frontend
 
-import spec._
 import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
-import chisel3.experimental.Param
-import frontend.bundles.{BpuFtqPort, CuCommitFtqNdPort, ExeFtqPort, FtqBlockBundle, FtqBpuMetaPort, FtqIFNdPort}
-import frontend.bundles.QueryPcBundle
+import frontend.bundles._
 import frontend.fetch.ftqPreDecodeFixRasNdPort
 import spec.Param.BPU.BranchType
+import spec._
 
 class FetchTargetQueue(
   val queueSize: Int = Param.BPU.ftqSize,
@@ -178,8 +176,11 @@ class FetchTargetQueue(
   // Output
   // -> IFU
   // default value
-  io.ftqIFPort.valid               := ifSendValid
-  io.ftqIFPort.bits.ftqBlockBundle := RegNext(ftqNextVec(nextIfPtr), FtqBlockBundle.default) //use RegNext and nextPtr to decrease net delay
+  io.ftqIFPort.valid := ifSendValid
+  io.ftqIFPort.bits.ftqBlockBundle := RegNext(
+    ftqNextVec(nextIfPtr),
+    FtqBlockBundle.default
+  ) // use RegNext and nextPtr to decrease net delay
   // design 1 : wtire through  ( has been abandoned)
   // feat: increase flush log;but easy to result in flush instfetch
 //  when(((ifPtr === bpuMetaWritePtr)||(lastIfPtr === bpuMetaWritePtr)) && bpuMetaWriteValid) {

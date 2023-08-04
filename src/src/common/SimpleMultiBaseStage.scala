@@ -2,9 +2,8 @@ package common
 
 import chisel3._
 import chisel3.util._
-import pipeline.common.bundles.MultiBaseStageIo
+import common.bundles.MultiBaseStagePort
 import spec._
-import common.DistributedQueue
 
 abstract class SimpleMultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   inNdFactory:  => InT,
@@ -14,7 +13,7 @@ abstract class SimpleMultiBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   inNum:        Int           = Param.issueInstInfoMaxNum,
   outNum:       Int           = Param.pipelineNum)
     extends Module {
-  val io = IO(new MultiBaseStageIo(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
+  val io = IO(new MultiBaseStagePort(inNdFactory, outNdFactory, peerFactory, inNum, outNum))
 
   private val queueSize = 2
 

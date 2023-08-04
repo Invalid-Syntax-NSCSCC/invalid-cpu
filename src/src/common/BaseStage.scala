@@ -2,7 +2,7 @@ package common
 
 import chisel3._
 import chisel3.util._
-import pipeline.common.bundles.BaseStageIo
+import common.bundles.BaseStagePort
 
 abstract class BaseStage[InT <: Data, OutT <: Data, PT <: Data](
   inNdFactory:  => InT,
@@ -10,7 +10,7 @@ abstract class BaseStage[InT <: Data, OutT <: Data, PT <: Data](
   blankIn:      => InT,
   peerFactory:  => Option[PT] = None)
     extends Module {
-  val io = IO(new BaseStageIo(inNdFactory, outNdFactory, peerFactory))
+  val io = IO(new BaseStagePort(inNdFactory, outNdFactory, peerFactory))
 
   private val queueSize = 1
 

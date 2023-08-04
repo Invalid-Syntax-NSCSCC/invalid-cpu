@@ -2,7 +2,6 @@ package frontend.bpu.components
 
 import chisel3._
 import chisel3.util._
-import frontend.bpu.utils.Bram
 import memory.VSimpleDualBRam
 import spec.{Param, Width}
 

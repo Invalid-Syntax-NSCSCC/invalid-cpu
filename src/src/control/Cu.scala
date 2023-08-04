@@ -3,14 +3,12 @@ package control
 import chisel3._
 import chisel3.util._
 import common.bundles.{BackendRedirectPcNdPort, PassThroughPort, RfWriteNdPort}
-import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort, StableCounterReadPort}
+import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort}
 import control.enums.ExceptionPos
-import pipeline.commit.bundles.InstInfoNdPort
+import frontend.bundles.{CuCommitFtqNdPort, QueryPcBundle}
+import pipeline.simple.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
-import spec.{Csr, ExeInst, Param}
-import frontend.bundles.CuCommitFtqNdPort
-import frontend.bundles.QueryPcBundle
-import spec.Width
+import spec.{Csr, ExeInst, Param, Width}
 
 // Note. Exception只从第0个提交
 class Cu(

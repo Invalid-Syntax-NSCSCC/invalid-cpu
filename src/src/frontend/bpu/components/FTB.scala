@@ -4,10 +4,8 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import frontend.bpu.components.Bundles.FtbEntryNdPort
-import frontend.bpu.utils.{Bram, Lfsr}
 import memory.VSimpleDualBRam
 import spec._
-import utils.BiPriorityMux
 
 // BPU is the Branch Predicting Unit
 // BPU does the following things:

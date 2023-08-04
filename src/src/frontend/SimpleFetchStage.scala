@@ -4,7 +4,7 @@ import axi.AxiMaster
 import axi.bundles.AxiMasterInterface
 import chisel3._
 import chisel3.util._
-import pipeline.dispatch.bundles.FetchInstInfoBundle
+import pipeline.common.bundles.FetchInstInfoBundle
 import spec.Param.{SimpleFetchStageState => State}
 import spec._
 
@@ -14,8 +14,7 @@ class SimpleFetchStage extends Module {
     val isPcNext           = Output(Bool())
     val axiMasterInterface = new AxiMasterInterface
     val instEnqueuePort    = Decoupled(new FetchInstInfoBundle)
-    // val pipelineControlPort = Input(new PipelineControlNdPort)
-    val isFlush = Input(Bool())
+    val isFlush            = Input(Bool())
   })
 
   val axiMaster = Module(new AxiMaster)

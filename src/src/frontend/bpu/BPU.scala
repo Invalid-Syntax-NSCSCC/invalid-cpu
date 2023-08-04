@@ -5,8 +5,7 @@ import chisel3.util._
 import frontend.bpu.bundles._
 import frontend.bpu.components.Bundles.FtbEntryNdPort
 import frontend.bpu.components.FTB
-import frontend.bundles.{BpuFtqPort, FtqBlockBundle, FtqBpuMetaPort}
-import spec.Param.BPU.BranchType
+import frontend.bundles.{BpuFtqPort, FtqBlockBundle}
 import spec._
 
 // BPU is the Branch Predicting Unit
@@ -154,8 +153,7 @@ class BPU(
     is(Param.BPU.BranchType.call, Param.BPU.BranchType.uncond) {
       io.mainRedirectPc.bits := ftbEntry.jumpTargetAddress
     }
-    is(Param.BPU.BranchType.ret) {
-    }
+    is(Param.BPU.BranchType.ret) {}
   }
 
   // FTQ meta output
@@ -167,7 +165,9 @@ class BPU(
   ////////////////////////////////////////////////////////////////////
   // Update Logic
   ////////////////////////////////////////////////////////////////////
-  val directionPredictError     = WireDefault(io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken)
+  val directionPredictError = WireDefault(
+    io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken
+  )
   val tageUpdateInfo = Wire(new TagePredictorUpdateInfoPort)
   val ftbUpdateEntry = Wire(new FtbEntryNdPort)
 
@@ -178,12 +178,12 @@ class BPU(
   //     dirty case 1: target error || fallThroughAddr error;
   //                2:At the same addr, original branch inst become nonBranch inst  after  cacop or change program
 
-  val ftbUpdateValid = if(Param.isFTBupdateRet){
+  val ftbUpdateValid = if (Param.isFTBupdateRet) {
     WireDefault(
-      io.bpuFtqPort.ftqTrainMeta.valid && ((directionPredictError&&(!io.bpuFtqPort.ftqTrainMeta.ftbHit))|| io.bpuFtqPort.ftqTrainMeta.ftbDirty )
+      io.bpuFtqPort.ftqTrainMeta.valid && ((directionPredictError && (!io.bpuFtqPort.ftqTrainMeta.ftbHit)) || io.bpuFtqPort.ftqTrainMeta.ftbDirty)
     )
     // all kinds of target error can update
-  }else{
+  } else {
     WireDefault(
       io.bpuFtqPort.ftqTrainMeta.valid && ((directionPredictError && (!io.bpuFtqPort.ftqTrainMeta.ftbHit)) || (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit))
     )
@@ -191,7 +191,6 @@ class BPU(
     // case 2: hit and dirty
     // in our design ret would not be update because ret is predicted in RAS in predecodeStage; which results in ftb dirty and not hit
   }
-
 
   // Direction preditor update policy
   tageUpdateInfo.valid          := io.bpuFtqPort.ftqTrainMeta.valid
@@ -234,6 +233,5 @@ class BPU(
   tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqTrainMeta.startPc
   tagePredictorModule.io.updateInfoPort := tageUpdateInfo
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
-
 
 }

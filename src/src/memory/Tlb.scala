@@ -6,7 +6,7 @@ import chisel3.util.random._
 import control.csrBundles._
 import memory.bundles._
 import memory.enums.TlbMemType
-import pipeline.commit.bundles.DifftestTlbFillNdPort
+import pipeline.common.bundles.DifftestTlbFillNdPort
 import spec.ExeInst.Op.Tlb._
 import spec.Param.isDiffTest
 import spec._

@@ -1,7 +1,6 @@
 package frontend.bundles
 
 import chisel3._
-import spec.Param.Count
 import spec._
 
 class InstMemResponseNdPort extends Bundle {

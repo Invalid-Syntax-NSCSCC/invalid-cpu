@@ -2,7 +2,6 @@ package common
 
 import chisel3._
 import common.bundles._
-import spec.Param.isDiffTest
 import spec._
 
 class RegFile(
