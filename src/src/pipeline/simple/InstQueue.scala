@@ -158,8 +158,7 @@ class InstQueue(
       when(
         isBlockDequeueReg ||
           io.isFrontendFlush ||
-          !robIdReq.request.valid ||
-          redirectRequests.map(_.en).take(idx).foldLeft(false.B)(_ || _)
+          !robIdReq.result.valid
       ) {
         dst.valid := false.B
         src.ready := false.B
