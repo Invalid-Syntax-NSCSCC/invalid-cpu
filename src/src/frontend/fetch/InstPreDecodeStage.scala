@@ -83,13 +83,16 @@ class InstPreDecodeStage
       decodeResultVec(index) := preDecoder.io.result
     }
 
+    val isErrorPredict = selectedIn.enqInfos(io.in.bits.ftqLength - 1.U).bits.ftqInfo.predictBranch &&
+      !decodeResultVec(io.in.bits.ftqLength - 1.U).isBranch
+
     val isJumpVec = Wire(Vec(Param.fetchInstMaxNum, Bool()))
     isJumpVec.zip(decodeResultVec).foreach {
       case (isImmJump, decodeResult) =>
         isImmJump := decodeResult.isJump
     }
 
-    // select the first branch inst ( call ,ret ,unconditional)
+    // select the first  (call ,ret ,direct unconditional)branch inst
     val jumpIndex = PriorityEncoder(isJumpVec)
     val isJump    = isJumpVec.asUInt.orR && (jumpIndex +& 1.U <= selectedIn.ftqLength)
 
@@ -103,7 +106,7 @@ class InstPreDecodeStage
         .ftqInfo
         .predictBranch)
     val isPredecoderRedirect = WireDefault(false.B)
-    isPredecoderRedirect := isDataValid && isJump && canJump
+    isPredecoderRedirect := isDataValid && ((isJump && canJump) || isErrorPredict)
     val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
 
     // connect return address stack module
@@ -126,7 +129,15 @@ class InstPreDecodeStage
     val ftqIdReg = RegNext(selectedIn.ftqId, 0.U)
     val jumpPcReg =
       RegNext(
-        Mux(decodeResultVec(jumpIndex).isImmJump, decodeResultVec(jumpIndex).jumpTargetAddr, rasModule.io.topAddr),
+        Mux(
+          decodeResultVec(jumpIndex).isImmJump,
+          decodeResultVec(jumpIndex).jumpTargetAddr,
+          Mux(
+            decodeResultVec(jumpIndex).isRet,
+            rasModule.io.topAddr,
+            selectedIn.enqInfos(io.in.bits.ftqLength - 1.U).bits.pcAddr + 4.U
+          )
+        ),
         0.U
       )
 

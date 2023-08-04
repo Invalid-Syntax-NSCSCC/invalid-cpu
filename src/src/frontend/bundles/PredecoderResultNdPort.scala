@@ -3,6 +3,7 @@ package frontend.bundles
 import chisel3._
 
 class PreDecoderResultNdPort extends Bundle {
+  val isBranch       = Bool()
   val isJump         = Bool()
   val isImmJump      = Bool()
   val isCall         = Bool()

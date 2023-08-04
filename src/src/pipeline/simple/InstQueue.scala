@@ -149,7 +149,7 @@ class InstQueue(
   // rob id request
 
   val redirectRequests = Wire(Vec(issueNum, new BackendRedirectPcNdPort))
-  io.redirectRequest := PriorityMux(redirectRequests.map(_.en), redirectRequests)
+  io.redirectRequest := DontCare // PriorityMux(redirectRequests.map(_.en), redirectRequests)
 
   resultQueue.io.enqueuePorts.lazyZip(instQueue.io.dequeuePorts).lazyZip(io.robIdRequests).zipWithIndex.foreach {
     case ((dst, src, robIdReq), idx) =>
