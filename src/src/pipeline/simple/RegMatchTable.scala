@@ -49,7 +49,7 @@ class RegMatchTable(
   // update match table
   matchTable.zip(wbNextMatchTableData).foreach {
     case (elem, nextElem) =>
-      val mux = Module(new MultiMux1(pipelineNum, UInt(spec.Width.Reg.data), zeroWord))
+      val mux = Module(new MultiMux1(pipelineNum + 1, UInt(spec.Width.Reg.data), zeroWord))
       mux.io.inputs.zip(io.wakeUpPorts).foreach {
         case (input, wakeUpPort) =>
           input.valid := wakeUpPort.en &&
