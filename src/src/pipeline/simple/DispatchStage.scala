@@ -100,10 +100,14 @@ class DispatchStage
         val out = resultOuts(dst_idx)
         val in  = selectedIns(src_idx)
 
-        io.ins(src_idx).ready   := true.B
-        out.valid               := true.B
-        out.bits.leftOperand    := peer.regReadPorts(src_idx)(0).data.bits
-        out.bits.rightOperand   := peer.regReadPorts(src_idx)(1).data.bits
+        io.ins(src_idx).ready := true.B
+        out.valid             := true.B
+        out.bits.leftOperand  := peer.regReadPorts(src_idx)(0).data.bits
+        out.bits.rightOperand := Mux(
+          in.decode.info.isHasImm,
+          in.decode.info.imm,
+          peer.regReadPorts(src_idx)(1).data.bits
+        )
         out.bits.exeSel         := in.decode.info.exeSel
         out.bits.exeOp          := in.decode.info.exeOp
         out.bits.gprWritePort   := in.decode.info.gprWritePort
