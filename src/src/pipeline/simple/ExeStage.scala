@@ -71,7 +71,7 @@ class ExePeerPort extends Bundle {
 class MainExeStage
     extends BaseStage(
       new ExeNdPort,
-      new AddrTransNdPort, // TODO : change to addr trans port
+      new AddrTransNdPort,
       ExeNdPort.default,
       Some(new ExePeerPort)
     ) {

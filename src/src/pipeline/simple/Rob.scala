@@ -34,6 +34,9 @@ class Rob(
     // `Cu` <-> `Rob`
     val isFlush = Input(Bool())
 
+    // `Rob` -> `TLB`
+    val tlbMaintenanceTrigger = Output(Bool())
+
     val tlbDifftest = if (Param.isDiffTest) Some(Input(new DifftestTlbFillNdPort)) else None
 
   })
@@ -101,10 +104,9 @@ class Rob(
 
   // Commit
 
-  //   val isDelayedMaintenanceTrigger = RegNext(false.B, false.B)
+  val isDelayedMaintenanceTrigger = RegNext(false.B, false.B)
 
-  //   io.tlbMaintenanceTrigger := isDelayedMaintenanceTrigger
-  //   io.commitStore.valid     := false.B
+  io.tlbMaintenanceTrigger := isDelayedMaintenanceTrigger
   io.commits.zip(queue.io.dequeuePorts).zipWithIndex.foreach {
     case ((commit, deqPort), idx) =>
       commit.bits.fetchInfo := deqPort.bits.fetchInfo
@@ -121,20 +123,17 @@ class Rob(
 
         // commit
         if (idx == 0) {
-          // val isTlbMaintenanceTrigger = commit.ready &&
-          //   deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
-          //   deqPort.bits.wbPort.instInfo.isTlb
-          // val isNextTlbMaintenanceTrigger = !isDelayedMaintenanceTrigger && isTlbMaintenanceTrigger
-          // isDelayedMaintenanceTrigger := isNextTlbMaintenanceTrigger
+          val isTlbMaintenanceTrigger = commit.ready &&
+            deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
+            deqPort.bits.wbPort.instInfo.isTlb
+          val isNextTlbMaintenanceTrigger = !isDelayedMaintenanceTrigger && isTlbMaintenanceTrigger
+          isDelayedMaintenanceTrigger := isNextTlbMaintenanceTrigger
 
           if (Param.isDiffTest) {
             commit.bits.instInfo.tlbFill.get := io.tlbDifftest.get
           }
 
-          // io.commitStore.valid := commit.ready &&
-          //   deqPort.bits.wbPort.instInfo.exceptionPos === ExceptionPos.none &&
-          //   deqPort.bits.wbPort.instInfo.isStore
-          deqPort.ready := commit.ready // && !(io.commitStore.valid && !io.commitStore.ready) && !isNextTlbMaintenanceTrigger
+          deqPort.ready := commit.ready && !isNextTlbMaintenanceTrigger
         } else {
           deqPort.ready := commit.ready &&
             !io.commits(idx - 1).bits.instInfo.forbidParallelCommit &&
