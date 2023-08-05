@@ -198,7 +198,7 @@ class SimpleCoreCpuTop extends Module {
   wakeUpPorts.zipWithIndex.foreach {
     case (wakeUp, idx) =>
       if (idx == Param.pipelineNum - 1) {
-        wakeUp := (mainExeStage.io.peer.get.regWakeUpPort)
+        wakeUp := RegNext(mainExeStage.io.peer.get.regWakeUpPort)
       } else if (idx == Param.pipelineNum) {
         // TODO : connect mem res peer ?
         wakeUp.en := memResStage.io.out.valid &&
@@ -208,7 +208,7 @@ class SimpleCoreCpuTop extends Module {
         wakeUp.data  := memResStage.io.out.bits.gprWrite.data
         wakeUp.robId := memResStage.io.out.bits.instInfo.robId
       } else {
-        wakeUp := (simpleExeStages(idx).io.peer.get)
+        wakeUp := RegNext(simpleExeStages(idx).io.peer.get)
       }
   }
 

@@ -137,7 +137,6 @@ class IssueStage(
   val rss        = Seq(mainRS) ++ simpleRSs
 
   // reg read
-
   io.regReadPorts.zip(rsEnqPorts).foreach {
     case (readPorts, rsEnqPort) =>
       readPorts.zip(rsEnqPort.bits.decodePort.decode.info.gprReadPorts).foreach {
@@ -321,7 +320,26 @@ class IssueStage(
   io.dequeuePorts.mainExePort.bits.branchInfo := mainRS.io.dequeuePorts.head.bits.mainExeBranchInfo
   (Seq(io.dequeuePorts.mainExePort) ++ io.dequeuePorts.simpleExePorts).zip(rss.map(_.io.dequeuePorts.head)).foreach {
     case (out, rs) =>
-      val deqEn = rs.bits.regReadResults.map(_.valid).reduce(_ && _)
+      val regReadResults = WireDefault(rs.bits.regReadResults)
+
+      regReadResults.lazyZip(rs.bits.regReadResults).lazyZip(rs.bits.decodePort.decode.info.gprReadPorts).foreach {
+        case (setRegData, elemData, decodeRead) =>
+          val mux = Module(new MultiMux1(pipelineNum + 1, UInt(Width.Reg.data), zeroWord))
+          mux.io.inputs.zip(io.wakeUpPorts).foreach {
+            case (input, wakeUp) =>
+              input.valid := wakeUp.en &&
+                wakeUp.addr === decodeRead.addr &&
+                wakeUp.robId(Param.Width.Rob._id - 1, 0) === elemData.bits(Param.Width.Rob._id - 1, 0)
+              input.bits := wakeUp.data
+          }
+          when(!elemData.valid && mux.io.output.valid) {
+            setRegData.valid := true.B
+            setRegData.bits  := mux.io.output.bits
+          }
+
+      }
+
+      val deqEn = regReadResults.map(_.valid).reduce(_ && _)
       out.valid               := rs.valid && deqEn
       rs.ready                := out.ready && deqEn
       out.bits.exeOp          := rs.bits.decodePort.decode.info.exeOp
@@ -329,11 +347,11 @@ class IssueStage(
       out.bits.gprWritePort   := rs.bits.decodePort.decode.info.gprWritePort
       out.bits.instInfo       := rs.bits.decodePort.instInfo
       out.bits.jumpBranchAddr := rs.bits.decodePort.decode.info.jumpBranchAddr
-      out.bits.leftOperand    := rs.bits.regReadResults(0).bits
+      out.bits.leftOperand    := regReadResults(0).bits
       out.bits.rightOperand := Mux(
         rs.bits.decodePort.decode.info.isHasImm,
         rs.bits.decodePort.decode.info.imm,
-        rs.bits.regReadResults(1).bits
+        regReadResults(1).bits
       )
   }
 }
