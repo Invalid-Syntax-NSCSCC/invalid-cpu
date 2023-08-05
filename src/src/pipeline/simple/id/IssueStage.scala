@@ -250,7 +250,7 @@ class IssueStage(
         rs.bits.regReadResults.lazyZip(outReadResults).lazyZip(selectedDecoder.info.gprReadPorts).foreach {
           case (dst, readRes, decodeRead) =>
             dst.valid := !(decodeRead.en && !readRes.data.valid)
-            dst.bits  := readRes.data.valid
+            dst.bits  := readRes.data.bits
         }
 
         val outInstInfo = rs.bits.decodePort.instInfo
