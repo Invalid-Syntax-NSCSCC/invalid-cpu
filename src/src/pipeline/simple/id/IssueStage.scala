@@ -91,20 +91,6 @@ class IssueStage(
     isIdle := true.B
   }
 
-  io.regReadPorts.zip(io.enqueuePorts).foreach {
-    case (readPorts, src) =>
-      val rk = src.bits.inst(14, 10) // 1
-      val rj = src.bits.inst(9, 5) // 0
-      readPorts(0).addr := rj
-      readPorts(1).addr := rk
-  }
-
-  // io.occupyPorts.zip(instQueue.io.dequeuePorts).foreach {
-  //   case (occupyPort, src) =>
-  //     val rd = src.bits.inst(4, 0)
-  //     occupyPort.en := src.valid && src.ready && src.bits.
-  // }
-
   // Decode
   val decodeInstInfos = VecInit(io.enqueuePorts.map(_.bits))
 
@@ -150,6 +136,16 @@ class IssueStage(
   val rsEnqPorts = Seq(mainRSEnqPort) ++ simpleRSEnqPorts
   val rss        = Seq(mainRS) ++ simpleRSs
 
+  // reg read
+
+  io.regReadPorts.zip(rsEnqPorts).foreach {
+    case (readPorts, rsEnqPort) =>
+      readPorts.zip(rsEnqPort.bits.decodePort.decode.info.gprReadPorts).foreach {
+        case (dst, src) =>
+          dst.addr := src.addr
+      }
+  }
+
   // occupy
   io.occupyPorts.lazyZip(rsEnqPorts).lazyZip(io.robIdRequests).foreach {
     case (occupy, enq, robIdReq) =>
@@ -174,8 +170,6 @@ class IssueStage(
   ) {
     isBlockDequeueReg := true.B
   }
-
-  // io.dequeuePort <> resultQueue
 
   // rob id request
 
