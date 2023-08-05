@@ -39,7 +39,7 @@ class DispatchExeAdapter(pipelineNum: Int = Param.pipelineNum) extends Module {
     case ((out, in), idx) =>
       val readPorts  = peer.regReadPorts(idx)
       val occupyPort = peer.occupyPorts(idx)
-      occupyPort.en    := in.valid && io.in.ready && io.in.ready && in.bits.decode.info.gprWritePort.en
+      occupyPort.en    := in.valid && io.in.ready && io.in.valid && in.bits.decode.info.gprWritePort.en
       occupyPort.addr  := in.bits.decode.info.gprWritePort.addr
       occupyPort.robId := in.bits.instInfo.robId
 
