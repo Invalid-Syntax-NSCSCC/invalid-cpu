@@ -42,7 +42,7 @@ class RegMatchTable(
   io.regReadPorts.foreach { readPorts =>
     readPorts.foreach { r =>
       r.data.valid := wbNextMatchTableData(r.addr).valid
-      r.data.bits  := wbNextMatchTableData(r.addr).bits
+      r.data.bits  := Mux(r.data.valid, wbNextMatchTableData(r.addr).bits, matchTable(r.addr).robId)
     }
   }
 
