@@ -1,3 +1,4 @@
+import pipeline.simple.DispatchStage
 import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
@@ -109,7 +110,7 @@ class SimpleCoreCpuTop extends Module {
   val iCache          = Module(new ICache)
   val frontend        = Module(new Frontend)
   val instQueue       = Module(new InstQueue)
-  val dispatchStage   = Module(new DispatchStage)
+  val dispatchStage   = Module(new SimpleDispatchStage)
   val regMatchTable   = Module(new RegMatchTable)
   val mainExeStage    = Module(new MainExeStage)
   val simpleExeStages = Seq.fill(Param.pipelineNum - 1)(Module(new SimpleExeStage))
@@ -203,7 +204,7 @@ class SimpleCoreCpuTop extends Module {
   regMatchTable.io.wakeUpPorts.zipWithIndex.foreach {
     case (wakeUp, idx) =>
       if (idx == Param.pipelineNum - 1) {
-        wakeUp := mainExeStage.io.peer.get.regWakeUpPort
+        wakeUp := RegNext(mainExeStage.io.peer.get.regWakeUpPort)
       } else if (idx == Param.pipelineNum) {
         // TODO : connect mem res peer ?
         wakeUp.en := memResStage.io.out.valid &&
@@ -213,7 +214,7 @@ class SimpleCoreCpuTop extends Module {
         wakeUp.data  := memResStage.io.out.bits.gprWrite.data
         wakeUp.robId := memResStage.io.out.bits.instInfo.robId
       } else {
-        wakeUp := simpleExeStages(idx).io.peer.get
+        wakeUp := RegNext(simpleExeStages(idx).io.peer.get)
       }
   }
 

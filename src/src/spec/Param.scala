@@ -6,6 +6,8 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
+  val useSimpleBackend = true
+
   // These options are one-hot
   val isChiplab        = true
   val isReleasePackage = false
@@ -44,7 +46,7 @@ object Param {
   val fetchInstMaxNum        = 4 // 单次取指 must be 1,2,4,8... ( less than dataPerLine)
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 1 // 单次提交数量
-  val pipelineNum            = 3 // number of pipeline
+  val pipelineNum            = if (useSimpleBackend) issueInstInfoMaxNum else 3 // number of pipeline
   val dispatchOutQueueLength = 2
   val csrReadNum             = 1
   val csrWriteNum            = 1

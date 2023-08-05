@@ -67,12 +67,8 @@ class DispatchStage
           !selectedIns
             .take(src_idx)
             .map { prevIn =>
-              // (
-              //   prevIn.decode.info.gprWritePort.addr === in.decode.info.gprWritePort.addr &&
-              //     in.decode.info.gprWritePort.en
-              // ) ||
               in.decode.info.gprReadPorts.map { r =>
-                r.en && r.addr === prevIn.decode.info.gprWritePort.addr
+                r.en && prevIn.decode.info.gprWritePort.en && r.addr === prevIn.decode.info.gprWritePort.addr
               }.reduce(_ || _)
             }
             .foldLeft(false.B)(_ || _)
