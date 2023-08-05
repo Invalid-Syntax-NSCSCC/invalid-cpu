@@ -11,23 +11,25 @@ import pipeline.simple.bundles.RobRequestPort
 import pipeline.simple.decode._
 import pipeline.simple.decode.bundles._
 import spec._
+import frontend.bundles.QueryPcBundle
+import pipeline.simple.bundles.MainExeBranchInfoBundle
 
-class FetchInstDecodeNdPort extends Bundle {
-  val decode   = new DecodeOutNdPort
-  val instInfo = new InstInfoNdPort
-  // val fetchInfo = new PcInstBundle
-}
+// class FetchInstDecodeNdPort extends Bundle {
+//   val decode   = new DecodeOutNdPort
+//   val instInfo = new InstInfoNdPort
+// }
 
-object FetchInstDecodeNdPort {
-  def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
-}
+// object FetchInstDecodeNdPort {
+//   def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
+// }
 
 // assert: enqueuePorts总是最低的几位有效
-class InstQueue(
+class DispatchInstQueue(
   queueLength: Int = Param.instQueueLength,
   channelNum:  Int = Param.instQueueChannelNum,
   fetchNum:    Int = Param.fetchInstMaxNum,
-  issueNum:    Int = Param.issueInstInfoMaxNum)
+  issueNum:    Int = Param.issueInstInfoMaxNum,
+  pipelineNum: Int = Param.pipelineNum)
     extends Module {
   val io = IO(new Bundle {
     val isFrontendFlush = Input(Bool())
@@ -36,17 +38,14 @@ class InstQueue(
     val enqueuePort = Flipped(Decoupled(new InstQueueEnqNdPort))
 
     // `InstQueue` -> `IssueStage`
-    val dequeuePorts = Vec(
-      issueNum,
-      Decoupled(new FetchInstDecodeNdPort)
-    )
+    val dequeuePort = Decoupled(new RegReadNdPort)
 
     val idleBlocking = Input(Bool())
     val hasInterrupt = Input(Bool())
 
-    val redirectRequest = Output(new BackendRedirectPcNdPort)
-
     val robIdRequests = Vec(issueNum, Flipped(new RobRequestPort))
+
+    val queryPcPort = Flipped(new QueryPcBundle)
 
     val plv = Input(UInt(2.W))
 
@@ -124,37 +123,42 @@ class InstQueue(
       decoderWire(decoderIndex)
   }))
 
-  val resultQueue = Module(
-    new DistributedQueue(
-      issueNum,
-      issueNum,
-      issueNum,
-      2,
-      new FetchInstDecodeNdPort
-    )
-  )
-  resultQueue.io.isFlush := io.isBackendFlush
+  val resultOut = WireDefault(0.U.asTypeOf(Decoupled(new RegReadNdPort)))
+
+  val resultQueue = Queue(resultOut, entries = 2, pipe = false, flow = false, flush = Some(io.isBackendFlush))
 
   val isBlockDequeueReg = RegInit(false.B)
-  isBlockDequeueReg := Mux(
-    io.isBackendFlush,
-    false.B,
-    Mux(
-      io.isFrontendFlush,
-      true.B,
-      isBlockDequeueReg
+  when(io.isBackendFlush) {
+    isBlockDequeueReg := false.B
+  }.elsewhen(
+    io.isFrontendFlush || (
+      resultOut.valid &&
+        resultOut.ready &&
+        resultOut.bits.decodePorts.map { port =>
+          port.valid && (
+            port.bits.decode.info.needRefetch ||
+              port.bits.instInfo.exceptionPos =/= ExceptionPos.none
+          )
+        }.reduce(_ || _)
     )
-  )
+  ) {
+    isBlockDequeueReg := true.B
+  }
+
+  io.dequeuePort <> resultQueue
 
   // rob id request
 
-  val redirectRequests = Wire(Vec(issueNum, new BackendRedirectPcNdPort))
-  io.redirectRequest := DontCare // PriorityMux(redirectRequests.map(_.en), redirectRequests)
-
-  resultQueue.io.enqueuePorts.lazyZip(instQueue.io.dequeuePorts).lazyZip(io.robIdRequests).zipWithIndex.foreach {
+  resultOut.bits.decodePorts.lazyZip(instQueue.io.dequeuePorts).lazyZip(io.robIdRequests).zipWithIndex.foreach {
     case ((dst, src, robIdReq), idx) =>
+      src.ready := resultOut.ready
       dst.valid := src.valid
-      src.ready := dst.ready
+
+      robIdReq.request.valid       := src.valid && src.ready
+      robIdReq.request.bits.pcAddr := src.bits.pcAddr
+      robIdReq.request.bits.inst   := src.bits.inst
+
+      // block
       when(
         isBlockDequeueReg ||
           io.isFrontendFlush ||
@@ -164,35 +168,47 @@ class InstQueue(
         src.ready := false.B
       }
 
-      robIdReq.request.valid       := src.valid && src.ready
-      robIdReq.request.bits.pcAddr := src.bits.pcAddr
-      robIdReq.request.bits.inst   := src.bits.inst
+      // data dependence
+      resultOut.bits.decodePorts.take(idx).foreach { prev =>
+        val prevGprWrite = prev.bits.decode.info.gprWritePort
+        dst.bits.decode.info.gprReadPorts.foreach { r =>
+          when(r.en && prevGprWrite.en && r.addr === prevGprWrite.addr) {
+            dst.valid := false.B
+            src.ready := false.B
+          }
+        }
+      }
+
+      // should issue in main
+      if (idx != 0) {
+        when(dst.bits.decode.info.isIssueMainPipeline) {
+          dst.valid := false.B
+          src.ready := false.B
+        }
+      }
   }
 
-  io.dequeuePorts.zip(resultQueue.io.dequeuePorts).foreach {
-    case (dst, src) =>
-      dst <> src
-  }
+  resultOut.valid := resultOut.bits.decodePorts.map(_.valid).reduce(_ || _)
 
-  resultQueue.io.enqueuePorts
+  resultOut.bits.mainExeBranchInfo.pc              := decodeInstInfos.head.pcAddr
+  io.queryPcPort.ftqId                             := decodeInstInfos.head.ftqInfo.ftqId + 1.U
+  resultOut.bits.mainExeBranchInfo.predictJumpAddr := io.queryPcPort.pc
+
+  resultOut.bits.decodePorts
     .lazyZip(selectedDecoders)
     .lazyZip(decodeInstInfos)
-    .lazyZip(redirectRequests)
     .zipWithIndex
     .foreach {
       case (
             (
               dequeuePort,
               selectedDecoder,
-              decodeInstInfo,
-              redirectRequest
+              decodeInstInfo
             ),
             index
           ) =>
         val robIdReq = io.robIdRequests(index)
         dequeuePort.bits.instInfo := InstInfoNdPort.default
-        // dequeuePort.bits.fetchInfo.pcAddr := decodeInstInfo.pcAddr
-        // dequeuePort.bits.fetchInfo.inst   := decodeInstInfo.inst
 
         val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
         dequeuePort.bits.instInfo.isValid                  := true.B
@@ -227,12 +243,7 @@ class InstQueue(
 
         dequeuePort.bits.decode := selectedDecoder
 
-        redirectRequest.en := !selectedDecoder.info.isBranch && decodeInstInfo.ftqInfo.predictBranch && dequeuePort.valid && dequeuePort.ready
-        redirectRequest.pcAddr := decodeInstInfo.pcAddr + 4.U
-        redirectRequest.ftqId  := decodeInstInfo.ftqInfo.ftqId
-
-        dequeuePort.bits.instInfo.ftqCommitInfo.isRedirect := redirectRequest.en
-        dequeuePort.bits.instInfo.robId                    := robIdReq.result.bits
+        dequeuePort.bits.instInfo.robId := robIdReq.result.bits
 
         if (Param.isDiffTest) {
           dequeuePort.bits.instInfo.pc.get   := decodeInstInfo.pcAddr

@@ -1,3 +1,4 @@
+import pipeline.simple.MainExeStage
 import pipeline.simple.DispatchStage
 import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
@@ -107,12 +108,14 @@ class SimpleCoreCpuTop extends Module {
     }
   }
 
-  val iCache          = Module(new ICache)
-  val frontend        = Module(new Frontend)
-  val instQueue       = Module(new InstQueue)
-  val dispatchStage   = Module(new SimpleDispatchStage)
+  val iCache   = Module(new ICache)
+  val frontend = Module(new Frontend)
+  // val instQueue       = Module(new InstQueue)
+  // val dispatchStage   = Module(new SimpleDispatchStage)
+  val instQueue       = Module(new DispatchInstQueue)
+  val dispatchStage   = Module(new DispatchExeAdapter)
   val regMatchTable   = Module(new RegMatchTable)
-  val mainExeStage    = Module(new MainExeStage)
+  val mainExeStage    = Module(new NewMainExeStage)
   val simpleExeStages = Seq.fill(Param.pipelineNum - 1)(Module(new SimpleExeStage))
   val commitStage     = Module(new CommitStage)
   val rob             = Module(new Rob)
@@ -179,9 +182,11 @@ class SimpleCoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // TODO: Connect frontend
-  frontend.io.exeFtqPort      <> mainExeStage.io.peer.get.feedbackFtq
-  frontend.io.cuCommitFtqPort := cu.io.ftqPort
-  frontend.io.cuQueryPcBundle <> cu.io.queryPcPort
+  // frontend.io.exeFtqPort      <> mainExeStage.io.peer.get.feedbackFtq
+  frontend.io.exeFtqPort.queryPcBundle <> instQueue.io.queryPcPort
+  frontend.io.exeFtqPort.commitBundle  := mainExeStage.io.peer.get.feedbackFtq
+  frontend.io.cuCommitFtqPort          := cu.io.ftqPort
+  frontend.io.cuQueryPcBundle          <> cu.io.queryPcPort
 
   // Instruction queue
   instQueue.io.enqueuePort     <> frontend.io.instDequeuePort
@@ -193,7 +198,8 @@ class SimpleCoreCpuTop extends Module {
   connectVec(instQueue.io.robIdRequests, rob.io.requests)
 
   // dispatch
-  connectVec(dispatchStage.io.ins, instQueue.io.dequeuePorts)
+  // connectVec(dispatchStage.io.ins, instQueue.io.dequeuePorts)
+  dispatchStage.io.in      <> instQueue.io.dequeuePort
   dispatchStage.io.isFlush := cu.io.backendFlush
 
   // reg match table
@@ -223,17 +229,18 @@ class SimpleCoreCpuTop extends Module {
   csrScoreBoard.io.isFlush           := cu.io.backendFlush
 
   // Execution stage
-  mainExeStage.io.in                             <> dispatchStage.io.outs(0)
+  mainExeStage.io.in                             <> dispatchStage.io.outMain
   mainExeStage.io.isFlush                        := cu.io.backendFlush
   mainExeStage.io.peer.get.csr.llbctl            := csr.io.csrValues.llbctl
   mainExeStage.io.peer.get.csr.era               := csr.io.csrValues.era
   mainExeStage.io.peer.get.dbarFinish            := cu.io.isDbarFinish
   mainExeStage.io.peer.get.csrReadPort           <> csr.io.readPorts.head
   mainExeStage.io.peer.get.stableCounterReadPort <> stableCounter.io
-  mainExeStage.io.peer.get.robQueryPcPort        <> rob.io.queryPcPort
+  // mainExeStage.io.peer.get.robQueryPcPort        <> rob.io.queryPcPort
+  rob.io.queryPcPort <> DontCare
   simpleExeStages.zipWithIndex.foreach {
     case (exe, idx) =>
-      exe.io.in      <> dispatchStage.io.outs(idx + 1)
+      exe.io.in      <> dispatchStage.io.outSimple(idx)
       exe.io.isFlush := cu.io.backendFlush
   }
 
@@ -306,8 +313,10 @@ class SimpleCoreCpuTop extends Module {
   cu.io.csrValues := csr.io.csrValues
 
   require(Param.jumpBranchPipelineIndex != 0)
-  cu.io.branchExe          := mainExeStage.io.peer.get.branchSetPort
-  cu.io.redirectFromDecode := instQueue.io.redirectRequest
+  cu.io.branchExe                 := mainExeStage.io.peer.get.branchSetPort
+  cu.io.redirectFromDecode.en     := false.B // instQueue.io.redirectRequest
+  cu.io.redirectFromDecode.ftqId  := DontCare
+  cu.io.redirectFromDecode.pcAddr := DontCare
 
   cu.io.csrFlushRequest   := csr.io.csrFlushRequest
   cu.io.csrWriteInfo      := csrScoreBoard.io.csrWritePort

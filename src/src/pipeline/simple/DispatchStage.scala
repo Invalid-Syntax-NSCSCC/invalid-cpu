@@ -7,6 +7,7 @@ import control.enums.ExceptionPos
 import pipeline.simple.bundles.{RegOccupyNdPort, RegReadPort}
 import spec._
 import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
+import pipeline.simple.ExeNdPort
 
 class DispatchPeerPort extends Bundle {
   val regReadPorts = Vec(Param.issueInstInfoMaxNum, Vec(Param.regFileReadNum, Flipped(new RegReadPort)))
