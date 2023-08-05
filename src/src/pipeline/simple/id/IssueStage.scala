@@ -195,12 +195,12 @@ class IssueStage(
         val prevGprWrite = prev.bits.decodePort.decode.info.gprWritePort
 
         // data dependence
-        dst.bits.decodePort.decode.info.gprReadPorts.foreach { r =>
-          when(r.en && prevGprWrite.en && r.addr === prevGprWrite.addr) {
-            dst.valid := false.B
-            src.ready := false.B
-          }
-        }
+        // dst.bits.decodePort.decode.info.gprReadPorts.foreach { r =>
+        //   when(r.en && prevGprWrite.en && r.addr === prevGprWrite.addr) {
+        //     dst.valid := false.B
+        //     src.ready := false.B
+        //   }
+        // }
 
         // issue in order
         when(!(prev.ready && prev.valid)) {
@@ -244,6 +244,15 @@ class IssueStage(
           case (dst, readRes, decodeRead) =>
             dst.valid := !(decodeRead.en && !readRes.data.valid)
             dst.bits  := readRes.data.bits
+
+            // data dependence
+            selectedDecoders.take(index).zipWithIndex.foreach {
+              case (prev, prevIdx) =>
+                when(decodeRead.en && prev.info.gprWritePort.en && prev.info.gprWritePort.addr === decodeRead.addr) {
+                  dst.valid := false.B
+                  dst.bits  := io.robIdRequests(prevIdx).result.bits
+                }
+            }
         }
 
         val outInstInfo = rs.bits.decodePort.instInfo
