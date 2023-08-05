@@ -53,7 +53,7 @@ class SimpleDispatchStage(
             r.en &&
             prevIn.bits.decode.info.gprWritePort.en &&
             r.addr === prevIn.bits.decode.info.gprWritePort.addr
-          }.reduce(_ || _)
+          }.reduce(_ || _) || !(prevIn.valid && prevIn.ready)
         }
         .foldLeft(false.B)(_ || _)
 
