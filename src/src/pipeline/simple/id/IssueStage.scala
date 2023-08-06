@@ -158,6 +158,7 @@ class IssueStage(
       // block
       when(
         isBlockDequeueReg ||
+          isIdle ||
           // io.isFrontendFlush ||
           !robIdReq.result.valid
       ) {
