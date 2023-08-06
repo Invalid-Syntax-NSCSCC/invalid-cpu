@@ -329,7 +329,7 @@ class IssueStage(
           mux.io.inputs.zip(io.wakeUpPorts).foreach {
             case (input, wakeUp) =>
               input.valid := wakeUp.en &&
-                wakeUp.addr === decodeRead.addr &&
+                // wakeUp.addr === decodeRead.addr &&
                 wakeUp.robId(Param.Width.Rob._id - 1, 0) === elemData.bits(Param.Width.Rob._id - 1, 0)
               input.bits := wakeUp.data
           }
