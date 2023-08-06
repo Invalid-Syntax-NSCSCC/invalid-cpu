@@ -5,6 +5,8 @@ import chisel3.util._
 import pipeline.common.bundles.FetchInstInfoBundle
 import pipeline.simple.decode.bundles.DecodeOutNdPort
 import pipeline.simple.decode._
+import utils.MultiMux1
+import pipeline.simple.bundles.PreExeInstNdPort
 
 class DecodeUnit extends Module {
   val io = IO(new Bundle {
@@ -24,15 +26,13 @@ class DecodeUnit extends Module {
 
   decoders.foreach(_.io.instInfoPort := io.in)
 
-  val decoderWires = Wire(Vec(decoders.length, new DecodeOutNdPort))
-
-  decoderWires.zip(decoders).foreach {
-    case (port, decoder) =>
-      port := decoder.io.out
+  val mux = Module(new MultiMux1(decoders.length, new PreExeInstNdPort, PreExeInstNdPort.default))
+  mux.io.inputs.zip(decoders).foreach {
+    case (dst, src) =>
+      dst.valid := src.io.out.isMatched
+      dst.bits  := src.io.out.info
   }
 
-  val decoderIndex =
-    OHToUInt(Cat(decoderWires.map(_.isMatched).reverse))
-
-  io.out := decoderWires(decoderIndex)
+  io.out.isMatched := mux.io.output.valid
+  io.out.info      := mux.io.output.bits
 }
