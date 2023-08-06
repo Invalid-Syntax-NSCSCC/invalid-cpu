@@ -18,24 +18,6 @@ import pipeline.simple.ExeNdPort
 import utils.MultiMux1
 import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
 
-class RegReadNdPort extends Bundle {
-  val decodePorts       = Vec(Param.pipelineNum, Valid(new FetchInstDecodeNdPort))
-  val mainExeBranchInfo = new MainExeBranchInfoBundle
-}
-
-object RegReadNdPort {
-  def default = 0.U.asTypeOf(new RegReadNdPort)
-}
-
-class RSBundle extends Bundle {
-  val decodePort     = new FetchInstDecodeNdPort
-  val regReadResults = Vec(Param.regFileReadNum, Valid(UInt(Width.Reg.data)))
-}
-
-class MainRSBundle extends RSBundle {
-  val mainExeBranchInfo = new MainExeBranchInfoBundle
-}
-
 // assert: enqueuePorts总是最低的几位有效
 class IssueStage(
   issueNum:    Int = Param.issueInstInfoMaxNum,
