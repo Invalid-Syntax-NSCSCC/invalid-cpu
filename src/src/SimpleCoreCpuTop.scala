@@ -201,7 +201,14 @@ class SimpleCoreCpuTop extends Module {
         wakeUp := RegNext(mainExeStage.io.peer.get.regWakeUpPort)
       } else if (idx == Param.pipelineNum) {
         // TODO : connect mem res peer ?
-        wakeUp := memResStage.io.peer.get.regWakeUpPort
+        // wakeUp := memResStage.io.peer.get.regWakeUpPort
+        wakeUp.en := memResStage.io.out.valid &&
+          memResStage.io.out.bits.instInfo.isValid &&
+          memResStage.io.out.bits.gprWrite.en
+        wakeUp.addr  := memResStage.io.out.bits.gprWrite.addr
+        wakeUp.data  := memResStage.io.out.bits.gprWrite.data
+        wakeUp.robId := memResStage.io.out.bits.instInfo.robId
+
       } else {
         wakeUp := RegNext(simpleExeStages(idx).io.peer.get)
       }
