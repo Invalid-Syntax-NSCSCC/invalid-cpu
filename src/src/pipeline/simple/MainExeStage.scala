@@ -21,6 +21,8 @@ import common.enums.ReadWriteSel
 import control.enums.ExceptionPos
 import pipeline.common.enums.CacheMaintenanceTargetType
 import pipeline.simple.bundles.RegWakeUpNdPort
+import pipeline.simple.bundles.MainExeBranchInfoBundle
+import org.json4s.scalap.Main
 
 class ExeNdPort extends Bundle {
   // Micro-instruction for execution stage
@@ -47,6 +49,15 @@ object ExeNdPort {
   def default = 0.U.asTypeOf(new ExeNdPort)
 }
 
+class MainExeNdPort extends ExeNdPort {
+
+  val branchInfo = new MainExeBranchInfoBundle
+}
+
+object MainExeNdPort {
+  def default = 0.U.asTypeOf(new MainExeNdPort)
+}
+
 class ExePeerPort extends Bundle {
   val csr = Input(new Bundle {
     val llbctl = new LlbctlBundle
@@ -61,18 +72,18 @@ class ExePeerPort extends Bundle {
   val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
   val csrReadPort = Flipped(new CsrReadPort)
-  val feedbackFtq = Flipped(new ExeFtqPort)
+  val feedbackFtq = Output(new ExeCommitFtqNdPort)
 
-  val robQueryPcPort = Flipped(new RobQueryPcPort)
+  // val robQueryPcPort = Flipped(new RobQueryPcPort)
 
   val regWakeUpPort = Output(new RegWakeUpNdPort)
 }
 
 class MainExeStage
     extends BaseStage(
-      new ExeNdPort,
+      new MainExeNdPort,
       new AddrTransNdPort,
-      ExeNdPort.default,
+      MainExeNdPort.default,
       Some(new ExePeerPort)
     ) {
   val out      = Wire(new AddrTransNdPort)
@@ -291,14 +302,13 @@ class MainExeStage
   alu.io.aluInst.rightOperand   := selectedIn.rightOperand
   alu.io.aluInst.jumpBranchAddr := selectedIn.jumpBranchAddr // also load-store imm
 
-  out.wb.gprWrite.data      := DontCare
-  peer.robQueryPcPort.robId := selectedIn.instInfo.robId
+  out.wb.gprWrite.data := DontCare
 
   when(io.isFlush) {
     isDbarBlockingReg := false.B
   }
 
-  val fallThroughPc = peer.robQueryPcPort.pc + 4.U
+  val fallThroughPc = selectedIn.branchInfo.pc + 4.U
 
   switch(selectedIn.exeSel) {
     is(Sel.logic) {
@@ -409,8 +419,7 @@ class MainExeStage
   val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)
   val inFtqInfo      = WireDefault(selectedIn.instInfo.ftqInfo)
 
-  feedbackFtq.queryPcBundle.ftqId := selectedIn.instInfo.ftqInfo.ftqId + 1.U
-  val ftqQueryPc = feedbackFtq.queryPcBundle.pc
+  val ftqQueryPc = selectedIn.branchInfo.predictJumpAddr
 
   // mis predict
   val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
@@ -450,25 +459,25 @@ class MainExeStage
 
   if (Param.exeFeedBackFtqDelay) {
 
-    feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
+    feedbackFtq.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
       !branchBlockingReg,
       false.B
     )
-    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
+    feedbackFtq.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
       (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
-    feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
-    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
-    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
+    feedbackFtq.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
+    feedbackFtq.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
+    feedbackFtq.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
   } else {
 
-    feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
-    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
+    feedbackFtq.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
+    feedbackFtq.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
-    feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
-    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
-    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+    feedbackFtq.ftqUpdateMetaId          := inFtqInfo.ftqId
+    feedbackFtq.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+    feedbackFtq.ftqMetaUpdateFallThrough := fallThroughPc
   }
 
   out.wb.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en

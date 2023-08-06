@@ -1,4 +1,4 @@
-package pipeline.simple
+package pipeline.simple.id
 
 import chisel3._
 import chisel3.util._
@@ -7,6 +7,8 @@ import control.enums.ExceptionPos
 import pipeline.simple.bundles.{RegOccupyNdPort, RegReadPort}
 import spec._
 import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
+import pipeline.simple.ExeNdPort
+import pipeline.simple.id.FetchInstDecodeNdPort
 
 class DispatchPeerPort extends Bundle {
   val regReadPorts = Vec(Param.issueInstInfoMaxNum, Vec(Param.regFileReadNum, Flipped(new RegReadPort)))
@@ -67,12 +69,8 @@ class DispatchStage
           !selectedIns
             .take(src_idx)
             .map { prevIn =>
-              // (
-              //   prevIn.decode.info.gprWritePort.addr === in.decode.info.gprWritePort.addr &&
-              //     in.decode.info.gprWritePort.en
-              // ) ||
               in.decode.info.gprReadPorts.map { r =>
-                r.en && r.addr === prevIn.decode.info.gprWritePort.addr
+                r.en && prevIn.decode.info.gprWritePort.en && r.addr === prevIn.decode.info.gprWritePort.addr
               }.reduce(_ || _)
             }
             .foldLeft(false.B)(_ || _)

@@ -1,4 +1,4 @@
-package pipeline.simple
+package pipeline.simple.id
 
 import chisel3._
 import chisel3.util._
@@ -13,9 +13,9 @@ import pipeline.simple.decode.bundles._
 import spec._
 
 class FetchInstDecodeNdPort extends Bundle {
-  val decode    = new DecodeOutNdPort
-  val instInfo  = new InstInfoNdPort
-  val fetchInfo = new PcInstBundle
+  val decode   = new DecodeOutNdPort
+  val instInfo = new InstInfoNdPort
+  // val fetchInfo = new PcInstBundle
 }
 
 object FetchInstDecodeNdPort {
@@ -190,9 +190,9 @@ class InstQueue(
             index
           ) =>
         val robIdReq = io.robIdRequests(index)
-        dequeuePort.bits.instInfo         := InstInfoNdPort.default
-        dequeuePort.bits.fetchInfo.pcAddr := decodeInstInfo.pcAddr
-        dequeuePort.bits.fetchInfo.inst   := decodeInstInfo.inst
+        dequeuePort.bits.instInfo := InstInfoNdPort.default
+        // dequeuePort.bits.fetchInfo.pcAddr := decodeInstInfo.pcAddr
+        // dequeuePort.bits.fetchInfo.inst   := decodeInstInfo.inst
 
         val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
         dequeuePort.bits.instInfo.isValid                  := true.B

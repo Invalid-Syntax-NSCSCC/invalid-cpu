@@ -10,3 +10,7 @@ class RegWakeUpNdPort extends Bundle {
   val data  = UInt(Width.Reg.data)
   val robId = UInt(Param.Width.Rob.id)
 }
+
+object RegWakeUpNdPort {
+  def default = 0.U.asTypeOf(new RegWakeUpNdPort)
+}

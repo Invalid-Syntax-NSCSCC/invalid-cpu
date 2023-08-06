@@ -6,6 +6,7 @@ import common.BaseStage
 import memory.bundles.MemResponseNdPort
 import pipeline.simple.bundles.WbNdPort
 import spec._
+import pipeline.simple.bundles.RegWakeUpNdPort
 
 class MemResNdPort extends Bundle {
   val isAtomicStore           = Bool()
@@ -23,8 +24,9 @@ object MemResNdPort {
 }
 
 class MemResPeerPort extends Bundle {
-  val dCacheRes   = Input(new MemResponseNdPort)
-  val uncachedRes = Input(new MemResponseNdPort)
+  val dCacheRes     = Input(new MemResponseNdPort)
+  val uncachedRes   = Input(new MemResponseNdPort)
+  val regWakeUpPort = Output(new RegWakeUpNdPort)
 }
 
 class MemResStage
@@ -34,8 +36,17 @@ class MemResStage
       MemResNdPort.default,
       Some(new MemResPeerPort)
     ) {
-  val peer = io.peer.get
-  val out  = resultOutReg.bits
+  val peer     = io.peer.get
+  val out      = Wire(new WbNdPort)
+  val outValid = WireDefault(false.B)
+  resultOutReg.bits  := out
+  resultOutReg.valid := outValid
+
+  // reg wake up
+  peer.regWakeUpPort.en    := outValid && out.gprWrite.en
+  peer.regWakeUpPort.addr  := out.gprWrite.addr
+  peer.regWakeUpPort.data  := out.gprWrite.data
+  peer.regWakeUpPort.robId := out.instInfo.robId
 
   // Fallback output
   out := selectedIn.wb
@@ -90,7 +101,7 @@ class MemResStage
     }
 
     // Submit result
-    resultOutReg.valid := isComputed
+    outValid := isComputed
   }
 
   val shouldDiscardReg = RegInit(false.B)

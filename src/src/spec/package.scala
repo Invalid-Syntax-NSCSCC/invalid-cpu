@@ -20,24 +20,6 @@ package object spec {
     val r1 = 1.U
   }
 
-  object PipelineStageIndex {
-    var count = -1
-
-    private def next = {
-      count += 1
-      count
-    }
-
-    val frontend       = next
-    val issueStage     = next
-    val regReadStage   = next
-    val exeStage       = next
-    val scoreboard     = next
-    val addrTransStage = next
-    val memReqStage    = next
-    val memResStage    = next
-  }
-
   object Width {
     val inst = wordLength.W
     object Reg {
