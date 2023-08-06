@@ -7,14 +7,13 @@ import spec._
 
 class Pmu extends Module {
   val io = IO(new Bundle {
-    val instqueueFull      = Input(Bool())
-    val instqueueFullValid = Input(Bool())
-    val instQueueEmpty     = Input(Bool())
-    val branchInfo         = Input(new PmuBranchPredictNdPort)
-    val dispatchInfos      = Input(Vec(Param.issueInstInfoMaxNum, new PmuDispatchInfoBundle))
-    val robFull            = Input(Bool())
-    val dCache             = Input(new PmuCacheNdPort)
-    val iCache             = Input(new PmuCacheNdPort)
+    val instqueueFull  = Input(Bool())
+    val instQueueEmpty = Input(Bool())
+    val branchInfo     = Input(new PmuBranchPredictNdPort)
+    val dispatchInfos  = Input(Vec(Param.issueInstInfoMaxNum, new PmuDispatchInfoBundle))
+    val robFull        = Input(Bool())
+    val dCache         = Input(new PmuCacheNdPort)
+    val iCache         = Input(new PmuCacheNdPort)
   })
 
   def r: UInt = {
@@ -39,9 +38,6 @@ class Pmu extends Module {
   inc(timer)
   when(io.instqueueFull) {
     inc(instQueueIsFull)
-    when(io.instqueueFullValid) {
-      inc(instQueueIsFullValid)
-    }
   }
   when(io.instQueueEmpty) {
     inc(instQueueEmpty)

@@ -16,17 +16,7 @@ import pipeline.simple.id.FetchInstDecodeNdPort
 import pipeline.simple.MainExeNdPort
 import pipeline.simple.ExeNdPort
 import utils.MultiMux1
-
-// import pipeline.simple.id.RegReadNdPort
-
-// class FetchInstDecodeNdPort extends Bundle {
-//   val decode   = new DecodeOutNdPort
-//   val instInfo = new InstInfoNdPort
-// }
-
-// object FetchInstDecodeNdPort {
-//   def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
-// }
+import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
 
 class RegReadNdPort extends Bundle {
   val decodePorts       = Vec(Param.pipelineNum, Valid(new FetchInstDecodeNdPort))
@@ -79,6 +69,8 @@ class IssueStage(
     val wakeUpPorts = Input(Vec(pipelineNum + 1, new RegWakeUpNdPort))
 
     val plv = Input(UInt(2.W))
+
+    val pmu_dispatchInfos = Option.when(Param.usePmu)(Output(Vec(Param.issueInstInfoMaxNum, new PmuDispatchInfoBundle)))
   })
   require(issueNum == pipelineNum)
 
@@ -362,5 +354,16 @@ class IssueStage(
         rs.bits.decodePort.decode.info.imm,
         regReadResults(1).bits
       )
+  }
+
+  if (Param.usePmu) {
+    val pmuInfos = io.pmu_dispatchInfos.get
+    pmuInfos.lazyZip(rss).lazyZip(Seq(io.dequeuePorts.mainExePort) ++ io.dequeuePorts.simpleExePorts).foreach {
+      case (pmu, rs, out) =>
+        pmu.isIssueInst              := out.valid && out.ready && !io.isBackendFlush
+        pmu.bubbleFromFrontend       := !rs.io.dequeuePorts.head.valid && !io.isBackendFlush && !isBlockDequeueReg
+        pmu.bubbleFromBackend        := out.valid && !out.ready && !io.isBackendFlush
+        pmu.bubbleFromDataDependence := rs.io.dequeuePorts.head.valid && !out.valid && !io.isBackendFlush
+    }
   }
 }

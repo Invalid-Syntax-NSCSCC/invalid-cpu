@@ -117,7 +117,7 @@ class SimpleCoreCpuTop extends Module {
   val instQueue       = Module(new SimpleInstQueue)
   val issueStage      = Module(new IssueStage)
   val regMatchTable   = Module(new RegMatchTable)
-  val mainExeStage    = Module(new NewMainExeStage)
+  val mainExeStage    = Module(new MainExeStage)
   val simpleExeStages = Seq.fill(Param.pipelineNum - 1)(Module(new SimpleExeStage))
   val commitStage     = Module(new CommitStage)
   val rob             = Module(new Rob)
@@ -363,15 +363,14 @@ class SimpleCoreCpuTop extends Module {
 
   // pmu
   if (Param.usePmu) {
-    // val pmu = Module(new Pmu)
-    // pmu.io.instqueueFull      := !instQueue.io.enqueuePort.ready
-    // pmu.io.instqueueFullValid := instQueue.io.pmu_instqueueFullValid.get
-    // pmu.io.instQueueEmpty     := instQueue.io.pmu_instqueueEmpty.get
-    // pmu.io.branchInfo         := commitStage.io.pmu_branchInfo.get
-    // pmu.io.robFull            := !rob.io.requests.head.result.valid && !cu.io.backendFlush
-    // pmu.io.dCache             := dCache.io.pmu.get
-    // pmu.io.iCache             := iCache.io.pmu.get
-    // connectVec(pmu.io.dispatchInfos, dispatchStage.io.peer.get.pmu.get)
+    val pmu = Module(new Pmu)
+    pmu.io.instqueueFull  := !instQueue.io.enqueuePort.ready
+    pmu.io.instQueueEmpty := !instQueue.io.dequeuePorts.head.valid
+    pmu.io.branchInfo     := commitStage.io.pmu_branchInfo.get
+    pmu.io.robFull        := !rob.io.requests.head.result.valid && !cu.io.backendFlush
+    pmu.io.dCache         := dCache.io.pmu.get
+    pmu.io.iCache         := iCache.io.pmu.get
+    connectVec(pmu.io.dispatchInfos, issueStage.io.pmu_dispatchInfos.get)
   }
 
   // Difftest
