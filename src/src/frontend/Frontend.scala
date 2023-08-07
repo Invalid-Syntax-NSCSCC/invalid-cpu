@@ -41,7 +41,7 @@ class Frontend extends Module {
   val instFetch = Module(new InstFetch)
 
   pc.io.newPc             := io.cuNewPc
-  pc.io.mainRedirectPc    := bpu.io.mainRedirectPc
+  pc.io.bpuRedirectPc     := bpu.io.bpuRedirectPc
   pc.io.ftqFull           := ftq.io.bpuFtqPort.ftqFull
   pc.io.fetchNum          := bpu.io.fetchNum
   pc.io.preDecodePc.bits  := instFetch.io.preDecodeRedirectPort.redirectPc

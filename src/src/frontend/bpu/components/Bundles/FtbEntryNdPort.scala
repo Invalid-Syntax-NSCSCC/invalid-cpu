@@ -9,9 +9,9 @@ class FtbEntryNdPort extends Bundle {
   val branchType       = UInt(Param.BPU.BranchType.width.W)
 
   // Virtual tag, pc[1:0] is always 0, so not used in index or tag
-  val tag                = UInt((spec.Width.Mem._addr - 2 - log2Ceil(Param.BPU.FTB.nset)).W)
-  val jumpTargetAddress  = UInt(spec.Width.Mem.addr)
-  val fallThroughAddress = UInt(spec.Width.Mem.addr)
+  val tag             = UInt((spec.Width.Mem._addr - 2 - log2Ceil(Param.BPU.FTB.nset)).W)
+  val jumpTargetAddr  = UInt(spec.Width.Mem.addr)
+  val fallThroughAddr = UInt(spec.Width.Mem.addr)
 }
 
 object FtbEntryNdPort {

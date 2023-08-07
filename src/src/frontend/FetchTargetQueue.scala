@@ -54,13 +54,12 @@ class FetchTargetQueue(
   val ifPtr     = RegInit(0.U(ptrWidth.W))
   val nextIfPtr = WireDefault(ifPtr)
   ifPtr := nextIfPtr
-  val lastIfPtr   = RegNext(ifPtr, 0.U(ptrWidth.W))
   val commPtr     = RegInit(0.U(ptrWidth.W))
   val bpuPtrPlus1 = WireDefault(0.U(ptrWidth.W))
   bpuPtrPlus1 := bpuPtr + 1.U
 
   // Queue data structure
-  // * enqueue from bpu
+  //  enqueue from bpu
   val ftqVecReg  = RegInit(VecInit(Seq.fill(queueSize)(FtqBlockBundle.default)))
   val ftqNextVec = Wire(Vec(queueSize, new FtqBlockBundle))
   // FTQ meta
@@ -90,7 +89,7 @@ class FetchTargetQueue(
   queueFullDelay       := queueFull
   ifSendValidDelay     := ifSendValid
   ifRedirectDelay      := ifRedirect
-  mainBpuRedirectDelay := io.bpuFtqPort.mainBpuRedirectValid
+  mainBpuRedirectDelay := io.bpuFtqPort.bpuRedirectValid
 
   ftqVecReg.zip(ftqNextVec).foreach {
     case (block, nextBlock) =>
@@ -109,7 +108,7 @@ class FetchTargetQueue(
   }
 
   // bpu ptr
-  when(io.bpuFtqPort.mainBpuRedirectValid) {
+  when(io.bpuFtqPort.bpuRedirectValid) {
     // p1 redirect,maintain bpuPtr
     bpuPtr := bpuPtr
   }.elsewhen(io.bpuFtqPort.ftqP0.isValid) {
@@ -188,7 +187,7 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqFull := queueFull
 
   // training meta to BPU
-  io.bpuFtqPort.ftqTrainMeta := FtqBpuMetaPort.default
+  io.bpuFtqPort.ftqBpuTrainMeta := FtqBpuMetaPort.default
 //  when(
 //    io.cuCommitFtqPort.blockBitmask(0) & io.cuCommitFtqPort.meta.isBranch
 //  ) {
@@ -196,18 +195,18 @@ class FetchTargetQueue(
   // 1. Must be last in block, which means either a known branch or a mispredicted branch.
   // 2. Exception introduced block commit is not considered a branch update.
   val commitFtqId = WireDefault(io.commitFtqTrainPort.ftqId)
-  io.bpuFtqPort.ftqTrainMeta.valid       := io.commitFtqTrainPort.isTrainValid
-  io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaRegs(commitFtqId).ftbHit
-  io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaRegs(commitFtqId).ftbHitIndex
-  io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaRegs(commitFtqId).ftbDirty // jumpTargetAddr error
+  io.bpuFtqPort.ftqBpuTrainMeta.valid       := io.commitFtqTrainPort.isTrainValid
+  io.bpuFtqPort.ftqBpuTrainMeta.ftbHit      := ftqBpuMetaRegs(commitFtqId).ftbHit
+  io.bpuFtqPort.ftqBpuTrainMeta.ftbHitIndex := ftqBpuMetaRegs(commitFtqId).ftbHitIndex
+  io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty    := ftqBranchMetaRegs(commitFtqId).ftbDirty // jumpTargetAddr error
   // Must use accuraate decoded info passed from backend
-  io.bpuFtqPort.ftqTrainMeta.branchTakenMeta := io.commitFtqTrainPort.branchTakenMeta
+  io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta := io.commitFtqTrainPort.branchTakenMeta
 
-  io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.startPc            := ftqVecReg(commitFtqId).startPc
-  io.bpuFtqPort.ftqTrainMeta.isCrossCacheline                    := ftqVecReg(commitFtqId).isCrossCacheline
-  io.bpuFtqPort.ftqTrainMeta.tageMeta                            := ftqBpuMetaRegs(commitFtqId).tageMeta
-  io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
-  io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
+  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc         := ftqVecReg(commitFtqId).startPc
+  io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline                 := ftqVecReg(commitFtqId).isCrossCacheline
+  io.bpuFtqPort.ftqBpuTrainMeta.tageOriginMeta                         := ftqBpuMetaRegs(commitFtqId).tageQueryMeta
+  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
+  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
 
   // commit to ras
   io.ftqRasPort.valid         := io.commitFtqTrainPort.isTrainValid
@@ -229,7 +228,7 @@ class FetchTargetQueue(
   )
   bpuMetaWriteEntry := Mux(
     io.bpuFtqPort.ftqP1.isValid,
-    io.bpuFtqPort.ftqMeta,
+    io.bpuFtqPort.bpuQueryMeta,
     BpuFtqMetaNdPort.default
   )
 //  when(io.bpuFtqPort.ftqP1.isValid & ~mainBpuRedirectDelay) {

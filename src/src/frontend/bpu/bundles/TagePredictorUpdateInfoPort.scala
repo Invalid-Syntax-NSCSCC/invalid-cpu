@@ -7,7 +7,7 @@ class TagePredictorUpdateInfoPort extends Bundle {
   val predictCorrect = Bool()
   val branchTaken    = Bool()
   val isConditional  = Bool()
-  val bpuMeta        = new TageMetaPort
+  val tageOriginMeta = new TageMetaPort
 }
 
 object TagePredictorUpdateInfoPort {
