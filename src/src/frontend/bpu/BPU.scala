@@ -3,7 +3,7 @@ package frontend.bpu
 import chisel3._
 import chisel3.util._
 import frontend.bpu.bundles._
-import frontend.bpu.components.Bundles.FtbEntryNdPort
+import frontend.bpu.components.Bundles.{FtbEntryNdPort, TageMetaPort}
 import frontend.bpu.components.FTB
 import frontend.bundles.{BpuFtqPort, FtqBlockBundle}
 import spec.Param.BPU.BranchType
@@ -22,9 +22,6 @@ class BPU(
   fetchNum:          Int      = Param.fetchInstMaxNum,
   addr:              Int      = spec.Width.Mem._addr)
     extends Module {
-//  assert(Param.BPU.TagePredictor.componentCtrWidth != null)
-//  val componentCtrWidth: Seq[Int] = Param.BPU.TagePredictor.componentCtrWidth
-  val baseCtrWidth = componentCtrWidth(0)
 
   val io = IO(new Bundle {
     // Backend flush
@@ -37,8 +34,8 @@ class BPU(
     val pc = Input(UInt(Width.Reg.data))
 
     // PC
-    val mainRedirectPc = Output(Valid(UInt(Width.Reg.data)))
-    val fetchNum       = Output(UInt(log2Ceil(Param.fetchInstMaxNum + 1).W))
+    val bpuRedirectPc = Output(Valid(UInt(Width.Reg.data)))
+    val fetchNum      = Output(UInt(log2Ceil(Param.fetchInstMaxNum + 1).W))
 
     // PMU
     // TODO: use PMU to monitor miss-prediction rate and each component useful rate
@@ -60,13 +57,12 @@ class BPU(
   val rasTopAddr = WireDefault(0.U(addr.W))
 
   val ftqFullDelay = RegNext(io.bpuFtqPort.ftqFull, false.B)
-  val flushDelay   = RegNext((io.backendFlush || (mainRedirectValid && !ftqFullDelay)), false.B)
+  val flushDelay   = RegNext(io.backendFlush || (mainRedirectValid && !ftqFullDelay), false.B)
 
   ////////////////////////////////////////////////////////////////////////////////////
   // Query logic
   ////////////////////////////////////////////////////////////////////////////////////
-  val tageMeta = WireDefault(BpuFtqMetaNdPort.default)
-  val bpuMeta  = WireDefault(BpuFtqMetaNdPort.default)
+  val tageQueryMeta = WireDefault(TageMetaPort.default)
 
   // P0
   // FTQ qutput generate
@@ -97,7 +93,6 @@ class BPU(
             Param.Width.ICache._instOffset
           )
         }
-        when(io.pc(Param.Width.ICache._fetchOffset, Param.Width.ICache._instOffset) =/= 0.U) {}
       }
       io.bpuFtqPort.ftqP0.length := pcFetchNum
     }
@@ -112,23 +107,23 @@ class BPU(
     io.bpuFtqPort.ftqP0.predictValid := false.B
   }
 
-  // p1 (the next clock of p0)
+  // p1 (the next clock of p0) get the query result
   mainRedirectValid := ftbHit && !flushDelay && !ftqFullDelay
   val p1Pc = RegNext(io.pc, 0.U(addr.W))
 
-  // p1git  FTQ output
+  // p1  FTQ output
   when(mainRedirectValid) {
     // Main BPU generate a redirect in P1
     io.bpuFtqPort.ftqP1.isValid          := true.B
     io.bpuFtqPort.ftqP1.isCrossCacheline := ftbEntry.isCrossCacheline
     io.bpuFtqPort.ftqP1.startPc          := p1Pc
-    // when a fetch block has branch inst,cut fetch num
-    io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddress(Param.Width.ICache._fetchOffset, 2) -
+    // calculate fetch num with notTakenFallThroughAddress - startPc
+    io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddr(Param.Width.ICache._fetchOffset, 2) -
       p1Pc(Param.Width.ICache._fetchOffset, 2)) // Use 1 + log(fetchNum) bits minus to ensure no overflow
     io.bpuFtqPort.ftqP1.predictValid := true.B
-    //  switch ftbEntry.BranchType
-    io.bpuFtqPort.ftqP1.predictTaken := true.B // (Param.BPU.BranchType.call, Param.BPU.BranchType.ret, Param.BPU.BranchType.cond)
-    when(ftbEntry.branchType === Param.BPU.BranchType.cond) {
+    //  switch predictTaken with ftbEntry.BranchType
+    io.bpuFtqPort.ftqP1.predictTaken := true.B // (BranchType.call,BranchType.unCond)
+    when(ftbEntry.branchType === BranchType.cond) {
       io.bpuFtqPort.ftqP1.predictTaken := predictTaken
     }
   }.otherwise {
@@ -136,38 +131,33 @@ class BPU(
     io.bpuFtqPort.ftqP1 := FtqBlockBundle.default
   }
 
-  // debug
-  val bpuPc         = RegInit(0.U(addr.W))
-  val ftbBranchType = RegInit(0.U(Param.BPU.BranchType.width.W))
-  bpuPc         := io.bpuFtqPort.ftqP0.startPc
-  ftbBranchType := ftbEntry.branchType
-
   // Pc output
-  io.mainRedirectPc.valid            := mainRedirectValid
-  io.bpuFtqPort.mainBpuRedirectValid := mainRedirectValid
-  io.mainRedirectPc.bits             := ftbEntry.jumpTargetAddress
+  io.bpuRedirectPc.valid         := mainRedirectValid
+  io.bpuFtqPort.bpuRedirectValid := mainRedirectValid
+  io.bpuRedirectPc.bits          := ftbEntry.jumpTargetAddr
   //  case branchType
   switch(ftbEntry.branchType) {
     is(Param.BPU.BranchType.cond) {
-      io.mainRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddress, ftbEntry.fallThroughAddress)
+      io.bpuRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddr, ftbEntry.fallThroughAddr)
     }
     is(Param.BPU.BranchType.call, Param.BPU.BranchType.uncond) {
-      io.mainRedirectPc.bits := ftbEntry.jumpTargetAddress
+      io.bpuRedirectPc.bits := ftbEntry.jumpTargetAddr
     }
-    is(Param.BPU.BranchType.ret) {}
+    is(Param.BPU.BranchType.ret) {
+      // return inst is predict in pre decode Stage
+    }
   }
 
   // FTQ meta output
-  bpuMeta.ftbHit        := ftbHit
-  bpuMeta.ftbHitIndex   := ftbHitIndex
-  bpuMeta.valid         := ftbHit
-  io.bpuFtqPort.ftqMeta := (bpuMeta.asUInt | tageMeta.asUInt).asTypeOf(new BpuFtqMetaNdPort)
+  io.bpuFtqPort.bpuQueryMeta.tageQueryMeta := tageQueryMeta
+  io.bpuFtqPort.bpuQueryMeta.ftbHit        := ftbHit
+  io.bpuFtqPort.bpuQueryMeta.ftbHitIndex   := ftbHitIndex
 
   ////////////////////////////////////////////////////////////////////
   // Update Logic
   ////////////////////////////////////////////////////////////////////
   val directionPredictError = WireDefault(
-    io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken
+    io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.predictedTaken ^ io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.isTaken
   )
   val tageUpdateInfo = Wire(new TagePredictorUpdateInfoPort)
   val ftbUpdateEntry = Wire(new FtbEntryNdPort)
@@ -178,38 +168,37 @@ class BPU(
   // 3. A FTB pollution is detected
   //     dirty case 1: target error || fallThroughAddr error;
   //                2:At the same addr, original branch inst become nonBranch inst  after  cacop or change program
-
   val ftbUpdateValid = if (Param.isFTBupdateRet) {
     WireDefault(
-      io.bpuFtqPort.ftqTrainMeta.valid &&
-        (((directionPredictError || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.call || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqTrainMeta.ftbHit))
-          || io.bpuFtqPort.ftqTrainMeta.ftbDirty)
+      io.bpuFtqPort.ftqBpuTrainMeta.valid &&
+        (((directionPredictError || io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === BranchType.call || io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqBpuTrainMeta.ftbHit))
+          || io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty)
     )
     // all kinds of target error can update
   } else {
     WireDefault(
-      io.bpuFtqPort.ftqTrainMeta.valid &&
-        (((directionPredictError || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.call || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqTrainMeta.ftbHit)) ||
-          (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit))
+      io.bpuFtqPort.ftqBpuTrainMeta.valid &&
+        (((directionPredictError || io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === BranchType.call || io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqBpuTrainMeta.ftbHit)) ||
+          (io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty && io.bpuFtqPort.ftqBpuTrainMeta.ftbHit))
     )
     // case 1: the first time of a branch inst taken ( include conditon branch, indirect jump that hasn't been predicted taken),
     // case 2: hit and dirty
     // in our design ret would not be update because ret is predicted in RAS in predecodeStage; which results in ftb dirty and not hit
   }
 
-  // Direction preditor update policy
-  tageUpdateInfo.valid          := io.bpuFtqPort.ftqTrainMeta.valid
+  // Tage predictor and FTB update policy
+  tageUpdateInfo.valid          := io.bpuFtqPort.ftqBpuTrainMeta.valid
   tageUpdateInfo.predictCorrect := !directionPredictError
-  tageUpdateInfo.isConditional  := io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.cond
-  tageUpdateInfo.branchTaken    := io.bpuFtqPort.ftqTrainMeta.isTaken
-  tageUpdateInfo.bpuMeta        := io.bpuFtqPort.ftqTrainMeta.tageMeta
+  tageUpdateInfo.isConditional := io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === Param.BPU.BranchType.cond
+  tageUpdateInfo.branchTaken   := io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.isTaken
+  tageUpdateInfo.tageOriginMeta := io.bpuFtqPort.ftqBpuTrainMeta.tageOriginMeta
 
-  ftbUpdateEntry.valid              := !(io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
-  ftbUpdateEntry.tag                := io.bpuFtqPort.ftqTrainMeta.startPc(addr - 1, log2Ceil(ftbNset) + 2)
-  ftbUpdateEntry.branchType         := io.bpuFtqPort.ftqTrainMeta.branchType
-  ftbUpdateEntry.isCrossCacheline   := io.bpuFtqPort.ftqTrainMeta.isCrossCacheline
-  ftbUpdateEntry.jumpTargetAddress  := io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress
-  ftbUpdateEntry.fallThroughAddress := io.bpuFtqPort.ftqTrainMeta.fallThroughAddress
+  ftbUpdateEntry.valid      := !(io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty && io.bpuFtqPort.ftqBpuTrainMeta.ftbHit)
+  ftbUpdateEntry.tag        := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc(addr - 1, log2Ceil(ftbNset) + 2)
+  ftbUpdateEntry.branchType := io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType
+  ftbUpdateEntry.isCrossCacheline := io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline
+  ftbUpdateEntry.jumpTargetAddr   := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr
+  ftbUpdateEntry.fallThroughAddr  := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr
 
   // connect fetch target buffer module
   // assign ftbHit = 0
@@ -223,19 +212,19 @@ class BPU(
     ftbHit := false.B
   }
   // update
-  ftbModule.io.updatePc        := io.bpuFtqPort.ftqTrainMeta.startPc
-  ftbModule.io.updateWayIndex  := io.bpuFtqPort.ftqTrainMeta.ftbHitIndex
+  ftbModule.io.updatePc        := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
+  ftbModule.io.updateWayIndex  := io.bpuFtqPort.ftqBpuTrainMeta.ftbHitIndex
   ftbModule.io.updateValid     := ftbUpdateValid
-  ftbModule.io.updateDirty     := (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
+  ftbModule.io.updateDirty     := (io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty && io.bpuFtqPort.ftqBpuTrainMeta.ftbHit)
   ftbModule.io.updateEntryPort := ftbUpdateEntry
 
   // connect tage Predictor module
   val tagePredictorModule = Module(new TagePredictor)
   tagePredictorModule.io.pc             := io.pc
-  tageMeta                              := tagePredictorModule.io.bpuMetaPort
+  tageQueryMeta                         := tagePredictorModule.io.tageQueryMeta
   predictTaken                          := tagePredictorModule.io.predictBranchTaken
   predictValid                          := tagePredictorModule.io.predictValid
-  tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqTrainMeta.startPc
+  tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
   tagePredictorModule.io.updateInfoPort := tageUpdateInfo
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 

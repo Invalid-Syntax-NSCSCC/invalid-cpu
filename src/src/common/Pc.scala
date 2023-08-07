@@ -18,7 +18,7 @@ class Pc(
     val newPc = Input(new BackendRedirectPcNdPort)
 
     // bpu pc
-    val mainRedirectPc = Input(Valid(UInt(Width.Reg.data)))
+    val bpuRedirectPc = Input(Valid(UInt(Width.Reg.data)))
 
     // inst predecode pc
     val preDecodePc = Input(Valid(UInt(Width.Reg.data)))
@@ -44,9 +44,9 @@ class Pc(
     pcReg := io.newPc.pcAddr
   }.elsewhen(io.preDecodePc.valid) {
     pcReg := io.preDecodePc.bits
-  }.elsewhen(io.mainRedirectPc.valid) {
+  }.elsewhen(io.bpuRedirectPc.valid) {
     // bpu reditect when it can predict
-    pcReg := io.mainRedirectPc.bits
+    pcReg := io.bpuRedirectPc.bits
   }.elsewhen(io.ftqFull) {
     pcReg := pcReg
   }.otherwise {

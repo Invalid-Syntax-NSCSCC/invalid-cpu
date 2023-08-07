@@ -8,10 +8,9 @@ import spec._
 class BpuFtqMetaNdPort(
   ftbNway: Int = Param.BPU.FTB.nway)
     extends Bundle {
-  val valid       = Bool()
-  val ftbHit      = Bool()
-  val ftbHitIndex = UInt(log2Ceil(ftbNway).W)
-  val tageMeta    = new TageMetaPort
+  val ftbHit        = Bool()
+  val ftbHitIndex   = UInt(log2Ceil(ftbNway).W)
+  val tageQueryMeta = new TageMetaPort
 }
 
 object BpuFtqMetaNdPort {

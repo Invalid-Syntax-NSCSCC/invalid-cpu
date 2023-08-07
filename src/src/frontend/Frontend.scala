@@ -5,7 +5,7 @@ import chisel3.util._
 import common.Pc
 import common.bundles.BackendRedirectPcNdPort
 import frontend.bpu.BPU
-import frontend.bundles.{CuCommitFtqNdPort, ExeFtqPort, ICacheAccessPort, QueryPcBundle}
+import frontend.bundles.{CommitFtqTrainNdPort, ExeFtqPort, ICacheAccessPort, QueryPcBundle}
 import memory.bundles.TlbTransPort
 import pipeline.common.bundles.{InstQueueEnqNdPort, MemCsrNdPort}
 import spec._
@@ -21,8 +21,8 @@ class Frontend extends Module {
     val exeFtqPort = new ExeFtqPort
 
     // ftq <-> cu
-    val cuCommitFtqPort = Input(new CuCommitFtqNdPort)
-    val cuQueryPcBundle = new QueryPcBundle
+    val commitFtqTrainPort = Input(new CommitFtqTrainNdPort)
+    val commitBitMask      = Input(Vec(Param.commitNum, Bool()))
 
     // instFetch <-> ICache
     val accessPort = Flipped(new ICacheAccessPort)
@@ -41,7 +41,7 @@ class Frontend extends Module {
   val instFetch = Module(new InstFetch)
 
   pc.io.newPc             := io.cuNewPc
-  pc.io.mainRedirectPc    := bpu.io.mainRedirectPc
+  pc.io.bpuRedirectPc     := bpu.io.bpuRedirectPc
   pc.io.ftqFull           := ftq.io.bpuFtqPort.ftqFull
   pc.io.fetchNum          := bpu.io.fetchNum
   pc.io.preDecodePc.bits  := instFetch.io.preDecodeRedirectPort.redirectPc
@@ -71,9 +71,12 @@ class Frontend extends Module {
   ftq.io.instFetchFlush    := instFetch.io.preDecodeRedirectPort.predecodeRedirect // TODO add predecoder stage
   ftq.io.instFetchFtqId    := instFetch.io.preDecodeRedirectPort.redirectFtqId
   instFetch.io.preDecodeRedirectPort.commitRasPort := ftq.io.ftqRasPort
-  ftq.io.cuCommitFtqPort                           := io.cuCommitFtqPort
-  ftq.io.cuQueryPcBundle                           <> io.cuQueryPcBundle
+  ftq.io.commitFtqTrainPort                        := io.commitFtqTrainPort
   ftq.io.exeFtqPort                                <> io.exeFtqPort
+  ftq.io.commitBitMask.zip(io.commitBitMask).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   // stage 2-4
   instFetch.io.ftqIFPort       <> ftq.io.ftqIFPort

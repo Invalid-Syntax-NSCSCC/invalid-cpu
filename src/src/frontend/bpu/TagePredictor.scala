@@ -27,7 +27,7 @@ class TagePredictor(
   val io = IO(new Bundle {
     // Query signal
     val pc                 = Input(UInt(Width.Reg.data))
-    val bpuMetaPort        = Output(new BpuFtqMetaNdPort)
+    val tageQueryMeta      = Output(new TageMetaPort)
     val predictBranchTaken = Output(Bool())
     val predictValid       = Output(Bool())
 
@@ -47,7 +47,7 @@ class TagePredictor(
     }
   }
   // Input
-  val updateMetaBundle = WireDefault(io.updateInfoPort.bpuMeta)
+  val updateMetaBundle = WireDefault(io.updateInfoPort.tageOriginMeta)
 
   // Signals
   // // Query
@@ -229,14 +229,12 @@ class TagePredictor(
   ) // Indicates whether the pred component is useful
   queryMetaBundle.providerId    := predPredictionId
   queryMetaBundle.altProviderId := altPredPredctionId
-
   queryMetaBundle.providerCtrBits.zip(Seq(baseCtrbit) ++ tagCtrbits).foreach {
     case (dst, src) =>
       dst := src
   }
 
-  io.bpuMetaPort          := BpuFtqMetaNdPort.default
-  io.bpuMetaPort.tageMeta := queryMetaBundle
+  io.tageQueryMeta := queryMetaBundle
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Update policy

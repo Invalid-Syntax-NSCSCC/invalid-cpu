@@ -173,9 +173,12 @@ class ComplexCoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // TODO: Connect frontend
-  frontend.io.exeFtqPort      <> exePassWbStage_1.io.peer.get.feedbackFtq.get
-  frontend.io.cuCommitFtqPort := cu.io.ftqPort
-  frontend.io.cuQueryPcBundle <> cu.io.queryPcPort
+  frontend.io.exeFtqPort         <> exePassWbStage_1.io.peer.get.feedbackFtq.get
+  frontend.io.commitFtqTrainPort := cu.io.ftqPort
+  frontend.io.commitBitMask.zip(cu.io.commitBitMask).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   // Instruction queue
   instQueue.io.enqueuePort <> frontend.io.instDequeuePort

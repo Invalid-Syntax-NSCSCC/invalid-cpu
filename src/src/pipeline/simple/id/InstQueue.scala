@@ -195,14 +195,14 @@ class InstQueue(
         // dequeuePort.bits.fetchInfo.inst   := decodeInstInfo.inst
 
         val isMatched = WireDefault(decoderWires(index).map(_.isMatched).reduce(_ || _))
-        dequeuePort.bits.instInfo.isValid                  := true.B
-        dequeuePort.bits.instInfo.isCsrWrite               := selectedDecoder.info.csrWriteEn
-        dequeuePort.bits.instInfo.exeOp                    := selectedDecoder.info.exeOp
-        dequeuePort.bits.instInfo.isTlb                    := selectedDecoder.info.isTlb
-        dequeuePort.bits.instInfo.needRefetch              := selectedDecoder.info.needRefetch
-        dequeuePort.bits.instInfo.ftqInfo                  := decodeInstInfo.ftqInfo
-        dequeuePort.bits.instInfo.ftqCommitInfo.isBranch   := selectedDecoder.info.isBranch
-        dequeuePort.bits.instInfo.ftqCommitInfo.branchType := selectedDecoder.info.branchType
+        dequeuePort.bits.instInfo.isValid     := true.B
+        dequeuePort.bits.instInfo.isCsrWrite  := selectedDecoder.info.csrWriteEn
+        dequeuePort.bits.instInfo.exeOp       := selectedDecoder.info.exeOp
+        dequeuePort.bits.instInfo.isTlb       := selectedDecoder.info.isTlb
+        dequeuePort.bits.instInfo.needRefetch := selectedDecoder.info.needRefetch
+        dequeuePort.bits.instInfo.ftqInfo     := decodeInstInfo.ftqInfo
+        dequeuePort.bits.instInfo.ftqCommitInfo.branchType.foreach(_ := selectedDecoder.info.branchType)
+        dequeuePort.bits.instInfo.ftqCommitInfo.isBranch.foreach(_ := selectedDecoder.info.isBranch)
 
         dequeuePort.bits.instInfo.forbidParallelCommit := selectedDecoder.info.needRefetch
 
