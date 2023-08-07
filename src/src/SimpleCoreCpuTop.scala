@@ -188,11 +188,9 @@ class SimpleCoreCpuTop extends Module {
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
 
   // TODO: Connect frontend
-  // frontend.io.exeFtqPort      <> mainExeStage.io.peer.get.feedbackFtq
-  // frontend.io.exeFtqPort.queryPcBundle <> issueStage.io.queryPcPort
   frontend.io.exeFtqPort.queryPcBundle <> issueQueue.io.queryPcPort
   frontend.io.exeFtqPort.commitBundle  := mainExeStage.io.peer.get.feedbackFtq
-  frontend.io.commitFtqTrainPort       := cu.io.ftqPort
+  frontend.io.commitFtqTrainPort       := addrTransStage.io.peer.get.commitFtqPort
   connectVec(frontend.io.commitBitMask, cu.io.commitBitMask)
 
   // Instruction queue

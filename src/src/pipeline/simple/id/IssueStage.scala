@@ -197,6 +197,8 @@ class IssueStage(
   mainRSEnqPort.bits.mainExeBranchInfo.pc              := decodeInstInfos.head.pcAddr
   io.queryPcPort.ftqId                                 := decodeInstInfos.head.ftqInfo.ftqId + 1.U
   mainRSEnqPort.bits.mainExeBranchInfo.predictJumpAddr := io.queryPcPort.pc
+  mainRSEnqPort.bits.mainExeBranchInfo.isBranch        := decoders.head.io.out.info.isBranch
+  mainRSEnqPort.bits.mainExeBranchInfo.branchType      := decoders.head.io.out.info.branchType
 
   rsEnqPorts
     .lazyZip(selectedDecoders)
@@ -237,14 +239,12 @@ class IssueStage(
         outInstInfo := InstInfoNdPort.default
 
         val isMatched = selectedDecoder.isMatched
-        outInstInfo.isValid                  := true.B
-        outInstInfo.isCsrWrite               := selectedDecoder.info.csrWriteEn
-        outInstInfo.exeOp                    := selectedDecoder.info.exeOp
-        outInstInfo.isTlb                    := selectedDecoder.info.isTlb
-        outInstInfo.needRefetch              := selectedDecoder.info.needRefetch
-        outInstInfo.ftqInfo                  := decodeInstInfo.ftqInfo
-        outInstInfo.ftqCommitInfo.isBranch   := selectedDecoder.info.isBranch
-        outInstInfo.ftqCommitInfo.branchType := selectedDecoder.info.branchType
+        outInstInfo.isValid     := true.B
+        outInstInfo.isCsrWrite  := selectedDecoder.info.csrWriteEn
+        outInstInfo.exeOp       := selectedDecoder.info.exeOp
+        outInstInfo.isTlb       := selectedDecoder.info.isTlb
+        outInstInfo.needRefetch := selectedDecoder.info.needRefetch
+        outInstInfo.ftqInfo     := decodeInstInfo.ftqInfo
 
         outInstInfo.forbidParallelCommit := selectedDecoder.info.needRefetch
 

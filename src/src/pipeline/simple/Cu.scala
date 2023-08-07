@@ -46,7 +46,6 @@ class Cu(
     val backendFlush       = Output(Bool())
     val idleFlush          = Output(Bool())
 
-    val ftqPort       = Output(new CommitFtqTrainNdPort)
     val commitBitMask = Output(Vec(Param.commitNum, Bool()))
 
     val exceptionVirtAddr = Input(UInt(Width.Mem.addr))
@@ -266,18 +265,6 @@ class Cu(
       )
     )
   )
-
-  // BPU training data
-  // BPU training data
-  val ftqCommitInfo = RegInit(CommitFtqTrainNdPort.default)
-  io.ftqPort := ftqCommitInfo
-
-  val isBranch = majorInstInfo.ftqCommitInfo.isBranch && majorInstInfo.isValid
-  ftqCommitInfo.isTrainValid                   := isBranch && majorInstInfo.ftqInfo.isLastInBlock
-  ftqCommitInfo.ftqId                          := majorInstInfo.ftqInfo.ftqId
-  ftqCommitInfo.branchTakenMeta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
-  ftqCommitInfo.branchTakenMeta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
-  ftqCommitInfo.branchTakenMeta.branchType     := majorInstInfo.ftqCommitInfo.branchType
 
   io.commitBitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
     case ((mask, instInfo), idx) =>

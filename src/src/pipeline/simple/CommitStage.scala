@@ -83,12 +83,12 @@ class CommitStage(
   io.pmu_branchInfo match {
     case None =>
     case Some(br) =>
-      br.isBranch := inBits.head.instInfo.ftqCommitInfo.isBranch &&
+      br.isBranch := inBits.head.instInfo.ftqCommitInfo.isBranch.get &&
         inBits.head.instInfo.isValid &&
         io.ins.head.ready &&
         io.ins.head.valid
       br.isRedirect          := inBits.head.instInfo.ftqCommitInfo.isRedirect
-      br.branchType          := inBits.head.instInfo.ftqCommitInfo.branchType
+      br.branchType          := inBits.head.instInfo.ftqCommitInfo.branchType.get
       br.directionMispredict := inBits.head.instInfo.ftqCommitInfo.directionMispredict.get
       br.targetMispredict    := inBits.head.instInfo.ftqCommitInfo.targetMispredict.get
   }

@@ -15,6 +15,7 @@ import spec.Value.Csr
 import spec._
 
 import scala.collection.immutable
+import frontend.bundles.CommitFtqTrainNdPort
 
 class AddrTransNdPort extends Bundle {
   val isAtomicStore    = Bool()
@@ -22,6 +23,7 @@ class AddrTransNdPort extends Bundle {
   val tlbMaintenance   = new TlbMaintenanceNdPort
   val cacheMaintenance = new CacheMaintenanceInstNdPort
   val wb               = new WbNdPort
+  val commitFtqPort    = new CommitFtqTrainNdPort
 }
 
 object AddrTransNdPort {
@@ -33,6 +35,7 @@ class AddrTransPeerPort extends Bundle {
   val tlbTrans          = Flipped(new TlbTransPort)
   val tlbMaintenance    = Output(new TlbMaintenanceNdPort)
   val exceptionVirtAddr = Output(UInt(Width.Mem.addr))
+  val commitFtqPort     = Output(new CommitFtqTrainNdPort)
 }
 
 class AddrTransStage
@@ -53,6 +56,9 @@ class AddrTransStage
     io.out.valid := io.in.valid
     io.out.bits  := resultOut.bits
   }
+  peer.commitFtqPort.isTrainValid    := false.B
+  peer.commitFtqPort.ftqId           := DontCare
+  peer.commitFtqPort.branchTakenMeta := DontCare
 
   val exceptionBlockingReg = RegInit(false.B)
   exceptionBlockingReg := exceptionBlockingReg
@@ -207,7 +213,22 @@ class AddrTransStage
   }
 
   // Submit result
+  val commitFtqPort = RegInit(CommitFtqTrainNdPort.default)
+  commitFtqPort              := DontCare
+  commitFtqPort.isTrainValid := false.B
+  if (Param.exeFeedBackFtqDelay) {
+    // promise commit train info after exe train info
+    peer.commitFtqPort := commitFtqPort
+  }
+
   when(selectedIn.wb.instInfo.isValid && !exceptionBlockingReg && io.in.ready && io.in.valid) {
     resultOut.valid := true.B
+
+    // In In-order issue, bpu train data commit early when no excp
+    if (Param.exeFeedBackFtqDelay) {
+      commitFtqPort := selectedIn.commitFtqPort
+    } else {
+      peer.commitFtqPort := selectedIn.commitFtqPort
+    }
   }
 }

@@ -4,7 +4,9 @@ import chisel3._
 import control.bundles._
 import control.enums.ExceptionPos
 import spec.Param.isDiffTest
-import pipeline.common.bundles.{CommitFtqInfoBundle, _}
+import pipeline.common.bundles._
+import pipeline.simple.bundles.CommitFtqInfoBundle
+
 import spec._
 
 class InstInfoNdPort extends Bundle {

@@ -435,7 +435,7 @@ class MainExeStage
   )
 
   // is branch
-  val isBranchInst = selectedIn.instInfo.ftqCommitInfo.isBranch
+  val isBranchInst = selectedIn.branchInfo.isBranch
 
   val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && isBranchInst
   when(isRedirect) {
@@ -480,8 +480,14 @@ class MainExeStage
     feedbackFtq.ftqMetaUpdateFallThrough := fallThroughPc
   }
 
-  out.wb.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
-  out.wb.instInfo.ftqCommitInfo.isRedirect      := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
+  // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
+  out.wb.instInfo.ftqCommitInfo.isRedirect := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
+
+  out.commitFtqPort.isTrainValid                   := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock
+  out.commitFtqPort.ftqId                          := selectedIn.instInfo.ftqInfo.ftqId
+  out.commitFtqPort.branchTakenMeta.isTaken        := jumpBranchInfo.en
+  out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType
+  out.commitFtqPort.branchTakenMeta.predictedTaken := selectedIn.instInfo.ftqInfo.predictBranch
 
   val isErtn = WireDefault(selectedIn.exeOp === ExeInst.Op.ertn)
   val isIdle = WireDefault(selectedIn.exeOp === ExeInst.Op.idle)
