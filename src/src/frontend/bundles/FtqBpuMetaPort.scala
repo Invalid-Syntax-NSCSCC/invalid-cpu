@@ -4,7 +4,7 @@ import chisel3.util._
 import frontend.bpu.components.Bundles.TageMetaPort
 import spec._
 
-class BranchAddrBundle extends {
+class BranchAddrBundle extends Bundle {
   val startPc            = UInt(spec.Width.Mem.addr)
   val jumpTargetAddress  = UInt(spec.Width.Mem.addr)
   val fallThroughAddress = UInt(spec.Width.Mem.addr)
