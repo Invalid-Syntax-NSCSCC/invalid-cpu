@@ -28,6 +28,7 @@ class FetchTargetQueue(
     // <-> Backend
     // <-> Cu commit
     val commitFtqTrainPort = Input(new CommitFtqTrainNdPort)
+    val commitBitMask      = Input(Vec(Param.commitNum, Bool()))
 
     // <-> Ex query port
     val exeFtqPort = new ExeFtqPort
@@ -70,7 +71,7 @@ class FetchTargetQueue(
   val ftqBranchMetaRegs = RegInit(VecInit(Seq.fill(queueSize)(FtqBranchMetaEntry.default)))
 
   val backendCommitNum = WireInit(0.U(log2Ceil(commitNum + 1).W))
-  backendCommitNum := io.commitFtqTrainPort.bitMask.map(_.asUInt).reduce(_ +& _)
+  backendCommitNum := io.commitBitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
   // * valid & ready & no modify & no flush
@@ -153,7 +154,6 @@ class FetchTargetQueue(
     ftqNextVec(bpuPtr) := io.bpuFtqPort.ftqP1
   }
 
-
   // Output
   // -> IFU
   // default value
@@ -204,8 +204,8 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqTrainMeta.branchTakenMeta := io.commitFtqTrainPort.branchTakenMeta
 
   io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.startPc            := ftqVecReg(commitFtqId).startPc
-  io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVecReg(commitFtqId).isCrossCacheline
-  io.bpuFtqPort.ftqTrainMeta.tageMeta           := ftqBpuMetaRegs(commitFtqId).tageMeta
+  io.bpuFtqPort.ftqTrainMeta.isCrossCacheline                    := ftqVecReg(commitFtqId).isCrossCacheline
+  io.bpuFtqPort.ftqTrainMeta.tageMeta                            := ftqBpuMetaRegs(commitFtqId).tageMeta
   io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
   io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
 

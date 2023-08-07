@@ -204,9 +204,9 @@ class BPU(
   tageUpdateInfo.branchTaken    := io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.isTaken
   tageUpdateInfo.bpuMeta        := io.bpuFtqPort.ftqTrainMeta.tageMeta
 
-  ftbUpdateEntry.valid              := !(io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
-  ftbUpdateEntry.tag                := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.startPc(addr - 1, log2Ceil(ftbNset) + 2)
-  ftbUpdateEntry.branchType         := io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.branchType
+  ftbUpdateEntry.valid      := !(io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
+  ftbUpdateEntry.tag        := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.startPc(addr - 1, log2Ceil(ftbNset) + 2)
+  ftbUpdateEntry.branchType := io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.branchType
   ftbUpdateEntry.isCrossCacheline   := io.bpuFtqPort.ftqTrainMeta.isCrossCacheline
   ftbUpdateEntry.jumpTargetAddress  := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.jumpTargetAddress
   ftbUpdateEntry.fallThroughAddress := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.fallThroughAddress

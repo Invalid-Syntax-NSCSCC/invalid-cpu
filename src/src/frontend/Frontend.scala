@@ -22,6 +22,7 @@ class Frontend extends Module {
 
     // ftq <-> cu
     val commitFtqTrainPort = Input(new CommitFtqTrainNdPort)
+    val commitBitMask      = Input(Vec(Param.commitNum, Bool()))
 
     // instFetch <-> ICache
     val accessPort = Flipped(new ICacheAccessPort)
@@ -72,6 +73,10 @@ class Frontend extends Module {
   instFetch.io.preDecodeRedirectPort.commitRasPort := ftq.io.ftqRasPort
   ftq.io.commitFtqTrainPort                        := io.commitFtqTrainPort
   ftq.io.exeFtqPort                                <> io.exeFtqPort
+  ftq.io.commitBitMask.zip(io.commitBitMask).foreach {
+    case (dst, src) =>
+      dst := src
+  }
 
   // stage 2-4
   instFetch.io.ftqIFPort       <> ftq.io.ftqIFPort

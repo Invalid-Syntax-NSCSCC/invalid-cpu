@@ -46,8 +46,8 @@ class Cu(
     val backendFlush       = Output(Bool())
     val idleFlush          = Output(Bool())
 
-    val ftqPort     = Output(new CommitFtqTrainNdPort)
-    val queryPcPort = Flipped(new QueryPcBundle)
+    val ftqPort       = Output(new CommitFtqTrainNdPort)
+    val commitBitMask = Output(Vec(Param.commitNum, Bool()))
 
     val exceptionVirtAddr = Input(UInt(Width.Mem.addr))
 
@@ -66,9 +66,8 @@ class Cu(
 
   // Values
   val majorInstInfo = io.instInfoPorts.head
-  io.queryPcPort.ftqId := majorInstInfo.ftqInfo.ftqId
-  val majorPc     = io.majorPc // : UInt = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
-  val isException = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
+  val majorPc       = io.majorPc // : UInt = WireDefault(io.queryPcPort.pc + (majorInstInfo.ftqInfo.idxInBlock << 2))
+  val isException   = (majorInstInfo.exceptionPos =/= ExceptionPos.none) && majorInstInfo.isValid
 
   // Write GPR
   io.gprWritePassThroughPorts.out.zip(io.gprWritePassThroughPorts.in).foreach {
@@ -269,32 +268,24 @@ class Cu(
   )
 
   // BPU training data
+  // BPU training data
   val ftqCommitInfo = RegInit(CommitFtqTrainNdPort.default)
   io.ftqPort := ftqCommitInfo
 
-  ftqCommitInfo.ftqId               := majorInstInfo.ftqInfo.ftqId
-  ftqCommitInfo.branchTakenMeta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch && majorInstInfo.isValid
+  val isBranch = majorInstInfo.ftqCommitInfo.isBranch && majorInstInfo.isValid
+  ftqCommitInfo.isTrainValid                   := isBranch && majorInstInfo.ftqInfo.isLastInBlock
+  ftqCommitInfo.ftqId                          := majorInstInfo.ftqInfo.ftqId
   ftqCommitInfo.branchTakenMeta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
   ftqCommitInfo.branchTakenMeta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
   ftqCommitInfo.branchTakenMeta.branchType     := majorInstInfo.ftqCommitInfo.branchType
 
-  ftqCommitInfo.bitMask.foreach(_ := false.B)
-  ftqCommitInfo.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
+  io.commitBitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
     case ((mask, instInfo), idx) =>
       if (idx == 0) {
         mask := instInfo.isValid && (isException ||
           instInfo.ftqInfo.isLastInBlock ||
           refetchFlush ||
           isExceptionReturn)
-      } else {
-        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
-      }
-  }
-
-  ftqCommitInfo.isTrainValid.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
-    case ((mask, instInfo), idx) =>
-      if (idx == 0) {
-        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
       } else {
         mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
       }
