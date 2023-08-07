@@ -72,18 +72,20 @@ class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
     isIdle := true.B
   }
 
+  val refetchOrExcps = resultQueue.io.enqueuePorts.map { port =>
+    port.valid && port.ready && (
+      port.bits.instInfo.needRefetch ||
+        port.bits.instInfo.exceptionPos =/= ExceptionPos.none
+    )
+  }
+
   val isBlockDequeueReg = RegInit(false.B)
   when(io.isBackendFlush) {
     isBlockDequeueReg := false.B
   }.elsewhen(
     io.isFrontendFlush
       || (
-        resultQueue.io.enqueuePorts.map { port =>
-          port.valid && port.ready && (
-            port.bits.instInfo.needRefetch ||
-              port.bits.instInfo.exceptionPos =/= ExceptionPos.none
-          )
-        }.reduce(_ || _)
+        refetchOrExcps.reduce(_ || _)
       )
   ) {
     isBlockDequeueReg := true.B
@@ -99,8 +101,8 @@ class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
       robIdReq.request.valid       := in.ready && in.valid
       robIdReq.request.bits.inst   := inBits.inst
       robIdReq.request.bits.pcAddr := inBits.pcAddr
-      in.ready                     := enq.ready && !isBlock && robIdReq.result.valid
-      enq.valid                    := in.valid && !isBlock && robIdReq.result.valid
+      in.ready  := enq.ready && !isBlock && robIdReq.result.valid && !refetchOrExcps.take(index).fold(false.B)(_ || _)
+      enq.valid := in.valid && !isBlock && robIdReq.result.valid && !refetchOrExcps.take(index).fold(false.B)(_ || _)
 
       val outInstInfo = enq.bits.instInfo
 
