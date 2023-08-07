@@ -1,4 +1,4 @@
-package pipeline.simple.bundles
+package pipeline.complex.bundles
 
 import chisel3._
 import spec._

@@ -136,6 +136,8 @@ class IssueQueue(
   mainRSEnqPort.bits.mainExeBranchInfo.pc              := io.ins.head.bits.pc
   io.queryPcPort.ftqId                                 := io.ins.head.bits.instInfo.ftqInfo.ftqId + 1.U
   mainRSEnqPort.bits.mainExeBranchInfo.predictJumpAddr := io.queryPcPort.pc
+  mainRSEnqPort.bits.mainExeBranchInfo.isBranch        := io.ins.head.bits.decode.info.isBranch
+  mainRSEnqPort.bits.mainExeBranchInfo.branchType      := io.ins.head.bits.decode.info.branchType
 
   rsEnqPorts.lazyZip(io.ins).lazyZip(io.regReadPorts).zipWithIndex.foreach {
     case ((rs, in, readRes), index) =>
