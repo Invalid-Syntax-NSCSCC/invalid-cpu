@@ -5,7 +5,7 @@ import chisel3.util._
 import common.bundles.{BackendRedirectPcNdPort, PassThroughPort, RfWriteNdPort}
 import control.bundles.{CsrValuePort, CsrWriteNdPort, CuToCsrNdPort}
 import control.enums.ExceptionPos
-import frontend.bundles.{CuCommitFtqNdPort, QueryPcBundle}
+import frontend.bundles.{CommitFtqTrainNdPort, QueryPcBundle}
 import pipeline.simple.bundles.InstInfoNdPort
 import spec.Param.isDiffTest
 import spec.{Csr, ExeInst, Param, Width}
@@ -46,7 +46,7 @@ class Cu(
     val backendFlush       = Output(Bool())
     val idleFlush          = Output(Bool())
 
-    val ftqPort     = Output(new CuCommitFtqNdPort)
+    val ftqPort     = Output(new CommitFtqTrainNdPort)
     val queryPcPort = Flipped(new QueryPcBundle)
 
     val exceptionVirtAddr = Input(UInt(Width.Mem.addr))
@@ -269,14 +269,14 @@ class Cu(
   )
 
   // BPU training data
-  val ftqCommitInfo = RegInit(CuCommitFtqNdPort.default)
+  val ftqCommitInfo = RegInit(CommitFtqTrainNdPort.default)
   io.ftqPort := ftqCommitInfo
 
   ftqCommitInfo.ftqId               := majorInstInfo.ftqInfo.ftqId
-  ftqCommitInfo.meta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch && majorInstInfo.isValid
-  ftqCommitInfo.meta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
-  ftqCommitInfo.meta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
-  ftqCommitInfo.meta.branchType     := majorInstInfo.ftqCommitInfo.branchType
+  ftqCommitInfo.branchTakenMeta.isBranch       := majorInstInfo.ftqCommitInfo.isBranch && majorInstInfo.isValid
+  ftqCommitInfo.branchTakenMeta.isTaken        := majorInstInfo.ftqCommitInfo.isBranchSuccess
+  ftqCommitInfo.branchTakenMeta.predictedTaken := majorInstInfo.ftqInfo.predictBranch
+  ftqCommitInfo.branchTakenMeta.branchType     := majorInstInfo.ftqCommitInfo.branchType
 
   ftqCommitInfo.bitMask.foreach(_ := false.B)
   ftqCommitInfo.bitMask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
@@ -291,7 +291,7 @@ class Cu(
       }
   }
 
-  ftqCommitInfo.blockBitmask.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
+  ftqCommitInfo.isTrainValid.lazyZip(io.instInfoPorts).zipWithIndex.foreach {
     case ((mask, instInfo), idx) =>
       if (idx == 0) {
         mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock

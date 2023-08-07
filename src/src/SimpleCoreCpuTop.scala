@@ -192,8 +192,7 @@ class SimpleCoreCpuTop extends Module {
   // frontend.io.exeFtqPort.queryPcBundle <> issueStage.io.queryPcPort
   frontend.io.exeFtqPort.queryPcBundle <> issueQueue.io.queryPcPort
   frontend.io.exeFtqPort.commitBundle  := mainExeStage.io.peer.get.feedbackFtq
-  frontend.io.cuCommitFtqPort          := cu.io.ftqPort
-  frontend.io.cuQueryPcBundle          <> cu.io.queryPcPort
+  frontend.io.commitFtqTrainPort          := cu.io.ftqPort
 
   // Instruction queue
   instQueue.io.enqueuePort <> frontend.io.instDequeuePort

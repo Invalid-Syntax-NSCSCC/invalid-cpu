@@ -167,7 +167,7 @@ class BPU(
   // Update Logic
   ////////////////////////////////////////////////////////////////////
   val directionPredictError = WireDefault(
-    io.bpuFtqPort.ftqTrainMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.isTaken
+    io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.predictedTaken ^ io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.isTaken
   )
   val tageUpdateInfo = Wire(new TagePredictorUpdateInfoPort)
   val ftbUpdateEntry = Wire(new FtbEntryNdPort)
@@ -182,14 +182,14 @@ class BPU(
   val ftbUpdateValid = if (Param.isFTBupdateRet) {
     WireDefault(
       io.bpuFtqPort.ftqTrainMeta.valid &&
-        (((directionPredictError || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.call || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqTrainMeta.ftbHit))
+        (((directionPredictError || io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.branchType === BranchType.call || io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqTrainMeta.ftbHit))
           || io.bpuFtqPort.ftqTrainMeta.ftbDirty)
     )
     // all kinds of target error can update
   } else {
     WireDefault(
       io.bpuFtqPort.ftqTrainMeta.valid &&
-        (((directionPredictError || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.call || io.bpuFtqPort.ftqTrainMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqTrainMeta.ftbHit)) ||
+        (((directionPredictError || io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.branchType === BranchType.call || io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqTrainMeta.ftbHit)) ||
           (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit))
     )
     // case 1: the first time of a branch inst taken ( include conditon branch, indirect jump that hasn't been predicted taken),
@@ -200,16 +200,16 @@ class BPU(
   // Direction preditor update policy
   tageUpdateInfo.valid          := io.bpuFtqPort.ftqTrainMeta.valid
   tageUpdateInfo.predictCorrect := !directionPredictError
-  tageUpdateInfo.isConditional  := io.bpuFtqPort.ftqTrainMeta.branchType === Param.BPU.BranchType.cond
-  tageUpdateInfo.branchTaken    := io.bpuFtqPort.ftqTrainMeta.isTaken
+  tageUpdateInfo.isConditional  := io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.branchType === Param.BPU.BranchType.cond
+  tageUpdateInfo.branchTaken    := io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.isTaken
   tageUpdateInfo.bpuMeta        := io.bpuFtqPort.ftqTrainMeta.tageMeta
 
   ftbUpdateEntry.valid              := !(io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
-  ftbUpdateEntry.tag                := io.bpuFtqPort.ftqTrainMeta.startPc(addr - 1, log2Ceil(ftbNset) + 2)
-  ftbUpdateEntry.branchType         := io.bpuFtqPort.ftqTrainMeta.branchType
+  ftbUpdateEntry.tag                := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.startPc(addr - 1, log2Ceil(ftbNset) + 2)
+  ftbUpdateEntry.branchType         := io.bpuFtqPort.ftqTrainMeta.branchTakenMeta.branchType
   ftbUpdateEntry.isCrossCacheline   := io.bpuFtqPort.ftqTrainMeta.isCrossCacheline
-  ftbUpdateEntry.jumpTargetAddress  := io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress
-  ftbUpdateEntry.fallThroughAddress := io.bpuFtqPort.ftqTrainMeta.fallThroughAddress
+  ftbUpdateEntry.jumpTargetAddress  := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.jumpTargetAddress
+  ftbUpdateEntry.fallThroughAddress := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.fallThroughAddress
 
   // connect fetch target buffer module
   // assign ftbHit = 0
@@ -223,7 +223,7 @@ class BPU(
     ftbHit := false.B
   }
   // update
-  ftbModule.io.updatePc        := io.bpuFtqPort.ftqTrainMeta.startPc
+  ftbModule.io.updatePc        := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.startPc
   ftbModule.io.updateWayIndex  := io.bpuFtqPort.ftqTrainMeta.ftbHitIndex
   ftbModule.io.updateValid     := ftbUpdateValid
   ftbModule.io.updateDirty     := (io.bpuFtqPort.ftqTrainMeta.ftbDirty && io.bpuFtqPort.ftqTrainMeta.ftbHit)
@@ -235,7 +235,7 @@ class BPU(
   tageMeta                              := tagePredictorModule.io.bpuMetaPort
   predictTaken                          := tagePredictorModule.io.predictBranchTaken
   predictValid                          := tagePredictorModule.io.predictValid
-  tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqTrainMeta.startPc
+  tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.startPc
   tagePredictorModule.io.updateInfoPort := tageUpdateInfo
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 

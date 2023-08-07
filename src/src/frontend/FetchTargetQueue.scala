@@ -27,8 +27,8 @@ class FetchTargetQueue(
 
     // <-> Backend
     // <-> Cu commit
-    val cuCommitFtqPort = Input(new CuCommitFtqNdPort)
-    val cuQueryPcBundle = new QueryPcBundle
+    val commitFtqTrainPort = Input(new CommitFtqTrainNdPort)
+
     // <-> Ex query port
     val exeFtqPort = new ExeFtqPort
 
@@ -70,7 +70,7 @@ class FetchTargetQueue(
   val ftqBranchMetaRegs = RegInit(VecInit(Seq.fill(queueSize)(FtqBranchMetaEntry.default)))
 
   val backendCommitNum = WireInit(0.U(log2Ceil(commitNum + 1).W))
-  backendCommitNum := io.cuCommitFtqPort.bitMask.map(_.asUInt).reduce(_ +& _)
+  backendCommitNum := io.commitFtqTrainPort.bitMask.map(_.asUInt).reduce(_ +& _)
 
   // IF sent rreq
   // * valid & ready & no modify & no flush
@@ -153,25 +153,6 @@ class FetchTargetQueue(
     ftqNextVec(bpuPtr) := io.bpuFtqPort.ftqP1
   }
 
-  // // if predecoder redirect triggered,clear the committed and predicted entry
-  // when(io.instFetchFlush) {
-  //   Seq.range(0, queueSize).foreach { idx =>
-  //     when(idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.instFetchFtqId) {
-  //       ftqNextVec(idx) := FtqBlockBundle.default
-  //     }
-  //   }
-  // }
-  // // if backend redirect triggered,clear the committed and predicted entry
-  // when(io.backendFlush) {
-  //   Seq.range(0, queueSize).foreach { idx =>
-  //     when(
-  //       idx.U(ptrWidth.W) - commPtr >= idx.U(ptrWidth.W) - io.backendFlushFtqId && idx
-  //         .U(ptrWidth.W) =/= io.backendFlushFtqId
-  //     ) {
-  //       ftqNextVec(idx) := FtqBlockBundle.default
-  //     }
-  //   }
-  // }
 
   // Output
   // -> IFU
@@ -202,7 +183,6 @@ class FetchTargetQueue(
 
   // -> Exe cuCommit query
   io.exeFtqPort.queryPcBundle.pc := ftqVecReg(io.exeFtqPort.queryPcBundle.ftqId).startPc
-  io.cuQueryPcBundle.pc          := ftqVecReg(io.cuQueryPcBundle.ftqId).startPc
 
   // -> BPU
   io.bpuFtqPort.ftqFull := queueFull
@@ -215,31 +195,28 @@ class FetchTargetQueue(
   // Update when a branch is committed, defined as:
   // 1. Must be last in block, which means either a known branch or a mispredicted branch.
   // 2. Exception introduced block commit is not considered a branch update.
-  val commitFtqId = WireDefault(io.cuCommitFtqPort.ftqId)
-  io.bpuFtqPort.ftqTrainMeta.valid       := io.cuCommitFtqPort.blockBitmask(0) && io.cuCommitFtqPort.meta.isBranch
+  val commitFtqId = WireDefault(io.commitFtqTrainPort.ftqId)
+  io.bpuFtqPort.ftqTrainMeta.valid       := io.commitFtqTrainPort.isTrainValid
   io.bpuFtqPort.ftqTrainMeta.ftbHit      := ftqBpuMetaRegs(commitFtqId).ftbHit
   io.bpuFtqPort.ftqTrainMeta.ftbHitIndex := ftqBpuMetaRegs(commitFtqId).ftbHitIndex
   io.bpuFtqPort.ftqTrainMeta.ftbDirty    := ftqBranchMetaRegs(commitFtqId).ftbDirty // jumpTargetAddr error
   // Must use accuraate decoded info passed from backend
-  io.bpuFtqPort.ftqTrainMeta.isBranch       := io.cuCommitFtqPort.meta.isBranch
-  io.bpuFtqPort.ftqTrainMeta.branchType     := io.cuCommitFtqPort.meta.branchType
-  io.bpuFtqPort.ftqTrainMeta.isTaken        := io.cuCommitFtqPort.meta.isTaken
-  io.bpuFtqPort.ftqTrainMeta.predictedTaken := io.cuCommitFtqPort.meta.predictedTaken
+  io.bpuFtqPort.ftqTrainMeta.branchTakenMeta := io.commitFtqTrainPort.branchTakenMeta
 
-  io.bpuFtqPort.ftqTrainMeta.startPc            := ftqVecReg(commitFtqId).startPc
+  io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.startPc            := ftqVecReg(commitFtqId).startPc
   io.bpuFtqPort.ftqTrainMeta.isCrossCacheline   := ftqVecReg(commitFtqId).isCrossCacheline
   io.bpuFtqPort.ftqTrainMeta.tageMeta           := ftqBpuMetaRegs(commitFtqId).tageMeta
-  io.bpuFtqPort.ftqTrainMeta.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
-  io.bpuFtqPort.ftqTrainMeta.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
+  io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.jumpTargetAddress  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
+  io.bpuFtqPort.ftqTrainMeta.branchAddrBundle.fallThroughAddress := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
 
   // commit to ras
-  io.ftqRasPort.valid         := io.cuCommitFtqPort.blockBitmask(0) && io.cuCommitFtqPort.meta.isBranch
-  io.ftqRasPort.bits.isPush   := io.cuCommitFtqPort.meta.branchType === BranchType.call
-  io.ftqRasPort.bits.isPop    := io.cuCommitFtqPort.meta.branchType === BranchType.ret
+  io.ftqRasPort.valid         := io.commitFtqTrainPort.isTrainValid
+  io.ftqRasPort.bits.isPush   := io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.call
+  io.ftqRasPort.bits.isPop    := io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.ret
   io.ftqRasPort.bits.callAddr := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
   io.ftqRasPort.bits.predictError := ftqBranchMetaRegs(
     commitFtqId
-  ).ftbDirty || (io.cuCommitFtqPort.meta.predictedTaken ^ io.cuCommitFtqPort.meta.isTaken)
+  ).ftbDirty || (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
 //  }
 
   // Bpu meta ram

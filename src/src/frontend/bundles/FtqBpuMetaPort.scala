@@ -4,6 +4,11 @@ import chisel3.util._
 import frontend.bpu.components.Bundles.TageMetaPort
 import spec._
 
+class BranchAddrBundle extends {
+  val startPc            = UInt(spec.Width.Mem.addr)
+  val jumpTargetAddress  = UInt(spec.Width.Mem.addr)
+  val fallThroughAddress = UInt(spec.Width.Mem.addr)
+}
 class FtqBpuMetaPort(
   ftbNway: Int = Param.BPU.FTB.nway,
   addr:    Int = wordLength)
@@ -17,15 +22,10 @@ class FtqBpuMetaPort(
   val tageMeta = new TageMetaPort
 
   // Backend Decode Info
-  val isBranch       = Bool()
-  val branchType     = UInt(2.W)
-  val isTaken        = Bool()
-  val predictedTaken = Bool()
+  val branchTakenMeta = new BranchTakenMetaBundle
 
-  // FTB meta
-  val startPc            = UInt(addr.W)
-  val jumpTargetAddress  = UInt(addr.W)
-  val fallThroughAddress = UInt(addr.W)
+  // FTB train meta
+  val branchAddrBundle   = new BranchAddrBundle
 }
 
 object FtqBpuMetaPort {
