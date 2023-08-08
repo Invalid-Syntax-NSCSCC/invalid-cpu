@@ -6,8 +6,18 @@ import chisel3.util.random.LFSR
 import frontend.bpu.bundles.{BpuFtqMetaNdPort, TagePredictorUpdateInfoPort}
 import frontend.bpu.components.Bundles.TageMetaPort
 import frontend.bpu.components._
+import spec.Param.BPU.GhrFixType
 import spec._
-
+class GhrUpdateNdBundle extends Bundle {
+  val bpuSpecValid     = Bool() // speculative update
+  val bpuSpecTaken     = Bool()
+  val isFixGhrValid    = Bool()
+  val ghrFixType       = UInt(Param.BPU.GhrFixType.width.W)
+  val isFixBranchTaken = Bool()
+}
+object GhrUpdateNdBundle {
+  def default = 0.U.asTypeOf(new GhrUpdateNdBundle)
+}
 // TAGE predictor
 // This is the main predictor
 class TagePredictor(
@@ -34,6 +44,11 @@ class TagePredictor(
     // Update signals
     val updatePc       = Input(UInt(Width.Reg.data))
     val updateInfoPort = Input(new TagePredictorUpdateInfoPort)
+
+    // BPU predict info
+    val ghrUpdateNdBundle = Input(new GhrUpdateNdBundle)
+    val bpuSpecValid      = Input(Bool()) // speculative update
+    val bpuSpecTaken      = Input(Bool())
 
     // TODO PMU
     //    val perfTagHitCounters = Output(Vec(32, UInt((tagComponentNum + 1).W)))
@@ -115,12 +130,56 @@ class TagePredictor(
   // END of Defines
   ////////////////////////////////////////////////////////////////////////////////////////////
 
+  val specPtr    = RegInit(0.U(Param.BPU.ftqPtrWidth.W))
+  val commitPtr  = RegInit(0.U(Param.BPU.ftqPtrWidth.W))
+  val checkPtr   = WireDefault(0.U(Param.BPU.ftqPtrWidth.W))
+  val checkDepth = Wire(UInt(Param.BPU.ftqPtrWidth.W))
+  checkDepth := checkPtr - commitPtr
+
   // Global History Register
   val ghr = RegInit(0.U(ghrDepth.W))
+
+  isGlobalHistoryUpdateReg := isUpdateValid
+
+  // speculative Global history update
+  // 1. when ftb hit and predict ,update ghr with predictBranchTaken, specPtr + 1
+  // 2. when inst commit, commitPtr + 1
+  // fix error global history
+  // 1. when check a direction error, Cat the correct old history and actually taken as fixed history,specPtr keep as checkPtr
+  // 2. when check a branch inst actually is taken without prediction, update the history with checkPoint,specPtr = 1 + checkPtr
+  // 3. when detect a non branch inst predict taken or an exception that discards a predicted inst,recover the history, specPtr = checkPtr - 1
+  // ghr update priority:
+  // 1.commitStage : recover
+  // 2.exeStage :  fix or update
+  // 3.preDecoderStage :recover or update
+  // 4.spec update
+
+//  def updateGhr(location: UInt, isTaken: Bool, originGhr: UInt) = {
+//    ghr := Cat(ghr(ghrDepth - 2, location), isTaken)
+//  }
+
+  when(isUpdateValid) {
+    commitPtr := commitPtr + 1.U
+  }
+  when(io.ghrUpdateNdBundle.isFixGhrValid) {
+    switch(io.ghrUpdateNdBundle.ghrFixType) {
+      is(GhrFixType.commitBrExcp, GhrFixType.decodeBrExcp) {
+        ghr := ghr >> checkDepth
+      }
+      is(GhrFixType.exeFixDirection) {
+        ghr := Cat(ghr >> (checkDepth - 1.U), io.ghrUpdateNdBundle.isFixBranchTaken)
+      }
+      is(GhrFixType.exeUpdateJump, GhrFixType.decodeUpdateJump) {
+        ghr := Cat(ghr >> (checkDepth - 1.U), true.B)
+      }
+    }
+  }.elsewhen(io.bpuSpecValid) {
+    ghr := Cat(ghr(ghrDepth - 2, 0), io.bpuSpecTaken)
+  }
+
   when(isUpdateValid) {
     ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
   }
-  isGlobalHistoryUpdateReg := isUpdateValid
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Logic

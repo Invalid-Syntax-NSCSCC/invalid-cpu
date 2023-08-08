@@ -220,12 +220,15 @@ class BPU(
 
   // connect tage Predictor module
   val tagePredictorModule = Module(new TagePredictor)
-  tagePredictorModule.io.pc             := io.pc
-  tageQueryMeta                         := tagePredictorModule.io.tageQueryMeta
-  predictTaken                          := tagePredictorModule.io.predictBranchTaken
-  predictValid                          := tagePredictorModule.io.predictValid
-  tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
-  tagePredictorModule.io.updateInfoPort := tageUpdateInfo
+  tagePredictorModule.io.pc                := io.pc
+  tageQueryMeta                            := tagePredictorModule.io.tageQueryMeta
+  predictTaken                             := tagePredictorModule.io.predictBranchTaken
+  predictValid                             := tagePredictorModule.io.predictValid
+  tagePredictorModule.io.updatePc          := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
+  tagePredictorModule.io.updateInfoPort    := tageUpdateInfo
+  tagePredictorModule.io.bpuSpecTaken      := false.B
+  tagePredictorModule.io.bpuSpecValid      := false.B
+  tagePredictorModule.io.ghrUpdateNdBundle := GhrUpdateNdBundle.default
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 
 }
