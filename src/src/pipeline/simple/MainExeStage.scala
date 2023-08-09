@@ -72,7 +72,7 @@ class ExePeerPort extends Bundle {
   val stableCounterReadPort = Flipped(new StableCounterReadPort)
 
   val csrReadPort = Flipped(new CsrReadPort)
-  val feedbackFtq = Output(new ExeCommitFtqNdPort)
+  val feedbackFtq = Output(new ExeFtqFeedBackNdPort)
 
   // val robQueryPcPort = Flipped(new RobQueryPcPort)
 
@@ -448,8 +448,11 @@ class MainExeStage
     out.wb.instInfo.ftqCommitInfo.targetMispredict.get    := branchTargetMispredict && isBranchInst
   }
 
-  branchSetPort.en    := isRedirect && !branchBlockingReg && !isDbarBlockingReg
-  branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
+  branchSetPort.en                       := isRedirect && !branchBlockingReg && !isDbarBlockingReg
+  branchSetPort.ftqId                    := selectedIn.instInfo.ftqInfo.ftqId
+  feedbackFtq.fixGhrBundle.isExeFixValid := branchDirectionMispredict && !branchBlockingReg && isBranchInst
+  feedbackFtq.fixGhrBundle.exeFixFirstBrTaken := jumpBranchInfo.en && !inFtqInfo.isPredictValid && !branchBlockingReg && isBranchInst // TODO predictValid
+  feedbackFtq.fixGhrBundle.exeFixIsTaken := jumpBranchInfo.en
 
   branchSetPort.pcAddr := Mux(
     jumpBranchInfo.en,
@@ -459,25 +462,25 @@ class MainExeStage
 
   if (Param.exeFeedBackFtqDelay) {
 
-    feedbackFtq.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
       !branchBlockingReg,
       false.B
     )
-    feedbackFtq.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
+    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
       (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
-    feedbackFtq.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
-    feedbackFtq.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
-    feedbackFtq.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
+    feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
+    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
+    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
   } else {
 
-    feedbackFtq.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
-    feedbackFtq.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
+    feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
-    feedbackFtq.ftqUpdateMetaId          := inFtqInfo.ftqId
-    feedbackFtq.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
-    feedbackFtq.ftqMetaUpdateFallThrough := fallThroughPc
+    feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
+    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
   }
 
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en

@@ -168,14 +168,20 @@ class InstPreDecodeStage
         }
         when((index + 1).U === selectBlockLength) {
           infoBundle.bits.ftqInfo.predictBranch := selectedIn
-            .enqInfos(selectBlockLength - 1.U)
+            .enqInfos(index)
             .bits
             .ftqInfo
             .predictBranch || isPredecoderRedirect
+          infoBundle.bits.ftqInfo.isPredictValid := selectedIn
+            .enqInfos(index)
+            .bits
+            .ftqInfo
+            .isPredictValid || isPredecoderRedirect
           infoBundle.bits.ftqInfo.isLastInBlock := true.B
         }.otherwise {
-          infoBundle.bits.ftqInfo.predictBranch := false.B
-          infoBundle.bits.ftqInfo.isLastInBlock := false.B
+          infoBundle.bits.ftqInfo.isPredictValid := false.B
+          infoBundle.bits.ftqInfo.predictBranch  := false.B
+          infoBundle.bits.ftqInfo.isLastInBlock  := false.B
         }
     }
 

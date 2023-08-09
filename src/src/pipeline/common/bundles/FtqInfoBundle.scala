@@ -7,7 +7,8 @@ class FtqInfoBundle extends Bundle {
   val isLastInBlock = Bool()
   val ftqId         = UInt(Param.BPU.Width.id)
   // val idxInBlock    = UInt(log2Ceil(Param.fetchInstMaxNum).W)
-  val predictBranch = Bool()
+  val predictBranch  = Bool()
+  val isPredictValid = Bool()
 }
 
 object FtqInfoBundle extends Bundle {

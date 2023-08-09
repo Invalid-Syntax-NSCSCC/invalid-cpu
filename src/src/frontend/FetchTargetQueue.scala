@@ -191,14 +191,14 @@ class FetchTargetQueue(
 
   // training meta to BPU
   io.bpuFtqPort.ftqBpuTrainMeta                                               := FtqBpuMetaPort.default
-  io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.exeFixBundle            := io.exeFtqPort.fixGhrBundle
+  io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.exeFixBundle            := io.exeFtqPort.feedBack.fixGhrBundle
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderFixGhr      := io.preDecoderFlush
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderBranchTaken := io.preDecoderBranchTaken
   io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo := Mux(
     io.commitFixBranch,
     ftqBpuMetaRegs(io.commitFixId).tageQueryMeta.tageGhrInfo,
     Mux(
-      io.exeFtqPort.fixGhrBundle.isExeFixErrorGhr,
+      io.exeFtqPort.feedBack.fixGhrBundle.isExeFixValid,
       ftqBpuMetaRegs(io.backendFlushFtqId).tageQueryMeta.tageGhrInfo,
       ftqBpuMetaRegs(io.preDecoderFtqId).tageQueryMeta.tageGhrInfo
     )
@@ -246,6 +246,7 @@ class FetchTargetQueue(
     io.bpuFtqPort.bpuQueryMeta,
     BpuFtqMetaNdPort.default
   )
+  bpuMetaWriteEntry.tageQueryMeta.tageGhrInfo := io.bpuFtqPort.bpuQueryMeta.tageQueryMeta.tageGhrInfo
 //  when(io.bpuFtqPort.ftqP1.isValid & ~mainBpuRedirectDelay) {
 //    bpuMetaWriteValid             := true.B
 //    bpuMetaWritePtr               := bpuPtr - 1.U
@@ -275,15 +276,15 @@ class FetchTargetQueue(
     ftqBpuMetaRegs(bpuMetaWritePtr) := bpuMetaWriteEntry
   }
   // update pc from backend
-  when(io.exeFtqPort.commitBundle.ftqMetaUpdateValid) {
-    val ftqUpdateMetaId = WireDefault(io.exeFtqPort.commitBundle.ftqUpdateMetaId)
+  when(io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateValid) {
+    val ftqUpdateMetaId = WireDefault(io.exeFtqPort.feedBack.commitBundle.ftqUpdateMetaId)
     ftqBranchMetaRegs(
       ftqUpdateMetaId
-    ).jumpTargetAddr := io.exeFtqPort.commitBundle.ftqMetaUpdateJumpTarget
+    ).jumpTargetAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateJumpTarget
     ftqBranchMetaRegs(
       ftqUpdateMetaId
-    ).fallThroughAddr                           := io.exeFtqPort.commitBundle.ftqMetaUpdateFallThrough
-    ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.commitBundle.ftqMetaUpdateFtbDirty
+    ).fallThroughAddr                           := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
+    ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
   }
 
 }

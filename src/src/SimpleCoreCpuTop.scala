@@ -189,7 +189,7 @@ class SimpleCoreCpuTop extends Module {
 
   // TODO: Connect frontend
   frontend.io.exeFtqPort.queryPcBundle <> issueQueue.io.queryPcPort
-  frontend.io.exeFtqPort.commitBundle  := mainExeStage.io.peer.get.feedbackFtq
+  frontend.io.exeFtqPort.feedBack      := mainExeStage.io.peer.get.feedbackFtq
   frontend.io.commitFtqTrainPort       := addrTransStage.io.peer.get.commitFtqPort
   frontend.io.commitFixBranch          := false.B
   frontend.io.commitFixId              := 0.U

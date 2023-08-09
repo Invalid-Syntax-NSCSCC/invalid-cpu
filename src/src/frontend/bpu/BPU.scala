@@ -206,14 +206,14 @@ class BPU(
   val ghrUpdateSignalBundle = WireDefault(
     io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle
   )
-  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.isPredecoderFixGhr || ghrUpdateSignalBundle.isCommitFixGhr || ghrUpdateSignalBundle.exeFixBundle.isExeFixErrorGhr
+  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.isPredecoderFixGhr || ghrUpdateSignalBundle.isCommitFixGhr || ghrUpdateSignalBundle.exeFixBundle.isExeFixValid
   ghrFixBundle.isFixBranchTaken := ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken
   ghrFixBundle.ghrFixType := Mux(
     ghrUpdateSignalBundle.isCommitFixGhr,
     GhrFixType.commitBrExcp,
     Mux(
-      ghrUpdateSignalBundle.exeFixBundle.isExeFixErrorGhr,
-      Mux(ghrUpdateSignalBundle.exeFixBundle.isExeUpdateGhr, GhrFixType.exeUpdateJump, GhrFixType.exeFixDirection),
+      ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
+      Mux(ghrUpdateSignalBundle.exeFixBundle.exeFixFirstBrTaken, GhrFixType.exeUpdateJump, GhrFixType.exeFixDirection),
       Mux(ghrUpdateSignalBundle.isPredecoderBranchTaken, GhrFixType.decodeUpdateJump, GhrFixType.decodeBrExcp)
     )
   )

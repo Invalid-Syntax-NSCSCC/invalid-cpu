@@ -140,6 +140,7 @@ class TagePredictor(
   val commitPtr   = RegInit(0.U(Param.BPU.ftqPtrWidth.W))
   val checkPtr    = WireDefault(0.U(Param.BPU.ftqPtrWidth.W))
   val checkDepth  = Wire(UInt(Param.BPU.ftqPtrWidth.W))
+  checkPtr   := io.ghrUpdateNdBundle.tageGhrInfo.checkPtr
   checkDepth := checkPtr - commitPtr // calculate the location of the correct old history
 
   // Global History Register
