@@ -5,8 +5,8 @@ import chisel3.util._
 import frontend.bpu.bundles._
 import frontend.bpu.components.Bundles.{FtbEntryNdPort, TageMetaPort}
 import frontend.bpu.components.FTB
-import frontend.bundles.{BpuFtqPort, FtqBlockBundle}
-import spec.Param.BPU.BranchType
+import frontend.bundles.{BpuFtqPort, FtqBlockBundle, GhrUpdateSignalBundle}
+import spec.Param.BPU.{BranchType, GhrFixType}
 import spec._
 
 // BPU is the Branch Predicting Unit
@@ -144,7 +144,8 @@ class BPU(
       io.bpuRedirectPc.bits := ftbEntry.jumpTargetAddr
     }
     is(Param.BPU.BranchType.ret) {
-      // return inst is predict in pre decode Stage
+      // return inst is predict in preDecode Stage;
+      // when preDecode predict error,use ftb to predict
     }
   }
 
@@ -200,6 +201,23 @@ class BPU(
   ftbUpdateEntry.jumpTargetAddr   := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr
   ftbUpdateEntry.fallThroughAddr  := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr
 
+  // global branch history update logic
+  val ghrFixBundle = Wire(new GhrFixNdBundle)
+  val ghrUpdateSignalBundle = WireDefault(
+    io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle
+  )
+  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.isPredecoderFixGhr || ghrUpdateSignalBundle.isCommitFixGhr || ghrUpdateSignalBundle.exeFixBundle.isExeFixErrorGhr
+  ghrFixBundle.isFixBranchTaken := ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken
+  ghrFixBundle.ghrFixType := Mux(
+    ghrUpdateSignalBundle.isCommitFixGhr,
+    GhrFixType.commitBrExcp,
+    Mux(
+      ghrUpdateSignalBundle.exeFixBundle.isExeFixErrorGhr,
+      Mux(ghrUpdateSignalBundle.exeFixBundle.isExeUpdateGhr, GhrFixType.exeUpdateJump, GhrFixType.exeFixDirection),
+      Mux(ghrUpdateSignalBundle.isPredecoderBranchTaken, GhrFixType.decodeUpdateJump, GhrFixType.decodeBrExcp)
+    )
+  )
+
   // connect fetch target buffer module
   // assign ftbHit = 0
   val ftbModule = Module(new FTB)
@@ -220,15 +238,16 @@ class BPU(
 
   // connect tage Predictor module
   val tagePredictorModule = Module(new TagePredictor)
-  tagePredictorModule.io.pc                := io.pc
-  tageQueryMeta                            := tagePredictorModule.io.tageQueryMeta
-  predictTaken                             := tagePredictorModule.io.predictBranchTaken
-  predictValid                             := tagePredictorModule.io.predictValid
-  tagePredictorModule.io.updatePc          := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
-  tagePredictorModule.io.updateInfoPort    := tageUpdateInfo
-  tagePredictorModule.io.bpuSpecTaken      := false.B
-  tagePredictorModule.io.bpuSpecValid      := false.B
-  tagePredictorModule.io.ghrUpdateNdBundle := GhrUpdateNdBundle.default
+  tagePredictorModule.io.pc                             := io.pc
+  tageQueryMeta                                         := tagePredictorModule.io.tageQueryMeta
+  predictTaken                                          := tagePredictorModule.io.predictBranchTaken
+  predictValid                                          := tagePredictorModule.io.predictValid
+  tagePredictorModule.io.updatePc                       := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
+  tagePredictorModule.io.updateInfoPort                 := tageUpdateInfo
+  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := io.bpuFtqPort.ftqP1.predictTaken // bpu predict info
+  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := mainRedirectValid
+  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle    := ghrFixBundle
+  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo  := io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 
 }

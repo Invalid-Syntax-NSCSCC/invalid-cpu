@@ -4,6 +4,7 @@ import spec.Param
 class ExeFtqPort extends Bundle {
   val queryPcBundle = new QueryPcBundle
   val commitBundle  = Input(new ExeCommitFtqNdPort)
+  val fixGhrBundle  = Input(new ExeFtqFixGhrBundle)
 }
 
 class QueryPcBundle extends Bundle {

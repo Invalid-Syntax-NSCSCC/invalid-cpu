@@ -4,13 +4,17 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import frontend.bpu.bundles.{BpuFtqMetaNdPort, TagePredictorUpdateInfoPort}
-import frontend.bpu.components.Bundles.TageMetaPort
+import frontend.bpu.components.Bundles.{TageGhrInfo, TageMetaPort}
 import frontend.bpu.components._
 import spec.Param.BPU.GhrFixType
 import spec._
 class GhrUpdateNdBundle extends Bundle {
-  val bpuSpecValid     = Bool() // speculative update
-  val bpuSpecTaken     = Bool()
+  val bpuSpecValid = Bool() // speculative update
+  val bpuSpecTaken = Bool()
+  val fixBundle    = new GhrFixNdBundle
+  val tageGhrInfo  = new TageGhrInfo()
+}
+class GhrFixNdBundle extends Bundle {
   val isFixGhrValid    = Bool()
   val ghrFixType       = UInt(Param.BPU.GhrFixType.width.W)
   val isFixBranchTaken = Bool()
@@ -46,10 +50,8 @@ class TagePredictor(
     val updatePc       = Input(UInt(Width.Reg.data))
     val updateInfoPort = Input(new TagePredictorUpdateInfoPort)
 
-    // BPU predict info
+    // globalHistory update info
     val ghrUpdateNdBundle = Input(new GhrUpdateNdBundle)
-    val bpuSpecValid      = Input(Bool()) // speculative update
-    val bpuSpecTaken      = Input(Bool())
 
     // TODO PMU
     //    val perfTagHitCounters = Output(Vec(32, UInt((tagComponentNum + 1).W)))
@@ -173,16 +175,16 @@ class TagePredictor(
   when(isUpdateValid) {
     commitPtr := commitPtr + 1.U
   }
-  when(io.ghrUpdateNdBundle.isFixGhrValid) {
-    switch(io.ghrUpdateNdBundle.ghrFixType) {
+  when(io.ghrUpdateNdBundle.fixBundle.isFixGhrValid) {
+    switch(io.ghrUpdateNdBundle.fixBundle.ghrFixType) {
       is(GhrFixType.commitBrExcp, GhrFixType.decodeBrExcp) {
         nextGhr      := ghr >> checkDepth // recover to the old history
         nextSpecPtr  := checkPtr - 1.U
         isRecoverCsr := true.B
       }
       is(GhrFixType.exeFixDirection) {
-        nextGhr           := Cat(ghr >> checkDepth, io.ghrUpdateNdBundle.isFixBranchTaken) // fix error predict
-        nextSpecPtr       := checkPtr
+        nextGhr     := Cat(ghr >> checkDepth, io.ghrUpdateNdBundle.fixBundle.isFixBranchTaken) // fix error predict
+        nextSpecPtr := checkPtr
         isFixDirectionCsr := true.B
       }
       is(GhrFixType.exeUpdateJump, GhrFixType.decodeUpdateJump) {
@@ -191,16 +193,16 @@ class TagePredictor(
         isFixUpdateCsr := true.B
       }
     }
-  }.elsewhen(io.bpuSpecValid) {
-    nextGhr     := Cat(ghr(ghrDepth - 2, 0), io.bpuSpecTaken)
+  }.elsewhen(io.ghrUpdateNdBundle.bpuSpecValid) {
+    nextGhr     := Cat(ghr(ghrDepth - 2, 0), io.ghrUpdateNdBundle.bpuSpecTaken)
     nextSpecPtr := specPtr + 1.U
   }
 
-  when(isUpdateValid) {
-    nextGhr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
-  }
+//  when(isUpdateValid) {
+//    nextGhr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
+//  }
   // output
-  io.tageQueryMeta.checkPtr := nextSpecPtr
+  io.tageQueryMeta.tageGhrInfo.checkPtr := nextSpecPtr
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Logic
@@ -228,19 +230,19 @@ class TagePredictor(
         )
       )
       // Query
-      taggedPreditor.io.isGlobalHistoryUpdate      := isUpdateValid
-      taggedPreditor.io.globalHistory              := nextGhr(historyLengths(providerId + 1) - 1, 0)
-      taggedPreditor.io.pc                         := io.pc
-      tagUsefulbits(providerId)                    := taggedPreditor.io.usefulBits
-      tagCtrbits(providerId)                       := taggedPreditor.io.ctrBits
-      tagQueryTags(providerId)                     := taggedPreditor.io.queryTag
-      tagOriginTags(providerId)                    := taggedPreditor.io.originTag
-      tagHitIndexs(providerId)                     := taggedPreditor.io.hitIndex
-      tagIsTakens(providerId)                      := taggedPreditor.io.taken
-      tagIsHits(providerId)                        := taggedPreditor.io.tagHit
-      io.tageQueryMeta.tagGhtHashs(providerId)     := taggedPreditor.io.queryGhtHash
-      io.tageQueryMeta.tagTagHashCsr1s(providerId) := taggedPreditor.io.queryTagHashCsr1
-      io.tageQueryMeta.tagTagHaxhCsr2s(providerId) := taggedPreditor.io.queryTagHashCsr2
+      taggedPreditor.io.isGlobalHistoryUpdate                  := io.ghrUpdateNdBundle.bpuSpecValid
+      taggedPreditor.io.globalHistory                          := nextGhr(historyLengths(providerId + 1) - 1, 0)
+      taggedPreditor.io.pc                                     := io.pc
+      tagUsefulbits(providerId)                                := taggedPreditor.io.usefulBits
+      tagCtrbits(providerId)                                   := taggedPreditor.io.ctrBits
+      tagQueryTags(providerId)                                 := taggedPreditor.io.queryTag
+      tagOriginTags(providerId)                                := taggedPreditor.io.originTag
+      tagHitIndexs(providerId)                                 := taggedPreditor.io.hitIndex
+      tagIsTakens(providerId)                                  := taggedPreditor.io.taken
+      tagIsHits(providerId)                                    := taggedPreditor.io.tagHit
+      io.tageQueryMeta.tageGhrInfo.tagGhtHashs(providerId)     := taggedPreditor.io.queryGhtHash
+      io.tageQueryMeta.tageGhrInfo.tagTagHashCsr1s(providerId) := taggedPreditor.io.queryTagHashCsr1
+      io.tageQueryMeta.tageGhrInfo.tagTagHashCsr2s(providerId) := taggedPreditor.io.queryTagHashCsr2
 
       // update
       taggedPreditor.io.updatePc          := io.updatePc
@@ -257,9 +259,9 @@ class TagePredictor(
       taggedPreditor.io.isRecoverCsr      := isRecoverCsr
       taggedPreditor.io.isFixUpdateCsr    := isFixUpdateCsr
       taggedPreditor.io.isFixDirectionCsr := isFixDirectionCsr
-      taggedPreditor.io.originGhtHash     := io.updateInfoPort.tageOriginMeta.tagGhtHashs(providerId)
-      taggedPreditor.io.originTagHashCsr1 := io.updateInfoPort.tageOriginMeta.tagTagHashCsr1s(providerId)
-      taggedPreditor.io.originTagHashCsr2 := io.updateInfoPort.tageOriginMeta.tagTagHaxhCsr2s(providerId)
+      taggedPreditor.io.originGhtHash     := io.updateInfoPort.tageOriginMeta.tageGhrInfo.tagGhtHashs(providerId)
+      taggedPreditor.io.originTagHashCsr1 := io.updateInfoPort.tageOriginMeta.tageGhrInfo.tagTagHashCsr1s(providerId)
+      taggedPreditor.io.originTagHashCsr2 := io.updateInfoPort.tageOriginMeta.tageGhrInfo.tagTagHashCsr2s(providerId)
 
       taggedPreditor
     }

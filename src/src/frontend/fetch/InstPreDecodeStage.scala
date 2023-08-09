@@ -31,6 +31,7 @@ class ftqPreDecodeFixRasNdPort extends Bundle {
 }
 class InstPreDecodePeerPort extends Bundle {
   val predecodeRedirect = Output(Bool())
+  val predecoderBranch  = Output(Bool())
   val redirectFtqId     = Output(UInt(Param.BPU.ftqPtrWidth.W))
   val redirectPc        = Output(UInt(spec.Width.Mem.addr))
   val commitRasPort     = Input(Valid(new ftqPreDecodeFixRasNdPort))
@@ -108,6 +109,7 @@ class InstPreDecodeStage
     val isPredecoderRedirect = WireDefault(false.B)
     isPredecoderRedirect := isDataValid && ((isJump && canJump) || isErrorPredict)
     val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
+    peer.predecoderBranch := RegNext(isDataValid && (isJump && canJump), false.B)
 
     // connect return address stack module
     val rasModule = Module(new RAS)

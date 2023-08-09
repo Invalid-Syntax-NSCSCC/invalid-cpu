@@ -17,10 +17,11 @@ class FetchTargetQueue(
 
   val io = IO(new Bundle {
     // <-> Frontend flush control
-    val backendFlush      = Input(Bool())
-    val backendFlushFtqId = Input(UInt(ptrWidth.W))
-    val instFetchFlush    = Input(Bool())
-    val instFetchFtqId    = Input(UInt(ptrWidth.W))
+    val backendFlush          = Input(Bool())
+    val backendFlushFtqId     = Input(UInt(ptrWidth.W))
+    val preDecoderFlush       = Input(Bool())
+    val preDecoderFtqId       = Input(UInt(ptrWidth.W))
+    val preDecoderBranchTaken = Input(Bool())
 
     // <-> BPU
     val bpuFtqPort = new BpuFtqPort
@@ -29,6 +30,8 @@ class FetchTargetQueue(
     // <-> Cu commit
     val commitFtqTrainPort = Input(new CommitFtqTrainNdPort)
     val commitBitMask      = Input(Vec(Param.commitNum, Bool()))
+    val commitFixBranch    = Input(Bool())
+    val commitFixId        = Input(UInt(ptrWidth.W))
 
     // <-> Ex query port
     val exeFtqPort = new ExeFtqPort
@@ -116,9 +119,9 @@ class FetchTargetQueue(
   }
 
   // if IF predecoder found a redirect
-  when(io.instFetchFlush) {
-    nextIfPtr := io.instFetchFtqId + 1.U
-    bpuPtr    := io.instFetchFtqId + 1.U
+  when(io.preDecoderFlush) {
+    nextIfPtr := io.preDecoderFtqId + 1.U
+    bpuPtr    := io.preDecoderFtqId + 1.U
   }
   // if backend redirect triggered,back to the next block of the redirect block
   // backend may continue to commit older block (flush before exeStage inst;commit after exeStage inst)
@@ -187,7 +190,19 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqFull := queueFull
 
   // training meta to BPU
-  io.bpuFtqPort.ftqBpuTrainMeta := FtqBpuMetaPort.default
+  io.bpuFtqPort.ftqBpuTrainMeta                                               := FtqBpuMetaPort.default
+  io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.exeFixBundle            := io.exeFtqPort.fixGhrBundle
+  io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderFixGhr      := io.preDecoderFlush
+  io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderBranchTaken := io.preDecoderBranchTaken
+  io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo := Mux(
+    io.commitFixBranch,
+    ftqBpuMetaRegs(io.commitFixId).tageQueryMeta.tageGhrInfo,
+    Mux(
+      io.exeFtqPort.fixGhrBundle.isExeFixErrorGhr,
+      ftqBpuMetaRegs(io.backendFlushFtqId).tageQueryMeta.tageGhrInfo,
+      ftqBpuMetaRegs(io.preDecoderFtqId).tageQueryMeta.tageGhrInfo
+    )
+  )
 //  when(
 //    io.cuCommitFtqPort.blockBitmask(0) & io.cuCommitFtqPort.meta.isBranch
 //  ) {
