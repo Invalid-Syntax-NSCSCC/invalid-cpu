@@ -6,7 +6,8 @@ import spec._
 
 class TageMetaPort(
   tagComponentNum:      Int = Param.BPU.TagePredictor.tagComponentNum,
-  tagComponentTagWidth: Int = Param.BPU.TagePredictor.tagComponentTagWidth)
+  tagComponentTagWidth: Int = Param.BPU.TagePredictor.tagComponentTagWidth,
+  phtAddrWidth:         Int = log2Ceil(Param.BPU.TagePredictor.componentTableDepth(1)))
     extends Bundle {
   val providerId             = UInt(log2Ceil(tagComponentNum + 1).W)
   val altProviderId          = UInt(log2Ceil(tagComponentNum + 1).W)
@@ -17,7 +18,10 @@ class TageMetaPort(
   val tagPredictorHitIndexs  = Vec(tagComponentNum, UInt(10.W))
   val tagPredictorUsefulBits = Vec(tagComponentNum, UInt(3.W))
   // global history info
-  val checkPtr = UInt(Param.BPU.ftqPtrWidth.W)
+  val checkPtr        = UInt(Param.BPU.ftqPtrWidth.W)
+  val tagGhtHashs     = Vec(tagComponentNum, UInt(phtAddrWidth.W))
+  val tagTagHashCsr1s = Vec(tagComponentNum, UInt(tagComponentTagWidth.W))
+  val tagTagHaxhCsr2s = Vec(tagComponentNum, UInt((tagComponentTagWidth - 1).W))
 }
 
 object TageMetaPort {

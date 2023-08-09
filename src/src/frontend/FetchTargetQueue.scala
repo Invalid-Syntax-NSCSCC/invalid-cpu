@@ -204,7 +204,7 @@ class FetchTargetQueue(
 
   io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc         := ftqVecReg(commitFtqId).startPc
   io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline                 := ftqVecReg(commitFtqId).isCrossCacheline
-  io.bpuFtqPort.ftqBpuTrainMeta.tageOriginMeta                         := ftqBpuMetaRegs(commitFtqId).tageQueryMeta
+  io.bpuFtqPort.ftqBpuTrainMeta.tageOriginMeta                   := ftqBpuMetaRegs(commitFtqId).tageQueryMeta
   io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
   io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
 
