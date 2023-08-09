@@ -16,10 +16,10 @@ class TageMetaPort(
   val tagPredictorOriginTags = Vec(tagComponentNum, UInt(tagComponentTagWidth.W))
   val tagPredictorHitIndexs  = Vec(tagComponentNum, UInt(10.W))
   val tagPredictorUsefulBits = Vec(tagComponentNum, UInt(3.W))
+  // global history info
+  val checkPtr = UInt(Param.BPU.ftqPtrWidth.W)
 }
 
 object TageMetaPort {
-  val tagComponentNum      = Param.BPU.TagePredictor.tagComponentNum
-  val tagComponentTagWidth = Param.BPU.TagePredictor.tagComponentTagWidth
-  def default              = 0.U.asTypeOf(new TageMetaPort)
+  def default = 0.U.asTypeOf(new TageMetaPort)
 }

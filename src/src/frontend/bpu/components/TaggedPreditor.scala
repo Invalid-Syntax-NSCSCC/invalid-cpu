@@ -62,6 +62,8 @@ class TaggedPreditor(
     val reallocEntry     = Input(Bool())
     val updateTag        = Input(UInt(phtTagWidth.W))
     val updateIndex      = Input(UInt(log2Ceil(phtDepth).W))
+
+    // speculative
   })
 
   def toPhtLine(line: UInt) = {
