@@ -19,7 +19,7 @@ class Alu extends Module {
   })
 
   io.outputValid := true.B
-  io.result      := AluResultNdPort.default
+  io.result      := DontCare
 
   def lop = io.aluInst.leftOperand
 
@@ -28,20 +28,14 @@ class Alu extends Module {
   /** Result definition
     */
 
-  val logic = WireDefault(zeroWord)
+  val logic = io.result.logic
 
-  val shift = WireDefault(zeroWord)
+  val shift = io.result.shift
 
-  val jumpBranchInfo = WireDefault(JumpBranchInfoNdPort.default)
+  val jumpBranchInfo = io.result.jumpBranchInfo
 
   // computed with one cycle
-  val arithmetic = WireDefault(zeroWord)
-
-  // Fallback
-  io.result.arithmetic     := arithmetic
-  io.result.logic          := logic
-  io.result.jumpBranchInfo := jumpBranchInfo
-  io.result.shift          := shift
+  val arithmetic = io.result.arithmetic
 
   // Logic computation
 
@@ -117,14 +111,13 @@ class Alu extends Module {
 
   val mulStage = Module(new Mul)
 
-  val useSignedMul = WireDefault(
+  val useSignedMul =
     VecInit(
       ExeInst.Op.mul,
       ExeInst.Op.mulh
     ).contains(io.aluInst.op)
-  )
 
-  val useUnsignedMul = WireDefault(io.aluInst.op === ExeInst.Op.mulhu)
+  val useUnsignedMul = io.aluInst.op === ExeInst.Op.mulhu
 
   val useMul = WireDefault(useSignedMul || useUnsignedMul)
 
@@ -136,7 +129,7 @@ class Alu extends Module {
   mulStage.io.mulInst.bits.leftOperand  := lop
   mulStage.io.mulInst.bits.rightOperand := rop
 
-  val mulResult = WireDefault(mulStage.io.mulResult.bits)
+  val mulResult = mulStage.io.mulResult.bits
 
   // Div
 
@@ -151,9 +144,9 @@ class Alu extends Module {
 
   val divStage = Module(new Div)
 
-  val divisorValid = WireDefault(rop =/= 0.U)
+  val divisorValid = rop =/= 0.U
 
-  val divStart = WireDefault(useDiv && divisorValid)
+  val divStart = useDiv && divisorValid
 
   divStage.io.isFlush       := io.isFlush
   divStage.io.divInst.valid := divStart
@@ -164,8 +157,8 @@ class Alu extends Module {
   divStage.io.divInst.bits.leftOperand  := lop
   divStage.io.divInst.bits.rightOperand := rop
 
-  val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
-  val remainder = WireDefault(divStage.io.divResult.bits.remainder)
+  val quotient  = divStage.io.divResult.bits.quotient
+  val remainder = divStage.io.divResult.bits.remainder
 
   io.outputValid :=
     !(mulStart && !mulStage.io.mulResult.valid) && (
@@ -201,6 +194,5 @@ class Alu extends Module {
 
   when(io.isFlush) {
     io.outputValid := false.B
-    mulResult      := 0.U
   }
 }

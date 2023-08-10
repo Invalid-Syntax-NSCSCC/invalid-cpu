@@ -413,11 +413,12 @@ class MainExeStage
   val branchSetPort = io.peer.get.branchSetPort
 
   // branch set
-  branchSetPort := BackendRedirectPcNdPort.default
+  branchSetPort    := DontCare
+  branchSetPort.en := false.B
 
   val feedbackFtq    = io.peer.get.feedbackFtq
-  val jumpBranchInfo = WireDefault(alu.io.result.jumpBranchInfo)
-  val inFtqInfo      = WireDefault(selectedIn.instInfo.ftqInfo)
+  val jumpBranchInfo = alu.io.result.jumpBranchInfo
+  val inFtqInfo      = selectedIn.instInfo.ftqInfo
 
   val ftqQueryPc = selectedIn.branchInfo.predictJumpAddr
 
@@ -448,17 +449,10 @@ class MainExeStage
     out.wb.instInfo.ftqCommitInfo.targetMispredict.get    := branchTargetMispredict && isBranchInst
   }
 
-  branchSetPort.en    := isRedirect && !branchBlockingReg && !isDbarBlockingReg
+  val isBlocking = branchBlockingReg || isDbarBlockingReg
+
+  branchSetPort.en    := isRedirect && !isBlocking
   branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
-  feedbackFtq.fixGhrBundle.isExeFixValid := RegNext(
-    branchDirectionMispredict && !branchBlockingReg && isBranchInst,
-    false.B
-  )
-  feedbackFtq.fixGhrBundle.exeFixFirstBrTaken := RegNext(
-    jumpBranchInfo.en && !inFtqInfo.isPredictValid && !branchBlockingReg && isBranchInst,
-    false.B
-  ) // TODO predictValid
-  feedbackFtq.fixGhrBundle.exeFixIsTaken := RegNext(jumpBranchInfo.en, false.B)
 
   branchSetPort.pcAddr := Mux(
     jumpBranchInfo.en,
@@ -470,7 +464,7 @@ class MainExeStage
 
     feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
-      !branchBlockingReg,
+      !isBlocking,
       false.B
     )
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
@@ -479,6 +473,16 @@ class MainExeStage
     feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
+
+    feedbackFtq.fixGhrBundle.isExeFixValid := RegNext(
+      branchDirectionMispredict && !isBlocking && isBranchInst,
+      false.B
+    )
+    feedbackFtq.fixGhrBundle.exeFixFirstBrTaken := RegNext(
+      jumpBranchInfo.en && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst,
+      false.B
+    ) // TODO predictValid
+    feedbackFtq.fixGhrBundle.exeFixIsTaken := RegNext(jumpBranchInfo.en, false.B)
   } else {
 
     feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
@@ -487,6 +491,11 @@ class MainExeStage
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+
+    feedbackFtq.fixGhrBundle.isExeFixValid := branchDirectionMispredict && !isBlocking && isBranchInst
+    feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
+      jumpBranchInfo.en && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst
+    feedbackFtq.fixGhrBundle.exeFixIsTaken := jumpBranchInfo.en
   }
 
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
