@@ -1,4 +1,4 @@
-package execution
+package pipeline.complex.execution
 
 import chisel3._
 import chisel3.util._
@@ -6,6 +6,8 @@ import execution.bundles.{AluInstNdPort, AluResultNdPort}
 import pipeline.complex.execution.bundles.JumpBranchInfoNdPort
 import spec.ExeInst.Op
 import spec._
+import execution.Mul
+import execution.Div
 
 class Alu extends Module {
   val io = IO(new Bundle {

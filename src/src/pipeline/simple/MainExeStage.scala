@@ -7,7 +7,7 @@ import common.BaseStage
 import common.bundles._
 import control.bundles._
 import control.csrBundles._
-import execution.Alu
+import pipeline.simple.execution.Alu
 import frontend.bundles._
 import pipeline.common.bundles.{CacheMaintenanceInstNdPort, RobQueryPcPort}
 import pipeline.simple.bundles.InstInfoNdPort
@@ -308,7 +308,7 @@ class MainExeStage
     isDbarBlockingReg := false.B
   }
 
-  val fallThroughPc = selectedIn.branchInfo.pc + 4.U
+  val fallThroughPc = selectedIn.branchInfo.fallThroughPc
 
   switch(selectedIn.exeSel) {
     is(Sel.logic) {
@@ -424,6 +424,11 @@ class MainExeStage
 
   // mis predict
   val branchDirectionMispredict = jumpBranchInfo.en ^ inFtqInfo.predictBranch
+  // val jumpAddr = Mux(
+  //   selectedIn.exeOp === ExeInst.Op.jirl,
+  //   selectedIn.leftOperand ,
+  //   DontCare
+  // )
   val branchTargetMispredict = (
     jumpBranchInfo.en &&
       inFtqInfo.predictBranch &&

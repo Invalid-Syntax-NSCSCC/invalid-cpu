@@ -1,5 +1,4 @@
 import pipeline.simple.MainExeStage
-import pipeline.simple.id.IssueStage
 import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
