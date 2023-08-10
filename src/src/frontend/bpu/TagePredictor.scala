@@ -204,11 +204,13 @@ class TagePredictor(
     nextSpecPtr                    := specPtr - 1.U
     nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.bpuSpecTaken
   }
-  shiftedGlobalHistory := nextGlobalHistory.asUInt >> nextSpecPtr
+//  val shiftHistoryVec = Wire(Vec(ghrDepth, Bool()))
+
+  shiftedGlobalHistory := (nextGlobalHistory.asUInt >> nextSpecPtr).asUInt | (nextGlobalHistory.asUInt << (Param.BPU.TagePredictor.ghrLength.U - nextSpecPtr)).asUInt
   // TODO use the correct Cat history
 //  shiftedGlobalHistory := Cat(
 //    nextGlobalHistory.asUInt(nextSpecPtr, 0),
-//    nextGlobalHistory.asUInt(Param.BPU.TagePredictor.ghrLength, nextSpecPtr)
+//    nextGlobalHistory.asUInt(Param.BPU.TagePredictor.ghrLength-1, nextSpecPtr)
 //  )
 
   val ghr = dontTouch(RegInit((0.U(ghrDepth.W))))
