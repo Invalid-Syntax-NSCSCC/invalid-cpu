@@ -186,13 +186,14 @@ object Param {
       // predictor num = tagComponentNum + 1 (BasePredictor)
       val tagComponentTagWidth   = 12
       val tagComponentNum        = 4
-      val componentHistoryLength = Seq(0, 11, 23, 53, 131)
+      val componentHistoryLength = Seq(0, 11, 23, 53, 112)
       val componentTableDepth =
         Seq(8192, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
       val componentCtrWidth    = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
       val componentUsefulWidth = Seq(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
       // tage paper suggest 2-bits useful, but in order to save source, we use 1 bit(won't decrease ipc)
-      val ghrLength = componentHistoryLength(tagComponentNum) + ftqSize
+      val ghrLength   = componentHistoryLength(tagComponentNum) + ftqSize
+      val ghrPtrWidth = log2Ceil(ghrLength)
     }
 
     object FTB {

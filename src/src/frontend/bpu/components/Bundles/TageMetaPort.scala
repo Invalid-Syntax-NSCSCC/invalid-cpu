@@ -9,7 +9,7 @@ class TageGhrInfo(
   tagComponentTagWidth: Int = Param.BPU.TagePredictor.tagComponentTagWidth,
   phtAddrWidth:         Int = log2Ceil(Param.BPU.TagePredictor.componentTableDepth(1)))
     extends Bundle {
-  val checkPtr        = UInt(Param.BPU.ftqPtrWidth.W)
+  val checkPtr        = UInt(Param.BPU.TagePredictor.ghrPtrWidth.W)
   val tagGhtHashs     = Vec(tagComponentNum, UInt(phtAddrWidth.W))
   val tagTagHashCsr1s = Vec(tagComponentNum, UInt(tagComponentTagWidth.W))
   val tagTagHashCsr2s = Vec(tagComponentNum, UInt((tagComponentTagWidth - 1).W))

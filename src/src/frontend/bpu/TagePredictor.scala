@@ -138,22 +138,23 @@ class TagePredictor(
   // Global History Register speculative update logic
   ////////////////////////////////////////////////////////////////////////////////////////////
   // predict queue
-  val specPtr     = RegInit(0.U(Param.BPU.ftqPtrWidth.W))
-  val nextSpecPtr = Wire(UInt(Param.BPU.ftqPtrWidth.W))
-  val commitPtr   = RegInit(0.U(Param.BPU.ftqPtrWidth.W))
-  val checkPtr    = WireDefault(0.U(Param.BPU.ftqPtrWidth.W))
-  val checkDepth  = Wire(UInt(Param.BPU.ftqPtrWidth.W))
+  val specPtr     = RegInit(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  val nextSpecPtr = Wire(UInt(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  val commitPtr   = RegInit(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  val checkPtr    = WireDefault(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  val checkDepth  = Wire(UInt(Param.BPU.TagePredictor.ghrPtrWidth.W))
   checkPtr   := io.ghrUpdateNdBundle.tageGhrInfo.checkPtr
   checkDepth := checkPtr - commitPtr // calculate the location of the correct old history
 
   // Global History Register
-  val globalHistoryReg  = RegInit(0.U(ghrDepth.W))
-  val nextGlobalHistory = Wire(UInt(ghrDepth.W))
+  val speculativeHistoryReg = RegInit(VecInit(Seq.fill(ghrDepth)(false.B)))
+  val nextGlobalHistory     = Wire(Vec(ghrDepth, Bool()))
+  val shiftedGlobalHistory  = Wire(UInt(ghrDepth.W))
   // default nextGhr keep value; ghr = RegNext(nextGhr) (assign in the next clock)
-  nextGlobalHistory := globalHistoryReg
-  globalHistoryReg  := nextGlobalHistory
-  nextSpecPtr       := specPtr
-  specPtr           := nextSpecPtr
+  nextGlobalHistory     := speculativeHistoryReg
+  speculativeHistoryReg := nextGlobalHistory
+  nextSpecPtr           := specPtr
+  specPtr               := nextSpecPtr
 
   // signal that indicates how to fix globalHistory Hash value
   val isFixUpdateCsr    = WireDefault(false.B)
@@ -177,40 +178,43 @@ class TagePredictor(
   // 4.spec update
 
   when(isUpdateValid) {
-    commitPtr := commitPtr + 1.U
+    commitPtr := commitPtr - 1.U
   }
   when(io.ghrUpdateNdBundle.fixBundle.isFixGhrValid) {
     switch(io.ghrUpdateNdBundle.fixBundle.ghrFixType) {
       is(GhrFixType.commitBrExcp, GhrFixType.decodeBrExcp) {
-        nextGlobalHistory := globalHistoryReg >> checkDepth // recover to the old history
-        nextSpecPtr       := checkPtr - 1.U
-        isRecoverCsr      := true.B
+        // recover to the old history
+        nextSpecPtr  := checkPtr + 1.U
+        isRecoverCsr := true.B
       }
       is(GhrFixType.exeFixDirection) {
-        nextGlobalHistory := Cat(
-          globalHistoryReg >> checkDepth,
-          io.ghrUpdateNdBundle.fixBundle.isFixBranchTaken
-        ) // fix error predict
-        nextSpecPtr       := checkPtr
-        isFixDirectionCsr := true.B
+        // fix error predict
+        nextSpecPtr                    := checkPtr
+        nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.fixBundle.isFixBranchTaken
+        isFixDirectionCsr              := true.B
       }
       is(GhrFixType.exeUpdateJump, GhrFixType.decodeUpdateJump) {
-        nextGlobalHistory := Cat(
-          globalHistoryReg >> checkDepth,
-          true.B
-        ) // update the branch that has not been predicted
-        nextSpecPtr    := checkPtr + 1.U
-        isFixUpdateCsr := true.B
+        // update the branch that has not been predicted
+        nextSpecPtr                    := checkPtr - 1.U
+        nextGlobalHistory(nextSpecPtr) := true.B
+        isFixUpdateCsr                 := true.B
       }
     }
   }.elsewhen(io.ghrUpdateNdBundle.bpuSpecValid) {
-    nextGlobalHistory := Cat(globalHistoryReg(ghrDepth - 2, 0), io.ghrUpdateNdBundle.bpuSpecTaken)
-    nextSpecPtr       := specPtr + 1.U
+    nextSpecPtr                    := specPtr - 1.U
+    nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.bpuSpecTaken
   }
+  shiftedGlobalHistory := nextGlobalHistory.asUInt >> nextSpecPtr
+  // TODO use the correct Cat history
+//  shiftedGlobalHistory := Cat(
+//    nextGlobalHistory.asUInt(nextSpecPtr, 0),
+//    nextGlobalHistory.asUInt(Param.BPU.TagePredictor.ghrLength, nextSpecPtr)
+//  )
 
-//  when(isUpdateValid) {
-//    nextGhr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
-//  }
+  val ghr = dontTouch(RegInit((0.U(ghrDepth.W))))
+  when(isUpdateValid) {
+    ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
+  }
   // output
   io.tageQueryMeta.tageGhrInfo.checkPtr := nextSpecPtr
 
@@ -241,7 +245,7 @@ class TagePredictor(
       )
       // Query
       taggedPreditor.io.isGlobalHistoryUpdate := io.ghrUpdateNdBundle.bpuSpecValid
-      taggedPreditor.io.globalHistory         := nextGlobalHistory(historyLengths(providerId + 1) - 1, 0)
+      taggedPreditor.io.globalHistory         := shiftedGlobalHistory(historyLengths(providerId + 1) - 1, 0)
       taggedPreditor.io.pc                    := io.pc
       tagUsefulbits(providerId)               := taggedPreditor.io.usefulBits
       tagCtrbits(providerId)                  := taggedPreditor.io.ctrBits
