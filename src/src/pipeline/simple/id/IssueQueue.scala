@@ -47,7 +47,7 @@ class IssueQueue(
 
   })
 
-  private val rsLength = 2
+  private val rsLength = 4
 
   val mainRS = Module(
     new MultiQueue(rsLength, 1, 1, new MainRSBundle, 0.U.asTypeOf(new MainRSBundle), writeFirst = false)
