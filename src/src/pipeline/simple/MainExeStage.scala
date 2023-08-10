@@ -448,11 +448,17 @@ class MainExeStage
     out.wb.instInfo.ftqCommitInfo.targetMispredict.get    := branchTargetMispredict && isBranchInst
   }
 
-  branchSetPort.en                       := isRedirect && !branchBlockingReg && !isDbarBlockingReg
-  branchSetPort.ftqId                    := selectedIn.instInfo.ftqInfo.ftqId
-  feedbackFtq.fixGhrBundle.isExeFixValid := branchDirectionMispredict && !branchBlockingReg && isBranchInst
-  feedbackFtq.fixGhrBundle.exeFixFirstBrTaken := jumpBranchInfo.en && !inFtqInfo.isPredictValid && !branchBlockingReg && isBranchInst // TODO predictValid
-  feedbackFtq.fixGhrBundle.exeFixIsTaken := jumpBranchInfo.en
+  branchSetPort.en    := isRedirect && !branchBlockingReg && !isDbarBlockingReg
+  branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
+  feedbackFtq.fixGhrBundle.isExeFixValid := RegNext(
+    branchDirectionMispredict && !branchBlockingReg && isBranchInst,
+    false.B
+  )
+  feedbackFtq.fixGhrBundle.exeFixFirstBrTaken := RegNext(
+    jumpBranchInfo.en && !inFtqInfo.isPredictValid && !branchBlockingReg && isBranchInst,
+    false.B
+  ) // TODO predictValid
+  feedbackFtq.fixGhrBundle.exeFixIsTaken := RegNext(jumpBranchInfo.en, false.B)
 
   branchSetPort.pcAddr := Mux(
     jumpBranchInfo.en,
