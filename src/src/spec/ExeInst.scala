@@ -1,6 +1,7 @@
 package spec
 
 import chisel3._
+import chisel3.experimental.BundleLiterals._
 
 object ExeInst {
   object Sel {
@@ -17,6 +18,120 @@ object ExeInst {
     val arithmetic = next // Only for regular arithmetic operation computed in ALU
     val jumpBranch = next
     val loadStore  = next
+  }
+
+  class OpBundle extends Bundle {
+    val sel   = UInt(3.W)
+    val subOp = UInt(3.W)
+  }
+
+  object OpBundle {
+    var selCount   = -1
+    var subOpCount = -1
+
+    private def next: OpBundle = {
+      subOpCount += 1
+      (new OpBundle).Lit(
+        _.sel -> selCount.U,
+        _.subOp -> subOpCount.U
+      )
+    }
+
+    private def newSel: UInt = {
+      selCount += 1
+      subOpCount = -1
+      selCount.U
+    }
+
+    // read time / shift
+    val sel_readTimeOrShift = newSel
+
+    val nop       = next
+    val rdcntvl_w = next
+    val rdcntvh_w = next
+    val rdcntid   = next
+    val sll       = next
+    val srl       = next
+    val sra       = next
+
+    // simple arthmetic fn / logic
+    val sel_arthOrLogic = newSel
+
+    val add  = next
+    val sub  = next
+    val slt  = next
+    val sltu = next
+    val nor  = next
+    val and  = next
+    val or   = next
+    val xor  = next
+
+    // mul / div
+    val sel_mulDiv = newSel
+
+    val mul   = next
+    val mulh  = next
+    val mulhu = next
+    val div   = next
+    val divu  = next
+    val mod   = next
+    val modu  = next
+
+    // jump excp jirl
+    val sel_simpleBranch = newSel
+
+    val b    = next
+    val bl   = next
+    val beq  = next
+    val bne  = next
+    val blt  = next
+    val bge  = next
+    val bltu = next
+    val bgeu = next
+
+    // other
+    val sel_misc = newSel
+
+    val jirl  = next
+    val preld = next
+    val dbar  = next
+    val ibar  = next
+
+    // csr / exception
+    val sel_csr = newSel
+
+    val csrrd   = next
+    val csrwr   = next
+    val csrxchg = next
+    val break_  = next
+    val syscall = next
+    val ertn    = next
+    val idle    = next
+
+    // load / store without csr
+    val sel_simpleMemory = newSel
+
+    val ld_b  = next
+    val ld_h  = next
+    val ld_w  = next
+    val st_b  = next
+    val st_h  = next
+    val st_w  = next
+    val ld_bu = next
+    val ld_hu = next
+
+    // maintainance + atomic load / store
+    val sel_complexMemory = newSel
+
+    val ll      = next
+    val sc      = next
+    val tlbsrch = next
+    val tlbrd   = next
+    val tlbwr   = next
+    val tlbfill = next
+    val invtlb  = next
+    val cacop   = next
+
   }
 
   object Op {
