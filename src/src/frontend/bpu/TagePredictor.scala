@@ -140,7 +140,7 @@ class TagePredictor(
   // predict queue
   val specPtr     = RegInit(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
   val nextSpecPtr = Wire(UInt(Param.BPU.TagePredictor.ghrPtrWidth.W))
-  val commitPtr   = RegInit(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  val commitPtr   = dontTouch(RegInit(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W)))
   val checkPtr    = WireDefault(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
   val checkDepth  = Wire(UInt(Param.BPU.TagePredictor.ghrPtrWidth.W))
   checkPtr   := io.ghrUpdateNdBundle.tageGhrInfo.checkPtr
@@ -149,7 +149,7 @@ class TagePredictor(
   // Global History Register
   val speculativeHistoryReg = RegInit(VecInit(Seq.fill(ghrDepth)(false.B)))
   val nextGlobalHistory     = Wire(Vec(ghrDepth, Bool()))
-  val shiftedGlobalHistory  = Wire(UInt(ghrDepth.W))
+  val shiftedGlobalHistory  = dontTouch(Wire(UInt(ghrDepth.W)))
   // default nextGhr keep value; ghr = RegNext(nextGhr) (assign in the next clock)
   nextGlobalHistory     := speculativeHistoryReg
   speculativeHistoryReg := nextGlobalHistory
@@ -157,8 +157,8 @@ class TagePredictor(
   specPtr               := nextSpecPtr
 
   // signal that indicates how to fix globalHistory Hash value
-  val isFixUpdateCsr    = WireDefault(false.B)
-  val isFixDirectionCsr = WireDefault(false.B)
+  val isExeFixCsr       = WireDefault(false.B)
+  val isPredecodeFixCsr = WireDefault(false.B)
   val isRecoverCsr      = WireDefault(false.B)
 //  val originHash = Input(UInt(outputLength.W))
 
@@ -191,22 +191,28 @@ class TagePredictor(
         // fix error predict
         nextSpecPtr                    := checkPtr
         nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.fixBundle.isFixBranchTaken
-        isFixDirectionCsr              := true.B
+        isExeFixCsr                    := true.B
       }
-      is(GhrFixType.exeUpdateJump, GhrFixType.decodeUpdateJump) {
+      is(GhrFixType.exeUpdateJump) {
         // update the branch that has not been predicted
         nextSpecPtr                    := checkPtr - 1.U
         nextGlobalHistory(nextSpecPtr) := true.B
-        isFixUpdateCsr                 := true.B
+        isExeFixCsr                    := true.B
+      }
+      is(GhrFixType.decodeUpdateJump) {
+        // update the branch that has not been predicted
+        nextSpecPtr                    := checkPtr - 1.U
+        nextGlobalHistory(nextSpecPtr) := true.B
+        isPredecodeFixCsr              := true.B
       }
     }
   }.elsewhen(io.ghrUpdateNdBundle.bpuSpecValid) {
     nextSpecPtr                    := specPtr - 1.U
     nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.bpuSpecTaken
   }
-//  val shiftHistoryVec = Wire(Vec(ghrDepth, Bool()))
 
-  shiftedGlobalHistory := (nextGlobalHistory.asUInt >> nextSpecPtr).asUInt | (nextGlobalHistory.asUInt << (Param.BPU.TagePredictor.ghrLength.U - nextSpecPtr)).asUInt
+  shiftedGlobalHistory := Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr
+//  shiftedGlobalHistory := (nextGlobalHistory.asUInt >> nextSpecPtr).asUInt | (nextGlobalHistory.asUInt << (Param.BPU.TagePredictor.ghrLength.U - nextSpecPtr)).asUInt
   // TODO use the correct Cat history
 //  shiftedGlobalHistory := Cat(
 //    nextGlobalHistory.asUInt(nextSpecPtr, 0),
@@ -273,8 +279,8 @@ class TagePredictor(
       taggedPreditor.io.updateTag         := tagUpdateNewTags(providerId)
       taggedPreditor.io.updateIndex       := updateMetaBundle.tagPredictorHitIndexs(providerId)
       taggedPreditor.io.isRecoverCsr      := isRecoverCsr
-      taggedPreditor.io.isFixUpdateCsr    := isFixUpdateCsr
-      taggedPreditor.io.isFixDirectionCsr := isFixDirectionCsr
+      taggedPreditor.io.isExeFixCsr       := isExeFixCsr
+      taggedPreditor.io.isPredecodeFixCsr := isPredecodeFixCsr
       taggedPreditor.io.originGhtHash     := updateMetaBundle.tageGhrInfo.tagGhtHashs(providerId)
       taggedPreditor.io.originTagHashCsr1 := updateMetaBundle.tageGhrInfo.tagTagHashCsr1s(providerId)
       taggedPreditor.io.originTagHashCsr2 := updateMetaBundle.tageGhrInfo.tagTagHashCsr2s(providerId)
