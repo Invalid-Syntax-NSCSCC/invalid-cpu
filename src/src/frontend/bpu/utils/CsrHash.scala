@@ -11,8 +11,8 @@ class CsrHash(
     val dataUpdate        = Input(Bool())
     val data              = Input(UInt(inputLength.W))
     val hash              = Output(UInt(outputLength.W))
-    val isFixUpdateCsr    = Input(Bool())
-    val isFixDirectionCsr = Input(Bool())
+    val isExeFixCsr       = Input(Bool())
+    val isPredecodeFixCsr = Input(Bool())
     val isRecoverCsr      = Input(Bool())
     val originHash        = Input(UInt(outputLength.W))
   })
@@ -23,16 +23,7 @@ class CsrHash(
   val residual = (inputLength - 1) % outputLength
 //  nextCSR           := Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0))
 //  nextCSR(residual) := nextCSR(residual, residual) ^ io.data(inputLength - 1)
-  val updateCSR = WireDefault(0.U(outputLength.W))
-  updateCSR := Mux(
-    io.isFixUpdateCsr || io.isFixDirectionCsr,
-    Cat(io.originHash(outputLength - 2, 0), io.originHash(outputLength - 1) ^ io.data(0)) ^ (io.data(
-      inputLength - 1
-    ) << residual).asUInt,
-    Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0)) ^ (io.data(
-      inputLength - 1
-    ) << residual).asUInt
-  )
+
   val keepCSR = WireDefault(0.U(outputLength.W))
   keepCSR := Mux(io.isRecoverCsr, io.originHash, csr)
 
@@ -40,7 +31,7 @@ class CsrHash(
     io.isRecoverCsr,
     io.originHash,
     Mux(
-      io.isFixUpdateCsr || io.isFixDirectionCsr,
+      io.isExeFixCsr || io.isPredecodeFixCsr,
       Cat(io.originHash(outputLength - 2, 0), io.originHash(outputLength - 1) ^ io.data(0)) ^ (io.data(
         inputLength - 1
       ) << residual).asUInt,
@@ -62,9 +53,10 @@ class CsrHash(
 //    csr
 //  )
 
-  when(io.dataUpdate) {
-    csr := nextCSR
-  }
+//  when(io.dataUpdate) {
+//    csr := nextCSR
+//  }
+  csr := nextCSR
 
   io.hash := nextCSR
 

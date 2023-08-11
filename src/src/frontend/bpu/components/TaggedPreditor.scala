@@ -67,8 +67,8 @@ class TaggedPreditor(
     val updateIndex      = Input(UInt(log2Ceil(phtDepth).W))
 
     // speculative update hash value
-    val isFixUpdateCsr    = Input(Bool())
-    val isFixDirectionCsr = Input(Bool())
+    val isExeFixCsr       = Input(Bool())
+    val isPredecodeFixCsr = Input(Bool())
     val isRecoverCsr      = Input(Bool())
     val originGhtHash     = Input(UInt(phtAddrWidth.W))
     val originTagHashCsr1 = Input(UInt(phtTagWidth.W))
@@ -182,8 +182,8 @@ class TaggedPreditor(
   hashedGhtInput                      := ghtHashCsrHash.io.hash
   ghtHashCsrHash.io.originHash        := io.originGhtHash
   ghtHashCsrHash.io.isRecoverCsr      := io.isRecoverCsr
-  ghtHashCsrHash.io.isFixUpdateCsr    := io.isFixUpdateCsr
-  ghtHashCsrHash.io.isFixDirectionCsr := io.isFixDirectionCsr
+  ghtHashCsrHash.io.isExeFixCsr       := io.isExeFixCsr
+  ghtHashCsrHash.io.isPredecodeFixCsr := io.isPredecodeFixCsr
   io.queryGhtHash                     := ghtHashCsrHash.io.hash
 
   val pcHashCsrHash1 = Module(new CsrHash(ghrLength, phtTagWidth))
@@ -192,8 +192,8 @@ class TaggedPreditor(
   tagHashCsr1                         := pcHashCsrHash1.io.hash
   pcHashCsrHash1.io.originHash        := io.originTagHashCsr1
   pcHashCsrHash1.io.isRecoverCsr      := io.isRecoverCsr
-  pcHashCsrHash1.io.isFixUpdateCsr    := io.isFixUpdateCsr
-  pcHashCsrHash1.io.isFixDirectionCsr := io.isFixDirectionCsr
+  pcHashCsrHash1.io.isExeFixCsr       := io.isExeFixCsr
+  pcHashCsrHash1.io.isPredecodeFixCsr := io.isPredecodeFixCsr
   io.queryTagHashCsr1                 := pcHashCsrHash1.io.hash
 
   val pcHashCsrHash2 = Module(new CsrHash(ghrLength, phtTagWidth - 1))
@@ -202,8 +202,8 @@ class TaggedPreditor(
   tagHashCsr2                         := pcHashCsrHash2.io.hash
   pcHashCsrHash2.io.originHash        := io.originTagHashCsr2
   pcHashCsrHash2.io.isRecoverCsr      := io.isRecoverCsr
-  pcHashCsrHash2.io.isFixUpdateCsr    := io.isFixUpdateCsr
-  pcHashCsrHash2.io.isFixDirectionCsr := io.isFixDirectionCsr
+  pcHashCsrHash2.io.isExeFixCsr       := io.isExeFixCsr
+  pcHashCsrHash2.io.isPredecodeFixCsr := io.isPredecodeFixCsr
   io.queryTagHashCsr2                 := pcHashCsrHash2.io.hash
 
   val phtRam = Module(

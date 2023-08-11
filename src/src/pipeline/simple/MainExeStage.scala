@@ -432,12 +432,16 @@ class MainExeStage
   val branchTargetMispredict = (
     jumpBranchInfo.en &&
       inFtqInfo.predictBranch &&
-      jumpBranchInfo.pcAddr =/= ftqQueryPc
+      Mux(
+        selectedIn.exeOp === ExeInst.Op.jirl,
+        selectedIn.leftOperand =/= selectedIn.branchInfo.predictSubImm,
+        !selectedIn.branchInfo.immPredictCorrect
+      )
   ) || (
     !jumpBranchInfo.en &&
       !inFtqInfo.predictBranch &&
       inFtqInfo.isLastInBlock &&
-      fallThroughPc =/= ftqQueryPc
+      !selectedIn.branchInfo.fallThroughPredictCorrect
   )
 
   // is branch
@@ -459,9 +463,15 @@ class MainExeStage
   branchSetPort.en    := isRedirect && !isBlocking
   branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
 
+  val jumpAddr = Mux(
+    selectedIn.exeOp === ExeInst.Op.jirl,
+    selectedIn.leftOperand + selectedIn.jumpBranchAddr,
+    selectedIn.jumpBranchAddr
+  )
+
   branchSetPort.pcAddr := Mux(
     jumpBranchInfo.en,
-    jumpBranchInfo.pcAddr,
+    jumpAddr,
     fallThroughPc
   )
 
@@ -476,7 +486,7 @@ class MainExeStage
       (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
     feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
-    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
+    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpAddr, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
 
     feedbackFtq.fixGhrBundle.isExeFixValid := RegNext(
@@ -494,7 +504,7 @@ class MainExeStage
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
       (jumpBranchInfo.en && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
-    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+    feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpAddr
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
 
     feedbackFtq.fixGhrBundle.isExeFixValid := branchDirectionMispredict && !isBlocking && isBranchInst
