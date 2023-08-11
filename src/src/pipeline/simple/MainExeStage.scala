@@ -95,7 +95,8 @@ class MainExeStage
   resultOutReg.bits  := out
   val peer = io.peer.get
 
-  peer.commitFtqPort := RegNext(out.commitFtqPort)
+  peer.commitFtqPort := (if (Param.exeFeedBackFtqDelay) RegNext(RegNext(out.commitFtqPort))
+                         else RegNext(out.commitFtqPort))
 
   // Fallback
   // ALU module
