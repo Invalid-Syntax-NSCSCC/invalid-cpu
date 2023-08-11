@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import spec.ExeInst.Sel
 import common.BaseStage
-import execution.Alu
+import _root_.execution.Alu
 import pipeline.simple.ExeNdPort
 import pipeline.simple.bundles.WbNdPort
 import pipeline.simple.bundles.RegWakeUpNdPort

@@ -7,7 +7,7 @@ import common.BaseStage
 import common.bundles._
 import control.bundles._
 import control.csrBundles._
-import execution.Alu
+import _root_.execution.Alu
 import frontend.bundles._
 import pipeline.common.bundles.{CacheMaintenanceInstNdPort, RobQueryPcPort}
 import pipeline.simple.bundles.InstInfoNdPort

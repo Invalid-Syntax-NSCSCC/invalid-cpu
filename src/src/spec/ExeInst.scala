@@ -20,9 +20,14 @@ object ExeInst {
     val loadStore  = next
   }
 
+  object Width {
+    val sel   = 3.W
+    val subOp = 3.W
+  }
+
   class OpBundle extends Bundle {
-    val sel   = UInt(3.W)
-    val subOp = UInt(3.W)
+    val sel   = UInt(Width.sel)
+    val subOp = UInt(Width.subOp)
   }
 
   object OpBundle {
@@ -213,13 +218,13 @@ object ExeInst {
     val cacop = next
 
     object Tlb {
-      val clrAll          = 0.U(Width.Tlb.op)
-      val clrAllAlt       = 1.U(Width.Tlb.op)
-      val clrGlobl        = 2.U(Width.Tlb.op)
-      val clrNGlobl       = 3.U(Width.Tlb.op)
-      val clrNGloblAsId   = 4.U(Width.Tlb.op)
-      val clrNGloblAsIdVa = 5.U(Width.Tlb.op)
-      val clrGloblAsIdVa  = 6.U(Width.Tlb.op)
+      val clrAll          = 0.U(spec.Width.Tlb.op)
+      val clrAllAlt       = 1.U(spec.Width.Tlb.op)
+      val clrGlobl        = 2.U(spec.Width.Tlb.op)
+      val clrNGlobl       = 3.U(spec.Width.Tlb.op)
+      val clrNGloblAsId   = 4.U(spec.Width.Tlb.op)
+      val clrNGloblAsIdVa = 5.U(spec.Width.Tlb.op)
+      val clrGloblAsIdVa  = 6.U(spec.Width.Tlb.op)
     }
   }
 }
