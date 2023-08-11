@@ -77,6 +77,9 @@ class ExePeerPort extends Bundle {
   // val robQueryPcPort = Flipped(new RobQueryPcPort)
 
   val regWakeUpPort = Output(new RegWakeUpNdPort)
+
+  val commitFtqPort = new CommitFtqTrainNdPort
+
 }
 
 class MainExeStage
@@ -91,6 +94,8 @@ class MainExeStage
   resultOutReg.valid := outValid
   resultOutReg.bits  := out
   val peer = io.peer.get
+
+  peer.commitFtqPort := out.commitFtqPort
 
   // Fallback
   // ALU module
