@@ -69,7 +69,8 @@ class BPU(
   val isCrossPage = WireDefault(false.B)
 //  isCrossPage := io.pc(11, 0) > "b1111_1111_0000".U // if 4 instr already cross the page limit
   // one instr has 4B; one page addr length 12bits ; when cross page,address add fetchNum result in page's high bits from all 1 to 0
-  isCrossPage := io.pc(11, 0) > Cat(-1.S((10 - log2Ceil(fetchNum)).W).asUInt, 0.U(Param.Width.ICache._fetchOffset.W))
+//  isCrossPage := io.pc(11, 0) > Cat(-1.S((10 - log2Ceil(fetchNum)).W).asUInt, 0.U(Param.Width.ICache._fetchOffset.W))
+  // when not support crossCacheLine, isCrossPage must be false
   when(io.bpuFtqPort.ftqFull) {
     // todo default 0
     io.bpuFtqPort.ftqP0 := FtqBlockBundle.default
