@@ -132,23 +132,16 @@ class MainExeStage
   val isAddrNotAligned   = WireDefault(false.B)
   val loadStoreAddr      = selectedIn.leftOperand + selectedIn.loadStoreImm
   val maskEncode         = loadStoreAddr(1, 0)
+  val isAtomicLoad       = selectedIn.instInfo.exeOp === OpBundle.ll
   val isAtomicStoreValid = io.peer.get.csr.llbctl.rollb && selectedIn.instInfo.exeOp === OpBundle.sc
 
   val isSimpleMemory  = selectedIn.instInfo.exeOp.sel === OpBundle.sel_simpleMemory
   val isComplexMemory = selectedIn.instInfo.exeOp.sel === OpBundle.sel_complexMemory
 
-  val isRead = (isSimpleMemory &&
-    VecInit(
-      OpBundle.ld_b.subOp,
-      OpBundle.ld_bu.subOp,
-      OpBundle.ld_h.subOp,
-      OpBundle.ld_hu.subOp,
-      OpBundle.ld_w.subOp
-    ).contains(selectedIn.instInfo.exeOp.subOp)) || selectedIn.instInfo.exeOp === OpBundle.ll
   val isWrite =
-    VecInit(OpBundle.st_b.subOp, OpBundle.st_h.subOp, OpBundle.st_w.subOp)
-      .contains(selectedIn.instInfo.exeOp.subOp) || isAtomicStoreValid
-  val isValidLoadStore = (isRead || isWrite) && !isAddrNotAligned
+    (VecInit(OpBundle.st_b.subOp, OpBundle.st_h.subOp, OpBundle.st_w.subOp)
+      .contains(selectedIn.instInfo.exeOp.subOp) && isSimpleMemory) || isAtomicStoreValid
+  val isValidLoadStore = (isSimpleMemory || isAtomicLoad || isAtomicStoreValid) && !isAddrNotAligned
 
   // default : simple memory
   switch(selectedIn.instInfo.exeOp.subOp) {
@@ -198,11 +191,13 @@ class MainExeStage
 
   out.memRequest.isValid := isValidLoadStore
   out.memRequest.addr    := loadStoreAddr
-  out.memRequest.read.isUnsigned :=
-    VecInit(OpBundle.ld_bu.asUInt, OpBundle.ld_hu.asUInt)
-      .contains(selectedIn.instInfo.exeOp.asUInt)
+  out.memRequest.read.isUnsigned := VecInit(
+    OpBundle.ld_bu.asUInt,
+    OpBundle.ld_hu.asUInt
+  ).contains(selectedIn.instInfo.exeOp.asUInt)
   out.memRequest.rw := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
   out.isAtomicStore := selectedIn.instInfo.exeOp === OpBundle.sc
+
   when(isValidLoadStore) {
     out.wb.instInfo.forbidParallelCommit := true.B
   }
@@ -509,6 +504,12 @@ class MainExeStage
     fallThroughPc
   )
 
+  feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking
+  feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
+    aluCalcJumpEn && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst
+  feedbackFtq.fixGhrBundle.exeFixIsTaken   := aluCalcJumpEn
+  feedbackFtq.fixGhrBundle.exeFixJumpError := isRedirect && !isBlocking
+
   if (Param.exeFeedBackFtqDelay) {
 
     feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
@@ -522,28 +523,13 @@ class MainExeStage
     feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpAddr, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
-
-    feedbackFtq.fixGhrBundle.isExeFixValid := RegNext(isRedirect && !isBlocking, false.B)
-    feedbackFtq.fixGhrBundle.exeFixFirstBrTaken := RegNext(
-      aluCalcJumpEn && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst,
-      false.B
-    ) // TODO predictValid
-    feedbackFtq.fixGhrBundle.exeFixJumpError := RegNext(isRedirect && !isBlocking, false.B)
-    feedbackFtq.fixGhrBundle.exeFixIsTaken   := RegNext(aluCalcJumpEn, false.B)
   } else {
-
     feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
       (aluCalcJumpEn && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpAddr
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
-
-    feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking
-    feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
-      aluCalcJumpEn && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst
-    feedbackFtq.fixGhrBundle.exeFixIsTaken   := aluCalcJumpEn
-    feedbackFtq.fixGhrBundle.exeFixJumpError := isRedirect && !isBlocking
   }
 
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
@@ -555,8 +541,8 @@ class MainExeStage
   out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType
   out.commitFtqPort.branchTakenMeta.predictedTaken := selectedIn.instInfo.ftqInfo.predictBranch
 
-  val isErtn = WireDefault(selectedIn.instInfo.exeOp === OpBundle.ertn)
-  val isIdle = WireDefault(selectedIn.instInfo.exeOp === OpBundle.idle)
+  val isErtn = selectedIn.instInfo.exeOp === OpBundle.ertn
+  val isIdle = selectedIn.instInfo.exeOp === OpBundle.idle
 
   when(isBranchInst || isIdle || isErtn) {
     out.wb.instInfo.forbidParallelCommit := true.B
