@@ -52,11 +52,11 @@ object ExeInst {
     val sel_readTimeOrShift = newSel
 
     val nop       = next
-    val rdcntvl_w = next
-    val rdcntvh_w = next
     val sll       = next
     val srl       = next
     val sra       = next
+    val rdcntvl_w = next
+    val rdcntvh_w = next
 
     // simple arthmetic fn / logic
     val sel_arthOrLogic = newSel
@@ -73,13 +73,13 @@ object ExeInst {
     // mul / div
     val sel_mulDiv = newSel
 
-    val mul   = next
-    val mulh  = next
-    val mulhu = next
     val div   = next
     val divu  = next
     val mod   = next
     val modu  = next
+    val mul   = next
+    val mulh  = next
+    val mulhu = next
 
     // jump excp jirl
     val sel_simpleBranch = newSel
@@ -89,8 +89,8 @@ object ExeInst {
     val beq  = next
     val bne  = next
     val blt  = next
-    val bge  = next
     val bltu = next
+    val bge  = next
     val bgeu = next
 
     // other
@@ -115,14 +115,14 @@ object ExeInst {
     // load / store without csr
     val sel_simpleMemory = newSel
 
-    val ld_b  = next
-    val ld_h  = next
-    val ld_w  = next
-    val st_b  = next
+    val ld_b  = next // 000
+    val ld_bu = next // 001
+    val ld_h  = next // 010
+    val ld_hu = next // 011
+    val ld_w  = next // 100
+    val st_b  = next // 101
     val st_h  = next
     val st_w  = next
-    val ld_bu = next
-    val ld_hu = next
 
     // maintainance + atomic load / store
     val sel_complexMemory = newSel
