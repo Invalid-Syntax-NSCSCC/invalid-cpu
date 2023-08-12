@@ -23,6 +23,8 @@ class Frontend extends Module {
     // ftq <-> cu
     val commitFtqTrainPort = Input(new CommitFtqTrainNdPort)
     val commitBitMask      = Input(Vec(Param.commitNum, Bool()))
+    val commitFixBranch    = Input(Bool())
+    val commitFixId        = Input(UInt(Param.BPU.ftqPtrWidth.W))
 
     // instFetch <-> ICache
     val accessPort = Flipped(new ICacheAccessPort)
@@ -66,10 +68,11 @@ class Frontend extends Module {
   // fetch Target Pc queue;
   // stage 1
   // act as a fetch buffer
-  ftq.io.backendFlush      := io.isFlush
-  ftq.io.backendFlushFtqId := io.ftqFlushId
-  ftq.io.instFetchFlush    := instFetch.io.preDecodeRedirectPort.predecodeRedirect // TODO add predecoder stage
-  ftq.io.instFetchFtqId    := instFetch.io.preDecodeRedirectPort.redirectFtqId
+  ftq.io.backendFlush          := io.isFlush
+  ftq.io.backendFlushFtqId     := io.ftqFlushId
+  ftq.io.preDecoderFlush       := instFetch.io.preDecodeRedirectPort.predecodeRedirect // TODO add predecoder stage
+  ftq.io.preDecoderFtqId       := instFetch.io.preDecodeRedirectPort.redirectFtqId
+  ftq.io.preDecoderBranchTaken := instFetch.io.preDecodeRedirectPort.predecoderBranch
   instFetch.io.preDecodeRedirectPort.commitRasPort := ftq.io.ftqRasPort
   ftq.io.commitFtqTrainPort                        := io.commitFtqTrainPort
   ftq.io.exeFtqPort                                <> io.exeFtqPort

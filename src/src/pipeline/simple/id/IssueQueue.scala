@@ -133,11 +133,16 @@ class IssueQueue(
   }
 
   // reservation station enqueue bits
-  mainRSEnqPort.bits.mainExeBranchInfo.pc              := io.ins.head.bits.pc
-  io.queryPcPort.ftqId                                 := io.ins.head.bits.instInfo.ftqInfo.ftqId + 1.U
-  mainRSEnqPort.bits.mainExeBranchInfo.predictJumpAddr := io.queryPcPort.pc
-  mainRSEnqPort.bits.mainExeBranchInfo.isBranch        := io.ins.head.bits.decode.info.isBranch
-  mainRSEnqPort.bits.mainExeBranchInfo.branchType      := io.ins.head.bits.decode.info.branchType
+  val fallThroughPc = io.ins.head.bits.pc + 4.U
+  val predictPc     = io.queryPcPort.pc
+  mainRSEnqPort.bits.mainExeBranchInfo.fallThroughPc             := fallThroughPc
+  mainRSEnqPort.bits.mainExeBranchInfo.fallThroughPredictCorrect := fallThroughPc === predictPc
+  mainRSEnqPort.bits.mainExeBranchInfo.immPredictCorrect := io.ins.head.bits.decode.info.jumpBranchAddr === predictPc
+  mainRSEnqPort.bits.mainExeBranchInfo.predictSubImm     := predictPc - io.ins.head.bits.decode.info.jumpBranchAddr
+  io.queryPcPort.ftqId                                   := io.ins.head.bits.instInfo.ftqInfo.ftqId + 1.U
+  mainRSEnqPort.bits.mainExeBranchInfo.predictJumpAddr   := predictPc
+  mainRSEnqPort.bits.mainExeBranchInfo.isBranch          := io.ins.head.bits.decode.info.isBranch
+  mainRSEnqPort.bits.mainExeBranchInfo.branchType        := io.ins.head.bits.decode.info.branchType
 
   rsEnqPorts.lazyZip(io.ins).lazyZip(io.regReadPorts).zipWithIndex.foreach {
     case ((rs, in, readRes), index) =>

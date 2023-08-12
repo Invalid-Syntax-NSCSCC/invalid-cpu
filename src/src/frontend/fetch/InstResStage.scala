@@ -54,11 +54,13 @@ class InstResStage
       infoBundle.bits.exception      := selectedIn.exception.bits
       infoBundle.bits.ftqInfo.ftqId  := selectedIn.ftqId
       when((index + 1).U === selectedIn.ftqBlock.length) {
-        infoBundle.bits.ftqInfo.predictBranch := selectedIn.ftqBlock.predictTaken
-        infoBundle.bits.ftqInfo.isLastInBlock := true.B
+        infoBundle.bits.ftqInfo.predictBranch  := selectedIn.ftqBlock.predictTaken
+        infoBundle.bits.ftqInfo.isPredictValid := selectedIn.ftqBlock.predictValid
+        infoBundle.bits.ftqInfo.isLastInBlock  := true.B
       }.otherwise {
-        infoBundle.bits.ftqInfo.predictBranch := false.B
-        infoBundle.bits.ftqInfo.isLastInBlock := false.B
+        infoBundle.bits.ftqInfo.predictBranch  := false.B
+        infoBundle.bits.ftqInfo.isPredictValid := false.B
+        infoBundle.bits.ftqInfo.isLastInBlock  := false.B
       }
   }
 

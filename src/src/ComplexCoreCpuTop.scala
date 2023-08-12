@@ -179,6 +179,8 @@ class ComplexCoreCpuTop extends Module {
     case (dst, src) =>
       dst := src
   }
+  frontend.io.commitFixBranch := false.B
+  frontend.io.commitFixId     := 0.U
 
   // Instruction queue
   instQueue.io.enqueuePort <> frontend.io.instDequeuePort

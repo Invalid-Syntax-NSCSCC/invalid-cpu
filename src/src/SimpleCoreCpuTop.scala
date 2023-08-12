@@ -1,5 +1,4 @@
 import pipeline.simple.MainExeStage
-import pipeline.simple.id.IssueStage
 import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
@@ -189,8 +188,13 @@ class SimpleCoreCpuTop extends Module {
 
   // TODO: Connect frontend
   frontend.io.exeFtqPort.queryPcBundle <> issueQueue.io.queryPcPort
-  frontend.io.exeFtqPort.commitBundle  := mainExeStage.io.peer.get.feedbackFtq
-  frontend.io.commitFtqTrainPort       := addrTransStage.io.peer.get.commitFtqPort
+  frontend.io.exeFtqPort.feedBack      := mainExeStage.io.peer.get.feedbackFtq
+  val commitFtqPort =
+    if (isNoPrivilege) mainExeStage.io.peer.get.commitFtqPort
+    else addrTransStage.io.peer.get.commitFtqPort
+  frontend.io.commitFtqTrainPort := commitFtqPort
+  frontend.io.commitFixBranch    := false.B
+  frontend.io.commitFixId        := 0.U
   connectVec(frontend.io.commitBitMask, cu.io.commitBitMask)
 
   // Instruction queue
