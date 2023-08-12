@@ -141,27 +141,10 @@ class OoOIssueQueue(
   io.dequeuePorts.mainExePort.bits.branchInfo := mainRS.io.dequeuePort.bits.mainExeBranchInfo
   (Seq(io.dequeuePorts.mainExePort) ++ io.dequeuePorts.simpleExePorts).zip(rss.map(_.io.dequeuePort)).foreach {
     case (out, rs) =>
-      val regReadResults = WireDefault(rs.bits.regReadResults)
+      val regReadResults = rs.bits.regReadResults
 
-      regReadResults.lazyZip(rs.bits.regReadResults).lazyZip(rs.bits.decodePort.decode.info.gprReadPorts).foreach {
-        case (setRegData, elemData, decodeRead) =>
-          val mux = Module(new MultiMux1(pipelineNum + 1, UInt(Width.Reg.data), zeroWord))
-          mux.io.inputs.zip(io.wakeUpPorts).foreach {
-            case (input, wakeUp) =>
-              input.valid := wakeUp.en &&
-                wakeUp.robId(Param.Width.Rob._id - 1, 0) === elemData.bits(Param.Width.Rob._id - 1, 0)
-              input.bits := wakeUp.data
-          }
-          when(!elemData.valid && mux.io.output.valid) {
-            setRegData.valid := true.B
-            setRegData.bits  := mux.io.output.bits
-          }
-
-      }
-
-      val deqEn = regReadResults.map(_.valid).reduce(_ && _)
-      out.valid               := rs.valid && deqEn
-      rs.ready                := out.ready && deqEn
+      out.valid               := rs.valid
+      rs.ready                := out.ready
       out.bits.gprWritePort   := rs.bits.decodePort.decode.info.gprWritePort
       out.bits.instInfo       := rs.bits.decodePort.instInfo
       out.bits.jumpBranchAddr := rs.bits.decodePort.decode.info.jumpBranchAddr
