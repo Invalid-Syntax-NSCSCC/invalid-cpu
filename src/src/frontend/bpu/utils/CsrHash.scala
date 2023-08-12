@@ -1,6 +1,7 @@
 package frontend.bpu.utils
 import chisel3._
 import chisel3.util._
+import spec.Param
 
 // Implement GHR hash using a CSR (Circular Shifted Register)
 class CsrHash(
@@ -24,40 +25,40 @@ class CsrHash(
 //  nextCSR           := Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0))
 //  nextCSR(residual) := nextCSR(residual, residual) ^ io.data(inputLength - 1)
 
-  val keepCSR = WireDefault(0.U(outputLength.W))
-  keepCSR := Mux(io.isRecoverCsr, io.originHash, csr)
-
-  nextCSR := Mux(
-    io.isRecoverCsr,
-    io.originHash,
-    Mux(
-      io.isExeFixCsr || io.isPredecodeFixCsr,
-      Cat(io.originHash(outputLength - 2, 0), io.originHash(outputLength - 1) ^ io.data(0)) ^ (io.data(
-        inputLength - 1
-      ) << residual).asUInt,
+  if (Param.isSpeculativeGlobalHistory) {
+    nextCSR := Mux(
+      io.isRecoverCsr,
+      io.originHash,
       Mux(
-        io.dataUpdate,
-        Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0)) ^ (io.data(
+        io.isExeFixCsr || io.isPredecodeFixCsr,
+        Cat(io.originHash(outputLength - 2, 0), io.originHash(outputLength - 1) ^ io.data(0)) ^ (io.data(
           inputLength - 1
         ) << residual).asUInt,
-        csr
+        Mux(
+          io.dataUpdate,
+          Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0)) ^ (io.data(
+            inputLength - 1
+          ) << residual).asUInt,
+          csr
+        )
       )
     )
-  )
-  // commit update
-//  nextCSR := Mux(
-//    io.dataUpdate,
-//    Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0)) ^ (io.data(
-//      inputLength - 1
-//    ) << residual).asUInt,
-//    csr
-//  )
+  } else {
+    // commit update
+    nextCSR := Mux(
+      io.dataUpdate,
+      Cat(csr(outputLength - 2, 0), csr(outputLength - 1) ^ io.data(0)) ^ (io.data(
+        inputLength - 1
+      ) << residual).asUInt,
+      csr
+    )
+  }
 
 //  when(io.dataUpdate) {
 //    csr := nextCSR
 //  }
   csr := nextCSR
 
-  io.hash := nextCSR
+  io.hash := csr
 
 }

@@ -182,12 +182,17 @@ class TagePredictor(
   }
   when(io.ghrUpdateNdBundle.fixBundle.isFixGhrValid) {
     switch(io.ghrUpdateNdBundle.fixBundle.ghrFixType) {
-      is(GhrFixType.commitBrExcp, GhrFixType.decodeBrExcp) {
+      is(GhrFixType.commitRecover) {
         // recover to the old history
+        nextSpecPtr  := checkPtr
+        isRecoverCsr := true.B
+      }
+      is(GhrFixType.decodeBrExcp) {
+        // recover to the old history,quit predict info
         nextSpecPtr  := checkPtr + 1.U
         isRecoverCsr := true.B
       }
-      is(GhrFixType.exeFixDirection) {
+      is(GhrFixType.exeFixJumpError, GhrFixType.exeRecover) {
         // fix error predict
         nextSpecPtr                    := checkPtr
         nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.fixBundle.isFixBranchTaken
@@ -210,19 +215,22 @@ class TagePredictor(
     nextSpecPtr                    := specPtr - 1.U
     nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.bpuSpecTaken
   }
-
-  shiftedGlobalHistory := Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr
-//  shiftedGlobalHistory := (nextGlobalHistory.asUInt >> nextSpecPtr).asUInt | (nextGlobalHistory.asUInt << (Param.BPU.TagePredictor.ghrLength.U - nextSpecPtr)).asUInt
+  val ghr = dontTouch(RegInit((0.U(ghrDepth.W))))
+  when(isUpdateValid) {
+    ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
+  }
+  if (Param.isSpeculativeGlobalHistory) {
+    shiftedGlobalHistory := Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr
+  } else {
+    shiftedGlobalHistory := ghr
+  }
+  //  shiftedGlobalHistory := (nextGlobalHistory.asUInt >> nextSpecPtr).asUInt | (nextGlobalHistory.asUInt << (Param.BPU.TagePredictor.ghrLength.U - nextSpecPtr)).asUInt
   // TODO use the correct Cat history
 //  shiftedGlobalHistory := Cat(
 //    nextGlobalHistory.asUInt(nextSpecPtr, 0),
 //    nextGlobalHistory.asUInt(Param.BPU.TagePredictor.ghrLength-1, nextSpecPtr)
 //  )
 
-  val ghr = dontTouch(RegInit((0.U(ghrDepth.W))))
-  when(isUpdateValid) {
-    ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
-  }
   // output
   io.tageQueryMeta.tageGhrInfo.checkPtr := nextSpecPtr
 
@@ -240,6 +248,12 @@ class TagePredictor(
   basePredictor.io.isCtrInc    := updateBranchTaken
   basePredictor.io.updateCtr   := updateMetaBundle.providerCtrBits(0)
 
+  val isGlobalHistoryUpdate = WireDefault(false.B)
+  if (Param.isSpeculativeGlobalHistory) {
+    isGlobalHistoryUpdate := io.ghrUpdateNdBundle.bpuSpecValid
+  } else {
+    isGlobalHistoryUpdate := isUpdateValid
+  }
   // Tagged Predictor Generate
   val taggedPreditors = Seq.range(0, tagComponentNum).map { providerId =>
     {
@@ -252,7 +266,7 @@ class TagePredictor(
         )
       )
       // Query
-      taggedPreditor.io.isGlobalHistoryUpdate := io.ghrUpdateNdBundle.bpuSpecValid
+      taggedPreditor.io.isGlobalHistoryUpdate := isGlobalHistoryUpdate
       taggedPreditor.io.globalHistory         := shiftedGlobalHistory(historyLengths(providerId + 1) - 1, 0)
       taggedPreditor.io.pc                    := io.pc
       tagUsefulbits(providerId)               := taggedPreditor.io.usefulBits

@@ -235,9 +235,10 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
     branchSetPort.en                                := isRedirect
     branchSetPort.ftqId                             := selectedIn.instInfo.ftqInfo.ftqId
-    feedbackFtq.feedBack.fixGhrBundle.isExeFixValid := branchDirectionMispredict && branchEnableFlag && isBranchInst
+    feedbackFtq.feedBack.fixGhrBundle.isExeFixValid := isRedirect
     feedbackFtq.feedBack.fixGhrBundle.exeFixFirstBrTaken := jumpBranchInfo.en && !inFtqInfo.isPredictValid && branchEnableFlag && isBranchInst // TODO predictValid
-    feedbackFtq.feedBack.fixGhrBundle.exeFixIsTaken := jumpBranchInfo.en
+    feedbackFtq.feedBack.fixGhrBundle.exeFixIsTaken   := jumpBranchInfo.en
+    feedbackFtq.feedBack.fixGhrBundle.exeFixJumpError := branchTargetMispredict && branchEnableFlag && isBranchInst
 
     branchSetPort.pcAddr := Mux(
       jumpBranchInfo.en,

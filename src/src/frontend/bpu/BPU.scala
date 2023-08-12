@@ -206,14 +206,19 @@ class BPU(
   val ghrUpdateSignalBundle = WireDefault(
     io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle
   )
-  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.isPredecoderFixGhr || ghrUpdateSignalBundle.isCommitFixGhr || ghrUpdateSignalBundle.exeFixBundle.isExeFixValid
+  ghrFixBundle.isFixGhrValid    := ghrUpdateSignalBundle.isPredecoderFixGhr || io.backendFlush
   ghrFixBundle.isFixBranchTaken := ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken
+//  ghrUpdateSignalBundle.isCommitFixGhr
   ghrFixBundle.ghrFixType := Mux(
-    ghrUpdateSignalBundle.isCommitFixGhr,
-    GhrFixType.commitBrExcp,
+    io.backendFlush && !ghrUpdateSignalBundle.exeFixBundle.isExeFixValid && !ghrUpdateSignalBundle.isPredecoderFixGhr,
+    GhrFixType.commitRecover,
     Mux(
       ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
-      Mux(ghrUpdateSignalBundle.exeFixBundle.exeFixFirstBrTaken, GhrFixType.exeUpdateJump, GhrFixType.exeFixDirection),
+      Mux(
+        ghrUpdateSignalBundle.exeFixBundle.exeFixFirstBrTaken,
+        GhrFixType.exeUpdateJump,
+        Mux(ghrUpdateSignalBundle.exeFixBundle.exeFixJumpError, GhrFixType.exeFixJumpError, GhrFixType.exeRecover)
+      ),
       Mux(ghrUpdateSignalBundle.isPredecoderBranchTaken, GhrFixType.decodeUpdateJump, GhrFixType.decodeBrExcp)
     )
   )

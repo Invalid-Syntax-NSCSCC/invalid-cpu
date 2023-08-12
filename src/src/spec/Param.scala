@@ -15,18 +15,19 @@ object Param {
 
   val usePmu = false || isChiplab // 性能计数器
 
-  val isDiffTest          = false || isChiplab
-  val isOutOfOrderIssue   = true
-  val isFullUncachedPatch = true
-  val isMmioDelay         = false || isChiplab || isFullFpga
-  val isNoPrivilege       = false || isReleasePackage
-  val isCacheOnPg         = true
-  val isForcedCache       = false || isReleasePackage
-  val isForcedUncached    = false
-  val isBranchPredict     = true
-  val isPredecode         = true
-  val isOverideRas        = true
-  val isFTBupdateRet      = true
+  val isDiffTest                 = false || isChiplab
+  val isOutOfOrderIssue          = true
+  val isFullUncachedPatch        = true
+  val isMmioDelay                = false || isChiplab || isFullFpga
+  val isNoPrivilege              = false || isReleasePackage
+  val isCacheOnPg                = false
+  val isForcedCache              = false || isReleasePackage
+  val isForcedUncached           = false
+  val isBranchPredict            = true
+  val isPredecode                = true
+  val isOverideRas               = true
+  val isFTBupdateRet             = true
+  val isSpeculativeGlobalHistory = false
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
@@ -227,9 +228,10 @@ object Param {
         count.U
       }
 
-      val commitBrExcp     = 0.U
-      val exeFixDirection  = next
+      val commitRecover    = 0.U
+      val exeFixJumpError  = next
       val exeUpdateJump    = next
+      val exeRecover       = next
       val decodeUpdateJump = next
       val decodeBrExcp     = next
 

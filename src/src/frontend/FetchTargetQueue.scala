@@ -30,8 +30,6 @@ class FetchTargetQueue(
     // <-> Cu commit
     val commitFtqTrainPort = Input(new CommitFtqTrainNdPort)
     val commitBitMask      = Input(Vec(Param.commitNum, Bool()))
-    val commitFixBranch    = Input(Bool())
-    val commitFixId        = Input(UInt(ptrWidth.W))
 
     // <-> Ex query port
     val exeFtqPort = new ExeFtqPort
@@ -194,15 +192,12 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.exeFixBundle            := io.exeFtqPort.feedBack.fixGhrBundle
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderFixGhr      := io.preDecoderFlush
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderBranchTaken := io.preDecoderBranchTaken
-  io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo := Mux(
-    io.commitFixBranch,
-    ftqBpuMetaRegs(io.commitFixId).tageQueryMeta.tageGhrInfo,
+  io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo :=
     Mux(
-      io.exeFtqPort.feedBack.fixGhrBundle.isExeFixValid,
+      io.backendFlush,
       ftqBpuMetaRegs(io.backendFlushFtqId).tageQueryMeta.tageGhrInfo,
       ftqBpuMetaRegs(io.preDecoderFtqId).tageQueryMeta.tageGhrInfo
     )
-  )
 //  when(
 //    io.cuCommitFtqPort.blockBitmask(0) & io.cuCommitFtqPort.meta.isBranch
 //  ) {
@@ -274,6 +269,9 @@ class FetchTargetQueue(
   // maintain BPU meta info
   when(bpuMetaWriteValid) {
     ftqBpuMetaRegs(bpuMetaWritePtr) := bpuMetaWriteEntry
+  }
+  when(io.preDecoderFlush) {
+    ftqBpuMetaRegs(io.preDecoderFtqId).tageQueryMeta.tageGhrInfo := io.bpuFtqPort.bpuQueryMeta.tageQueryMeta.tageGhrInfo
   }
   // update pc from backend
   when(io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateValid) {

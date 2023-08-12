@@ -73,8 +73,6 @@ class Frontend extends Module {
   ftq.io.preDecoderFlush       := instFetch.io.preDecodeRedirectPort.predecodeRedirect // TODO add predecoder stage
   ftq.io.preDecoderFtqId       := instFetch.io.preDecodeRedirectPort.redirectFtqId
   ftq.io.preDecoderBranchTaken := instFetch.io.preDecodeRedirectPort.predecoderBranch
-  ftq.io.commitFixId           := io.commitFixId
-  ftq.io.commitFixBranch       := io.commitFixBranch
   instFetch.io.preDecodeRedirectPort.commitRasPort := ftq.io.ftqRasPort
   ftq.io.commitFtqTrainPort                        := io.commitFtqTrainPort
   ftq.io.exeFtqPort                                <> io.exeFtqPort
