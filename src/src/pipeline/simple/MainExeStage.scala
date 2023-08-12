@@ -133,23 +133,22 @@ class MainExeStage
   val loadStoreAddr      = selectedIn.leftOperand + selectedIn.loadStoreImm
   val maskEncode         = loadStoreAddr(1, 0)
   val isAtomicStoreValid = io.peer.get.csr.llbctl.rollb && selectedIn.instInfo.exeOp === OpBundle.sc
-  val isRead =
-    VecInit(
-      OpBundle.ld_b.asUInt,
-      OpBundle.ld_bu.asUInt,
-      OpBundle.ld_h.asUInt,
-      OpBundle.ld_hu.asUInt,
-      OpBundle.ld_w.asUInt,
-      OpBundle.ll.asUInt
-    )
-      .contains(selectedIn.instInfo.exeOp.asUInt)
-  val isWrite =
-    VecInit(OpBundle.st_b.asUInt, OpBundle.st_h.asUInt, OpBundle.st_w.asUInt)
-      .contains(selectedIn.instInfo.exeOp.asUInt) || isAtomicStoreValid
-  val isValidLoadStore = (isRead || isWrite) && !isAddrNotAligned
 
   val isSimpleMemory  = selectedIn.instInfo.exeOp.sel === OpBundle.sel_simpleMemory
   val isComplexMemory = selectedIn.instInfo.exeOp.sel === OpBundle.sel_complexMemory
+
+  val isRead = (isSimpleMemory &&
+    VecInit(
+      OpBundle.ld_b.subOp,
+      OpBundle.ld_bu.subOp,
+      OpBundle.ld_h.subOp,
+      OpBundle.ld_hu.subOp,
+      OpBundle.ld_w.subOp
+    ).contains(selectedIn.instInfo.exeOp.subOp)) || selectedIn.instInfo.exeOp === OpBundle.ll
+  val isWrite =
+    VecInit(OpBundle.st_b.subOp, OpBundle.st_h.subOp, OpBundle.st_w.subOp)
+      .contains(selectedIn.instInfo.exeOp.subOp) || isAtomicStoreValid
+  val isValidLoadStore = (isRead || isWrite) && !isAddrNotAligned
 
   // default : simple memory
   switch(selectedIn.instInfo.exeOp.subOp) {
@@ -199,11 +198,14 @@ class MainExeStage
 
   out.memRequest.isValid := isValidLoadStore
   out.memRequest.addr    := loadStoreAddr
-  out.memRequest.read.isUnsigned := VecInit(OpBundle.ld_bu.asUInt, OpBundle.ld_hu.asUInt)
-    .contains(selectedIn.instInfo.exeOp.asUInt)
-  out.memRequest.rw                    := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
-  out.isAtomicStore                    := selectedIn.instInfo.exeOp === OpBundle.sc
-  out.wb.instInfo.forbidParallelCommit := isValidLoadStore
+  out.memRequest.read.isUnsigned :=
+    VecInit(OpBundle.ld_bu.asUInt, OpBundle.ld_hu.asUInt)
+      .contains(selectedIn.instInfo.exeOp.asUInt)
+  out.memRequest.rw := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
+  out.isAtomicStore := selectedIn.instInfo.exeOp === OpBundle.sc
+  when(isValidLoadStore) {
+    out.wb.instInfo.forbidParallelCommit := true.B
+  }
 
   // Handle exception
   when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && isAddrNotAligned) {
