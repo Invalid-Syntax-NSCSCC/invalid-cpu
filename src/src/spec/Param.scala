@@ -16,7 +16,7 @@ object Param {
   val usePmu = false || isChiplab // 性能计数器
 
   val isDiffTest                 = false || isChiplab
-  val isOutOfOrderIssue          = true
+  val isOutOfOrderIssue          = false
   val isFullUncachedPatch        = true
   val isMmioDelay                = false || isChiplab || isFullFpga
   val isNoPrivilege              = false || isReleasePackage

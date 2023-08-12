@@ -51,7 +51,7 @@ class ReservationStation[T <: RSBundle](
             val mux = Module(new MultiMux1(wakeUpNum, UInt(spec.Width.Reg.data), zeroWord))
             mux.io.inputs.zip(io.writebacks).foreach {
               case (input, wb) =>
-                input.valid := wb.en && src.bits(Param.Width.Rob._id, 0) === wb.robId
+                input.valid := wb.en && src.bits(Param.Width.Rob._id - 1, 0) === wb.robId
                 input.bits  := wb.data
             }
             when(!src.valid && mux.io.output.valid) {
