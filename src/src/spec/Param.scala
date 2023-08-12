@@ -34,6 +34,7 @@ object Param {
   val isWakeUpPassThroughExe       = false // true && !isOutOfOrderIssue
   val instQueueCombineSel          = true // false : connect decode ; true : connect predecode
   val exeFeedBackFtqDelay          = true
+  val isMainResWbEarly             = true
 
   val isOptimizedByMultiMux = true
 
