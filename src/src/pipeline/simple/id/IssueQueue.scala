@@ -218,8 +218,6 @@ class IssueQueue(
       val deqEn = regReadResults.map(_.valid).reduce(_ && _)
       out.valid               := rs.valid && deqEn
       rs.ready                := out.ready && deqEn
-      out.bits.exeOp          := rs.bits.decodePort.instInfo.exeOp
-      out.bits.exeSel         := rs.bits.decodePort.decode.info.exeSel
       out.bits.gprWritePort   := rs.bits.decodePort.decode.info.gprWritePort
       out.bits.instInfo       := rs.bits.decodePort.instInfo
       out.bits.jumpBranchAddr := rs.bits.decodePort.decode.info.jumpBranchAddr

@@ -5,6 +5,7 @@ import chisel3.util._
 import pipeline.simple.decode.bundles.DecodeOutNdPort
 import spec.Inst.{_3R => Inst}
 import spec._
+import spec.ExeInst.OpBundle
 
 class Decoder_3R extends BaseDecoder {
   io.out := DecodeOutNdPort.default
@@ -29,8 +30,7 @@ class Decoder_3R extends BaseDecoder {
   outInfo.gprWritePort.addr    := rd
 
   // Fallback
-  io.out.info.exeSel         := ExeInst.Sel.none
-  io.out.info.exeOp          := ExeInst.Op.nop
+  io.out.info.exeOp          := OpBundle.nop
   io.out.info.imm            := DontCare
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
@@ -41,8 +41,7 @@ class Decoder_3R extends BaseDecoder {
       io.out.isMatched                := true.B
       outInfo.gprReadPorts.foreach(_.en := false.B)
       outInfo.gprWritePort.en := false.B
-      outInfo.exeOp           := ExeInst.Op.idle
-      outInfo.exeSel          := ExeInst.Sel.jumpBranch
+      outInfo.exeOp           := OpBundle.idle
       io.out.info.isPrivilege := true.B
       io.out.info.needRefetch := true.B
     }
@@ -50,8 +49,7 @@ class Decoder_3R extends BaseDecoder {
       io.out.info.isIssueMainPipeline := true.B
       when(invtlbOp <= 6.U) {
         io.out.isMatched          := true.B
-        outInfo.exeOp             := ExeInst.Op.invtlb
-        outInfo.exeSel            := ExeInst.Sel.loadStore
+        outInfo.exeOp             := OpBundle.invtlb
         outInfo.jumpBranchAddr    := io.instInfoPort.pcAddr + 4.U
         outInfo.isTlb             := true.B
         outInfo.tlbInvalidateInst := rd
@@ -62,98 +60,79 @@ class Decoder_3R extends BaseDecoder {
     }
     is(Inst.add_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.add
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.add
     }
     is(Inst.sub_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.sub
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.sub
     }
     is(Inst.slt_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.slt
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.slt
     }
     is(Inst.sltu_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.sltu
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.sltu
     }
     is(Inst.nor_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.nor
-      outInfo.exeSel   := ExeInst.Sel.logic
+      outInfo.exeOp    := OpBundle.nor
     }
     is(Inst.and_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.and
-      outInfo.exeSel   := ExeInst.Sel.logic
+      outInfo.exeOp    := OpBundle.and
     }
     is(Inst.or_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.or
-      outInfo.exeSel   := ExeInst.Sel.logic
+      outInfo.exeOp    := OpBundle.or
     }
     is(Inst.xor_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.xor
-      outInfo.exeSel   := ExeInst.Sel.logic
+      outInfo.exeOp    := OpBundle.xor
     }
     is(Inst.sll_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.sll
-      outInfo.exeSel   := ExeInst.Sel.shift
+      outInfo.exeOp    := OpBundle.sll
     }
     is(Inst.srl_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.srl
-      outInfo.exeSel   := ExeInst.Sel.shift
+      outInfo.exeOp    := OpBundle.srl
     }
     is(Inst.sra_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.sra
-      outInfo.exeSel   := ExeInst.Sel.shift
+      outInfo.exeOp    := OpBundle.sra
     }
     is(Inst.mul_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.mul
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.mul
     }
     is(Inst.mulh_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.mulh
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.mulh
     }
     is(Inst.mulh_wu) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.mulhu
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.mulhu
     }
     is(Inst.div_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.div
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.div
     }
     is(Inst.div_wu) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.divu
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.divu
     }
     is(Inst.mod_w) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.mod
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.mod
     }
     is(Inst.mod_wu) {
       io.out.isMatched := true.B
-      outInfo.exeOp    := ExeInst.Op.modu
-      outInfo.exeSel   := ExeInst.Sel.arithmetic
+      outInfo.exeOp    := OpBundle.modu
     }
     is(Inst.slli_w) {
       io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.sll
-      outInfo.exeSel               := ExeInst.Sel.shift
+      outInfo.exeOp                := OpBundle.sll
       outInfo.gprReadPorts(1).en   := false.B
       outInfo.gprReadPorts(1).addr := DontCare
       outInfo.isHasImm             := true.B
@@ -161,8 +140,7 @@ class Decoder_3R extends BaseDecoder {
     }
     is(Inst.srli_w) {
       io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.srl
-      outInfo.exeSel               := ExeInst.Sel.shift
+      outInfo.exeOp                := OpBundle.srl
       outInfo.gprReadPorts(1).en   := false.B
       outInfo.gprReadPorts(1).addr := DontCare
       outInfo.isHasImm             := true.B
@@ -170,8 +148,7 @@ class Decoder_3R extends BaseDecoder {
     }
     is(Inst.srai_w) {
       io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.sra
-      outInfo.exeSel               := ExeInst.Sel.shift
+      outInfo.exeOp                := OpBundle.sra
       outInfo.gprReadPorts(1).en   := false.B
       outInfo.gprReadPorts(1).addr := DontCare
       outInfo.isHasImm             := true.B
@@ -180,7 +157,7 @@ class Decoder_3R extends BaseDecoder {
     is(Inst.break_) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.break_
+      outInfo.exeOp                   := OpBundle.break_
       outInfo.gprReadPorts(0).en      := false.B
       outInfo.gprReadPorts(0).addr    := DontCare
       outInfo.gprReadPorts(1).en      := false.B
@@ -192,7 +169,7 @@ class Decoder_3R extends BaseDecoder {
     is(Inst.syscall) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.syscall
+      outInfo.exeOp                   := OpBundle.syscall
       outInfo.gprReadPorts(0).en      := false.B
       outInfo.gprReadPorts(0).addr    := DontCare
       outInfo.gprReadPorts(1).en      := false.B

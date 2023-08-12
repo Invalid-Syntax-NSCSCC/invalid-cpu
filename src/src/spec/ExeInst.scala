@@ -54,7 +54,6 @@ object ExeInst {
     val nop       = next
     val rdcntvl_w = next
     val rdcntvh_w = next
-    val rdcntid   = next
     val sll       = next
     val srl       = next
     val sra       = next

@@ -161,16 +161,16 @@ class Alu extends Module {
     )
 
   switch(subOp) {
-    is(OpBundle.mul.sel, OpBundle.mulh.sel) {
+    is(OpBundle.mul.subOp, OpBundle.mulh.subOp) {
       io.result.mulDiv := mulResult(wordLength - 1, 0)
     }
-    is(OpBundle.mulhu.sel) {
+    is(OpBundle.mulhu.subOp) {
       io.result.mulDiv := mulResult(doubleWordLength - 1, wordLength)
     }
-    is(OpBundle.div.sel, OpBundle.divu.sel) {
+    is(OpBundle.div.subOp, OpBundle.divu.subOp) {
       io.result.mulDiv := divStage.io.divResult.bits.quotient
     }
-    is(OpBundle.mod.sel, OpBundle.modu.sel) {
+    is(OpBundle.mod.subOp, OpBundle.modu.subOp) {
       io.result.mulDiv := divStage.io.divResult.bits.remainder
     }
   }
