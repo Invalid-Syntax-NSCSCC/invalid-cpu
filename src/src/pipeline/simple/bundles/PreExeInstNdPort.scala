@@ -3,11 +3,11 @@ package pipeline.simple.bundles
 import chisel3._
 import common.bundles.RfAccessInfoNdPort
 import spec._
+import spec.ExeInst.OpBundle
 
 class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   // Micro-instruction for execution stage
-  val exeSel = UInt(Param.Width.exeSel)
-  val exeOp  = UInt(Param.Width.exeOp)
+  val exeOp = new OpBundle
 
   // GPR read (`readNum`)
   val gprReadPorts = Vec(readNum, new RfAccessInfoNdPort)

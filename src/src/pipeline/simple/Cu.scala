@@ -166,8 +166,8 @@ class Cu(
   }
 
   // llbit control
-  val isLoadLinked       = WireDefault(majorInstInfo.exeOp === ExeInst.Op.ll)
-  val isStoreConditional = WireDefault(majorInstInfo.exeOp === ExeInst.Op.sc)
+  val isLoadLinked       = WireDefault(majorInstInfo.exeOp === ExeInst.OpBundle.ll)
+  val isStoreConditional = WireDefault(majorInstInfo.exeOp === ExeInst.OpBundle.sc)
   io.csrMessage.llbitSet.en := (isLoadLinked || isStoreConditional) && majorInstInfo.isValid && !isException
   // ll -> 1, sc -> 0
   io.csrMessage.llbitSet.setValue := isLoadLinked
@@ -201,9 +201,9 @@ class Cu(
 
   val redirectCommit = majorInstInfo.ftqCommitInfo.isRedirect && majorInstInfo.isValid
 
-  val isExceptionReturn = majorInstInfo.exeOp === ExeInst.Op.ertn && majorInstInfo.isValid && !isException
+  val isExceptionReturn = majorInstInfo.exeOp === ExeInst.OpBundle.ertn && majorInstInfo.isValid && !isException
 
-  val idleFlush = majorInstInfo.exeOp === ExeInst.Op.idle && majorInstInfo.isValid && !isException
+  val idleFlush = majorInstInfo.exeOp === ExeInst.OpBundle.idle && majorInstInfo.isValid && !isException
 
   // need refetch : tlb ; csr change ; cacop ; idle
   val refetchFlush = majorInstInfo.isValid && majorInstInfo.needRefetch
@@ -279,7 +279,7 @@ class Cu(
   }
 
   io.isDbarFinish := io.instInfoPorts.map { instInfo =>
-    instInfo.isValid && instInfo.exeOp === ExeInst.Op.dbar
+    instInfo.isValid && instInfo.exeOp === ExeInst.OpBundle.dbar
   }.reduce(_ || _)
 
   io.difftest match {
