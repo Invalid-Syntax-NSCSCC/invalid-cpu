@@ -358,6 +358,9 @@ class MainExeStage
 
   val fallThroughPc = selectedIn.branchInfo.fallThroughPc
 
+  val csrResult = Wire(UInt(Width.Reg.data))
+  csrResult := DontCare
+
   switch(selectedIn.instInfo.exeOp.sel) {
     is(OpBundle.sel_arthOrLogic) {
       out.wb.gprWrite.data := alu.io.result.logic
@@ -368,13 +371,12 @@ class MainExeStage
     is(OpBundle.sel_readTimeOrShift) {
       out.wb.gprWrite.data := cntOrShiftResult
     }
-    is(OpBundle.sel_simpleBranch) {
+    is(OpBundle.sel_simpleBranch, OpBundle.sel_misc) {
       out.wb.gprWrite.data := fallThroughPc
     }
-  }
-
-  when(selectedIn.instInfo.exeOp === OpBundle.jirl) {
-    out.wb.gprWrite.data := fallThroughPc
+    is(OpBundle.sel_csr) {
+      out.wb.gprWrite.data := csrResult
+    }
   }
 
   // excp
@@ -409,16 +411,14 @@ class MainExeStage
   csrWriteStorePort.bits.addr := csrAddr
   csrWriteStorePort.bits.data := DontCare
 
+  csrResult := csrReadData
   when(isCsrInst) {
     switch(selectedIn.instInfo.exeOp.subOp) {
-      is(OpBundle.csrrd.subOp) {
-        out.wb.gprWrite.data := csrReadData
-      }
+      is(OpBundle.csrrd.subOp) {}
       is(OpBundle.csrwr.subOp) {
         io.peer.get.csrWriteStorePort.valid   := true.B
         io.peer.get.csrWriteStorePort.bits.en := true.B
         csrWriteStorePort.bits.data           := selectedIn.leftOperand
-        out.wb.gprWrite.data                  := csrReadData
       }
       is(OpBundle.csrxchg.subOp) {
         io.peer.get.csrWriteStorePort.valid   := true.B
@@ -434,7 +434,6 @@ class MainExeStage
               target := Mux(mask, write, origin)
           }
         csrWriteStorePort.bits.data := gprWriteDataVec.asUInt
-        out.wb.gprWrite.data        := csrReadData
       }
     }
   }
