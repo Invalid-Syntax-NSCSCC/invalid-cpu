@@ -3,7 +3,7 @@ import chisel3._
 import spec.Param
 class ExeFtqPort extends Bundle {
   val queryPcBundle = new QueryPcBundle
-  val commitBundle  = Input(new ExeCommitFtqNdPort)
+  val feedBack      = Input(new ExeFtqFeedBackNdPort)
 }
 
 class QueryPcBundle extends Bundle {
@@ -17,4 +17,8 @@ class ExeCommitFtqNdPort extends Bundle {
   val ftqMetaUpdateJumpTarget  = UInt(spec.Width.Mem.addr)
   val ftqMetaUpdateFallThrough = UInt(spec.Width.Mem.addr)
   val ftqUpdateMetaId          = UInt(Param.BPU.Width.id)
+}
+class ExeFtqFeedBackNdPort extends Bundle {
+  val commitBundle = new ExeCommitFtqNdPort
+  val fixGhrBundle = new ExeFtqFixGhrBundle
 }

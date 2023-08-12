@@ -4,10 +4,24 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
 import frontend.bpu.bundles.{BpuFtqMetaNdPort, TagePredictorUpdateInfoPort}
-import frontend.bpu.components.Bundles.TageMetaPort
+import frontend.bpu.components.Bundles.{TageGhrInfo, TageMetaPort}
 import frontend.bpu.components._
+import spec.Param.BPU.GhrFixType
 import spec._
-
+class GhrUpdateNdBundle extends Bundle {
+  val bpuSpecValid = Bool() // speculative update
+  val bpuSpecTaken = Bool()
+  val fixBundle    = new GhrFixNdBundle
+  val tageGhrInfo  = new TageGhrInfo()
+}
+class GhrFixNdBundle extends Bundle {
+  val isFixGhrValid    = Bool()
+  val ghrFixType       = UInt(Param.BPU.GhrFixType.width.W)
+  val isFixBranchTaken = Bool()
+}
+object GhrUpdateNdBundle {
+  def default = 0.U.asTypeOf(new GhrUpdateNdBundle)
+}
 // TAGE predictor
 // This is the main predictor
 class TagePredictor(
@@ -24,6 +38,7 @@ class TagePredictor(
   val addrWidth      = log2Ceil(addr)
   val pointerWidth   = log2Ceil(entryNum)
   val tagComPtrWidth = log2Ceil(tagComponentNum + 1)
+  val phtAddrWidth   = log2Ceil(phtDepths(1))
   val io = IO(new Bundle {
     // Query signal
     val pc                 = Input(UInt(Width.Reg.data))
@@ -34,6 +49,9 @@ class TagePredictor(
     // Update signals
     val updatePc       = Input(UInt(Width.Reg.data))
     val updateInfoPort = Input(new TagePredictorUpdateInfoPort)
+
+    // globalHistory update info
+    val ghrUpdateNdBundle = Input(new GhrUpdateNdBundle)
 
     // TODO PMU
     //    val perfTagHitCounters = Output(Vec(32, UInt((tagComponentNum + 1).W)))
@@ -69,11 +87,14 @@ class TagePredictor(
   val queryNewEntryFlag = WireDefault(false.B) // Indicates the provider is new
 
   // Meta
-  val tagCtrbits    = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(3.W))))
-  val tagUsefulbits = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(componentUsefulWidth(1).W))))
-  val tagQueryTags  = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
-  val tagOriginTags = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
-  val tagHitIndexs  = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(10.W))))
+  val tagCtrbits      = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(3.W))))
+  val tagUsefulbits   = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(componentUsefulWidth(1).W))))
+  val tagQueryTags    = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
+  val tagOriginTags   = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
+  val tagHitIndexs    = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(10.W))))
+  val tagGhtHashs     = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(phtAddrWidth.W))))
+  val tagTagHashCsr1s = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
+  val tagTagHashCsr2s = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U((tagComponentTagWidth - 1).W))))
 
   // update
   val updatePc                 = WireDefault(0.U(Width.Reg.data))
@@ -114,13 +135,104 @@ class TagePredictor(
   ////////////////////////////////////////////////////////////////////////////////////////////
   // END of Defines
   ////////////////////////////////////////////////////////////////////////////////////////////
+  // Global History Register speculative update logic
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // predict queue
+  val specPtr     = RegInit(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  val nextSpecPtr = Wire(UInt(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  val commitPtr   = dontTouch(RegInit(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W)))
+  val checkPtr    = WireDefault(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  val checkDepth  = Wire(UInt(Param.BPU.TagePredictor.ghrPtrWidth.W))
+  checkPtr   := io.ghrUpdateNdBundle.tageGhrInfo.checkPtr
+  checkDepth := checkPtr - commitPtr // calculate the location of the correct old history
 
   // Global History Register
-  val ghr = RegInit(0.U(ghrDepth.W))
+  val speculativeHistoryReg = RegInit(VecInit(Seq.fill(ghrDepth)(false.B)))
+  val nextGlobalHistory     = Wire(Vec(ghrDepth, Bool()))
+  val shiftedGlobalHistory  = dontTouch(Wire(UInt(ghrDepth.W)))
+  // default nextGhr keep value; ghr = RegNext(nextGhr) (assign in the next clock)
+  nextGlobalHistory     := speculativeHistoryReg
+  speculativeHistoryReg := nextGlobalHistory
+  nextSpecPtr           := specPtr
+  specPtr               := nextSpecPtr
+
+  // signal that indicates how to fix globalHistory Hash value
+  val isExeFixCsr       = WireDefault(false.B)
+  val isPredecodeFixCsr = WireDefault(false.B)
+  val isRecoverCsr      = WireDefault(false.B)
+//  val originHash = Input(UInt(outputLength.W))
+
+  isGlobalHistoryUpdateReg := isUpdateValid
+
+  // speculative Global history update
+  // 1. when ftb hit and predict ,update ghr with predictBranchTaken, specPtr + 1
+  // 2. when inst commit, commitPtr + 1
+  // fix error global history
+  // 1. when check a direction error, Cat the correct old history and actually taken as fixed history,specPtr keep as checkPtr
+  // 2. when check a branch inst actually is taken without prediction, update the history with checkPoint,specPtr = 1 + checkPtr
+  // 3. when detect a non branch inst predict taken or an exception that discards a predicted inst,recover the history, specPtr = checkPtr - 1
+  // ghr update priority:
+  // 1.commitStage : recover
+  // 2.exeStage :  fix or update
+  // 3.preDecoderStage :recover or update
+  // 4.spec update
+
+  when(isUpdateValid) {
+    commitPtr := commitPtr - 1.U
+  }
+  when(io.ghrUpdateNdBundle.fixBundle.isFixGhrValid) {
+    switch(io.ghrUpdateNdBundle.fixBundle.ghrFixType) {
+      is(GhrFixType.commitRecover) {
+        // recover to the old history
+        nextSpecPtr  := checkPtr
+        isRecoverCsr := true.B
+      }
+      is(GhrFixType.decodeBrExcp) {
+        // recover to the old history,quit predict info
+        nextSpecPtr  := checkPtr + 1.U
+        isRecoverCsr := true.B
+      }
+      is(GhrFixType.exeFixJumpError, GhrFixType.exeRecover) {
+        // fix error predict
+        nextSpecPtr                    := checkPtr
+        nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.fixBundle.isFixBranchTaken
+        isExeFixCsr                    := true.B
+      }
+      is(GhrFixType.exeUpdateJump) {
+        // update the branch that has not been predicted
+        nextSpecPtr                    := checkPtr - 1.U
+        nextGlobalHistory(nextSpecPtr) := true.B
+        isExeFixCsr                    := true.B
+      }
+      is(GhrFixType.decodeUpdateJump) {
+        // update the branch that has not been predicted
+        nextSpecPtr                    := checkPtr - 1.U
+        nextGlobalHistory(nextSpecPtr) := true.B
+        isPredecodeFixCsr              := true.B
+      }
+    }
+  }.elsewhen(io.ghrUpdateNdBundle.bpuSpecValid) {
+    nextSpecPtr                    := specPtr - 1.U
+    nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.bpuSpecTaken
+  }
+  val ghr = dontTouch(RegInit((0.U(ghrDepth.W))))
   when(isUpdateValid) {
     ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
   }
-  isGlobalHistoryUpdateReg := isUpdateValid
+  if (Param.isSpeculativeGlobalHistory) {
+    shiftedGlobalHistory := Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr
+  } else {
+    shiftedGlobalHistory := ghr
+  }
+  //  shiftedGlobalHistory := (nextGlobalHistory.asUInt >> nextSpecPtr).asUInt | (nextGlobalHistory.asUInt << (Param.BPU.TagePredictor.ghrLength.U - nextSpecPtr)).asUInt
+  // TODO use the correct Cat history
+//  shiftedGlobalHistory := Cat(
+//    nextGlobalHistory.asUInt(nextSpecPtr, 0),
+//    nextGlobalHistory.asUInt(Param.BPU.TagePredictor.ghrLength-1, nextSpecPtr)
+//  )
+
+  // output
+  io.tageQueryMeta.tageGhrInfo.checkPtr := nextSpecPtr
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Logic
@@ -136,6 +248,12 @@ class TagePredictor(
   basePredictor.io.isCtrInc    := updateBranchTaken
   basePredictor.io.updateCtr   := updateMetaBundle.providerCtrBits(0)
 
+  val isGlobalHistoryUpdate = WireDefault(false.B)
+  if (Param.isSpeculativeGlobalHistory) {
+    isGlobalHistoryUpdate := io.ghrUpdateNdBundle.bpuSpecValid
+  } else {
+    isGlobalHistoryUpdate := isUpdateValid
+  }
   // Tagged Predictor Generate
   val taggedPreditors = Seq.range(0, tagComponentNum).map { providerId =>
     {
@@ -148,8 +266,8 @@ class TagePredictor(
         )
       )
       // Query
-      taggedPreditor.io.isGlobalHistoryUpdate := isUpdateValid
-      taggedPreditor.io.globalHistory         := ghr(historyLengths(providerId + 1) - 1, 0)
+      taggedPreditor.io.isGlobalHistoryUpdate := isGlobalHistoryUpdate
+      taggedPreditor.io.globalHistory         := shiftedGlobalHistory(historyLengths(providerId + 1) - 1, 0)
       taggedPreditor.io.pc                    := io.pc
       tagUsefulbits(providerId)               := taggedPreditor.io.usefulBits
       tagCtrbits(providerId)                  := taggedPreditor.io.ctrBits
@@ -158,19 +276,28 @@ class TagePredictor(
       tagHitIndexs(providerId)                := taggedPreditor.io.hitIndex
       tagIsTakens(providerId)                 := taggedPreditor.io.taken
       tagIsHits(providerId)                   := taggedPreditor.io.tagHit
+      tagGhtHashs(providerId)                 := taggedPreditor.io.queryGhtHash
+      tagTagHashCsr1s(providerId)             := taggedPreditor.io.queryTagHashCsr1
+      tagTagHashCsr2s(providerId)             := taggedPreditor.io.queryTagHashCsr2
 
       // update
-      taggedPreditor.io.updatePc         := io.updatePc
-      taggedPreditor.io.updateValid      := isUpdateValid && updateIsConditional
-      taggedPreditor.io.incUseful        := tagUpdateIsIncUsefuls(providerId)
-      taggedPreditor.io.updateUseful     := tagIsUpdateUsefuls(providerId)
-      taggedPreditor.io.updateUsefulBits := updateMetaBundle.tagPredictorUsefulBits(providerId)
-      taggedPreditor.io.updateCtr        := tagIsUpdateCtrs.asBools(providerId)
-      taggedPreditor.io.incCtr           := updateBranchTaken
-      taggedPreditor.io.updateCtrBits    := updateMetaBundle.providerCtrBits(providerId + 1)
-      taggedPreditor.io.reallocEntry     := tagUpdateisReallocEntrys(providerId)
-      taggedPreditor.io.updateTag        := tagUpdateNewTags(providerId)
-      taggedPreditor.io.updateIndex      := updateMetaBundle.tagPredictorHitIndexs(providerId)
+      taggedPreditor.io.updatePc          := io.updatePc
+      taggedPreditor.io.updateValid       := isUpdateValid && updateIsConditional
+      taggedPreditor.io.incUseful         := tagUpdateIsIncUsefuls(providerId)
+      taggedPreditor.io.updateUseful      := tagIsUpdateUsefuls(providerId)
+      taggedPreditor.io.updateUsefulBits  := updateMetaBundle.tagPredictorUsefulBits(providerId)
+      taggedPreditor.io.updateCtr         := tagIsUpdateCtrs.asBools(providerId)
+      taggedPreditor.io.incCtr            := updateBranchTaken
+      taggedPreditor.io.updateCtrBits     := updateMetaBundle.providerCtrBits(providerId + 1)
+      taggedPreditor.io.reallocEntry      := tagUpdateisReallocEntrys(providerId)
+      taggedPreditor.io.updateTag         := tagUpdateNewTags(providerId)
+      taggedPreditor.io.updateIndex       := updateMetaBundle.tagPredictorHitIndexs(providerId)
+      taggedPreditor.io.isRecoverCsr      := isRecoverCsr
+      taggedPreditor.io.isExeFixCsr       := isExeFixCsr
+      taggedPreditor.io.isPredecodeFixCsr := isPredecodeFixCsr
+      taggedPreditor.io.originGhtHash     := updateMetaBundle.tageGhrInfo.tagGhtHashs(providerId)
+      taggedPreditor.io.originTagHashCsr1 := updateMetaBundle.tageGhrInfo.tagTagHashCsr1s(providerId)
+      taggedPreditor.io.originTagHashCsr2 := updateMetaBundle.tageGhrInfo.tagTagHashCsr2s(providerId)
 
       taggedPreditor
     }
@@ -224,6 +351,10 @@ class TagePredictor(
   vecAssign(queryMetaBundle.tagPredictorHitIndexs, tagHitIndexs)
   vecAssign(queryMetaBundle.tagPredictorQueryTags, tagQueryTags)
   vecAssign(queryMetaBundle.tagPredictorOriginTags, tagOriginTags)
+  vecAssign(queryMetaBundle.tageGhrInfo.tagGhtHashs, tagGhtHashs)
+  vecAssign(queryMetaBundle.tageGhrInfo.tagTagHashCsr1s, tagTagHashCsr1s)
+  vecAssign(queryMetaBundle.tageGhrInfo.tagTagHashCsr2s, tagTagHashCsr2s)
+  queryMetaBundle.tageGhrInfo.checkPtr := nextSpecPtr
   queryMetaBundle.isUseful := takens(predPredictionId) =/= takens(
     altPredPredctionId
   ) // Indicates whether the pred component is useful

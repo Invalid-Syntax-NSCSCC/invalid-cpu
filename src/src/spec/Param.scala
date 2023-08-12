@@ -15,18 +15,19 @@ object Param {
 
   val usePmu = false || isChiplab // 性能计数器
 
-  val isDiffTest          = false || isChiplab
-  val isOutOfOrderIssue   = true
-  val isFullUncachedPatch = true
-  val isMmioDelay         = false || isChiplab || isFullFpga
-  val isNoPrivilege       = false || isReleasePackage
-  val isCacheOnPg         = false
-  val isForcedCache       = false || isReleasePackage
-  val isForcedUncached    = false
-  val isBranchPredict     = true
-  val isPredecode         = true
-  val isOverideRas        = true
-  val isFTBupdateRet      = true
+  val isDiffTest                 = false || isChiplab
+  val isOutOfOrderIssue          = true
+  val isFullUncachedPatch        = true
+  val isMmioDelay                = false || isChiplab || isFullFpga
+  val isNoPrivilege              = false || isReleasePackage
+  val isCacheOnPg                = false
+  val isForcedCache              = false || isReleasePackage
+  val isForcedUncached           = false
+  val isBranchPredict            = true
+  val isPredecode                = true
+  val isOverideRas               = true
+  val isFTBupdateRet             = true
+  val isSpeculativeGlobalHistory = false
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
@@ -184,15 +185,16 @@ object Param {
     object TagePredictor {
       //        ComponentTableDepth
       // predictor num = tagComponentNum + 1 (BasePredictor)
-      val ghrLength              = 140
       val tagComponentTagWidth   = 12
       val tagComponentNum        = 4
-      val componentHistoryLength = Seq(0, 11, 23, 53, 131, 230, 479, 1012) // ipc 0.6452
+      val componentHistoryLength = Seq(0, 11, 23, 53, 112)
       val componentTableDepth =
         Seq(8192, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024)
-      val componentCtrWidth = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
-      val componentUsefulWidth = Seq(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1) // tage paper suggest 2, but in order to save source, we use 1 bit(won't decrease ipc)
+      val componentCtrWidth    = Seq(2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)
+      val componentUsefulWidth = Seq(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+      // tage paper suggest 2-bits useful, but in order to save source, we use 1 bit(won't decrease ipc)
+      val ghrLength   = componentHistoryLength(tagComponentNum) + ftqSize
+      val ghrPtrWidth = log2Ceil(ghrLength)
     }
 
     object FTB {
@@ -214,6 +216,24 @@ object Param {
       val call   = next
       val ret    = next
       val uncond = next
+
+      def width = log2Ceil(count + 1)
+    }
+
+    object GhrFixType {
+      var count = 0
+
+      private def next = {
+        count += 1
+        count.U
+      }
+
+      val commitRecover    = 0.U
+      val exeFixJumpError  = next
+      val exeUpdateJump    = next
+      val exeRecover       = next
+      val decodeUpdateJump = next
+      val decodeBrExcp     = next
 
       def width = log2Ceil(count + 1)
     }

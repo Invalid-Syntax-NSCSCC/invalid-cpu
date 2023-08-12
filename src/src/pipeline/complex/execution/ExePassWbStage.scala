@@ -7,7 +7,7 @@ import common.bundles._
 import control.bundles.{CsrReadPort, CsrWriteNdPort, StableCounterReadPort}
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
-import execution.Alu
+import pipeline.complex.execution.Alu
 import frontend.bundles.ExeFtqPort
 import pipeline.common.bundles.RobQueryPcPort
 import pipeline.complex.bundles.InstInfoNdPort
@@ -233,8 +233,12 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
       resultOutReg.bits.instInfo.ftqCommitInfo.targetMispredict.get := branchTargetMispredict && branchEnableFlag && isBranchInst
     }
 
-    branchSetPort.en    := isRedirect
-    branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
+    branchSetPort.en                                := isRedirect
+    branchSetPort.ftqId                             := selectedIn.instInfo.ftqInfo.ftqId
+    feedbackFtq.feedBack.fixGhrBundle.isExeFixValid := isRedirect
+    feedbackFtq.feedBack.fixGhrBundle.exeFixFirstBrTaken := jumpBranchInfo.en && !inFtqInfo.isPredictValid && branchEnableFlag && isBranchInst // TODO predictValid
+    feedbackFtq.feedBack.fixGhrBundle.exeFixIsTaken   := jumpBranchInfo.en
+    feedbackFtq.feedBack.fixGhrBundle.exeFixJumpError := branchTargetMispredict && branchEnableFlag && isBranchInst
 
     branchSetPort.pcAddr := Mux(
       jumpBranchInfo.en,
@@ -244,25 +248,25 @@ class ExePassWbStage(supportBranchCsr: Boolean = true)
 
     if (Param.exeFeedBackFtqDelay) {
 
-      feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
+      feedbackFtq.feedBack.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
         (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
         branchEnableFlag,
         false.B
       )
-      feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
+      feedbackFtq.feedBack.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
         (RegNext(jumpBranchInfo.en, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
         (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
-      feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
-      feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
-      feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
+      feedbackFtq.feedBack.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
+      feedbackFtq.feedBack.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpBranchInfo.pcAddr, 0.U)
+      feedbackFtq.feedBack.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
     } else {
 
-      feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && branchEnableFlag
-      feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
+      feedbackFtq.feedBack.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && branchEnableFlag
+      feedbackFtq.feedBack.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
         (jumpBranchInfo.en && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
-      feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
-      feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
-      feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+      feedbackFtq.feedBack.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
+      feedbackFtq.feedBack.commitBundle.ftqMetaUpdateJumpTarget  := jumpBranchInfo.pcAddr
+      feedbackFtq.feedBack.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
     }
 
     resultOutReg.bits.instInfo.ftqCommitInfo.isBranchSuccess := jumpBranchInfo.en
