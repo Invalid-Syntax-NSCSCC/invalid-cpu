@@ -278,10 +278,10 @@ class SimpleCoreCpuTop extends Module {
 
   val mainExeOutWb = mainExeStage.io.out.bits.wb
   val isContinueForMem = VecInit(
-    ExeInst.OpBundle.sel_arthOrLogic,
-    ExeInst.OpBundle.sel_csr,
-    ExeInst.OpBundle.sel_mulDiv,
-    ExeInst.OpBundle.sel_readTimeOrShift
+    ExeInst.OpBundle.sel_simpleMemory,
+    ExeInst.OpBundle.sel_complexMemory,
+    ExeInst.OpBundle.sel_simpleBranch,
+    ExeInst.OpBundle.sel_misc
   ).contains(mainExeOutWb.instInfo.exeOp.sel)
 
   if (Param.isMainResWbEarly) {
