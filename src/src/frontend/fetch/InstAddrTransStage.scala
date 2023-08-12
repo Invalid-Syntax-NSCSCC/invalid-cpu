@@ -9,7 +9,7 @@ import memory.enums.TlbMemType
 import pipeline.common.enums.AddrTransType
 import spec.Param.isNoPrivilege
 import spec.Value.Csr
-import spec.Width
+import spec.{Param, Width}
 
 class InstAddrTransPeerPort extends Bundle {
   val csr      = Input(new FetchCsrNdPort)
@@ -31,6 +31,11 @@ class InstAddrTransStage
 
   val peer = io.peer.get
   val out  = resultOutReg.bits
+  if (isNoPrivilege) {
+    io.in.ready  := io.out.ready
+    io.out.valid := io.in.valid
+    io.out.bits  := out
+  }
 
   val pc = WireDefault(0.U(Width.inst))
   pc := selectedIn.ftqBlockBundle.startPc
@@ -51,6 +56,10 @@ class InstAddrTransStage
   out.translatedMemReq.isCached := true.B // Fallback: isCached
   out.exception.valid           := isAdef
   out.exception.bits            := spec.Csr.ExceptionIndex.adef
+  out.isRedirect                := false.B
+  if (Param.isNoPrivilege) {
+    out.isRedirect := selectedIn.redirect
+  }
 
   // DMW mapping
   val directMapVec = Wire(
@@ -123,10 +132,11 @@ class InstAddrTransStage
     when(selectedIn.ftqBlockBundle.isValid) {
       resultOutReg.valid := true.B
     }
-
-    when(selectedIn.redirect) {
-      resultOutReg.valid := false.B
-      hasSentException   := false.B
+    if (!Param.isNoPrivilege) {
+      when(selectedIn.redirect) {
+        resultOutReg.valid := false.B
+        hasSentException   := false.B
+      }
     }
   }
   // Handle flush

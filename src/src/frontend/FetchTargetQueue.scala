@@ -50,6 +50,9 @@ class FetchTargetQueue(
   val mainBpuRedirectModifyFtq = WireDefault(false.B)
   val ifRedirect               = WireDefault(false.B)
   val ifRedirectDelay          = RegInit(false.B)
+  val isFlush                  = WireDefault(false.B)
+  val isFlushDelay             = RegNext(isFlush, false.B)
+  isFlush := io.backendFlush || io.preDecoderFlush
 
   val bpuPtr    = RegInit(0.U(ptrWidth.W))
   val ifPtr     = RegInit(0.U(ptrWidth.W))
@@ -75,7 +78,7 @@ class FetchTargetQueue(
 
   // IF sent rreq
   // * valid & ready & no modify & no flush
-  ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid
+  ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid && !isFlush && !isFlushDelay
 //  && !(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) // to ifStage and modify at the same time
 //    !io.backendFlush   ( instAddr would not ready when flush, so valid needn't insure no flush in order to simply logic
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
@@ -177,9 +180,26 @@ class FetchTargetQueue(
   // 2. main BPU redirect had modified the FTQ contents
   // 3. modified FTQ block is the rreq sent last cycle
   io.ftqIFPort.bits.redirect := ifRedirect
-  // debug
-  val debugLength = WireDefault(0.U(3.W))
-  debugLength := io.ftqIFPort.bits.ftqBlockBundle.length
+
+  // Save out; when ftq out valid and ready,but in the next clock not ready,save the resultOut
+  // when isNoPrivilege;which means no tlb and no addrStages
+  val saveOutBits  = dontTouch(RegInit(FtqIFNdPort.default))
+  val saveOutValid = RegInit(false.B)
+  val lastReady    = RegNext(io.ftqIFPort.ready, false.B)
+  when(io.ftqIFPort.ready) {
+    saveOutBits  := io.ftqIFPort.bits
+    saveOutValid := io.ftqIFPort.valid
+  }
+  when(isFlush) {
+    saveOutValid := false.B
+  }
+
+  if (Param.isNoPrivilege) {
+    when(!io.ftqIFPort.ready) {
+      io.ftqIFPort.bits  := saveOutBits
+      io.ftqIFPort.valid := saveOutValid
+    }
+  }
 
   // -> Exe cuCommit query
   io.exeFtqPort.queryPcBundle.pc := ftqVecReg(io.exeFtqPort.queryPcBundle.ftqId).startPc
