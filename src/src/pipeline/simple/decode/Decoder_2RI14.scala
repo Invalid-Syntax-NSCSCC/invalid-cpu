@@ -58,6 +58,8 @@ class Decoder_2RI14 extends BaseDecoder {
       outInfo.gprWritePort.addr       := rd
       outInfo.loadStoreImm            := immSext.asUInt << 2
       outInfo.needRefetch             := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.sc) {
       io.out.info.isIssueMainPipeline := true.B
@@ -71,6 +73,8 @@ class Decoder_2RI14 extends BaseDecoder {
       outInfo.gprWritePort.addr       := rd
       outInfo.loadStoreImm            := immSext.asUInt << 2
       outInfo.needRefetch             := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     // csr读写指令
     is(Inst.csr_) {
@@ -79,6 +83,8 @@ class Decoder_2RI14 extends BaseDecoder {
       outInfo.csrAddr                 := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
       outInfo.csrReadEn               := true.B
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
       when(rj === "b00000".U) { // csrrd csr -> rd
         outInfo.exeOp             := OpBundle.csrrd
         outInfo.gprWritePort.en   := rdIsNotZero // true.B

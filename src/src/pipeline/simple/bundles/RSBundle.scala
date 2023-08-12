@@ -12,6 +12,10 @@ class RSBundle extends Bundle {
   val regReadResults = Vec(Param.regFileReadNum, Valid(UInt(Width.Reg.data)))
 }
 
+object RSBundle {
+  val default = 0.U.asTypeOf(new RSBundle)
+}
+
 class MainRSBundle extends RSBundle {
   val mainExeBranchInfo = new MainExeBranchInfoBundle
 }

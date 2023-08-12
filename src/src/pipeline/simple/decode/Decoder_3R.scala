@@ -44,6 +44,8 @@ class Decoder_3R extends BaseDecoder {
       outInfo.exeOp           := OpBundle.idle
       io.out.info.isPrivilege := true.B
       io.out.info.needRefetch := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.invtlb) {
       io.out.info.isIssueMainPipeline := true.B
@@ -56,6 +58,8 @@ class Decoder_3R extends BaseDecoder {
         outInfo.gprWritePort.en   := false.B
         io.out.info.needRefetch   := true.B
         io.out.info.isPrivilege   := true.B
+
+        io.out.info.forbidOutOfOrder := true.B
       }
     }
     is(Inst.add_w) {
@@ -165,6 +169,8 @@ class Decoder_3R extends BaseDecoder {
       outInfo.gprWritePort.en         := false.B
       outInfo.gprWritePort.addr       := DontCare
       outInfo.needRefetch             := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.syscall) {
       io.out.info.isIssueMainPipeline := true.B
@@ -177,6 +183,8 @@ class Decoder_3R extends BaseDecoder {
       outInfo.gprWritePort.en         := false.B
       outInfo.gprWritePort.addr       := DontCare
       outInfo.needRefetch             := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
   }
 }
