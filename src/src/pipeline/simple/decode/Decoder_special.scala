@@ -81,6 +81,8 @@ class Decoder_special extends BaseDecoder {
       outInfo.isHasImm                := true.B
       immZext                         := hint
       outInfo.imm                     := immZext
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.ibar) {
       io.out.info.isIssueMainPipeline := true.B
@@ -109,6 +111,8 @@ class Decoder_special extends BaseDecoder {
       outInfo.isTlb                   := true.B
       io.out.info.needRefetch         := true.B
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.tlbrd) {
       io.out.info.isIssueMainPipeline := true.B
@@ -117,6 +121,8 @@ class Decoder_special extends BaseDecoder {
       outInfo.isTlb                   := true.B
       io.out.info.needRefetch         := true.B
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.tlbwr) {
       io.out.info.isIssueMainPipeline := true.B
@@ -125,6 +131,8 @@ class Decoder_special extends BaseDecoder {
       outInfo.isTlb                   := true.B
       io.out.info.needRefetch         := true.B
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.tlbfill) {
       io.out.info.isIssueMainPipeline := true.B
@@ -133,6 +141,8 @@ class Decoder_special extends BaseDecoder {
       outInfo.isTlb                   := true.B
       io.out.info.needRefetch         := true.B
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
   }
 }

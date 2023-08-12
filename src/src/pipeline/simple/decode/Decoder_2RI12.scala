@@ -79,6 +79,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.exeOp               := OpBundle.ld_b
       io.out.info.isHasImm            := false.B
       io.out.info.loadStoreImm        := immSext.asUInt
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.ld_h) {
       io.out.info.isIssueMainPipeline := true.B
@@ -86,6 +88,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.exeOp               := OpBundle.ld_h
       io.out.info.isHasImm            := false.B
       io.out.info.loadStoreImm        := immSext.asUInt
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.ld_w) {
       io.out.info.isIssueMainPipeline := true.B
@@ -93,6 +97,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.exeOp               := OpBundle.ld_w
       io.out.info.isHasImm            := false.B
       io.out.info.loadStoreImm        := immSext.asUInt
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.ld_bu) {
       io.out.info.isIssueMainPipeline := true.B
@@ -100,6 +106,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.exeOp               := OpBundle.ld_bu
       io.out.info.isHasImm            := false.B
       io.out.info.loadStoreImm        := immSext.asUInt
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.ld_hu) {
       io.out.info.isIssueMainPipeline := true.B
@@ -107,6 +115,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.exeOp               := OpBundle.ld_hu
       io.out.info.isHasImm            := false.B
       io.out.info.loadStoreImm        := immSext.asUInt
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.st_b) {
       io.out.info.isIssueMainPipeline  := true.B
@@ -118,6 +128,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.st_h) {
       io.out.info.isIssueMainPipeline  := true.B
@@ -129,6 +141,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.st_w) {
       io.out.info.isIssueMainPipeline  := true.B
@@ -140,6 +154,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.gprReadPorts(1).addr := rd
       io.out.info.gprWritePort.en      := false.B
       io.out.info.gprWritePort.addr    := DontCare
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.cacop) {
       io.out.info.isIssueMainPipeline := true.B
@@ -151,6 +167,8 @@ class Decoder_2RI12 extends BaseDecoder {
       io.out.info.code                := rd
       io.out.info.isPrivilege         := rd(4, 1) =/= "b0100".U // (rd =/= 8.U) && (rd =/= 9.U)
       io.out.info.needRefetch         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.preld) {
       io.out.info.isIssueMainPipeline := true.B

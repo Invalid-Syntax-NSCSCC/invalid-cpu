@@ -12,14 +12,15 @@ import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
 import common.bundles.RfAccessInfoNdPort
 import utils.MultiMux1
 import pipeline.simple.decode.bundles.DecodeOutNdPort
+import pipeline.simple.id.rs.ReservationStation
 
-class RegReadNdPort extends Bundle {
-  val instInfo = new InstInfoNdPort
-  val pc       = UInt(Width.Reg.data)
-  val decode   = new DecodeOutNdPort
-}
+// class RegReadNdPort extends Bundle {
+//   val instInfo = new InstInfoNdPort
+//   val pc       = UInt(Width.Reg.data)
+//   val decode   = new DecodeOutNdPort
+// }
 
-class IssueQueue(
+class OoOIssueQueue(
   issueNum:    Int = Param.issueInstInfoMaxNum,
   pipelineNum: Int = Param.pipelineNum)
     extends BaseIssueQueue(issueNum, pipelineNum) {
@@ -29,11 +30,12 @@ class IssueQueue(
   private val rsLength = 4
 
   val mainRS = Module(
-    new MultiQueue(rsLength, 1, 1, new MainRSBundle, 0.U.asTypeOf(new MainRSBundle), writeFirst = false)
+    new ReservationStation(rsLength, new MainRSBundle, 0.U.asTypeOf(new MainRSBundle), hasInOrder = true)
   )
+
   val simpleRSs = Seq.fill(pipelineNum - 1)(
     Module(
-      new MultiQueue(rsLength, 1, 1, new RSBundle, 0.U.asTypeOf(new RSBundle), writeFirst = false)
+      new ReservationStation(rsLength, new RSBundle, 0.U.asTypeOf(new RSBundle), hasInOrder = false)
     )
   )
 
@@ -48,23 +50,21 @@ class IssueQueue(
 
   // reservation station
 
-  val mainRSEnqPort    = mainRS.io.enqueuePorts.head
-  val simpleRSEnqPorts = simpleRSs.map(_.io.enqueuePorts.head)
+  val mainRSEnqPort    = mainRS.io.enqueuePort
+  val simpleRSEnqPorts = simpleRSs.map(_.io.enqueuePort)
 
-  mainRS.io.setPorts.zip(mainRS.io.elems).foreach {
-    case (set, elem) =>
-      set.bits  := elem
-      set.valid := true.B
-  }
   mainRS.io.isFlush := io.isFlush
+  mainRS.io.writebacks.zip(io.wakeUpPorts).foreach {
+    case (dst, src) =>
+      dst := src
+  }
   simpleRSs.zip(simpleRSEnqPorts).foreach {
     case (rs, enq) =>
-      rs.io.setPorts.zip(rs.io.elems).foreach {
-        case (set, elem) =>
-          set.bits  := elem
-          set.valid := true.B
-      }
       rs.io.isFlush := io.isFlush
+      rs.io.writebacks.zip(io.wakeUpPorts).foreach {
+        case (dst, src) =>
+          dst := src
+      }
   }
 
   val rsEnqPorts = Seq(mainRSEnqPort) ++ simpleRSEnqPorts
@@ -137,33 +137,9 @@ class IssueQueue(
       }
   }
 
-  // wake up
-  rss.foreach { rs =>
-    rs.io.setPorts.zip(rs.io.elems).foreach {
-      case (set, elem) =>
-        set.bits.regReadResults.lazyZip(elem.regReadResults).lazyZip(elem.decodePort.decode.info.gprReadPorts).foreach {
-          case (setRegData, elemData, decodeRead) =>
-            setRegData := elemData
-
-            val mux = Module(new MultiMux1(pipelineNum + 1, UInt(Width.Reg.data), zeroWord))
-            mux.io.inputs.zip(io.wakeUpPorts).foreach {
-              case (input, wakeUp) =>
-                input.valid := wakeUp.en &&
-                  wakeUp.addr === decodeRead.addr &&
-                  wakeUp.robId(Param.Width.Rob._id - 1, 0) === elemData.bits(Param.Width.Rob._id - 1, 0)
-                input.bits := wakeUp.data
-            }
-            when(!elemData.valid && mux.io.output.valid) {
-              setRegData.valid := true.B
-              setRegData.bits  := mux.io.output.bits
-            }
-        }
-    }
-  }
-
   // output
-  io.dequeuePorts.mainExePort.bits.branchInfo := mainRS.io.dequeuePorts.head.bits.mainExeBranchInfo
-  (Seq(io.dequeuePorts.mainExePort) ++ io.dequeuePorts.simpleExePorts).zip(rss.map(_.io.dequeuePorts.head)).foreach {
+  io.dequeuePorts.mainExePort.bits.branchInfo := mainRS.io.dequeuePort.bits.mainExeBranchInfo
+  (Seq(io.dequeuePorts.mainExePort) ++ io.dequeuePorts.simpleExePorts).zip(rss.map(_.io.dequeuePort)).foreach {
     case (out, rs) =>
       val regReadResults = WireDefault(rs.bits.regReadResults)
 
@@ -173,7 +149,6 @@ class IssueQueue(
           mux.io.inputs.zip(io.wakeUpPorts).foreach {
             case (input, wakeUp) =>
               input.valid := wakeUp.en &&
-                // wakeUp.addr === decodeRead.addr &&
                 wakeUp.robId(Param.Width.Rob._id - 1, 0) === elemData.bits(Param.Width.Rob._id - 1, 0)
               input.bits := wakeUp.data
           }
@@ -203,9 +178,9 @@ class IssueQueue(
     pmuInfos.lazyZip(rss).lazyZip(Seq(io.dequeuePorts.mainExePort) ++ io.dequeuePorts.simpleExePorts).foreach {
       case (pmu, rs, out) =>
         pmu.isIssueInst              := out.valid && out.ready && !io.isFlush
-        pmu.bubbleFromFrontend       := !rs.io.dequeuePorts.head.valid && !io.isFlush
+        pmu.bubbleFromFrontend       := !rs.io.dequeuePort.valid && !io.isFlush
         pmu.bubbleFromBackend        := out.valid && !out.ready && !io.isFlush
-        pmu.bubbleFromDataDependence := rs.io.dequeuePorts.head.valid && !out.valid && !io.isFlush
+        pmu.bubbleFromDataDependence := rs.io.dequeuePort.valid && !out.valid && !io.isFlush
     }
   }
 

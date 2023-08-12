@@ -17,6 +17,8 @@ import pipeline.simple.id.IssueQueue
 import spec.ExeInst
 import chisel3.util.Decoupled
 import chisel3.util.Queue
+import pipeline.simple.id.BaseIssueQueue
+import pipeline.simple.id.OoOIssueQueue
 
 class SimpleCoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -120,8 +122,8 @@ class SimpleCoreCpuTop extends Module {
   // val dispatchStage   = Module(new SimpleDispatchStage)
   val instQueue = Module(new SimpleInstQueue)
   // val issueStage      = Module(new IssueStage)
-  val decodeStage     = Module(new DecodeStage)
-  val issueQueue      = Module(new IssueQueue)
+  val decodeStage = Module(new DecodeStage)
+  val issueQueue: BaseIssueQueue = Module(if (Param.isOutOfOrderIssue) new OoOIssueQueue else new IssueQueue)
   val regMatchTable   = Module(new RegMatchTable)
   val mainExeStage    = Module(new MainExeStage)
   val simpleExeStages = Seq.fill(Param.pipelineNum - 1)(Module(new SimpleExeStage))

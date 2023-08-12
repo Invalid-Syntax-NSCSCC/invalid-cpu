@@ -47,6 +47,8 @@ class Decoder_2RI16 extends BaseDecoder {
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
 
+  io.out.info.forbidOutOfOrder := true.B
+
   switch(opcode) {
     is(Inst.b_) {
       io.out.info.isIssueMainPipeline := true.B
