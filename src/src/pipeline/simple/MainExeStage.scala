@@ -192,9 +192,9 @@ class MainExeStage
   out.memRequest.isValid := isValidLoadStore
   out.memRequest.addr    := loadStoreAddr
   out.memRequest.read.isUnsigned := VecInit(
-    OpBundle.ld_bu.asUInt,
-    OpBundle.ld_hu.asUInt
-  ).contains(selectedIn.instInfo.exeOp.asUInt)
+    OpBundle.ld_bu.subOp,
+    OpBundle.ld_hu.subOp
+  ).contains(selectedIn.instInfo.exeOp.subOp) && isSimpleMemory
   out.memRequest.rw := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
   out.isAtomicStore := selectedIn.instInfo.exeOp === OpBundle.sc
 
@@ -339,8 +339,8 @@ class MainExeStage
   // cnt
 
   if (Param.isDiffTest) {
-    out.wb.instInfo.timerInfo.get.isCnt := VecInit(OpBundle.rdcntvl_w.asUInt, OpBundle.rdcntvh_w.asUInt)
-      .contains(selectedIn.instInfo.exeOp.asUInt)
+    out.wb.instInfo.timerInfo.get.isCnt := VecInit(OpBundle.rdcntvl_w.subOp, OpBundle.rdcntvh_w.subOp)
+      .contains(selectedIn.instInfo.exeOp.subOp) && selectedIn.instInfo.exeOp.sel === OpBundle.sel_readTimeOrShift
     out.wb.instInfo.timerInfo.get.timer64 := peer.stableCounterReadPort.output
   }
 
