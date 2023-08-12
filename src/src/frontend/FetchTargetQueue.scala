@@ -162,7 +162,7 @@ class FetchTargetQueue(
   // Output
   // -> IFU
   // default value
-  io.ftqIFPort.valid       := ifSendValid
+  io.ftqIFPort.valid       := ifSendValid || ifSendValidDelay
   ftqIfBits.ftqBlockBundle := RegNext(ftqNextVec(nextIfPtr))
   io.ftqIFPort.bits        := ftqIfBits // use RegNext and nextPtr to decrease net delay
   // design 1 : wtire through  ( has been abandoned)
