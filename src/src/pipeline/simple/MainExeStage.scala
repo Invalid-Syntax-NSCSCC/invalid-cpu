@@ -292,21 +292,29 @@ class MainExeStage
     )
     out.wb.instInfo.load.get.vaddr  := loadStoreAddr
     out.wb.instInfo.store.get.vaddr := loadStoreAddr
-    out.wb.instInfo.store.get.data := MuxLookup(selectedIn.instInfo.exeOp.asUInt, selectedIn.rightOperand)(
+    out.wb.instInfo.store.get.data := MuxLookup(selectedIn.instInfo.exeOp.subOp, selectedIn.rightOperand)(
       immutable.Seq(
-        OpBundle.st_b.asUInt -> Mux(
-          maskEncode(1),
+        OpBundle.st_b.subOp -> Mux(
+          isSimpleMemory,
           Mux(
-            maskEncode(0),
-            Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
-            Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
+            maskEncode(1),
+            Mux(
+              maskEncode(0),
+              Cat(selectedIn.rightOperand(7, 0), 0.U(24.W)),
+              Cat(selectedIn.rightOperand(7, 0), 0.U(16.W))
+            ),
+            Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
           ),
-          Mux(maskEncode(0), Cat(selectedIn.rightOperand(7, 0), 0.U(8.W)), selectedIn.rightOperand(7, 0))
+          selectedIn.rightOperand
         ),
-        OpBundle.st_h.asUInt -> Mux(
-          maskEncode(1),
-          Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
-          selectedIn.rightOperand(15, 0)
+        OpBundle.st_h.subOp -> Mux(
+          isSimpleMemory,
+          Mux(
+            maskEncode(1),
+            Cat(selectedIn.rightOperand(15, 0), 0.U(16.W)),
+            selectedIn.rightOperand(15, 0)
+          ),
+          selectedIn.rightOperand
         )
       )
     )
