@@ -7,7 +7,7 @@ import spec.ExeInst.OpBundle
 import execution.Mul
 import execution.Div
 
-class Alu extends Module {
+class Alu(onlySupportBranch: Boolean = false) extends Module {
   val io = IO(new Bundle {
     val inputValid = Input(Bool())
     val aluInst = Input(new Bundle {
@@ -28,7 +28,7 @@ class Alu extends Module {
     val isFlush = Input(Bool())
   })
 
-  io.outputValid   := false.B
+  io.outputValid   := true.B
   io.result        := DontCare
   io.result.jumpEn := false.B
 
@@ -39,43 +39,44 @@ class Alu extends Module {
 
   val shift = io.result.shift
   val logic = io.result.logic
+  if (!onlySupportBranch) {
+    switch(subOp) {
+      is(OpBundle.sll.subOp) {
+        shift := lop << rop(4, 0)
+      }
+      is(OpBundle.srl.subOp) {
+        shift := lop >> rop(4, 0)
+      }
+      is(OpBundle.sra.subOp) {
+        shift := (lop.asSInt >> rop(4, 0)).asUInt
+      }
+    }
 
-  switch(subOp) {
-    is(OpBundle.sll.subOp) {
-      shift := lop << rop(4, 0)
-    }
-    is(OpBundle.srl.subOp) {
-      shift := lop >> rop(4, 0)
-    }
-    is(OpBundle.sra.subOp) {
-      shift := (lop.asSInt >> rop(4, 0)).asUInt
-    }
-  }
-
-  switch(subOp) {
-    is(OpBundle.nor.subOp) {
-      logic := ~(lop | rop)
-    }
-    is(OpBundle.and.subOp) {
-      logic := lop & rop
-    }
-    is(OpBundle.or.subOp) {
-      logic := lop | rop
-    }
-    is(OpBundle.xor.subOp) {
-      logic := lop ^ rop
-    }
-    is(OpBundle.add.subOp) {
-      logic := (lop.asSInt + rop.asSInt).asUInt
-    }
-    is(OpBundle.sub.subOp) {
-      logic := (lop.asSInt - rop.asSInt).asUInt
-    }
-    is(OpBundle.slt.subOp) {
-      logic := (lop.asSInt < rop.asSInt).asUInt
-    }
-    is(OpBundle.sltu.subOp) {
-      logic := (lop < rop).asUInt
+    switch(subOp) {
+      is(OpBundle.nor.subOp) {
+        logic := ~(lop | rop)
+      }
+      is(OpBundle.and.subOp) {
+        logic := lop & rop
+      }
+      is(OpBundle.or.subOp) {
+        logic := lop | rop
+      }
+      is(OpBundle.xor.subOp) {
+        logic := lop ^ rop
+      }
+      is(OpBundle.add.subOp) {
+        logic := (lop.asSInt + rop.asSInt).asUInt
+      }
+      is(OpBundle.sub.subOp) {
+        logic := (lop.asSInt - rop.asSInt).asUInt
+      }
+      is(OpBundle.slt.subOp) {
+        logic := (lop.asSInt < rop.asSInt).asUInt
+      }
+      is(OpBundle.sltu.subOp) {
+        logic := (lop < rop).asUInt
+      }
     }
   }
 
@@ -112,66 +113,67 @@ class Alu extends Module {
   }
 
   // mul div
+  if (!onlySupportBranch) {
+    val isMulDiv = sel === OpBundle.sel_mulDiv
 
-  val isMulDiv = sel === OpBundle.sel_mulDiv
+    val mulStage = Module(new Mul)
 
-  val mulStage = Module(new Mul)
+    val useSignedMul = subOp === OpBundle.mulh.subOp
 
-  val useSignedMul = subOp === OpBundle.mulh.subOp
+    val useUnsignedMul = subOp === OpBundle.mulhu.subOp || subOp === OpBundle.mul.subOp
 
-  val useUnsignedMul = subOp === OpBundle.mulhu.subOp || subOp === OpBundle.mul.subOp
+    val useMul = (useSignedMul || useUnsignedMul) && isMulDiv
 
-  val useMul = (useSignedMul || useUnsignedMul) && isMulDiv
+    val mulStart = useMul
 
-  val mulStart = useMul
+    mulStage.io.isFlush                   := io.isFlush
+    mulStage.io.mulInst.valid             := mulStart
+    mulStage.io.mulInst.bits.isSigned     := useSignedMul
+    mulStage.io.mulInst.bits.leftOperand  := lop
+    mulStage.io.mulInst.bits.rightOperand := rop
 
-  mulStage.io.isFlush                   := io.isFlush
-  mulStage.io.mulInst.valid             := mulStart
-  mulStage.io.mulInst.bits.isSigned     := useSignedMul
-  mulStage.io.mulInst.bits.leftOperand  := lop
-  mulStage.io.mulInst.bits.rightOperand := rop
+    val mulResult = mulStage.io.mulResult.bits
 
-  val mulResult = mulStage.io.mulResult.bits
-
-  val useDiv = isMulDiv && (
-    subOp === OpBundle.div.subOp ||
-      subOp === OpBundle.divu.subOp ||
-      subOp === OpBundle.mod.subOp ||
-      subOp === OpBundle.modu.subOp
-  )
-
-  val divStage = Module(new Div)
-
-  val divisorValid = WireDefault(rop =/= 0.U)
-
-  val divStart = WireDefault(useDiv && divisorValid)
-
-  divStage.io.isFlush                   := io.isFlush
-  divStage.io.divInst.valid             := divStart
-  divStage.io.divInst.bits.isSigned     := subOp === OpBundle.div.subOp || subOp === OpBundle.mod.subOp
-  divStage.io.divInst.bits.leftOperand  := lop
-  divStage.io.divInst.bits.rightOperand := rop
-
-  val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
-  val remainder = WireDefault(divStage.io.divResult.bits.remainder)
-
-  io.outputValid :=
-    !(mulStart && !mulStage.io.mulResult.valid) && (
-      !(divStart && !divStage.io.divResult.valid)
+    val useDiv = isMulDiv && (
+      subOp === OpBundle.div.subOp ||
+        subOp === OpBundle.divu.subOp ||
+        subOp === OpBundle.mod.subOp ||
+        subOp === OpBundle.modu.subOp
     )
 
-  switch(subOp) {
-    is(OpBundle.mul.subOp) {
-      io.result.mulDiv := mulResult(wordLength - 1, 0)
-    }
-    is(OpBundle.mulhu.subOp, OpBundle.mulh.subOp) {
-      io.result.mulDiv := mulResult(doubleWordLength - 1, wordLength)
-    }
-    is(OpBundle.div.subOp, OpBundle.divu.subOp) {
-      io.result.mulDiv := divStage.io.divResult.bits.quotient
-    }
-    is(OpBundle.mod.subOp, OpBundle.modu.subOp) {
-      io.result.mulDiv := divStage.io.divResult.bits.remainder
+    val divStage = Module(new Div)
+
+    val divisorValid = WireDefault(rop =/= 0.U)
+
+    val divStart = WireDefault(useDiv && divisorValid)
+
+    divStage.io.isFlush                   := io.isFlush
+    divStage.io.divInst.valid             := divStart
+    divStage.io.divInst.bits.isSigned     := subOp === OpBundle.div.subOp || subOp === OpBundle.mod.subOp
+    divStage.io.divInst.bits.leftOperand  := lop
+    divStage.io.divInst.bits.rightOperand := rop
+
+    val quotient  = WireDefault(divStage.io.divResult.bits.quotient)
+    val remainder = WireDefault(divStage.io.divResult.bits.remainder)
+
+    io.outputValid :=
+      !(mulStart && !mulStage.io.mulResult.valid) && (
+        !(divStart && !divStage.io.divResult.valid)
+      )
+
+    switch(subOp) {
+      is(OpBundle.mul.subOp) {
+        io.result.mulDiv := mulResult(wordLength - 1, 0)
+      }
+      is(OpBundle.mulhu.subOp, OpBundle.mulh.subOp) {
+        io.result.mulDiv := mulResult(doubleWordLength - 1, wordLength)
+      }
+      is(OpBundle.div.subOp, OpBundle.divu.subOp) {
+        io.result.mulDiv := divStage.io.divResult.bits.quotient
+      }
+      is(OpBundle.mod.subOp, OpBundle.modu.subOp) {
+        io.result.mulDiv := divStage.io.divResult.bits.remainder
+      }
     }
   }
 
