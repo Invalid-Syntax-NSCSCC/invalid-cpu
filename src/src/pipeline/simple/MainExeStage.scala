@@ -92,8 +92,13 @@ class MainExeStage
   resultOutReg.bits  := out
   val peer = io.peer.get
 
-  peer.commitFtqPort := (if (Param.exeFeedBackFtqDelay) RegNext(RegNext(out.commitFtqPort))
-                         else RegNext(out.commitFtqPort))
+  val commitFtqInfo = out.commitFtqPort
+  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+    commitFtqInfo.isTrainValid := false.B
+  }
+
+  peer.commitFtqPort := (if (Param.exeFeedBackFtqDelay) RegNext(commitFtqInfo)
+                         else commitFtqInfo)
 
   // Fallback
   // ALU module
@@ -449,12 +454,6 @@ class MainExeStage
 
   // branch
 
-  // val branchEnableFlag = RegInit(true.B)
-  val branchBlockingReg = RegInit(false.B)
-  when(branchBlockingReg) {
-    isComputed := false.B
-  }
-
   val branchSetPort = io.peer.get.branchSetPort
 
   // branch set
@@ -491,6 +490,11 @@ class MainExeStage
 
   // is branch
   val isBranchInst = selectedIn.branchInfo.isBranch
+
+  val branchBlockingReg = RegInit(false.B)
+  when(branchBlockingReg) {
+    isComputed := false.B
+  }
 
   val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && isBranchInst
   when(isRedirect) {
@@ -551,8 +555,8 @@ class MainExeStage
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
   out.wb.instInfo.ftqCommitInfo.isRedirect := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
-  out.commitFtqPort.isTrainValid                   := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock
-  out.commitFtqPort.ftqId                          := selectedIn.instInfo.ftqInfo.ftqId
+  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg
+  out.commitFtqPort.ftqId        := selectedIn.instInfo.ftqInfo.ftqId
   out.commitFtqPort.branchTakenMeta.isTaken        := aluCalcJumpEn
   out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType
   out.commitFtqPort.branchTakenMeta.predictedTaken := selectedIn.instInfo.ftqInfo.predictBranch

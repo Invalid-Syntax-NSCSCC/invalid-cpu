@@ -50,6 +50,9 @@ class FetchTargetQueue(
   val mainBpuRedirectModifyFtq = WireDefault(false.B)
   val ifRedirect               = WireDefault(false.B)
   val ifRedirectDelay          = RegInit(false.B)
+  val isFlush                  = WireDefault(false.B)
+  val isFlushDelay             = RegNext(isFlush, false.B)
+  isFlush := io.backendFlush || io.preDecoderFlush
 
   val bpuPtr    = RegInit(0.U(ptrWidth.W))
   val ifPtr     = RegInit(0.U(ptrWidth.W))
@@ -73,9 +76,11 @@ class FetchTargetQueue(
   val backendCommitNum = WireInit(0.U(log2Ceil(commitNum + 1).W))
   backendCommitNum := io.commitBitMask.map(_.asUInt).reduce(_ +& _)
 
+  val ftqIfBits = WireDefault(FtqIFNdPort.default)
+
   // IF sent rreq
   // * valid & ready & no modify & no flush
-  ifSendValid := io.ftqIFPort.bits.ftqBlockBundle.isValid
+  ifSendValid := ftqIfBits.ftqBlockBundle.isValid && !isFlush && !isFlushDelay
 //  && !(ifPtr === bpuMetaWritePtr && bpuMetaWriteValid) // to ifStage and modify at the same time
 //    !io.backendFlush   ( instAddr would not ready when flush, so valid needn't insure no flush in order to simply logic
   mainBpuRedirectModifyFtq := io.bpuFtqPort.ftqP1.isValid
@@ -98,7 +103,7 @@ class FetchTargetQueue(
   }
 
   // ptr
-  io.ftqIFPort.bits.ftqId := ifPtr
+  ftqIfBits.ftqId := ifPtr
 
   // Backend committed,means that current commPtr block is done
   commPtr := commPtr + backendCommitNum
@@ -157,11 +162,9 @@ class FetchTargetQueue(
   // Output
   // -> IFU
   // default value
-  io.ftqIFPort.valid := ifSendValid
-  io.ftqIFPort.bits.ftqBlockBundle := RegNext(
-    ftqNextVec(nextIfPtr),
-    FtqBlockBundle.default
-  ) // use RegNext and nextPtr to decrease net delay
+  io.ftqIFPort.valid := ifSendValid || ifSendValidDelay // in order to meet BaseStage's nees, keep valid one more clock
+  ftqIfBits.ftqBlockBundle := RegNext(ftqNextVec(nextIfPtr))
+  io.ftqIFPort.bits        := ftqIfBits // use RegNext and nextPtr to decrease net delay
   // design 1 : wtire through  ( has been abandoned)
   // feat: increase flush log;but easy to result in flush instfetch
 //  when(((ifPtr === bpuMetaWritePtr)||(lastIfPtr === bpuMetaWritePtr)) && bpuMetaWriteValid) {
@@ -170,16 +173,36 @@ class FetchTargetQueue(
 //    // case 2 last if send block was dirty;need to resend
 //    io.ftqIFPort.bits.ftqBlockBundle := ftqNextVec(bpuMetaWritePtr)
 //  }
-  // design 2::::::: only send correct ftq block
+  // design 2::::::: only send correct ftq block; (too high logic dealy)
 
   // Trigger a IFU flush when:
   // 1. last cycle send rreq to IFU
   // 2. main BPU redirect had modified the FTQ contents
   // 3. modified FTQ block is the rreq sent last cycle
-  io.ftqIFPort.bits.redirect := ifRedirect
-  // debug
-  val debugLength = WireDefault(0.U(3.W))
-  debugLength := io.ftqIFPort.bits.ftqBlockBundle.length
+  ftqIfBits.redirect := ifRedirect
+
+  // Save out; when ftq out valid and ready,but in the next clock not ready,save the resultOut
+  // when isNoPrivilege;which means no tlb and no addrStages
+  val saveOutBits  = dontTouch(RegInit(FtqIFNdPort.default))
+  val saveOutValid = RegInit(false.B)
+  val lastReady    = RegNext(io.ftqIFPort.ready, false.B)
+  when(io.ftqIFPort.ready && io.ftqIFPort.valid) {
+    saveOutBits  := ftqIfBits
+    saveOutValid := ifSendValid
+  }
+  when(isFlush) {
+    saveOutValid := false.B
+  }
+
+  if (Param.isNoPrivilege) {
+    when(!io.ftqIFPort.ready) {
+      io.ftqIFPort.bits  := saveOutBits
+      io.ftqIFPort.valid := saveOutValid
+    }
+    when(!lastReady) {
+      io.ftqIFPort.valid := saveOutValid
+    }
+  }
 
   // -> Exe cuCommit query
   io.exeFtqPort.queryPcBundle.pc := ftqVecReg(io.exeFtqPort.queryPcBundle.ftqId).startPc
@@ -283,6 +306,17 @@ class FetchTargetQueue(
       ftqUpdateMetaId
     ).fallThroughAddr                           := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
     ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
+  }
+
+  if (Param.isNoPrivilege) {
+    // when without tlb, all info commit at exe Stage
+    io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
+    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateJumpTarget
+    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
+
+    io.ftqRasPort.bits.callAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
+    io.ftqRasPort.bits.predictError := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty ||
+      (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
   }
 
 }

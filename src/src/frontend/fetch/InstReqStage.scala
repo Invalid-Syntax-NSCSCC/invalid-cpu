@@ -11,6 +11,7 @@ class InstReqNdPort extends Bundle {
   val ftqBlock         = new FtqBlockBundle
   val ftqId            = UInt(Param.BPU.ftqPtrWidth.W)
   val exception        = Valid(UInt(Width.Csr.exceptionIndex))
+  val isRedirect       = Bool()
 }
 
 object InstReqNdPort {
@@ -40,8 +41,9 @@ class InstReqStage
 
   // Fallback peer
   peer.memReq.client := selectedIn.translatedMemReq
-
-  when(selectedIn.translatedMemReq.isValid && (!excpValid)) {
+  when(selectedIn.isRedirect) {
+    isComputed := true.B
+  }.elsewhen(selectedIn.translatedMemReq.isValid && (!excpValid)) {
     when(io.out.ready) {
       // Whether memory request is submitted
       isComputed := peer.memReq.isReady

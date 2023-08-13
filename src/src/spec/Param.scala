@@ -33,7 +33,7 @@ object Param {
   val canIssueSameWbRegInsts       = true
   val isWakeUpPassThroughExe       = false // true && !isOutOfOrderIssue
   val instQueueCombineSel          = true // false : connect decode ; true : connect predecode
-  val exeFeedBackFtqDelay          = true
+  val exeFeedBackFtqDelay          = false
   val isUse3Unit                   = true // only in simple backend
   val isMainResWbEarly             = true && !isUse3Unit
 

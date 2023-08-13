@@ -28,7 +28,7 @@ class TaggedPreditor(
       // counter highest bit as 1,other 0;means weakly taken
       _.counter -> (1 << (phtCtrWidth - 1)).U,
       _.useful -> 0.U,
-      _.tag -> 0.U
+      _.tag -> io.updateTag
     )
     def width = phtCtrWidth + phtTagWidth + phtUsefulWidth
   }
@@ -89,31 +89,33 @@ class TaggedPreditor(
   // Query Index
   // Fold GHT input to a fix length, the same as index range
   // Using a CSR, described in PPM-Liked essay
-  val hashedGhtInput = WireDefault(0.U(phtAddrWidth.W))
+  val hashedGhtInput = Wire(UInt(phtAddrWidth.W))
   // query_index is Fold(GHR) ^ PC[low] ^ PC[high]
   val queryIndex = WireDefault(io.pc(phtAddrWidth - 1, 0) ^ io.pc(2 * phtAddrWidth - 1, phtAddrWidth) ^ hashedGhtInput)
 //  val queryIndex = WireDefault(
 //    io.pc(phtAddrWidth , 1) ^ io.pc(2 * phtAddrWidth + 2, phtAddrWidth + 1) ^ hashedGhtInput
 //  )
-  val queryIndexReg = RegNext(queryIndex, 0.U(phtTagWidth.W))
+  val queryIndexReg = Reg(UInt(phtTagWidth.W))
+  queryIndexReg := queryIndex
 
   // Tag
   // Generate another hash different from above, as described in PPM-Liked essay
-  val tagHashCsr1 = WireDefault(0.U(phtTagWidth.W))
-  val tagHashCsr2 = WireDefault(0.U((phtTagWidth - 1).W))
+  val tagHashCsr1 = Wire(UInt(phtTagWidth.W))
+  val tagHashCsr2 = Wire(UInt((phtTagWidth - 1).W))
   // query_tag is XORed from pc_i
   // assign query_tag = pc_i[31:31-PHT_TAG_WIDTH+1];
   val queryTag    = WireDefault(io.pc(1 + phtTagWidth, 2) ^ tagHashCsr1 ^ Cat(tagHashCsr2, 0.U(1.W)))
-  val queryTagReg = RegNext(queryTag, 0.U(phtTagWidth.W))
+  val queryTagReg = Reg(UInt(phtTagWidth.W))
+  queryTagReg := queryTag
 
   // PHT
   // result
   // default ctr topbit:1 otherbits:0 (weakly taken)
   // update entry
-  val phtQueryResult  = WireDefault(PhtEntey.default)
-  val phtUpdateResult = WireDefault(PhtEntey.default)
+  val phtQueryResult  = Wire(new PhtEntey)
+  val phtUpdateResult = Wire(new PhtEntey)
 
-  val phtUpdateIndex = WireDefault(0.U(phtAddrWidth.W))
+  val phtUpdateIndex = Wire(UInt(phtAddrWidth.W))
 
   // Output
   io.ctrBits    := phtQueryResult.counter
@@ -168,8 +170,9 @@ class TaggedPreditor(
   // Alocate new entry
   when(io.reallocEntry) {
     // Reset
-    phtUpdateResult     := PhtEntey.default
-    phtUpdateResult.tag := io.updateTag
+    phtUpdateResult.useful  := 0.U
+    phtUpdateResult.counter := (1 << (phtCtrWidth - 1)).U
+    phtUpdateResult.tag     := io.updateTag
 
     // when realocEntry,clear ctr and useful
     // when realloc ,use query tag; else use origin tag

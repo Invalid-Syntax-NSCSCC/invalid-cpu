@@ -227,8 +227,14 @@ class AddrTransStage
     // In In-order issue, bpu train data commit early when no excp
     if (Param.exeFeedBackFtqDelay) {
       commitFtqPort := selectedIn.commitFtqPort
+      when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+        commitFtqPort.isTrainValid := false.B
+      }
     } else {
       peer.commitFtqPort := selectedIn.commitFtqPort
+      when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+        peer.commitFtqPort.isTrainValid := false.B
+      }
     }
   }
 }

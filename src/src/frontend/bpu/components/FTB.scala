@@ -53,12 +53,12 @@ class FTB(
   val wayHits       = Wire(Vec(nway, Bool()))
   val wayHitIndex   = Wire(UInt(nwayWidth.W))
   // Query
-  val queryIndex  = WireDefault(0.U(nsetWidth.W))
-  val queryTagReg = RegInit(0.U((addr - nsetWidth - 2).W))
+  val queryIndex  = Wire(UInt(nsetWidth.W))
+  val queryTagReg = Reg(UInt((addr - nsetWidth - 2).W))
   // Update
-  val updateIndex     = WireDefault(0.U(nsetWidth.W))
-  val updateEntryPort = WireDefault(FtbEntryNdPort.default)
-  val updateWE        = WireDefault(VecInit(Seq.fill(nway)(false.B)))
+  val updateIndex     = Wire(UInt(nsetWidth.W))
+  val updateEntryPort = Wire(new FtbEntryNdPort)
+  val updateWE        = Wire(Vec(nway, Bool()))
   // LFSR (Linear-feedback shift regIRegInitister )& Ping-pong counter
   // which is use to generate random number
   val randomNum = LFSR(width = 16)
