@@ -16,7 +16,7 @@ object Param {
   val usePmu = false || isChiplab // 性能计数器
 
   val isDiffTest                 = false || isChiplab
-  val isOutOfOrderIssue          = true
+  val isOutOfOrderIssue          = false
   val isFullUncachedPatch        = true
   val isMmioDelay                = false || isChiplab || isFullFpga
   val isNoPrivilege              = true || isReleasePackage
@@ -34,6 +34,8 @@ object Param {
   val isWakeUpPassThroughExe       = false // true && !isOutOfOrderIssue
   val instQueueCombineSel          = true // false : connect decode ; true : connect predecode
   val exeFeedBackFtqDelay          = false
+  val isUse3Unit                   = true // only in simple backend
+  val isMainResWbEarly             = true && !isUse3Unit
 
   val isOptimizedByMultiMux = true
 
@@ -47,7 +49,7 @@ object Param {
   val fetchInstMaxNum        = 4 // 单次取指 must be 1,2,4,8... ( less than dataPerLine)
   val issueInstInfoMaxNum    = 2 // 发射数量
   val commitNum              = 1 // 单次提交数量
-  val pipelineNum            = if (useSimpleBackend) issueInstInfoMaxNum else 3 // number of pipeline
+  val pipelineNum            = if (useSimpleBackend && !isUse3Unit) issueInstInfoMaxNum else 3 // number of pipeline
   val dispatchOutQueueLength = 2
   val csrReadNum             = 1
   val csrWriteNum            = 1

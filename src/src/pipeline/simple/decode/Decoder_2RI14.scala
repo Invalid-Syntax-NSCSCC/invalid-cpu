@@ -5,6 +5,7 @@ import chisel3.util._
 import pipeline.simple.decode.bundles.DecodeOutNdPort
 import spec.Inst.{_2RI14 => Inst}
 import spec._
+import spec.ExeInst.OpBundle
 
 class Decoder_2RI14 extends BaseDecoder {
 
@@ -42,8 +43,7 @@ class Decoder_2RI14 extends BaseDecoder {
   io.out.info.gprWritePort.addr    := zeroWord
 
   // Fallback
-  io.out.info.exeSel         := ExeInst.Sel.none
-  io.out.info.exeOp          := ExeInst.Op.nop
+  io.out.info.exeOp          := OpBundle.nop
   io.out.info.imm            := DontCare
   io.out.info.jumpBranchAddr := DontCare
 
@@ -51,20 +51,20 @@ class Decoder_2RI14 extends BaseDecoder {
     is(Inst.ll) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.ll
-      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      outInfo.exeOp                   := OpBundle.ll
       outInfo.gprReadPorts(0).en      := true.B
       outInfo.gprReadPorts(0).addr    := rj
       outInfo.gprWritePort.en         := rdIsNotZero // true.B
       outInfo.gprWritePort.addr       := rd
       outInfo.loadStoreImm            := immSext.asUInt << 2
       outInfo.needRefetch             := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.sc) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.sc
-      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      outInfo.exeOp                   := OpBundle.sc
       outInfo.gprReadPorts(0).en      := true.B
       outInfo.gprReadPorts(0).addr    := rj
       outInfo.gprReadPorts(1).en      := true.B
@@ -73,21 +73,24 @@ class Decoder_2RI14 extends BaseDecoder {
       outInfo.gprWritePort.addr       := rd
       outInfo.loadStoreImm            := immSext.asUInt << 2
       outInfo.needRefetch             := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     // csr读写指令
     is(Inst.csr_) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeSel                  := ExeInst.Sel.none
       outInfo.csrAddr                 := Mux(csrAddrValid, csrAddr, "h80000000".U) // 若不匹配，最高位置1
       outInfo.csrReadEn               := true.B
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
       when(rj === "b00000".U) { // csrrd csr -> rd
-        outInfo.exeOp             := ExeInst.Op.csrrd
+        outInfo.exeOp             := OpBundle.csrrd
         outInfo.gprWritePort.en   := rdIsNotZero // true.B
         outInfo.gprWritePort.addr := rd
       }.elsewhen(rj === "b00001".U) {
-        outInfo.exeOp                := ExeInst.Op.csrwr
+        outInfo.exeOp                := OpBundle.csrwr
         outInfo.gprReadPorts(0).en   := true.B
         outInfo.gprReadPorts(0).addr := rd
         outInfo.gprWritePort.en      := rdIsNotZero
@@ -95,7 +98,7 @@ class Decoder_2RI14 extends BaseDecoder {
         outInfo.csrWriteEn           := csrAddrValid
         outInfo.needRefetch          := true.B
       }.otherwise {
-        outInfo.exeOp                := ExeInst.Op.csrxchg
+        outInfo.exeOp                := OpBundle.csrxchg
         outInfo.gprReadPorts(0).en   := true.B
         outInfo.gprReadPorts(0).addr := rd
         outInfo.gprReadPorts(1).en   := true.B

@@ -5,6 +5,7 @@ import chisel3.util._
 import pipeline.simple.decode.bundles.DecodeOutNdPort
 import spec.Inst.{_special => Inst}
 import spec._
+import spec.ExeInst.OpBundle
 
 class Decoder_special extends BaseDecoder {
 
@@ -41,8 +42,7 @@ class Decoder_special extends BaseDecoder {
   io.out.info.gprWritePort.addr    := rd
 
   // Fallback
-  io.out.info.exeSel         := ExeInst.Sel.none
-  io.out.info.exeOp          := ExeInst.Op.nop
+  io.out.info.exeOp          := OpBundle.nop
   io.out.info.imm            := DontCare
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
@@ -51,8 +51,7 @@ class Decoder_special extends BaseDecoder {
     is(Inst.pcaddu12i) {
       // <=> 0 + imm
       io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.add
-      outInfo.exeSel               := ExeInst.Sel.arithmetic
+      outInfo.exeOp                := OpBundle.add
       outInfo.gprReadPorts(0).en   := true.B
       outInfo.gprReadPorts(0).addr := RegIndex.r0
       outInfo.gprWritePort.en      := rdIsNotZero // true.B
@@ -63,8 +62,7 @@ class Decoder_special extends BaseDecoder {
     is(Inst.lu12i_w) {
       // <=> 0 + imm
       io.out.isMatched             := true.B
-      outInfo.exeOp                := ExeInst.Op.add
-      outInfo.exeSel               := ExeInst.Sel.arithmetic
+      outInfo.exeOp                := OpBundle.add
       outInfo.gprReadPorts(0).en   := true.B
       outInfo.gprReadPorts(0).addr := RegIndex.r0
       outInfo.gprWritePort.en      := rdIsNotZero // true.B
@@ -79,17 +77,17 @@ class Decoder_special extends BaseDecoder {
     is(Inst.dbar) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.dbar
-      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      outInfo.exeOp                   := OpBundle.dbar
       outInfo.isHasImm                := true.B
       immZext                         := hint
       outInfo.imm                     := immZext
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.ibar) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.ibar
-      outInfo.exeSel                  := ExeInst.Sel.loadStore
+      outInfo.exeOp                   := OpBundle.ibar
       outInfo.isHasImm                := true.B
       immZext                         := hint
       outInfo.imm                     := immZext
@@ -102,46 +100,49 @@ class Decoder_special extends BaseDecoder {
     is(Inst.ertn) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.ertn
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.ertn
       io.out.info.isPrivilege         := true.B
       outInfo.needRefetch             := true.B
     }
     is(Inst.tlbsrch) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.tlbsrch
+      outInfo.exeOp                   := OpBundle.tlbsrch
       outInfo.isTlb                   := true.B
       io.out.info.needRefetch         := true.B
-      outInfo.exeSel                  := ExeInst.Sel.loadStore
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.tlbrd) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.tlbrd
+      outInfo.exeOp                   := OpBundle.tlbrd
       outInfo.isTlb                   := true.B
       io.out.info.needRefetch         := true.B
-      outInfo.exeSel                  := ExeInst.Sel.loadStore
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.tlbwr) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.tlbwr
+      outInfo.exeOp                   := OpBundle.tlbwr
       outInfo.isTlb                   := true.B
       io.out.info.needRefetch         := true.B
-      outInfo.exeSel                  := ExeInst.Sel.loadStore
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
     is(Inst.tlbfill) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.tlbfill
+      outInfo.exeOp                   := OpBundle.tlbfill
       outInfo.isTlb                   := true.B
       io.out.info.needRefetch         := true.B
-      outInfo.exeSel                  := ExeInst.Sel.loadStore
       io.out.info.isPrivilege         := true.B
+
+      io.out.info.forbidOutOfOrder := true.B
     }
   }
 }

@@ -6,6 +6,7 @@ import pipeline.simple.decode.bundles.DecodeOutNdPort
 import spec.Inst.{_2RI16 => Inst}
 import spec.Param.BPU.BranchType
 import spec._
+import spec.ExeInst.OpBundle
 
 class Decoder_2RI16 extends BaseDecoder {
   io.out := DecodeOutNdPort.default
@@ -41,11 +42,12 @@ class Decoder_2RI16 extends BaseDecoder {
   io.out.info.gprWritePort.addr    := DontCare
 
   // Fallback
-  io.out.info.exeSel         := ExeInst.Sel.none
-  io.out.info.exeOp          := ExeInst.Op.nop
+  io.out.info.exeOp          := OpBundle.nop
   io.out.info.imm            := DontCare
   io.out.isMatched           := false.B
   io.out.info.jumpBranchAddr := DontCare
+
+  io.out.info.forbidOutOfOrder := true.B
 
   switch(opcode) {
     is(Inst.b_) {
@@ -55,8 +57,7 @@ class Decoder_2RI16 extends BaseDecoder {
       outInfo.gprReadPorts(0).addr    := DontCare
       outInfo.gprReadPorts(1).addr    := DontCare
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.b
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.b
       outInfo.isBranch                := true.B
       outInfo.branchType              := BranchType.uncond
       outInfo.jumpBranchAddr          := imm26SextShift2.asUInt + io.instInfoPort.pcAddr
@@ -70,8 +71,7 @@ class Decoder_2RI16 extends BaseDecoder {
       outInfo.gprWritePort.en         := true.B
       outInfo.gprWritePort.addr       := RegIndex.r1
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.bl
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.bl
       outInfo.isBranch                := true.B
       outInfo.branchType              := BranchType.call
       outInfo.jumpBranchAddr          := imm26SextShift2.asUInt + io.instInfoPort.pcAddr
@@ -83,8 +83,7 @@ class Decoder_2RI16 extends BaseDecoder {
       outInfo.gprWritePort.en         := rdIsNotZero // true.B
       outInfo.gprWritePort.addr       := rd
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.jirl
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.jirl
       outInfo.isBranch                := true.B
       outInfo.branchType := Mux(
         rd === 0.U && rj === 1.U,
@@ -100,8 +99,7 @@ class Decoder_2RI16 extends BaseDecoder {
     is(Inst.beq) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.beq
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.beq
       outInfo.isBranch                := true.B
       outInfo.branchType              := BranchType.cond
       outInfo.jumpBranchAddr          := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
@@ -109,8 +107,7 @@ class Decoder_2RI16 extends BaseDecoder {
     is(Inst.bne) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.bne
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.bne
       outInfo.isBranch                := true.B
       outInfo.branchType              := BranchType.cond
       outInfo.jumpBranchAddr          := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
@@ -118,8 +115,7 @@ class Decoder_2RI16 extends BaseDecoder {
     is(Inst.blt) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.blt
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.blt
       outInfo.isBranch                := true.B
       outInfo.branchType              := BranchType.cond
       outInfo.jumpBranchAddr          := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
@@ -127,8 +123,7 @@ class Decoder_2RI16 extends BaseDecoder {
     is(Inst.bge) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.bge
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.bge
       outInfo.isBranch                := true.B
       outInfo.branchType              := BranchType.cond
       outInfo.jumpBranchAddr          := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
@@ -136,8 +131,7 @@ class Decoder_2RI16 extends BaseDecoder {
     is(Inst.bltu) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.bltu
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.bltu
       outInfo.isBranch                := true.B
       outInfo.branchType              := BranchType.cond
       outInfo.jumpBranchAddr          := imm16SextShift2.asUInt + io.instInfoPort.pcAddr
@@ -145,8 +139,7 @@ class Decoder_2RI16 extends BaseDecoder {
     is(Inst.bgeu) {
       io.out.info.isIssueMainPipeline := true.B
       io.out.isMatched                := true.B
-      outInfo.exeOp                   := ExeInst.Op.bgeu
-      outInfo.exeSel                  := ExeInst.Sel.jumpBranch
+      outInfo.exeOp                   := OpBundle.bgeu
       outInfo.isBranch                := true.B
       outInfo.branchType              := BranchType.cond
       outInfo.jumpBranchAddr          := imm16SextShift2.asUInt + io.instInfoPort.pcAddr

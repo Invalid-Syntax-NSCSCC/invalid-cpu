@@ -8,6 +8,7 @@ import pipeline.common.bundles._
 import pipeline.simple.bundles.CommitFtqInfoBundle
 
 import spec._
+import spec.ExeInst.OpBundle
 
 class InstInfoNdPort extends Bundle {
   val pc              = if (isDiffTest) Some(UInt(Width.Reg.data)) else None
@@ -18,7 +19,7 @@ class InstInfoNdPort extends Bundle {
   val needRefetch     = Bool()
   val isCsrWrite      = Bool()
 
-  val exeOp = UInt(Param.Width.exeOp)
+  val exeOp = new OpBundle
   val robId = UInt(Param.Width.Rob.id)
 
   val load          = if (isDiffTest) Some(new DifftestLoadNdPort) else None
