@@ -14,6 +14,12 @@ import pipeline.simple.id.SimpleInstQueue
 import pipeline.simple.bundles.RegWakeUpNdPort
 import pipeline.simple.id.DecodeStage
 import pipeline.simple.id.IssueQueue
+import spec.ExeInst
+import chisel3.util.Decoupled
+import chisel3.util.Queue
+import pipeline.simple.id.BaseIssueQueue
+import pipeline.simple.id.OoOIssueQueue
+import pipeline.simple.id.Unit3IssueQueue
 
 class SimpleCoreCpuTop extends Module {
   val io = IO(new Bundle {
@@ -117,8 +123,12 @@ class SimpleCoreCpuTop extends Module {
   // val dispatchStage   = Module(new SimpleDispatchStage)
   val instQueue = Module(new SimpleInstQueue)
   // val issueStage      = Module(new IssueStage)
-  val decodeStage     = Module(new DecodeStage)
-  val issueQueue      = Module(new IssueQueue)
+  val decodeStage = Module(new DecodeStage)
+  val issueQueue: BaseIssueQueue = Module(
+    if (Param.isUse3Unit) new Unit3IssueQueue
+    else if (Param.isOutOfOrderIssue) new OoOIssueQueue
+    else new IssueQueue
+  )
   val regMatchTable   = Module(new RegMatchTable)
   val mainExeStage    = Module(new MainExeStage)
   val simpleExeStages = Seq.fill(Param.pipelineNum - 1)(Module(new SimpleExeStage))
@@ -265,7 +275,6 @@ class SimpleCoreCpuTop extends Module {
   mainExeStage.io.peer.get.dbarFinish            := cu.io.isDbarFinish
   mainExeStage.io.peer.get.csrReadPort           <> csr.io.readPorts.head
   mainExeStage.io.peer.get.stableCounterReadPort <> stableCounter.io
-  rob.io.queryPcPort                             <> DontCare
   simpleExeStages.zipWithIndex.foreach {
     case (exe, idx) =>
       exe.io.in      <> issueQueue.io.dequeuePorts.simpleExePorts(idx)
@@ -273,7 +282,26 @@ class SimpleCoreCpuTop extends Module {
   }
 
   // Mem stages
-  addrTransStage.io.in      <> mainExeStage.io.out
+
+  val mainExeOutWb = mainExeStage.io.out.bits.wb
+  val isContinueForMem = VecInit(
+    ExeInst.OpBundle.sel_simpleMemory,
+    ExeInst.OpBundle.sel_complexMemory,
+    ExeInst.OpBundle.sel_simpleBranch,
+    ExeInst.OpBundle.sel_misc
+  ).contains(mainExeOutWb.instInfo.exeOp.sel)
+
+  if (Param.isMainResWbEarly) {
+    val lsqEnqPort = Wire(Decoupled(new AddrTransNdPort))
+    lsqEnqPort.bits           := mainExeStage.io.out.bits
+    lsqEnqPort.valid          := isContinueForMem && mainExeStage.io.out.valid
+    mainExeStage.io.out.ready := lsqEnqPort.ready
+
+    val lsq = Queue(lsqEnqPort, 4, pipe = false, flow = true, flush = Some(cu.io.backendFlush))
+    addrTransStage.io.in <> lsq
+  } else {
+    addrTransStage.io.in <> mainExeStage.io.out
+  }
   addrTransStage.io.isFlush := cu.io.backendFlush
   addrTransStage.io.peer.foreach { p =>
     if (isNoPrivilege) {
@@ -306,8 +334,11 @@ class SimpleCoreCpuTop extends Module {
   require(Param.loadStoreIssuePipelineIndex == 0)
   rob.io.finishInsts.zipWithIndex.foreach {
     case (dst, idx) =>
-      if (idx == Param.loadStoreIssuePipelineIndex) {
+      if (idx == 0) {
         dst <> memResStage.io.out
+      } else if (idx == Param.pipelineNum && Param.isMainResWbEarly) {
+        dst.bits  := mainExeOutWb
+        dst.valid := mainExeStage.io.out.valid && !isContinueForMem
       } else {
         dst <> simpleExeStages(idx - 1).io.out
       }

@@ -2,7 +2,7 @@ package pipeline.simple
 
 import chisel3._
 import chisel3.util._
-import spec.ExeInst.Sel
+import spec.ExeInst.OpBundle
 import common.BaseStage
 import pipeline.simple.execution.Alu
 import pipeline.simple.ExeNdPort
@@ -42,22 +42,22 @@ class SimpleExeStage
   // ALU input
   alu.io.isFlush                := io.isFlush
   alu.io.inputValid             := selectedIn.instInfo.isValid
-  alu.io.aluInst.op             := selectedIn.exeOp
+  alu.io.aluInst.op             := selectedIn.instInfo.exeOp
   alu.io.aluInst.leftOperand    := selectedIn.leftOperand
   alu.io.aluInst.rightOperand   := selectedIn.rightOperand
   alu.io.aluInst.jumpBranchAddr := DontCare
 
   out.gprWrite.data := DontCare
 
-  switch(selectedIn.exeSel) {
-    is(Sel.logic) {
+  switch(selectedIn.instInfo.exeOp.sel) {
+    is(OpBundle.sel_arthOrLogic) {
       out.gprWrite.data := alu.io.result.logic
     }
-    is(Sel.shift) {
-      out.gprWrite.data := alu.io.result.shift
+    is(OpBundle.sel_mulDiv) {
+      out.gprWrite.data := alu.io.result.mulDiv
     }
-    is(Sel.arithmetic) {
-      out.gprWrite.data := alu.io.result.arithmetic
+    is(OpBundle.sel_readTimeOrShift) {
+      out.gprWrite.data := alu.io.result.shift
     }
   }
 }

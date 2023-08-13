@@ -5,6 +5,7 @@ import chisel3.util._
 import pipeline.simple.decode.bundles.DecodeOutNdPort
 import spec.Inst.{_2R => Inst}
 import spec._
+import spec.ExeInst.OpBundle
 
 class Decoder_2R extends BaseDecoder {
   io.out := DecodeOutNdPort.default
@@ -23,13 +24,13 @@ class Decoder_2R extends BaseDecoder {
       when(rj.orR) {
         io.out.info.csrReadEn         := true.B
         io.out.info.csrAddr           := Csr.Index.tid
-        io.out.info.exeOp             := ExeInst.Op.csrrd
+        io.out.info.exeOp             := OpBundle.csrrd
         io.out.info.gprWritePort.en   := true.B
         io.out.info.gprWritePort.addr := rj
       }.otherwise {
         io.out.info.gprWritePort.addr := rd
         io.out.info.gprWritePort.en   := rdIsNotZero
-        io.out.info.exeOp             := ExeInst.Op.rdcntvl_w
+        io.out.info.exeOp             := OpBundle.rdcntvl_w
       }
     }
     is(Inst.rdcnt_vh) {
@@ -37,7 +38,7 @@ class Decoder_2R extends BaseDecoder {
       io.out.isMatched                := true.B
       io.out.info.gprWritePort.en     := rdIsNotZero
       io.out.info.gprWritePort.addr   := rd
-      io.out.info.exeOp               := ExeInst.Op.rdcntvh_w
+      io.out.info.exeOp               := OpBundle.rdcntvh_w
     }
   }
 }

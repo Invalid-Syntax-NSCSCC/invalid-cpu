@@ -10,7 +10,7 @@ class Pmu extends Module {
     val instqueueFull  = Input(Bool())
     val instQueueEmpty = Input(Bool())
     val branchInfo     = Input(new PmuBranchPredictNdPort)
-    val dispatchInfos  = Input(Vec(Param.issueInstInfoMaxNum, new PmuDispatchInfoBundle))
+    val dispatchInfos  = Input(Vec(Param.pipelineNum, new PmuDispatchInfoBundle))
     val robFull        = Input(Bool())
     val dCache         = Input(new PmuCacheNdPort)
     val iCache         = Input(new PmuCacheNdPort)
@@ -43,10 +43,10 @@ class Pmu extends Module {
     inc(instQueueEmpty)
   }
 
-  val dispatchBubbleFromBackends        = Seq.fill(Param.issueInstInfoMaxNum)(r)
-  val dispatchBubbleFromDataDependences = Seq.fill(Param.issueInstInfoMaxNum)(r)
-  val dispatchBubbleFromFrontends       = Seq.fill(Param.issueInstInfoMaxNum)(r)
-  val dispatchCount                     = Seq.fill(Param.issueInstInfoMaxNum)(r)
+  val dispatchBubbleFromBackends        = Seq.fill(Param.pipelineNum)(r)
+  val dispatchBubbleFromDataDependences = Seq.fill(Param.pipelineNum)(r)
+  val dispatchBubbleFromFrontends       = Seq.fill(Param.pipelineNum)(r)
+  val dispatchCount                     = Seq.fill(Param.pipelineNum)(r)
 
   io.dispatchInfos.zipWithIndex.foreach {
     case (dispatchInfo, idx) =>

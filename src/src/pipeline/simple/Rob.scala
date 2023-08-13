@@ -21,17 +21,16 @@ class Rob(
   pipelineNum: Int = Param.pipelineNum)
     extends Module {
 
+  val wbNum = if (Param.isMainResWbEarly) pipelineNum + 1 else pipelineNum
+
   val io = IO(new Bundle {
     val requests = Vec(issueNum, new RobRequestPort)
 
     // `ExeStage / LSU` -> `Rob`
-    val finishInsts = Vec(pipelineNum, Flipped(Decoupled(new WbNdPort)))
+    val finishInsts = Vec(wbNum, Flipped(Decoupled(new WbNdPort)))
 
     // `Rob` -> `WbStage`
     val commits = Vec(commitNum, Decoupled(new CommitNdPort))
-
-    // `ExePassWb_1` <-> `Rob`
-    val queryPcPort = new RobQueryPcPort
 
     // `Cu` <-> `Rob`
     val isFlush = Input(Bool())
@@ -73,12 +72,10 @@ class Rob(
   queue.io.dequeuePorts.foreach(_.ready := false.B)
   queue.io.isFlush := io.isFlush
 
-  io.queryPcPort.pc := queue.io.elems(io.queryPcPort.robId).fetchInfo.pcAddr
-
   // finish insts
 
   io.finishInsts.foreach(_.ready := true.B)
-  val finishInstFillRobBundles = Wire(Vec(pipelineNum, Valid(new WbNdPort)))
+  val finishInstFillRobBundles = Wire(Vec(wbNum, Valid(new WbNdPort)))
   finishInstFillRobBundles.zip(io.finishInsts).foreach {
     case (dst, src) =>
       dst.valid := src.valid
@@ -91,7 +88,7 @@ class Rob(
   // set rob queue
   queue.io.elems.zip(queue.io.setPorts).zipWithIndex.foreach {
     case ((elem, set), idx) =>
-      val mux = Module(new MultiMux1(pipelineNum, new WbNdPort, WbNdPort.default))
+      val mux = Module(new MultiMux1(wbNum, new WbNdPort, WbNdPort.default))
       mux.io.inputs.zip(finishInstFillRobBundles).foreach {
         case (input, finishInst) =>
           input.valid := idx.U === finishInst.bits.instInfo.robId &&
