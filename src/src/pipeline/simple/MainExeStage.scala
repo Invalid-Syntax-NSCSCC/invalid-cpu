@@ -99,7 +99,7 @@ class MainExeStage
   // ALU module
   val alu = Module(new Alu)
 
-  isComputed                      := alu.io.outputValid
+  isComputed                      := (if (Param.isUse3Unit) true.B else alu.io.outputValid)
   out                             := DontCare
   out.cacheMaintenance.control    := CacheMaintenanceControlNdPort.default
   out.isAtomicStore               := false.B
@@ -344,7 +344,12 @@ class MainExeStage
     out.wb.instInfo.timerInfo.get.timer64 := peer.stableCounterReadPort.output
   }
 
-  val cntOrShiftResult = WireDefault(alu.io.result.shift)
+  val cntOrShiftResult = Wire(UInt(32.W))
+  if (Param.isUse3Unit) {
+    cntOrShiftResult := DontCare
+  } else {
+    cntOrShiftResult := alu.io.result.shift
+  }
   switch(selectedIn.instInfo.exeOp.subOp) {
     is(OpBundle.rdcntvl_w.subOp) {
       cntOrShiftResult := io.peer.get.stableCounterReadPort.output(wordLength - 1, 0)
@@ -363,10 +368,14 @@ class MainExeStage
 
   switch(selectedIn.instInfo.exeOp.sel) {
     is(OpBundle.sel_arthOrLogic) {
-      out.wb.gprWrite.data := alu.io.result.logic
+      if (Param.isUse3Unit) {
+        out.wb.gprWrite.data := alu.io.result.logic
+      }
     }
     is(OpBundle.sel_mulDiv) {
-      out.wb.gprWrite.data := alu.io.result.mulDiv
+      if (Param.isUse3Unit) {
+        out.wb.gprWrite.data := alu.io.result.mulDiv
+      }
     }
     is(OpBundle.sel_readTimeOrShift) {
       out.wb.gprWrite.data := cntOrShiftResult
