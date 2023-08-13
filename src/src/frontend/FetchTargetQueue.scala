@@ -162,7 +162,7 @@ class FetchTargetQueue(
   // Output
   // -> IFU
   // default value
-  io.ftqIFPort.valid       := ifSendValid || ifSendValidDelay
+  io.ftqIFPort.valid := ifSendValid || ifSendValidDelay // in order to meet BaseStage's nees, keep valid one more clock
   ftqIfBits.ftqBlockBundle := RegNext(ftqNextVec(nextIfPtr))
   io.ftqIFPort.bits        := ftqIfBits // use RegNext and nextPtr to decrease net delay
   // design 1 : wtire through  ( has been abandoned)
@@ -306,6 +306,17 @@ class FetchTargetQueue(
       ftqUpdateMetaId
     ).fallThroughAddr                           := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
     ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
+  }
+
+  if (Param.isNoPrivilege) {
+    // when without tlb, all info commit at exe Stage
+    io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
+    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateJumpTarget
+    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
+
+    io.ftqRasPort.bits.callAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
+    io.ftqRasPort.bits.predictError := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty ||
+      (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
   }
 
 }
