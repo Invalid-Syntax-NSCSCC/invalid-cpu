@@ -97,7 +97,7 @@ class MainExeStage
 
   // Fallback
   // ALU module
-  val alu = Module(new Alu)
+  val alu = Module(new Alu(onlySupportBranch = Param.isUse3Unit))
 
   isComputed                      := (if (Param.isUse3Unit) true.B else alu.io.outputValid)
   out                             := DontCare
