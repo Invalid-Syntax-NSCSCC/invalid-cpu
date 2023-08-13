@@ -92,11 +92,6 @@ class MainExeStage
   resultOutReg.bits  := out
   val peer = io.peer.get
 
-  val branchBlockingReg = RegInit(false.B)
-  when(branchBlockingReg) {
-    isComputed := false.B
-  }
-
   val commitFtqInfo = out.commitFtqPort
   when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
     commitFtqInfo.isTrainValid := false.B
@@ -495,6 +490,11 @@ class MainExeStage
 
   // is branch
   val isBranchInst = selectedIn.branchInfo.isBranch
+
+  val branchBlockingReg = RegInit(false.B)
+  when(branchBlockingReg) {
+    isComputed := false.B
+  }
 
   val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && isBranchInst
   when(isRedirect) {
