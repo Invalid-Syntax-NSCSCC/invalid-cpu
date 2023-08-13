@@ -10,7 +10,7 @@ class Pmu extends Module {
     val instqueueFull  = Input(Bool())
     val instQueueEmpty = Input(Bool())
     val branchInfo     = Input(new PmuBranchPredictNdPort)
-    val dispatchInfos  = Input(Vec(Param.issueInstInfoMaxNum, new PmuDispatchInfoBundle))
+    val dispatchInfos  = Input(Vec(Param.pipelineNum, new PmuDispatchInfoBundle))
     val robFull        = Input(Bool())
     val dCache         = Input(new PmuCacheNdPort)
     val iCache         = Input(new PmuCacheNdPort)
