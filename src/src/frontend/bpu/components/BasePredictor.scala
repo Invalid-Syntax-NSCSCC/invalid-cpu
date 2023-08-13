@@ -27,8 +27,8 @@ class BasePredictor(
   })
 
   // Query logic
-  val queryIndex = WireDefault(0.U(tableDepthLog.W))
-  val queryEntry = WireDefault(0.U(ctrWidth.W))
+  val queryIndex = Wire(UInt(tableDepthLog.W))
+  val queryEntry = Wire(UInt(ctrWidth.W))
 
   queryIndex := io.pc(1 + tableDepthLog, 2)
   // base predictor ctrWidth == 2
@@ -38,8 +38,8 @@ class BasePredictor(
   io.ctr     := queryEntry
 
   // update logic
-  val updateIndex   = WireDefault(0.U(tableDepthLog.W))
-  val updateContent = WireDefault(0.U(ctrWidth.W))
+  val updateIndex   = Wire(UInt(tableDepthLog.W))
+  val updateContent = Wire(UInt(ctrWidth.W))
 
   updateIndex := io.updatePc(tableDepthLog + 1, 2)
 

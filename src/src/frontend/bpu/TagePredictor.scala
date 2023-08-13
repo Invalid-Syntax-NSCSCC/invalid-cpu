@@ -72,8 +72,8 @@ class TagePredictor(
   // val takens = WireDefault(VecInit(Seq.fill(tagComponentNum + 1)(false.B)))
 
   // Base predictor
-  val baseIsTaken = WireDefault(true.B)
-  val baseCtrbit  = WireDefault(0.U(componentCtrWidth(0).W)) // initial state : weakly taken
+  val baseIsTaken = Wire(Bool())
+  val baseCtrbit  = Wire(UInt(componentCtrWidth(0).W)) // initial state : weakly taken
 
   // Tagged predictor
   // The provider id of the accepted prediction, selected using priority encoder
@@ -87,7 +87,7 @@ class TagePredictor(
   val queryNewEntryFlag = WireDefault(false.B) // Indicates the provider is new
 
   // Meta
-  val tagCtrbits      = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(3.W))))
+  val tagCtrbits      = Wire(Vec(tagComponentNum, UInt(3.W)))
   val tagUsefulbits   = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(componentUsefulWidth(1).W))))
   val tagQueryTags    = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
   val tagOriginTags   = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
@@ -95,18 +95,19 @@ class TagePredictor(
   val tagGhtHashs     = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(phtAddrWidth.W))))
   val tagTagHashCsr1s = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U(tagComponentTagWidth.W))))
   val tagTagHashCsr2s = WireDefault(VecInit(Seq.fill(tagComponentNum)(0.U((tagComponentTagWidth - 1).W))))
+  tagCtrbits := DontCare
 
   // update
-  val updatePc                 = WireDefault(0.U(Width.Reg.data))
+  val updatePc                 = Wire(UInt(Width.Reg.data))
   val isBaseUpdateCtr          = WireDefault(false.B)
   val isUpdateValid            = WireDefault(false.B)
   val isGlobalHistoryUpdateReg = RegInit(false.B)
-  val updatePredictCorrect     = WireDefault(false.B)
-  val updateBranchTaken        = WireDefault(false.B)
-  val updateIsConditional      = WireDefault(false.B)
-  val updateNewEntryFlag       = WireDefault(false.B) // Indicates the provider is new
-  val updateProviderId         = WireDefault(0.U(tagComPtrWidth.W))
-  val updateALtProviderId      = WireDefault(0.U(tagComPtrWidth.W))
+  val updatePredictCorrect     = Wire(Bool())
+  val updateBranchTaken        = Wire(Bool())
+  val updateIsConditional      = Wire(Bool())
+  val updateNewEntryFlag       = Wire(Bool()) // Indicates the provider is new
+  val updateProviderId         = Wire(UInt(tagComPtrWidth.W))
+  val updateALtProviderId      = Wire(UInt(tagComPtrWidth.W))
   val isUpdateCtrVec = WireDefault(
     VecInit(Seq.fill(tagComponentNum + 1)(false.B))
   ) // Whether a component should updated its ctr

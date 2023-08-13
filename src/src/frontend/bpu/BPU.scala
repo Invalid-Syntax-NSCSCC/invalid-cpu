@@ -46,12 +46,12 @@ class BPU(
 
   // FTB fetch target buffer
   val ftbHit      = WireDefault(false.B)
-  val ftbHitIndex = WireDefault(0.U(ftbNway.W))
+  val ftbHitIndex = Wire(UInt(ftbNway.W))
   val ftbEntry    = Wire(new FtbEntryNdPort)
 
   // Tage
-  val predictTaken = WireDefault(true.B)
-  val predictValid = WireDefault(false.B)
+  val predictTaken = Wire(Bool())
+  val predictValid = Wire(Bool())
 
   // RAS return address stack
   val rasTopAddr = WireDefault(0.U(addr.W))
@@ -62,7 +62,7 @@ class BPU(
   ////////////////////////////////////////////////////////////////////////////////////
   // Query logic
   ////////////////////////////////////////////////////////////////////////////////////
-  val tageQueryMeta = WireDefault(TageMetaPort.default)
+  val tageQueryMeta = Wire(new TageMetaPort)
 
   // P0
   // FTQ qutput generate
@@ -129,7 +129,9 @@ class BPU(
     }
   }.otherwise {
     // default 0
-    io.bpuFtqPort.ftqP1 := FtqBlockBundle.default
+    io.bpuFtqPort.ftqP1         <> DontCare
+    io.bpuFtqPort.ftqP1.isValid := false.B
+//    io.bpuFtqPort.ftqP1 := FtqBlockBundle.default
   }
 
   // Pc output
