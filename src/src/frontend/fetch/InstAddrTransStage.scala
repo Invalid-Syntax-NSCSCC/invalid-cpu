@@ -29,14 +29,24 @@ class InstAddrTransStage
 
   val selectedIn = io.in.bits
 
-  val peer = io.peer.get
-  val out  = resultOutReg.bits
+  val peer      = io.peer.get
+  val resultOut = WireDefault(0.U.asTypeOf(Valid(new InstReqNdPort)))
+  val out       = resultOut.bits
+  resultOutReg := resultOut
   if (isNoPrivilege) {
     io.in.ready  := io.out.ready
     io.out.valid := io.in.valid
     io.out.bits  := out
   }
 
+//  val resultOut = WireDefault(0.U.asTypeOf(Valid(new MemReqNdPort)))
+//  val out = resultOut.bits
+//  resultOutReg := resultOut
+//  if (isNoPrivilege) {
+//    io.in.ready := io.out.ready
+//    io.out.valid := io.in.valid
+//    io.out.bits := resultOut.bits
+//  }
   val pc = WireDefault(0.U(Width.inst))
   pc := selectedIn.ftqBlockBundle.startPc
 

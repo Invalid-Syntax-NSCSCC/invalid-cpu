@@ -162,7 +162,7 @@ class FetchTargetQueue(
   // Output
   // -> IFU
   // default value
-  io.ftqIFPort.valid := ifSendValid || ifSendValidDelay // in order to meet BaseStage's nees, keep valid one more clock
+  io.ftqIFPort.valid       := ifSendValid
   ftqIfBits.ftqBlockBundle := RegNext(ftqNextVec(nextIfPtr))
   io.ftqIFPort.bits        := ftqIfBits // use RegNext and nextPtr to decrease net delay
   // design 1 : wtire through  ( has been abandoned)
@@ -185,7 +185,6 @@ class FetchTargetQueue(
   // when isNoPrivilege;which means no tlb and no addrStages
   val saveOutBits  = dontTouch(RegInit(FtqIFNdPort.default))
   val saveOutValid = RegInit(false.B)
-  val lastReady    = RegNext(io.ftqIFPort.ready, false.B)
   when(io.ftqIFPort.ready && io.ftqIFPort.valid) {
     saveOutBits  := ftqIfBits
     saveOutValid := ifSendValid
@@ -197,9 +196,6 @@ class FetchTargetQueue(
   if (Param.isNoPrivilege) {
     when(!io.ftqIFPort.ready) {
       io.ftqIFPort.bits  := saveOutBits
-      io.ftqIFPort.valid := saveOutValid
-    }
-    when(!lastReady) {
       io.ftqIFPort.valid := saveOutValid
     }
   }
