@@ -98,7 +98,7 @@ class MainExeStage
   }
 
   val commitFtqInfo = out.commitFtqPort
-  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none || branchBlockingReg) {
+  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
     commitFtqInfo.isTrainValid := false.B
   }
 
@@ -555,8 +555,8 @@ class MainExeStage
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
   out.wb.instInfo.ftqCommitInfo.isRedirect := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
-  out.commitFtqPort.isTrainValid                   := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock
-  out.commitFtqPort.ftqId                          := selectedIn.instInfo.ftqInfo.ftqId
+  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg
+  out.commitFtqPort.ftqId        := selectedIn.instInfo.ftqInfo.ftqId
   out.commitFtqPort.branchTakenMeta.isTaken        := aluCalcJumpEn
   out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType
   out.commitFtqPort.branchTakenMeta.predictedTaken := selectedIn.instInfo.ftqInfo.predictBranch
