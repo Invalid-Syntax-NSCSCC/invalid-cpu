@@ -33,7 +33,7 @@ abstract class BaseIssueQueue(
     val occupyPorts  = Output(Vec(Param.issueInstInfoMaxNum, new RegOccupyNdPort))
 
     val wakeUpPorts       = Input(Vec(pipelineNum + 1, new RegWakeUpNdPort))
-    val pmu_dispatchInfos = Option.when(Param.usePmu)(Output(Vec(Param.issueInstInfoMaxNum, new PmuDispatchInfoBundle)))
+    val pmu_dispatchInfos = Option.when(Param.usePmu)(Output(Vec(Param.pipelineNum, new PmuDispatchInfoBundle)))
 
   })
 }
