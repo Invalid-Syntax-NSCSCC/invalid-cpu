@@ -71,11 +71,11 @@ class Unit3IssueQueue(
   val rss        = Seq(mainRS) ++ simpleRSs
 
   // occupy
-  io.occupyPorts.lazyZip(rsEnqPorts).foreach {
-    case (occupy, enq) =>
-      occupy.en    := enq.valid && enq.ready && enq.bits.decodePort.decode.info.gprWritePort.en
-      occupy.addr  := enq.bits.decodePort.decode.info.gprWritePort.addr
-      occupy.robId := enq.bits.decodePort.instInfo.robId
+  io.occupyPorts.lazyZip(io.ins).foreach {
+    case (occupy, in) =>
+      occupy.en    := in.valid && in.ready && in.bits.decode.info.gprWritePort.en
+      occupy.addr  := in.bits.decode.info.gprWritePort.addr
+      occupy.robId := in.bits.instInfo.robId
   }
 
   // determine enqueue
