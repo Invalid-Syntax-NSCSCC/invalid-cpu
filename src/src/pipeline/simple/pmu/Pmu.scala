@@ -43,10 +43,10 @@ class Pmu extends Module {
     inc(instQueueEmpty)
   }
 
-  val dispatchBubbleFromBackends        = Seq.fill(Param.issueInstInfoMaxNum)(r)
-  val dispatchBubbleFromDataDependences = Seq.fill(Param.issueInstInfoMaxNum)(r)
-  val dispatchBubbleFromFrontends       = Seq.fill(Param.issueInstInfoMaxNum)(r)
-  val dispatchCount                     = Seq.fill(Param.issueInstInfoMaxNum)(r)
+  val dispatchBubbleFromBackends        = Seq.fill(Param.pipelineNum)(r)
+  val dispatchBubbleFromDataDependences = Seq.fill(Param.pipelineNum)(r)
+  val dispatchBubbleFromFrontends       = Seq.fill(Param.pipelineNum)(r)
+  val dispatchCount                     = Seq.fill(Param.pipelineNum)(r)
 
   io.dispatchInfos.zipWithIndex.foreach {
     case (dispatchInfo, idx) =>
