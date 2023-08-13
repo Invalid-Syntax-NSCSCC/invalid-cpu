@@ -15,8 +15,6 @@ abstract class BaseIssueQueue(
   issueNum:    Int = Param.issueInstInfoMaxNum,
   pipelineNum: Int = Param.pipelineNum)
     extends Module {
-
-  require(issueNum == pipelineNum)
   val io = IO(new Bundle {
     val isFlush = Input(Bool())
     val ins = Vec(
