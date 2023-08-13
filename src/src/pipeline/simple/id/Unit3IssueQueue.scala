@@ -121,8 +121,8 @@ class Unit3IssueQueue(
             in.ready            := true.B
             rsEnqPorts(1).valid := in.valid
             enqIndices(src_idx) := 1.U
-          }.otherwise {
-            in.ready            := rsEnqPorts(2).ready
+          }.elsewhen(ens(2)) {
+            in.ready            := true.B
             rsEnqPorts(2).valid := in.valid
             enqIndices(src_idx) := 2.U
           }
