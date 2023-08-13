@@ -92,8 +92,13 @@ class MainExeStage
   resultOutReg.bits  := out
   val peer = io.peer.get
 
+  val branchBlockingReg = RegInit(false.B)
+  when(branchBlockingReg) {
+    isComputed := false.B
+  }
+
   val commitFtqInfo = out.commitFtqPort
-  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none || branchBlockingReg) {
     commitFtqInfo.isTrainValid := false.B
   }
 
@@ -453,12 +458,6 @@ class MainExeStage
   }
 
   // branch
-
-  // val branchEnableFlag = RegInit(true.B)
-  val branchBlockingReg = RegInit(false.B)
-  when(branchBlockingReg) {
-    isComputed := false.B
-  }
 
   val branchSetPort = io.peer.get.branchSetPort
 
