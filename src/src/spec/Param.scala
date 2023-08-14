@@ -33,7 +33,7 @@ object Param {
   val canIssueSameWbRegInsts       = true
   val isWakeUpPassThroughExe       = false // true && !isOutOfOrderIssue
   val instQueueCombineSel          = true // false : connect decode ; true : connect predecode
-  val exeFeedBackFtqDelay          = false
+  val exeFeedBackFtqDelay          = true
   val isUse3Unit                   = true // only in simple backend
   val isMainResWbEarly             = true && !isUse3Unit
 
@@ -200,8 +200,9 @@ object Param {
     }
 
     object FTB {
-      val nset = 1024
-      val nway = 4
+      val nset     = 1024
+      val nway     = 4
+      val tagWidth = spec.Width.Mem._addr - 2 - log2Ceil(Param.BPU.FTB.nset)
     }
 
     object RAS {

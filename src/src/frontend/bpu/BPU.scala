@@ -119,8 +119,9 @@ class BPU(
     io.bpuFtqPort.ftqP1.isCrossCacheline := ftbEntry.isCrossCacheline
     io.bpuFtqPort.ftqP1.startPc          := p1Pc
     // calculate fetch num with notTakenFallThroughAddress - startPc
-    io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddr(Param.Width.ICache._fetchOffset, 2) -
-      p1Pc(Param.Width.ICache._fetchOffset, 2)) // Use 1 + log(fetchNum) bits minus to ensure no overflow
+//    io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddr(Param.Width.ICache._fetchOffset, 2) -
+//      p1Pc(Param.Width.ICache._fetchOffset, 2)) // Use 1 + log(fetchNum) bits minus to ensure no overflow
+    io.bpuFtqPort.ftqP1.length       := ftbEntry.fetchLength
     io.bpuFtqPort.ftqP1.predictValid := true.B
     //  switch predictTaken with ftbEntry.BranchType
     io.bpuFtqPort.ftqP1.predictTaken := true.B // (BranchType.call,BranchType.unCond)
@@ -141,7 +142,8 @@ class BPU(
   //  case branchType
   switch(ftbEntry.branchType) {
     is(Param.BPU.BranchType.cond) {
-      io.bpuRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddr, ftbEntry.fallThroughAddr)
+//      io.bpuRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddr, ftbEntry.fallThroughAddr)
+      io.bpuRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddr, p1Pc + ftbEntry.fetchLength * 4.U)
     }
     is(Param.BPU.BranchType.call, Param.BPU.BranchType.uncond) {
       io.bpuRedirectPc.bits := ftbEntry.jumpTargetAddr
@@ -202,7 +204,11 @@ class BPU(
   ftbUpdateEntry.branchType := io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType
   ftbUpdateEntry.isCrossCacheline := io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline
   ftbUpdateEntry.jumpTargetAddr   := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr
-  ftbUpdateEntry.fallThroughAddr  := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr
+//  ftbUpdateEntry.fallThroughAddr  := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr
+  ftbUpdateEntry.fetchLength := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle
+    .fallThroughAddr(Param.Width.ICache._fetchOffset, 2) -
+    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle
+      .startPc(Param.Width.ICache._fetchOffset, 2) // Use 1 + log(fetchNum) bits minus to ensure no overflow
 
   // global branch history update logic
   val ghrFixBundle = Wire(new GhrFixNdBundle)
