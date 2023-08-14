@@ -113,7 +113,7 @@ class MainExeStage
   out.wb.instInfo                 := selectedIn.instInfo
   out.wb.gprWrite.en              := selectedIn.gprWritePort.en
   out.wb.gprWrite.addr            := selectedIn.gprWritePort.addr
-  outValid                        := isComputed && selectedIn.instInfo.isValid
+  outValid                        := inReady && isComputed && selectedIn.instInfo.isValid
   io.in.ready                     := inReady && isComputed
 
   // memory
