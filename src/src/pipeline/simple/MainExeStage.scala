@@ -543,13 +543,14 @@ class MainExeStage
     feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpAddr, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
+    feedbackFtq.commitBundle.fetchLength              := RegNext(fallThroughPc, 0.U) // TODO fetchNum
   } else {
     feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
       (aluCalcJumpEn && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpAddr
-    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc // TODO fetchNum
   }
 
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
