@@ -11,4 +11,5 @@ class MainExeBranchInfoBundle extends Bundle {
   val predictJumpAddr           = UInt(Width.Reg.data)
   val fallThroughPredictCorrect = Bool()
   val immPredictCorrect         = Bool()
+  val ftqPredictInfo            = new FtqPredictInfoBundle
 }

@@ -108,12 +108,18 @@ class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
       // dequeuePort.bits.fetchInfo.inst   := decodeInstInfo.inst
 
       val isMatched = decodeRes.isMatched
-      enq.bits.instInfo.isValid := true.B
-      outInstInfo.isCsrWrite    := decodeRes.info.csrWriteEn
-      outInstInfo.exeOp         := decodeRes.info.exeOp
-      outInstInfo.isTlb         := decodeRes.info.isTlb
-      outInstInfo.needRefetch   := decodeRes.info.needRefetch
-      outInstInfo.ftqInfo       := inBits.ftqInfo
+      enq.bits.instInfo.isValid         := true.B
+      outInstInfo.isCsrWrite            := decodeRes.info.csrWriteEn
+      outInstInfo.exeOp                 := decodeRes.info.exeOp
+      outInstInfo.isTlb                 := decodeRes.info.isTlb
+      outInstInfo.needRefetch           := decodeRes.info.needRefetch
+      outInstInfo.ftqInfo.isLastInBlock := inBits.ftqInfo.isLastInBlock
+      outInstInfo.ftqInfo.ftqId         := inBits.ftqInfo.ftqId
+
+      enq.bits.ftqPredictInfo.idxInBlock     := inBits.ftqInfo.idxInBlock
+      enq.bits.ftqPredictInfo.predictBranch  := inBits.ftqInfo.predictBranch
+      enq.bits.ftqPredictInfo.isPredictValid := inBits.ftqInfo.isPredictValid
+
       outInstInfo.ftqCommitInfo.branchType.foreach(_ := decodeRes.info.branchType)
       outInstInfo.ftqCommitInfo.isBranch.foreach(_ := decodeRes.info.isBranch)
 

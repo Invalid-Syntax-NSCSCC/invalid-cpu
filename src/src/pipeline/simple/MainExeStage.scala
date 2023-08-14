@@ -458,14 +458,15 @@ class MainExeStage
   branchSetPort    := DontCare
   branchSetPort.en := false.B
 
-  val feedbackFtq   = io.peer.get.feedbackFtq
-  val aluCalcJumpEn = alu.io.result.jumpEn
-  val inFtqInfo     = selectedIn.instInfo.ftqInfo
+  val feedbackFtq      = io.peer.get.feedbackFtq
+  val aluCalcJumpEn    = alu.io.result.jumpEn
+  val inFtqInfo        = selectedIn.instInfo.ftqInfo
+  val inFtqPredictInfo = selectedIn.branchInfo.ftqPredictInfo
 
   val ftqQueryPc = selectedIn.branchInfo.predictJumpAddr
 
   // mis predict
-  val branchDirectionMispredict = aluCalcJumpEn ^ inFtqInfo.predictBranch
+  val branchDirectionMispredict = aluCalcJumpEn ^ inFtqPredictInfo.predictBranch
   // val jumpAddr = Mux(
   //   selectedIn.instInfo.exeOp === OpBundle.jirl,
   //   selectedIn.leftOperand ,
@@ -473,7 +474,7 @@ class MainExeStage
   // )
   val branchTargetMispredict = (
     aluCalcJumpEn &&
-      inFtqInfo.predictBranch &&
+      inFtqPredictInfo.predictBranch &&
       Mux(
         selectedIn.instInfo.exeOp === OpBundle.jirl,
         selectedIn.leftOperand =/= selectedIn.branchInfo.predictSubImm,
@@ -481,7 +482,7 @@ class MainExeStage
       )
   ) || (
     !aluCalcJumpEn &&
-      !inFtqInfo.predictBranch &&
+      !inFtqPredictInfo.predictBranch &&
       inFtqInfo.isLastInBlock &&
       !selectedIn.branchInfo.fallThroughPredictCorrect
   )
@@ -524,32 +525,32 @@ class MainExeStage
 
   feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking && outValid
   feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
-    aluCalcJumpEn && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst
+    aluCalcJumpEn && !inFtqPredictInfo.isPredictValid && !isBlocking && isBranchInst
   feedbackFtq.fixGhrBundle.exeFixIsTaken   := aluCalcJumpEn
   feedbackFtq.fixGhrBundle.exeFixJumpError := isRedirect && !isBlocking
 
   if (Param.exeFeedBackFtqDelay) {
 
     feedbackFtq.commitBundle.ftqMetaUpdateValid := (RegNext(isBranchInst, false.B) ||
-      (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
+      (RegNext(!isBranchInst, false.B) && RegNext(inFtqPredictInfo.predictBranch, false.B))) && RegNext(
       !isBlocking,
       false.B
     ) && RegNext(outValid)
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
       (RegNext(aluCalcJumpEn, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
-      (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
+      (RegNext(!isBranchInst, false.B) && RegNext(inFtqPredictInfo.predictBranch, false.B))
     feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpAddr, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
-    feedbackFtq.commitBundle.fetchLength := RegNext(selectedIn.instInfo.ftqInfo.idxInBlock +& 1.U, 0.U) // TODO fetchNum
+    feedbackFtq.commitBundle.fetchLength := RegNext(inFtqPredictInfo.idxInBlock +& 1.U, 0.U) // TODO fetchNum
   } else {
-    feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqInfo.predictBranch)) && !branchBlockingReg
+    feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqPredictInfo.predictBranch)) && !branchBlockingReg
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
-      (aluCalcJumpEn && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqInfo.predictBranch)
+      (aluCalcJumpEn && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqPredictInfo.predictBranch)
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpAddr
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc // TODO fetchNum
-    feedbackFtq.commitBundle.fetchLength              := selectedIn.instInfo.ftqInfo.idxInBlock +& 1.U
+    feedbackFtq.commitBundle.fetchLength              := inFtqPredictInfo.idxInBlock +& 1.U
   }
 
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
@@ -559,7 +560,7 @@ class MainExeStage
   out.commitFtqPort.ftqId                          := selectedIn.instInfo.ftqInfo.ftqId
   out.commitFtqPort.branchTakenMeta.isTaken        := aluCalcJumpEn
   out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType
-  out.commitFtqPort.branchTakenMeta.predictedTaken := selectedIn.instInfo.ftqInfo.predictBranch
+  out.commitFtqPort.branchTakenMeta.predictedTaken := inFtqPredictInfo.predictBranch
 
   val isErtn = selectedIn.instInfo.exeOp === OpBundle.ertn
   val isIdle = selectedIn.instInfo.exeOp === OpBundle.idle

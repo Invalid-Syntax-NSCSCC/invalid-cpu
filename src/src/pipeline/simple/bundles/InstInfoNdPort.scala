@@ -24,7 +24,7 @@ class InstInfoNdPort extends Bundle {
   val store         = if (isDiffTest) Some(new DifftestStoreNdPort) else None
   val tlbFill       = if (isDiffTest) Some(new DifftestTlbFillNdPort) else None
   val timerInfo     = if (isDiffTest) Some(new DifftestTimerNdPort) else None
-  val ftqInfo       = new FtqInfoBundle
+  val ftqInfo       = new FtqStoreInfoBundle
   val ftqCommitInfo = new CommitFtqInfoBundle
 
   val isTlb = Bool()

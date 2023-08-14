@@ -8,9 +8,10 @@ import spec._
 import utils.MultiMux1
 
 class RegReadNdPort extends Bundle {
-  val instInfo = new InstInfoNdPort
-  val pc       = UInt(Width.Reg.data)
-  val decode   = new DecodeOutNdPort
+  val instInfo       = new InstInfoNdPort
+  val pc             = UInt(Width.Reg.data)
+  val ftqPredictInfo = new FtqPredictInfoBundle
+  val decode         = new DecodeOutNdPort
 }
 
 class IssueQueue(

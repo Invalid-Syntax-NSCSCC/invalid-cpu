@@ -7,6 +7,18 @@ import pipeline.simple.{ExeNdPort, MainExeNdPort}
 import pipeline.simple.bundles.{RegOccupyNdPort, RegReadPort, RegWakeUpNdPort}
 import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
 import spec._
+import pipeline.simple.decode.bundles.DecodeOutNdPort
+import pipeline.simple.bundles.InstInfoNdPort
+
+class FetchInstDecodeNdPort extends Bundle {
+  val decode   = new DecodeOutNdPort
+  val instInfo = new InstInfoNdPort
+  // val fetchInfo = new PcInstBundle
+}
+
+object FetchInstDecodeNdPort {
+  def default = 0.U.asTypeOf(new FetchInstDecodeNdPort)
+}
 
 abstract class BaseIssueQueue(
   issueNum:    Int = Param.issueInstInfoMaxNum,
