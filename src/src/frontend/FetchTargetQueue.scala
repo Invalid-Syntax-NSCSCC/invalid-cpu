@@ -251,7 +251,7 @@ class FetchTargetQueue(
   io.ftqRasPort.valid         := io.commitFtqTrainPort.isTrainValid
   io.ftqRasPort.bits.isPush   := io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.call
   io.ftqRasPort.bits.isPop    := io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.ret
-  io.ftqRasPort.bits.callAddr := ftqVecReg(commitFtqId).startPc + ftqBranchMetaRegs(commitFtqId).fetchLength * 4
+  io.ftqRasPort.bits.callAddr := ftqVecReg(commitFtqId).startPc + ftqBranchMetaRegs(commitFtqId).fetchLength << 2
   io.ftqRasPort.bits.predictError :=
     ftqBranchMetaRegs(
       commitFtqId
@@ -326,7 +326,7 @@ class FetchTargetQueue(
 //        (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken),
 //      false.B
 //    )
-    io.ftqRasPort.bits.callAddr := ftqVecReg(commitFtqId).startPc + io.exeFtqPort.feedBack.commitBundle.fetchLength * 4
+    io.ftqRasPort.bits.callAddr := ftqVecReg(commitFtqId).startPc + io.exeFtqPort.feedBack.commitBundle.fetchLength << 2
     io.ftqRasPort.bits.predictError :=
       io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty ||
         (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
