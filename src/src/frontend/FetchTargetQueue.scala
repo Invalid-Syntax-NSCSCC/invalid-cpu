@@ -242,13 +242,16 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
 
   // commit to ras
-  io.ftqRasPort.valid         := io.commitFtqTrainPort.isTrainValid
-  io.ftqRasPort.bits.isPush   := io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.call
-  io.ftqRasPort.bits.isPop    := io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.ret
-  io.ftqRasPort.bits.callAddr := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
-  io.ftqRasPort.bits.predictError := ftqBranchMetaRegs(
-    commitFtqId
-  ).ftbDirty || (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
+  io.ftqRasPort.valid         := RegNext(io.commitFtqTrainPort.isTrainValid, false.B)
+  io.ftqRasPort.bits.isPush   := RegNext(io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.call, false.B)
+  io.ftqRasPort.bits.isPop    := RegNext(io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.ret, false.B)
+  io.ftqRasPort.bits.callAddr := RegNext(ftqBranchMetaRegs(commitFtqId).fallThroughAddr, 0.U)
+  io.ftqRasPort.bits.predictError := RegNext(
+    ftqBranchMetaRegs(
+      commitFtqId
+    ).ftbDirty || (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken),
+    false.B
+  )
 //  }
 
   // Bpu meta ram
@@ -314,9 +317,12 @@ class FetchTargetQueue(
     io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateJumpTarget
     io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
 
-    io.ftqRasPort.bits.callAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
-    io.ftqRasPort.bits.predictError := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty ||
-      (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
+    io.ftqRasPort.bits.callAddr := RegNext(io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough, 0.U)
+    io.ftqRasPort.bits.predictError := RegNext(
+      io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty ||
+        (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken),
+      false.B
+    )
   }
 
 }
