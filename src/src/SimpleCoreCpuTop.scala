@@ -1,3 +1,5 @@
+import pipeline.simple.id.Unit3IssueQueue
+import pipeline.simple.id.OoOIssueQueue
 import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
@@ -117,9 +119,9 @@ class SimpleCoreCpuTop extends Module {
   // val issueStage      = Module(new IssueStage)
   val decodeStage = Module(new DecodeStage)
   val issueQueue: BaseIssueQueue = Module(
-    if (Param.isUse3Unit) new Unit3IssueQueue
-    else if (Param.isOutOfOrderIssue) new OoOIssueQueue
-    else new IssueQueue
+    if (Param.isUse3Unit) new CompressUnit3IssueQueue
+    // else if (Param.isOutOfOrderIssue) new OoOIssueQueue
+    else new CompressIssueQueue
   )
   val regMatchTable   = Module(new RegMatchTable)
   val mainExeStage    = Module(new MainExeStage)
