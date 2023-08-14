@@ -310,8 +310,9 @@ class FetchTargetQueue(
     ).jumpTargetAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateJumpTarget
     ftqBranchMetaRegs(
       ftqUpdateMetaId
-    ).fetchLength                               := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
-    ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
+    ).fetchLength                                  := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
+    ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty    := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
+    ftqBranchMetaRegs(ftqUpdateMetaId).fetchLength := io.exeFtqPort.feedBack.commitBundle.fetchLength
   }
 
   if (Param.isNoPrivilege) {
