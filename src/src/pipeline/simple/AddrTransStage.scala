@@ -11,7 +11,7 @@ import memory.enums.TlbMemType
 import pipeline.common.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
 import pipeline.common.enums.AddrTransType
 import pipeline.simple.bundles.WbNdPort
-import spec.Param.{Width, _}
+import spec.Param
 import spec.Value.Csr
 import spec._
 
@@ -51,7 +51,7 @@ class AddrTransStage
   val resultOut          = WireDefault(0.U.asTypeOf(Valid(new MemReqNdPort)))
   val out                = resultOut.bits
   resultOutReg := resultOut
-  if (isNoPrivilege) {
+  if (Param.isNoPrivilege) {
     io.in.ready  := io.out.ready
     io.out.valid := io.in.valid
     io.out.bits  := resultOut.bits
@@ -110,7 +110,7 @@ class AddrTransStage
       transMode := AddrTransType.directMapping
     }.otherwise {
       transMode := AddrTransType.pageTableMapping
-      if (isNoPrivilege) {
+      if (Param.isNoPrivilege) {
         transMode := AddrTransType.directMapping
       }
     }
@@ -122,7 +122,7 @@ class AddrTransStage
   // Translate address
   val isCanTlbException = selectedIn.memRequest.isValid || selectedIn.cacheMaintenance.control.isCoherentByHit
   val translatedAddr    = WireDefault(selectedInVirtAddr)
-  if (isDiffTest) {
+  if (Param.isDiffTest) {
     out.wb.instInfo.load.get.paddr := Cat(
       translatedAddr(Width.Mem._addr - 1, 2),
       selectedIn.wb.instInfo.load.get.vaddr(1, 0)
@@ -152,7 +152,7 @@ class AddrTransStage
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
     }
     is(AddrTransType.pageTableMapping) {
-      if (!isNoPrivilege) {
+      if (!Param.isNoPrivilege) {
         translatedAddr               := peer.tlbTrans.physAddr
         out.translatedMemReq.isValid := !peer.tlbTrans.exception.valid && selectedIn.memRequest.isValid
         out.cacheMaintenance.control.isL1Valid := !peer.tlbTrans.exception.valid && selectedIn.cacheMaintenance.control.isL1Valid
@@ -179,15 +179,15 @@ class AddrTransStage
       out.isCached := true.B
     }
   }
-  if (isCacheOnPg) {
+  if (Param.isCacheOnPg) {
     when(peer.csr.crmd.pg === 1.U) {
       out.isCached := true.B
     }
   }
-  if (isForcedCache) {
+  if (Param.isForcedCache) {
     out.isCached := true.B
   }
-  if (isForcedUncached) {
+  if (Param.isForcedUncached) {
     out.isCached := false.B
   }
 
@@ -203,7 +203,7 @@ class AddrTransStage
   when(selectedIn.wb.instInfo.isTlb && io.in.valid && io.in.ready) {
     exceptionBlockingReg := true.B
   }
-  if (isNoPrivilege) {
+  if (Param.isNoPrivilege) {
     peer.tlbMaintenance := DontCare
   }
 
