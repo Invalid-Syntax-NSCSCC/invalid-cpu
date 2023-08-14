@@ -495,7 +495,7 @@ class MainExeStage
   }
 
   val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && isBranchInst
-  when(isRedirect) {
+  when(isRedirect && outValid) {
     branchBlockingReg                     := true.B
     out.wb.instInfo.ftqInfo.isLastInBlock := true.B
   }
