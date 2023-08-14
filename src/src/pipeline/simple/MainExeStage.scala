@@ -88,7 +88,7 @@ class MainExeStage
   val peer = io.peer.get
 
   val commitFtqInfo = out.commitFtqPort
-  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none || !(io.in.ready && io.in.valid)) {
     commitFtqInfo.isTrainValid := false.B
   }
 
@@ -522,7 +522,7 @@ class MainExeStage
     fallThroughPc
   )
 
-  feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking
+  feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking && io.in.ready && io.in.valid
   feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
     aluCalcJumpEn && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst
   feedbackFtq.fixGhrBundle.exeFixIsTaken   := aluCalcJumpEn
@@ -534,7 +534,7 @@ class MainExeStage
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
       !isBlocking,
       false.B
-    )
+    ) && RegNext(io.in.ready && io.in.valid)
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
       (RegNext(aluCalcJumpEn, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
@@ -553,8 +553,8 @@ class MainExeStage
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
   out.wb.instInfo.ftqCommitInfo.isRedirect := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
-  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg
-  out.commitFtqPort.ftqId        := selectedIn.instInfo.ftqInfo.ftqId
+  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg && io.in.ready && io.in.valid
+  out.commitFtqPort.ftqId                          := selectedIn.instInfo.ftqInfo.ftqId
   out.commitFtqPort.branchTakenMeta.isTaken        := aluCalcJumpEn
   out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType
   out.commitFtqPort.branchTakenMeta.predictedTaken := selectedIn.instInfo.ftqInfo.predictBranch
