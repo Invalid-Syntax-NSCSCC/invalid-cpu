@@ -67,8 +67,10 @@ class RAS(
   }
   // Output
   if (Param.isOverideRas) {
-    io.topAddr := Mux(io.predictError, lutram(readIndex), predictLutram(predictReadIndex))
+//    io.topAddr := Mux(io.predictError, lutram(readIndex), predictLutram(predictReadIndex))
+    io.topAddr := predictLutram(predictReadIndex)
   } else {
     io.topAddr := lutram(predictReadIndex)
   }
+
 }
