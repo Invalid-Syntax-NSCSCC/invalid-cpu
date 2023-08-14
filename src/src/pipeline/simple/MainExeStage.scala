@@ -17,6 +17,7 @@ import spec.ExeInst.OpBundle
 import spec._
 
 import scala.collection.immutable
+import common.NoSavedInBaseStage
 
 class ExeNdPort extends Bundle {
   // Operands
@@ -74,7 +75,7 @@ class ExePeerPort extends Bundle {
 }
 
 class MainExeStage
-    extends BaseStage(
+    extends NoSavedInBaseStage(
       new MainExeNdPort,
       new AddrTransNdPort,
       MainExeNdPort.default,
@@ -87,7 +88,7 @@ class MainExeStage
   val peer = io.peer.get
 
   val commitFtqInfo = out.commitFtqPort
-  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none || !outValid) {
     commitFtqInfo.isTrainValid := false.B
   }
 
@@ -98,6 +99,8 @@ class MainExeStage
   // ALU module
   val alu = Module(new Alu(onlySupportBranch = Param.isUse3Unit))
 
+  val isComputed = Wire(Bool())
+  val selectedIn = io.in.bits
   isComputed                      := (if (Param.isUse3Unit) true.B else alu.io.outputValid)
   out                             := DontCare
   out.cacheMaintenance.control    := CacheMaintenanceControlNdPort.default
@@ -110,7 +113,8 @@ class MainExeStage
   out.wb.instInfo                 := selectedIn.instInfo
   out.wb.gprWrite.en              := selectedIn.gprWritePort.en
   out.wb.gprWrite.addr            := selectedIn.gprWritePort.addr
-  outValid                        := isComputed && selectedIn.instInfo.isValid
+  outValid                        := inReady && isComputed && selectedIn.instInfo.isValid && io.in.valid
+  io.in.ready                     := inReady && isComputed
 
   // memory
 
@@ -424,12 +428,12 @@ class MainExeStage
     switch(selectedIn.instInfo.exeOp.subOp) {
       is(OpBundle.csrrd.subOp) {}
       is(OpBundle.csrwr.subOp) {
-        io.peer.get.csrWriteStorePort.valid   := true.B
+        io.peer.get.csrWriteStorePort.valid   := outValid
         io.peer.get.csrWriteStorePort.bits.en := true.B
         csrWriteStorePort.bits.data           := selectedIn.leftOperand
       }
       is(OpBundle.csrxchg.subOp) {
-        io.peer.get.csrWriteStorePort.valid   := true.B
+        io.peer.get.csrWriteStorePort.valid   := outValid
         io.peer.get.csrWriteStorePort.bits.en := true.B
         // lop: write value  rop: mask
         val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
@@ -491,7 +495,7 @@ class MainExeStage
   }
 
   val isRedirect = (branchDirectionMispredict || branchTargetMispredict) && isBranchInst
-  when(isRedirect) {
+  when(isRedirect && outValid) {
     branchBlockingReg                     := true.B
     out.wb.instInfo.ftqInfo.isLastInBlock := true.B
   }
@@ -503,7 +507,7 @@ class MainExeStage
 
   val isBlocking = branchBlockingReg || isDbarBlockingReg
 
-  branchSetPort.en    := isRedirect && !isBlocking
+  branchSetPort.en    := isRedirect && !isBlocking && outValid
   branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
 
   val jumpAddr = Mux(
@@ -518,7 +522,7 @@ class MainExeStage
     fallThroughPc
   )
 
-  feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking
+  feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking && outValid
   feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
     aluCalcJumpEn && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst
   feedbackFtq.fixGhrBundle.exeFixIsTaken   := aluCalcJumpEn
@@ -530,7 +534,7 @@ class MainExeStage
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
       !isBlocking,
       false.B
-    )
+    ) && RegNext(outValid)
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
       (RegNext(aluCalcJumpEn, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
@@ -549,8 +553,8 @@ class MainExeStage
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
   out.wb.instInfo.ftqCommitInfo.isRedirect := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
-  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg
-  out.commitFtqPort.ftqId        := selectedIn.instInfo.ftqInfo.ftqId
+  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg && outValid
+  out.commitFtqPort.ftqId                          := selectedIn.instInfo.ftqInfo.ftqId
   out.commitFtqPort.branchTakenMeta.isTaken        := aluCalcJumpEn
   out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType
   out.commitFtqPort.branchTakenMeta.predictedTaken := selectedIn.instInfo.ftqInfo.predictBranch
