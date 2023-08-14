@@ -1,14 +1,11 @@
 package pipeline.simple
 
-import pipeline.simple.bundles.RegMatchBundle
 import chisel3._
 import chisel3.util._
-import spec._
 import pipeline.common.enums.RegDataState
-import pipeline.simple.bundles.RegOccupyNdPort
-import pipeline.simple.bundles.RegReadPort
+import pipeline.simple.bundles.{RegMatchBundle, RegOccupyNdPort, RegReadPort, RegWakeUpNdPort}
+import spec._
 import utils.MultiMux1
-import pipeline.simple.bundles.RegWakeUpNdPort
 
 class RegMatchTable(
   issueNum:    Int = Param.issueInstInfoMaxNum,

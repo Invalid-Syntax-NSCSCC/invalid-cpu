@@ -3,8 +3,8 @@ package pipeline.complex.dispatch
 import chisel3._
 import chisel3.experimental.BundleLiterals._
 import chisel3.util._
-import pipeline.complex.bundles.InstInfoNdPort
 import pipeline.common.enums.RobDistributeSel
+import pipeline.complex.bundles.InstInfoNdPort
 import pipeline.complex.dispatch.bundles._
 import pipeline.complex.dispatch.rs._
 import pipeline.complex.queue._

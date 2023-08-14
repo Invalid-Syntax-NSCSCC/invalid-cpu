@@ -2,10 +2,9 @@ package pipeline.simple.execution
 
 import chisel3._
 import chisel3.util._
-import spec._
+import execution.{Div, Mul}
 import spec.ExeInst.OpBundle
-import execution.Mul
-import execution.Div
+import spec._
 
 class Alu(onlySupportBranch: Boolean = false) extends Module {
   val io = IO(new Bundle {

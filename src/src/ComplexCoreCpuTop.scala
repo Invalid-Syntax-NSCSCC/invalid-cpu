@@ -1,21 +1,20 @@
-import pipeline.complex.dispatch.DispatchStage
+import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
 import common.RegFile
 import control.{Csr, CsrScoreboard, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
+import pipeline.complex.Cu
 import pipeline.complex.commit.CommitStage
 import pipeline.complex.dispatch._
 import pipeline.complex.execution._
 import pipeline.complex.memory._
+import pipeline.complex.pmu.Pmu
 import pipeline.complex.queue._
 import pipeline.complex.rob._
-import pipeline.complex.pmu.Pmu
-import pipeline.complex.Cu
 import spec.Param
 import spec.Param.{isDiffTest, isNoPrivilege}
-import axi.Axi3x1Crossbar
 
 class ComplexCoreCpuTop extends Module {
   val io = IO(new Bundle {

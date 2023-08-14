@@ -2,14 +2,11 @@ package pipeline.simple.id
 
 import chisel3._
 import chisel3.util._
-import spec._
-import pipeline.simple.MainExeNdPort
-import pipeline.simple.ExeNdPort
 import frontend.bundles.QueryPcBundle
-import pipeline.simple.bundles.RegReadPort
-import pipeline.simple.bundles.RegOccupyNdPort
-import pipeline.simple.bundles.RegWakeUpNdPort
+import pipeline.simple.{ExeNdPort, MainExeNdPort}
+import pipeline.simple.bundles.{RegOccupyNdPort, RegReadPort, RegWakeUpNdPort}
 import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
+import spec._
 
 abstract class BaseIssueQueue(
   issueNum:    Int = Param.issueInstInfoMaxNum,

@@ -5,7 +5,7 @@ import chisel3.util._
 import frontend.bpu.bundles._
 import frontend.bpu.components.Bundles.{FtbEntryNdPort, TageMetaPort}
 import frontend.bpu.components.FTB
-import frontend.bundles.{BpuFtqPort, FtqBlockBundle, GhrUpdateSignalBundle}
+import frontend.bundles.{BpuFtqPort, FtqBlockBundle}
 import spec.Param.BPU.{BranchType, GhrFixType}
 import spec._
 
@@ -174,7 +174,7 @@ class BPU(
   // 3. A FTB pollution is detected
   //     dirty case 1: target error || fallThroughAddr error;
   //                2:At the same addr, original branch inst become nonBranch inst  after  cacop or change program
-  val ftbUpdateValid = if (Param.isFTBupdateRet) {
+  val ftbUpdateValid = if (Param.isFtbUpdateRet) {
     WireDefault(
       io.bpuFtqPort.ftqBpuTrainMeta.valid &&
         (((directionPredictError || io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === BranchType.call || io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqBpuTrainMeta.ftbHit))

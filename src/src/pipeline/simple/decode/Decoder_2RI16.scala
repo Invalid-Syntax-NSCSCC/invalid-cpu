@@ -3,10 +3,10 @@ package pipeline.simple.decode
 import chisel3._
 import chisel3.util._
 import pipeline.simple.decode.bundles.DecodeOutNdPort
+import spec.ExeInst.OpBundle
 import spec.Inst.{_2RI16 => Inst}
 import spec.Param.BPU.BranchType
 import spec._
-import spec.ExeInst.OpBundle
 
 class Decoder_2RI16 extends BaseDecoder {
   io.out := DecodeOutNdPort.default

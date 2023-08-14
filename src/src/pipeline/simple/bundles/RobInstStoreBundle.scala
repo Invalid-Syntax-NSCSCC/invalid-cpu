@@ -1,9 +1,8 @@
 package pipeline.simple.bundles
 
 import chisel3._
-import pipeline.common.enums.RobInstState
-import pipeline.simple.bundles.WbNdPort
 import pipeline.common.bundles.PcInstBundle
+import pipeline.common.enums.RobInstState
 
 class RobInstStoreBundle extends Bundle {
   val state     = RobInstState()

@@ -5,9 +5,8 @@ import chisel3.util._
 import common.DistributedQueue
 import common.bundles.BackendRedirectPcNdPort
 import control.enums.ExceptionPos
-import pipeline.common.bundles.{FetchInstInfoBundle, InstQueueEnqNdPort, PcInstBundle}
-import pipeline.simple.bundles.InstInfoNdPort
-import pipeline.simple.bundles.RobRequestPort
+import pipeline.common.bundles.{FetchInstInfoBundle, InstQueueEnqNdPort}
+import pipeline.simple.bundles.{InstInfoNdPort, RobRequestPort}
 import pipeline.simple.decode._
 import pipeline.simple.decode.bundles._
 import spec._

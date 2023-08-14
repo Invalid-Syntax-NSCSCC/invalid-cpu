@@ -3,9 +3,8 @@ package pipeline.simple.decode
 import chisel3._
 import chisel3.util._
 import pipeline.simple.decode.bundles.DecodeOutNdPort
-import spec.Inst.{_3R => Inst}
-import spec._
 import spec.ExeInst.OpBundle
+import spec.Inst.{_3R => Inst}
 
 class Decoder_3R extends BaseDecoder {
   io.out := DecodeOutNdPort.default

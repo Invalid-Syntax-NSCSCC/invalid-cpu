@@ -4,6 +4,7 @@ import chisel3._
 import pipeline.simple.bundles._
 import pipeline.simple.id.rs.ReservationStation
 import spec._
+import pipeline.simple.id.rs.IoReservationStation
 
 // class RegReadNdPort extends Bundle {
 //   val instInfo = new InstInfoNdPort
@@ -11,7 +12,7 @@ import spec._
 //   val decode   = new DecodeOutNdPort
 // }
 
-class OoOIssueQueue(
+class CompressIssueQueue(
   issueNum:    Int = Param.issueInstInfoMaxNum,
   pipelineNum: Int = Param.pipelineNum)
     extends BaseIssueQueue(issueNum, pipelineNum) {
@@ -21,12 +22,12 @@ class OoOIssueQueue(
   private val rsLength = 4
 
   val mainRS = Module(
-    new ReservationStation(rsLength, new MainRSBundle, 0.U.asTypeOf(new MainRSBundle), hasInOrder = true)
+    new IoReservationStation(rsLength, new MainRSBundle, 0.U.asTypeOf(new MainRSBundle))
   )
 
   val simpleRSs = Seq.fill(pipelineNum - 1)(
     Module(
-      new ReservationStation(rsLength, new RSBundle, 0.U.asTypeOf(new RSBundle), hasInOrder = false)
+      new IoReservationStation(rsLength, new RSBundle, 0.U.asTypeOf(new RSBundle))
     )
   )
 

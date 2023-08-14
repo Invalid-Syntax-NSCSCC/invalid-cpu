@@ -1,11 +1,10 @@
 package pipeline.simple.id
 
-import spec._
-import chisel3.util._
 import chisel3._
-import pipeline.common.bundles.InstQueueEnqNdPort
-import pipeline.common.bundles.FetchInstInfoBundle
+import chisel3.util._
 import common.DistributedQueue
+import pipeline.common.bundles.{FetchInstInfoBundle, InstQueueEnqNdPort}
+import spec._
 
 class SimpleInstQueue(
   queueLength: Int = Param.instQueueLength,

@@ -6,11 +6,10 @@ import pipeline.simple.bundles.{RSBundle, RegWakeUpNdPort}
 import spec._
 import utils._
 
-class ReservationStation[T <: RSBundle](
+class IoReservationStation[T <: RSBundle](
   queueLength: Int,
   rsFactory:   => T,
-  rsBlankElem: => T,
-  hasInOrder:  Boolean = true)
+  rsBlankElem: => T)
     extends Module {
 
   val wakeUpNum = Param.pipelineNum + 1
@@ -71,41 +70,23 @@ class ReservationStation[T <: RSBundle](
   }
 
   val in = io.enqueuePort
-  in.ready := ptr < queueLength.U
+  in.ready := ptr =/= queueLength.U
 
-  val enableToDequeues = WireDefault(VecInit(Seq.fill(queueLength)(false.B)))
-  enableToDequeues.lazyZip(ramFillRes).lazyZip(ramValids).zipWithIndex.foreach {
-    case ((en, elem, elemValid), idx) =>
-      en := elemValid && elem.regReadResults
-        .forall(
-          _.valid === true.B
-        )
-      if (idx != 0 && hasInOrder) {
-        when(elem.decodePort.decode.info.forbidOutOfOrder) {
-          en := false.B
-        }
-      }
-    // 备选 ipc++ 但延迟++
-    // when(
-    //   elem.regReadPort.preExeInstInfo.forbidOutOfOrder &&
-    //     ramFillRes.take(idx).map(_.regReadPort.preExeInstInfo.forbidOutOfOrder).foldLeft(false.B)(_ || _)
-    // ) {
-    //   en := false.B
-    // }
-  }
-
-  io.dequeuePort.valid := enableToDequeues.reduceTree(_ || _)
-
-  // // assert deq num = 1
-  val selectedIndex = PriorityEncoder(enableToDequeues)
-
-  io.dequeuePort.bits := ramFillRes(selectedIndex)
+  io.dequeuePort.valid := ramValids.head && ramFillRes.head.regReadResults.forall(_.valid === true.B)
+  io.dequeuePort.bits  := ramFillRes.head
+  // enableToDequeues.lazyZip(ramFillRes).lazyZip(ramValids).zipWithIndex.foreach {
+  //   case ((en, elem, elemValid), idx) =>
+  //     en := elemValid && elem.regReadResults
+  //       .forall(
+  //         _.valid === true.B
+  //       )
+  // }
 
   ram.zip(ramFillRes).zipWithIndex.foreach {
     case ((dst, src), idx) =>
       dst := src
       if (idx != queueLength - 1) {
-        when(deqEn && idx.U >= selectedIndex) {
+        when(deqEn) {
           dst := ramFillRes(idx + 1)
         }
       }
