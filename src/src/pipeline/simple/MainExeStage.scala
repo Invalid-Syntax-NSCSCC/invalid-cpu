@@ -88,7 +88,7 @@ class MainExeStage
   val peer = io.peer.get
 
   val commitFtqInfo = out.commitFtqPort
-  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none || !(io.in.ready && io.in.valid)) {
+  when(out.wb.instInfo.exceptionPos =/= ExceptionPos.none || !outValid) {
     commitFtqInfo.isTrainValid := false.B
   }
 
@@ -113,7 +113,7 @@ class MainExeStage
   out.wb.instInfo                 := selectedIn.instInfo
   out.wb.gprWrite.en              := selectedIn.gprWritePort.en
   out.wb.gprWrite.addr            := selectedIn.gprWritePort.addr
-  outValid                        := inReady && isComputed && selectedIn.instInfo.isValid
+  outValid                        := inReady && isComputed && selectedIn.instInfo.isValid && io.in.valid
   io.in.ready                     := inReady && isComputed
 
   // memory
@@ -428,12 +428,12 @@ class MainExeStage
     switch(selectedIn.instInfo.exeOp.subOp) {
       is(OpBundle.csrrd.subOp) {}
       is(OpBundle.csrwr.subOp) {
-        io.peer.get.csrWriteStorePort.valid   := true.B
+        io.peer.get.csrWriteStorePort.valid   := outValid
         io.peer.get.csrWriteStorePort.bits.en := true.B
         csrWriteStorePort.bits.data           := selectedIn.leftOperand
       }
       is(OpBundle.csrxchg.subOp) {
-        io.peer.get.csrWriteStorePort.valid   := true.B
+        io.peer.get.csrWriteStorePort.valid   := outValid
         io.peer.get.csrWriteStorePort.bits.en := true.B
         // lop: write value  rop: mask
         val gprWriteDataVec = Wire(Vec(wordLength, Bool()))
@@ -507,7 +507,7 @@ class MainExeStage
 
   val isBlocking = branchBlockingReg || isDbarBlockingReg
 
-  branchSetPort.en    := isRedirect && !isBlocking
+  branchSetPort.en    := isRedirect && !isBlocking && outValid
   branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
 
   val jumpAddr = Mux(
@@ -522,7 +522,7 @@ class MainExeStage
     fallThroughPc
   )
 
-  feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking && io.in.ready && io.in.valid
+  feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking && outValid
   feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
     aluCalcJumpEn && !inFtqInfo.isPredictValid && !isBlocking && isBranchInst
   feedbackFtq.fixGhrBundle.exeFixIsTaken   := aluCalcJumpEn
@@ -534,7 +534,7 @@ class MainExeStage
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))) && RegNext(
       !isBlocking,
       false.B
-    ) && RegNext(io.in.ready && io.in.valid)
+    ) && RegNext(outValid)
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := RegNext(branchTargetMispredict, false.B) ||
       (RegNext(aluCalcJumpEn, false.B) && !RegNext(inFtqInfo.isLastInBlock, false.B)) ||
       (RegNext(!isBranchInst, false.B) && RegNext(inFtqInfo.predictBranch, false.B))
@@ -553,7 +553,7 @@ class MainExeStage
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
   out.wb.instInfo.ftqCommitInfo.isRedirect := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
-  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg && io.in.ready && io.in.valid
+  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg && outValid
   out.commitFtqPort.ftqId                          := selectedIn.instInfo.ftqInfo.ftqId
   out.commitFtqPort.branchTakenMeta.isTaken        := aluCalcJumpEn
   out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType
