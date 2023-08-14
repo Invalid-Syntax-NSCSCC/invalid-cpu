@@ -1,6 +1,6 @@
 package frontend.bpu.bundles
 import chisel3._
-import frontend.bpu.components.Bundles.{TageGhrInfo, TageMetaPort}
+import frontend.bpu.components.Bundles.TageMetaPort
 
 class TagePredictorUpdateInfoPort extends Bundle {
   val valid          = Bool()

@@ -2,20 +2,20 @@ package pipeline.simple
 
 import chisel3._
 import chisel3.util._
+import common.NoSavedInBaseStage
 import common.enums.ReadWriteSel
-import common.{BaseStage, NoSavedInBaseStage}
 import control.enums.ExceptionPos
+import frontend.bundles.CommitFtqTrainNdPort
 import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
 import pipeline.common.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
 import pipeline.common.enums.AddrTransType
 import pipeline.simple.bundles.WbNdPort
-import spec.Param.{isCacheOnPg, isDiffTest, isForcedCache, isForcedUncached, isNoPrivilege}
+import spec.Param.{Width, _}
 import spec.Value.Csr
 import spec._
 
 import scala.collection.immutable
-import frontend.bundles.CommitFtqTrainNdPort
 
 class AddrTransNdPort extends Bundle {
   val isAtomicStore    = Bool()

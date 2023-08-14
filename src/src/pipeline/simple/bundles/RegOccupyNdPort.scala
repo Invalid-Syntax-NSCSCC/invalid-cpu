@@ -1,8 +1,7 @@
 package pipeline.simple.bundles
 
 import chisel3._
-import spec.Width
-import spec.Param
+import spec.{Param, Width}
 
 class RegOccupyNdPort extends Bundle {
   val en    = Bool()

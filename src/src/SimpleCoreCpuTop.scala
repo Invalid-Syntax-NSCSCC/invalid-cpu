@@ -1,25 +1,17 @@
-import pipeline.simple.MainExeStage
 import axi.Axi3x1Crossbar
 import axi.bundles.AxiMasterInterface
 import chisel3._
+import chisel3.util.{Decoupled, Queue}
 import common.RegFile
 import control.{Csr, CsrScoreboard, StableCounter}
 import frontend.Frontend
 import memory.{DCache, ICache, Tlb, UncachedAgent}
 import pipeline.simple._
-import pipeline.simple.pmu.Pmu
-import spec.Param
-import spec.Param.{isDiffTest, isNoPrivilege}
-import pipeline.simple.id.SimpleInstQueue
 import pipeline.simple.bundles.RegWakeUpNdPort
-import pipeline.simple.id.DecodeStage
-import pipeline.simple.id.IssueQueue
-import spec.ExeInst
-import chisel3.util.Decoupled
-import chisel3.util.Queue
-import pipeline.simple.id.BaseIssueQueue
-import pipeline.simple.id.OoOIssueQueue
-import pipeline.simple.id.Unit3IssueQueue
+import pipeline.simple.id._
+import pipeline.simple.pmu.Pmu
+import spec.{ExeInst, Param}
+import spec.Param.{isDiffTest, isNoPrivilege}
 
 class SimpleCoreCpuTop extends Module {
   val io = IO(new Bundle {

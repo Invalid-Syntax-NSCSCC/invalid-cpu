@@ -8,8 +8,8 @@ import control.enums.ExceptionPos
 import memory.bundles.{TlbMaintenanceNdPort, TlbTransPort}
 import memory.enums.TlbMemType
 import pipeline.common.bundles.{CacheMaintenanceInstNdPort, MemCsrNdPort, MemRequestNdPort}
-import pipeline.complex.bundles.InstInfoNdPort
 import pipeline.common.enums.AddrTransType
+import pipeline.complex.bundles.InstInfoNdPort
 import spec.Param._
 import spec.Value.Csr
 import spec.{Width, _}

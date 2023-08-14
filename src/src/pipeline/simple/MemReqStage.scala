@@ -3,14 +3,12 @@ package pipeline.simple
 import chisel3._
 import chisel3.util._
 import common.BaseStage
-import common.enums.ReadWriteSel
 import control.enums.ExceptionPos
 import memory.bundles.{CacheMaintenanceControlNdPort, CacheMaintenanceHandshakePort, MemRequestHandshakePort}
 import pipeline.common.bundles.{CacheMaintenanceInstNdPort, MemRequestNdPort}
 import pipeline.common.enums.CacheMaintenanceTargetType
 import pipeline.simple.bundles.WbNdPort
-import pipeline.complex.pmu.bundles.PmuStoreQueueNdPort
-import spec.Param.{isFullUncachedPatch, isMmioDelay}
+import spec.Param.isFullUncachedPatch
 import spec._
 
 class MemReqNdPort extends Bundle {

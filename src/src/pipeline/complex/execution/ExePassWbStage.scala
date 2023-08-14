@@ -7,7 +7,6 @@ import common.bundles._
 import control.bundles.{CsrReadPort, CsrWriteNdPort, StableCounterReadPort}
 import control.csrBundles.{EraBundle, LlbctlBundle}
 import control.enums.ExceptionPos
-import pipeline.complex.execution.Alu
 import frontend.bundles.ExeFtqPort
 import pipeline.common.bundles.RobQueryPcPort
 import pipeline.complex.bundles.InstInfoNdPort

@@ -2,14 +2,11 @@ package pipeline.simple.id
 
 import chisel3._
 import chisel3.util._
-import spec._
-import pipeline.common.bundles.FetchInstInfoBundle
-import pipeline.simple.bundles.RobRequestPort
-import common.MultiQueue
 import common.DistributedQueue
-import pipeline.simple.bundles.InstInfoNdPort
 import control.enums.ExceptionPos
-import common.bundles.RfAccessInfoNdPort
+import pipeline.common.bundles.FetchInstInfoBundle
+import pipeline.simple.bundles.{InstInfoNdPort, RobRequestPort}
+import spec._
 
 class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
   val io = IO(new Bundle {

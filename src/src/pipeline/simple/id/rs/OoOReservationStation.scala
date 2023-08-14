@@ -2,12 +2,9 @@ package pipeline.simple.id.rs
 
 import chisel3._
 import chisel3.util._
-import pipeline.common.enums.RobDistributeSel
-import pipeline.complex.dispatch.bundles.ReservationStationBundle
+import pipeline.simple.bundles.{RSBundle, RegWakeUpNdPort}
 import spec._
 import utils._
-import pipeline.simple.bundles.RegWakeUpNdPort
-import pipeline.simple.bundles.RSBundle
 
 class ReservationStation[T <: RSBundle](
   queueLength: Int,

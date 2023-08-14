@@ -2,12 +2,10 @@ package pipeline.simple
 
 import chisel3._
 import chisel3.util._
-import spec.ExeInst.OpBundle
 import common.BaseStage
+import pipeline.simple.bundles.{RegWakeUpNdPort, WbNdPort}
 import pipeline.simple.execution.Alu
-import pipeline.simple.ExeNdPort
-import pipeline.simple.bundles.WbNdPort
-import pipeline.simple.bundles.RegWakeUpNdPort
+import spec.ExeInst.OpBundle
 
 class SimpleExeStage
     extends BaseStage(

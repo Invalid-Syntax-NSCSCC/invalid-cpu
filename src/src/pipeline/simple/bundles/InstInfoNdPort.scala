@@ -3,12 +3,10 @@ package pipeline.simple.bundles
 import chisel3._
 import control.bundles._
 import control.enums.ExceptionPos
-import spec.Param.isDiffTest
 import pipeline.common.bundles._
-import pipeline.simple.bundles.CommitFtqInfoBundle
-
-import spec._
 import spec.ExeInst.OpBundle
+import spec.Param.isDiffTest
+import spec._
 
 class InstInfoNdPort extends Bundle {
   val pc              = if (isDiffTest) Some(UInt(Width.Reg.data)) else None

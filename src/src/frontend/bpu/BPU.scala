@@ -5,7 +5,7 @@ import chisel3.util._
 import frontend.bpu.bundles._
 import frontend.bpu.components.Bundles.{FtbEntryNdPort, TageMetaPort}
 import frontend.bpu.components.FTB
-import frontend.bundles.{BpuFtqPort, FtqBlockBundle, GhrUpdateSignalBundle}
+import frontend.bundles.{BpuFtqPort, FtqBlockBundle}
 import spec.Param.BPU.{BranchType, GhrFixType}
 import spec._
 

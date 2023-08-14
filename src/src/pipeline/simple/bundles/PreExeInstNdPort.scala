@@ -2,8 +2,8 @@ package pipeline.simple.bundles
 
 import chisel3._
 import common.bundles.RfAccessInfoNdPort
-import spec._
 import spec.ExeInst.OpBundle
+import spec._
 
 class PreExeInstNdPort(readNum: Int = Param.instRegReadNum) extends Bundle {
   // Micro-instruction for execution stage

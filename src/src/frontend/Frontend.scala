@@ -5,7 +5,7 @@ import chisel3.util._
 import common.Pc
 import common.bundles.BackendRedirectPcNdPort
 import frontend.bpu.BPU
-import frontend.bundles.{CommitFtqTrainNdPort, ExeFtqPort, ICacheAccessPort, QueryPcBundle}
+import frontend.bundles.{CommitFtqTrainNdPort, ExeFtqPort, ICacheAccessPort}
 import memory.bundles.TlbTransPort
 import pipeline.common.bundles.{InstQueueEnqNdPort, MemCsrNdPort}
 import spec._

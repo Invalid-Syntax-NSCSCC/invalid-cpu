@@ -4,9 +4,8 @@ import chisel3._
 import chisel3.util._
 import common.BaseStage
 import memory.bundles.MemResponseNdPort
-import pipeline.simple.bundles.WbNdPort
+import pipeline.simple.bundles.{RegWakeUpNdPort, WbNdPort}
 import spec._
-import pipeline.simple.bundles.RegWakeUpNdPort
 
 class MemResNdPort extends Bundle {
   val isAtomicStore           = Bool()

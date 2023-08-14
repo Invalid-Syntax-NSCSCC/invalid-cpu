@@ -2,16 +2,10 @@ package pipeline.simple.id
 
 import chisel3._
 import chisel3.util._
-import spec._
-import frontend.bundles.QueryPcBundle
-import pipeline.simple.bundles._
-import pipeline.simple.MainExeNdPort
-import pipeline.simple.ExeNdPort
 import common.MultiQueue
-import pipeline.simple.pmu.bundles.PmuDispatchInfoBundle
-import common.bundles.RfAccessInfoNdPort
+import pipeline.simple.bundles._
+import spec._
 import utils.MultiMux1
-import pipeline.simple.decode.bundles.DecodeOutNdPort
 
 // class RegReadNdPort extends Bundle {
 //   val instInfo = new InstInfoNdPort

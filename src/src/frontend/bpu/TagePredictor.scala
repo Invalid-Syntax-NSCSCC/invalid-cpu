@@ -3,7 +3,7 @@ package frontend.bpu
 import chisel3._
 import chisel3.util._
 import chisel3.util.random.LFSR
-import frontend.bpu.bundles.{BpuFtqMetaNdPort, TagePredictorUpdateInfoPort}
+import frontend.bpu.bundles.TagePredictorUpdateInfoPort
 import frontend.bpu.components.Bundles.{TageGhrInfo, TageMetaPort}
 import frontend.bpu.components._
 import spec.Param.BPU.GhrFixType

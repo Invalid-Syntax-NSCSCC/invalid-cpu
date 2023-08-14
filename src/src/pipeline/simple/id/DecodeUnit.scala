@@ -1,12 +1,11 @@
 package pipeline.simple.id
 
 import chisel3._
-import chisel3.util._
 import pipeline.common.bundles.FetchInstInfoBundle
-import pipeline.simple.decode.bundles.DecodeOutNdPort
-import pipeline.simple.decode._
-import utils.MultiMux1
 import pipeline.simple.bundles.PreExeInstNdPort
+import pipeline.simple.decode._
+import pipeline.simple.decode.bundles.DecodeOutNdPort
+import utils.MultiMux1
 
 class DecodeUnit extends Module {
   val io = IO(new Bundle {

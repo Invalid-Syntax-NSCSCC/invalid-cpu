@@ -3,8 +3,8 @@ package pipeline.complex.bundles
 import chisel3._
 import control.bundles._
 import control.enums.ExceptionPos
-import spec.Param.isDiffTest
 import pipeline.common.bundles._
+import spec.Param.isDiffTest
 import spec._
 
 class InstInfoNdPort extends Bundle {

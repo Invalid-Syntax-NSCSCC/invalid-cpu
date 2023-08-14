@@ -2,27 +2,21 @@ package pipeline.simple
 
 import chisel3._
 import chisel3.util._
-import scala.collection.immutable
 import common.BaseStage
 import common.bundles._
+import common.enums.ReadWriteSel
 import control.bundles._
 import control.csrBundles._
-import pipeline.simple.execution.Alu
-import frontend.bundles._
-import pipeline.common.bundles.{CacheMaintenanceInstNdPort, RobQueryPcPort}
-import pipeline.simple.bundles.InstInfoNdPort
-import spec._
-import spec.ExeInst.OpBundle
-import pipeline.common.bundles.MemRequestNdPort
-import memory.bundles.TlbMaintenanceNdPort
-import pipeline.simple.bundles.WbNdPort
-import memory.bundles.CacheMaintenanceControlNdPort
-import common.enums.ReadWriteSel
 import control.enums.ExceptionPos
+import frontend.bundles._
+import memory.bundles.CacheMaintenanceControlNdPort
 import pipeline.common.enums.CacheMaintenanceTargetType
-import pipeline.simple.bundles.RegWakeUpNdPort
-import pipeline.simple.bundles.MainExeBranchInfoBundle
-import chisel3.internal.OpBinding
+import pipeline.simple.bundles.{InstInfoNdPort, MainExeBranchInfoBundle, RegWakeUpNdPort}
+import pipeline.simple.execution.Alu
+import spec.ExeInst.OpBundle
+import spec._
+
+import scala.collection.immutable
 
 class ExeNdPort extends Bundle {
   // Operands

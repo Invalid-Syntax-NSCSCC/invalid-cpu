@@ -1,11 +1,10 @@
 package pipeline.simple.bundles
 
-import spec._
-import chisel3.util._
 import chisel3._
-import pipeline.simple.id.FetchInstDecodeNdPort
-import pipeline.simple.id.RegReadNdPort
+import chisel3.util._
 import common.bundles.RfAccessInfoNdPort
+import pipeline.simple.id.FetchInstDecodeNdPort
+import spec._
 
 class RSBundle extends Bundle {
   val decodePort     = new FetchInstDecodeNdPort
