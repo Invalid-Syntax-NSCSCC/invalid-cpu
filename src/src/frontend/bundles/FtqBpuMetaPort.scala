@@ -5,9 +5,10 @@ import frontend.bpu.components.Bundles.{TageGhrInfo, TageMetaPort}
 import spec._
 
 class BranchAddrBundle extends Bundle {
-  val startPc         = UInt(spec.Width.Mem.addr)
-  val jumpTargetAddr  = UInt(spec.Width.Mem.addr)
-  val fallThroughAddr = UInt(spec.Width.Mem.addr)
+  val startPc        = UInt(spec.Width.Mem.addr)
+  val jumpTargetAddr = UInt(spec.Width.Mem.addr)
+  val fetchLength    = UInt(log2Ceil(Param.fetchInstMaxNum + 1).W)
+//  val fallThroughAddr = UInt(spec.Width.Mem.addr)
 }
 
 class ExeFtqFixGhrBundle extends Bundle {

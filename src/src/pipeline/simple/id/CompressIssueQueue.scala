@@ -104,6 +104,7 @@ class CompressIssueQueue(
   mainRSEnqPort.bits.mainExeBranchInfo.predictJumpAddr   := predictPc
   mainRSEnqPort.bits.mainExeBranchInfo.isBranch          := io.ins.head.bits.decode.info.isBranch
   mainRSEnqPort.bits.mainExeBranchInfo.branchType        := io.ins.head.bits.decode.info.branchType
+  mainRSEnqPort.bits.mainExeBranchInfo.ftqPredictInfo    := io.ins.head.bits.ftqPredictInfo
 
   rsEnqPorts.lazyZip(io.ins).lazyZip(io.regReadPorts).zipWithIndex.foreach {
     case ((rs, in, readRes), index) =>
