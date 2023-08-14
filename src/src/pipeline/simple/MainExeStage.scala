@@ -17,6 +17,7 @@ import spec.ExeInst.OpBundle
 import spec._
 
 import scala.collection.immutable
+import common.NoSavedInBaseStage
 
 class ExeNdPort extends Bundle {
   // Operands
@@ -74,7 +75,7 @@ class ExePeerPort extends Bundle {
 }
 
 class MainExeStage
-    extends BaseStage(
+    extends NoSavedInBaseStage(
       new MainExeNdPort,
       new AddrTransNdPort,
       MainExeNdPort.default,
@@ -98,6 +99,8 @@ class MainExeStage
   // ALU module
   val alu = Module(new Alu(onlySupportBranch = Param.isUse3Unit))
 
+  val isComputed = Wire(Bool())
+  val selectedIn = io.in.bits
   isComputed                      := (if (Param.isUse3Unit) true.B else alu.io.outputValid)
   out                             := DontCare
   out.cacheMaintenance.control    := CacheMaintenanceControlNdPort.default
@@ -111,6 +114,7 @@ class MainExeStage
   out.wb.gprWrite.en              := selectedIn.gprWritePort.en
   out.wb.gprWrite.addr            := selectedIn.gprWritePort.addr
   outValid                        := isComputed && selectedIn.instInfo.isValid
+  io.in.ready                     := inReady && isComputed
 
   // memory
 
