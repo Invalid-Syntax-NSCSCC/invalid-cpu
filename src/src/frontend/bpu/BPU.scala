@@ -174,7 +174,7 @@ class BPU(
   // 3. A FTB pollution is detected
   //     dirty case 1: target error || fallThroughAddr error;
   //                2:At the same addr, original branch inst become nonBranch inst  after  cacop or change program
-  val ftbUpdateValid = if (Param.isFTBupdateRet) {
+  val ftbUpdateValid = if (Param.isFtbUpdateRet) {
     WireDefault(
       io.bpuFtqPort.ftqBpuTrainMeta.valid &&
         (((directionPredictError || io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === BranchType.call || io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType === BranchType.uncond) && (!io.bpuFtqPort.ftqBpuTrainMeta.ftbHit))

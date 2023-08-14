@@ -26,7 +26,7 @@ object Param {
   val isBranchPredict            = true
   val isPredecode                = true
   val isOverideRas               = true
-  val isFTBupdateRet             = true
+  val isFtbUpdateRet             = true
   val isSpeculativeGlobalHistory = false
 
   val isWritebackPassThroughWakeUp = true
