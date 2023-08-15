@@ -506,7 +506,7 @@ class MainExeStage
     out.wb.instInfo.ftqCommitInfo.targetMispredict.get    := branchTargetMispredict && isBranchInst
   }
 
-  val isBlocking = branchBlockingReg || isDbarBlockingReg
+  val isBlocking = branchBlockingReg || isDbarBlockingReg || io.isFlush
 
   branchSetPort.en    := isRedirect && !isBlocking && outValid
   branchSetPort.ftqId := selectedIn.instInfo.ftqInfo.ftqId
