@@ -139,33 +139,29 @@ class MemReqStage
       switch(selectedIn.cacheMaintenance.target) {
         is(CacheMaintenanceTargetType.data) {
           when(isCacheMaintenance) {
-            isComputed := false.B
-            when(peer.iCacheMaintenance.isReady) {
-              peer.dCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
-              if (isDCacheWorkaround) {
-                isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.dCacheMaintenance.isReady
-                when(peer.dCacheMaintenance.isReady) {
-                  cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
-                }
-              } else {
-                isComputed := peer.dCacheMaintenance.isReady
+            isComputed                            := false.B
+            peer.dCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
+            if (isDCacheWorkaround) {
+              isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.dCacheMaintenance.isReady
+              when(peer.dCacheMaintenance.isReady) {
+                cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
               }
+            } else {
+              isComputed := peer.dCacheMaintenance.isReady
             }
           }
         }
         is(CacheMaintenanceTargetType.inst) {
           when(isCacheMaintenance) {
-            isComputed := false.B
-            when(peer.dCacheMaintenance.isReady) {
-              peer.iCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
-              if (isICacheWorkaround) {
-                isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.iCacheMaintenance.isReady
-                when(peer.iCacheMaintenance.isReady) {
-                  cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
-                }
-              } else {
-                isComputed := peer.iCacheMaintenance.isReady
+            isComputed                            := false.B
+            peer.iCacheMaintenance.client.control := selectedIn.cacheMaintenance.control
+            if (isICacheWorkaround) {
+              isComputed := !cacheMaintenanceCountDownReg.get.orR && peer.iCacheMaintenance.isReady
+              when(peer.iCacheMaintenance.isReady) {
+                cacheMaintenanceCountDownReg.get := cacheMaintenanceCountDownReg.get - 1.U
               }
+            } else {
+              isComputed := peer.iCacheMaintenance.isReady
             }
           }
         }
