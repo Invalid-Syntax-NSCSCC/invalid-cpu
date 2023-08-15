@@ -93,7 +93,7 @@ class MemReqStage
 
   // Handle pipelined input
   when(selectedIn.wb.instInfo.isValid) {
-    when(selectedIn.translatedMemReq.isValid) {
+    when(selectedIn.translatedMemReq.isValid && selectedIn.wb.instInfo.exceptionPos === ExceptionPos.none) {
       // Whether last memory request is submitted
       when(io.out.ready) {
         when(isTrueCached) {
