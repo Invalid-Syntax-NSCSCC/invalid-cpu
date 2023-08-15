@@ -151,14 +151,16 @@ class InstPreDecodeStage
     // output
     // cut block length
     val selectBlockLength = Mux(
-      isPredecoderRedirect,
+      isDataValid && (isJump && canJump),
       jumpIndex +& 1.U,
       selectedIn.ftqLength
     )
+    isDataValid && ((isJump && canJump) || isErrorPredict)
 //    WireDefault(selectedIn.ftqLength)
-//    when(isPredecoderRedirect) {
+//    when( isPredecoderRedirect && !isErrorPredict) {
 //      selectBlockLength := jumpIndex +& 1.U
 //    }
+
     // when redirect,change output instOutput
     out.enqInfos.zipWithIndex.foreach {
       case (infoBundle, index) =>
