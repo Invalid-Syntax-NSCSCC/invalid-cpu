@@ -80,11 +80,13 @@ class MemReqStage
   peer.iCacheMaintenance.client.addr    := selectedIn.translatedMemReq.addr
 
   // No memory action when exception happens
-  if (Param.isDiffTest) {
-    when(selectedIn.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+  when(selectedIn.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+    if (Param.isDiffTest) {
       out.wb.instInfo.load.get.en  := 0.U
       out.wb.instInfo.store.get.en := 0.U
     }
+    out.isMemReq      := false.B
+    out.isAtomicStore := false.B
   }
 
   // CACOP workaround
