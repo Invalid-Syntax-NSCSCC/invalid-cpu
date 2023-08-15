@@ -13,9 +13,10 @@ import spec._
 class Frontend extends Module {
   val io = IO(new Bundle {
     // pc
-    val cuNewPc    = Input(new BackendRedirectPcNdPort)
-    val isFlush    = Input(Bool())
-    val ftqFlushId = Input(UInt(Param.BPU.ftqPtrWidth.W))
+    val cuNewPc       = Input(new BackendRedirectPcNdPort)
+    val isFlush       = Input(Bool()) // exe flush || cu flush
+    val isFlushFromCu = Input(Bool()) // only indicate signal from cu;should cooperate with isFlush
+    val ftqFlushId    = Input(UInt(Param.BPU.ftqPtrWidth.W))
 
     // ftq <-> exe
     val exeFtqPort = new ExeFtqPort
@@ -65,6 +66,7 @@ class Frontend extends Module {
   bpu.io.bpuFtqPort     <> ftq.io.bpuFtqPort
   bpu.io.backendFlush   := io.isFlush
   bpu.io.preDecodeFlush := instFetch.io.preDecodeRedirectPort.predecodeRedirect
+  bpu.io.isFlushFromCu  := io.isFlushFromCu
 
   // fetch Target Pc queue;
   // stage 1

@@ -110,9 +110,9 @@ class InstPreDecodeStage
     isPredecoderRedirect := isDataValid && ((isJump && canJump) || isErrorPredict)
     val isPredecoderRedirectReg = RegNext(isPredecoderRedirect, false.B)
     peer.predecoderBranch := RegNext(isDataValid && (isJump && canJump), false.B)
-    if (Param.isNoPrivilege) {
-      peer.predecoderBranch := true.B // decrease net delay ,do not care non branch inst jump effect branch history
-    }
+//    if (Param.isNoPrivilege) {
+//      peer.predecoderBranch := true.B // decrease net delay ,do not care non branch inst jump effect branch history
+//    }
     // connect return address stack module
     val rasModule = Module(new RAS)
     // connect predict result

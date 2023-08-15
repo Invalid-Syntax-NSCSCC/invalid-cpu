@@ -186,9 +186,10 @@ class SimpleCoreCpuTop extends Module {
   } else {
     frontend.io.tlbTrans <> tlb.get.io.tlbTransPorts(1)
   }
-  frontend.io.csr.crmd   := csr.io.csrValues.crmd
-  frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0
-  frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
+  frontend.io.csr.crmd      := csr.io.csrValues.crmd
+  frontend.io.csr.dmw(0)    := csr.io.csrValues.dmw0
+  frontend.io.csr.dmw(1)    := csr.io.csrValues.dmw1
+  frontend.io.isFlushFromCu := cu.io.isFlushFromRefetchOrExcp
   // TODO: connect cu.io.isFlushFromRefetchOrExcp
 
   // TODO: Connect frontend

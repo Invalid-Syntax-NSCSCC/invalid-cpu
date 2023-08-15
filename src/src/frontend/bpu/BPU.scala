@@ -27,6 +27,7 @@ class BPU(
     // Backend flush
     val backendFlush   = Input(Bool())
     val preDecodeFlush = Input(Bool())
+    val isFlushFromCu  = Input(Bool())
 
     // FTQ
     val bpuFtqPort = Flipped(new BpuFtqPort)
@@ -225,7 +226,7 @@ class BPU(
   )
 //  ghrUpdateSignalBundle.isCommitFixGhr
   ghrFixBundle.ghrFixType := Mux(
-    io.backendFlush && !ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
+    io.backendFlush && io.isFlushFromCu,
     GhrFixType.commitRecover,
     Mux(
       ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
