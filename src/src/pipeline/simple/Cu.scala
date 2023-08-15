@@ -33,17 +33,15 @@ class Cu(
     val csrValues       = Input(new CsrValuePort)
     // `ExeStage` -> `Cu`
     val branchExe = Input(new BackendRedirectPcNdPort)
-    // `MultiInstQueue` -> `Cu`
-    val redirectFromDecode = Input(new BackendRedirectPcNdPort)
     // `CsrScoreBoard` -> `Cu`
     val csrWriteInfo = Input(new CsrWriteNdPort)
     val newPc        = Output(new BackendRedirectPcNdPort)
 
-    val isBranchFlush      = Output(Bool())
-    val frontendFlush      = Output(Bool())
-    val frontendFlushFtqId = Output(UInt(Param.BPU.ftqPtrWidth.W))
-    val backendFlush       = Output(Bool())
-    val idleFlush          = Output(Bool())
+    val isFlushFromRefetchOrExcp = Output(Bool())
+    val frontendFlush            = Output(Bool())
+    val frontendFlushFtqId       = Output(UInt(Param.BPU.ftqPtrWidth.W))
+    val backendFlush             = Output(Bool())
+    val idleFlush                = Output(Bool())
 
     val commitBitMask = Output(Vec(Param.commitNum, Bool()))
 
@@ -208,40 +206,40 @@ class Cu(
   val refetchFlush = majorInstInfo.isValid && majorInstInfo.needRefetch
 
   io.csrMessage.ertnFlush := isExceptionReturn
-  io.frontendFlush :=
+
+  io.isFlushFromRefetchOrExcp :=
     RegNext(
-      isException || io.branchExe.en || io.redirectFromDecode.en || refetchFlush || isExceptionReturn,
+      isException || refetchFlush || isExceptionReturn,
       false.B
     )
+  io.frontendFlush :=
+    io.isFlushFromRefetchOrExcp || RegNext(io.branchExe.en, false.B)
   val frontendFlushFtqId = Mux(
     isException || refetchFlush || isExceptionReturn,
     majorInstInfo.ftqInfo.ftqId,
-    Mux(io.branchExe.en, io.branchExe.ftqId, io.redirectFromDecode.ftqId)
+    io.branchExe.ftqId
   )
   io.frontendFlushFtqId := RegNext(frontendFlushFtqId, 0.U)
   io.backendFlush := RegNext(
     isException || redirectCommit || refetchFlush || isExceptionReturn,
     false.B
   )
-  io.idleFlush     := RegNext(idleFlush, false.B)
-  io.isBranchFlush := RegNext(io.branchExe.en, false.B)
+  io.idleFlush := RegNext(idleFlush, false.B)
 
   // Select new pc
-  val refetchFlushDelay       = RegNext(refetchFlush, false.B)
-  val isExceptionDelay        = RegNext(isException, false.B)
-  val redirectFromExeDelay    = RegNext(io.branchExe, BackendRedirectPcNdPort.default)
-  val redirectFromDecodeDelay = RegNext(io.redirectFromDecode, BackendRedirectPcNdPort.default)
-  val isExceptionReturnDelay  = RegNext(isExceptionReturn, false.B)
+  val refetchFlushDelay      = RegNext(refetchFlush, false.B)
+  val isExceptionDelay       = RegNext(isException, false.B)
+  val redirectFromExeDelay   = RegNext(io.branchExe, BackendRedirectPcNdPort.default)
+  val isExceptionReturnDelay = RegNext(isExceptionReturn, false.B)
   io.newPc.en := refetchFlushDelay ||
     isExceptionDelay ||
     redirectFromExeDelay.en ||
-    redirectFromDecodeDelay.en ||
     isExceptionReturnDelay
 
   io.newPc.ftqId := Mux(
     refetchFlushDelay || isExceptionDelay || isExceptionReturnDelay,
     RegNext(majorInstInfo.ftqInfo.ftqId, 0.U),
-    Mux(redirectFromExeDelay.en, redirectFromExeDelay.ftqId, redirectFromDecodeDelay.ftqId)
+    redirectFromExeDelay.ftqId
   )
 
   io.newPc.pcAddr := Mux(
@@ -260,7 +258,7 @@ class Cu(
       Mux(
         refetchFlushDelay,
         RegNext(majorPc + 4.U, 0.U),
-        Mux(redirectFromExeDelay.en, redirectFromExeDelay.pcAddr, redirectFromDecodeDelay.pcAddr)
+        redirectFromExeDelay.pcAddr
       )
     )
   )

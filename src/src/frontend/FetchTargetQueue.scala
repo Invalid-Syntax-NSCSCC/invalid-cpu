@@ -299,9 +299,9 @@ class FetchTargetQueue(
   when(bpuMetaWriteValid) {
     ftqBpuMetaRegs(bpuMetaWritePtr) := bpuMetaWriteEntry
   }
-  when(io.preDecoderFlush) {
-    ftqBpuMetaRegs(io.preDecoderFtqId).tageQueryMeta.tageGhrInfo := io.bpuFtqPort.bpuQueryMeta.tageQueryMeta.tageGhrInfo
-  }
+//  when(io.preDecoderFlush) {
+//    ftqBpuMetaRegs(io.preDecoderFtqId).tageQueryMeta.tageGhrInfo := io.bpuFtqPort.bpuQueryMeta.tageQueryMeta.tageGhrInfo
+//  }
   // update pc from backend
   when(io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateValid) {
     val ftqUpdateMetaId = WireDefault(io.exeFtqPort.feedBack.commitBundle.ftqUpdateMetaId)

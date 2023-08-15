@@ -523,11 +523,8 @@ class MainExeStage
     fallThroughPc
   )
 
-  feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking && outValid
-  feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
-    aluCalcJumpEn && !inFtqPredictInfo.isPredictValid && !isBlocking && isBranchInst
-  feedbackFtq.fixGhrBundle.exeFixIsTaken   := aluCalcJumpEn
-  feedbackFtq.fixGhrBundle.exeFixJumpError := isRedirect && !isBlocking
+  feedbackFtq.fixGhrBundle.isExeFixValid := RegNext(isRedirect && !isBlocking && outValid)
+  feedbackFtq.fixGhrBundle.exeFixIsTaken := RegNext(aluCalcJumpEn)
 
   if (Param.exeFeedBackFtqDelay) {
 

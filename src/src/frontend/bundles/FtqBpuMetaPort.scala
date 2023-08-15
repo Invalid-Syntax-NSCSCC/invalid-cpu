@@ -12,13 +12,10 @@ class BranchAddrBundle extends Bundle {
 }
 
 class ExeFtqFixGhrBundle extends Bundle {
-  val isExeFixValid      = Bool()
-  val exeFixFirstBrTaken = Bool()
-  val exeFixJumpError    = Bool()
-  val exeFixIsTaken      = Bool()
+  val isExeFixValid = Bool()
+  val exeFixIsTaken = Bool()
 }
 class GhrUpdateSignalBundle extends Bundle {
-  val isCommitFixGhr          = Bool()
   val exeFixBundle            = new ExeFtqFixGhrBundle
   val isPredecoderFixGhr      = Bool()
   val isPredecoderBranchTaken = Bool()
