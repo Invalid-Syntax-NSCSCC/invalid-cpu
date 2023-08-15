@@ -231,11 +231,11 @@ class FetchTargetQueue(
   // Must use accuraate decoded info passed from backend
   io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta := io.commitFtqTrainPort.branchTakenMeta
 
-  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc         := ftqVecReg(commitFtqId).startPc
-  io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline                 := ftqVecReg(commitFtqId).isCrossCacheline
-  io.bpuFtqPort.ftqBpuTrainMeta.tageOriginMeta                   := ftqBpuMetaRegs(commitFtqId).tageQueryMeta
-  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr  := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
-  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
+  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc        := ftqVecReg(commitFtqId).startPc
+  io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline                := ftqVecReg(commitFtqId).isCrossCacheline
+  io.bpuFtqPort.ftqBpuTrainMeta.tageOriginMeta                  := ftqBpuMetaRegs(commitFtqId).tageQueryMeta
+  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr := ftqBranchMetaRegs(commitFtqId).jumpTargetAddr
+  io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLength    := ftqBranchMetaRegs(commitFtqId).fetchLength
 
   // commit to ras
 //  io.ftqRasPort.valid         := RegNext(io.commitFtqTrainPort.isTrainValid, false.B)
@@ -251,13 +251,11 @@ class FetchTargetQueue(
   io.ftqRasPort.valid         := io.commitFtqTrainPort.isTrainValid
   io.ftqRasPort.bits.isPush   := io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.call
   io.ftqRasPort.bits.isPop    := io.commitFtqTrainPort.branchTakenMeta.branchType === BranchType.ret
-  io.ftqRasPort.bits.callAddr := ftqBranchMetaRegs(commitFtqId).fallThroughAddr
+  io.ftqRasPort.bits.callAddr := ftqVecReg(commitFtqId).startPc + (ftqBranchMetaRegs(commitFtqId).fetchLength << 2)
   io.ftqRasPort.bits.predictError :=
     ftqBranchMetaRegs(
       commitFtqId
     ).ftbDirty || (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
-
-
 
   // Bpu meta ram
   // If last cycle accepted p1 input
@@ -312,16 +310,16 @@ class FetchTargetQueue(
     ).jumpTargetAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateJumpTarget
     ftqBranchMetaRegs(
       ftqUpdateMetaId
-    ).fallThroughAddr                           := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
-    ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
+    ).fetchLength                                  := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
+    ftqBranchMetaRegs(ftqUpdateMetaId).ftbDirty    := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
+    ftqBranchMetaRegs(ftqUpdateMetaId).fetchLength := io.exeFtqPort.feedBack.commitBundle.fetchLength
   }
 
   if (Param.isNoPrivilege) {
     // when without tlb, all info commit at exe Stage
     io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty
     io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateJumpTarget
-    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
-
+    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLength := io.exeFtqPort.feedBack.commitBundle.fetchLength
 
 //    io.ftqRasPort.bits.callAddr := RegNext(io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough, 0.U)
 //    io.ftqRasPort.bits.predictError := RegNext(
@@ -329,7 +327,9 @@ class FetchTargetQueue(
 //        (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken),
 //      false.B
 //    )
-    io.ftqRasPort.bits.callAddr := io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFallThrough
+    io.ftqRasPort.bits.callAddr := ftqVecReg(
+      commitFtqId
+    ).startPc + (io.exeFtqPort.feedBack.commitBundle.fetchLength << 2)
     io.ftqRasPort.bits.predictError :=
       io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty ||
         (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)

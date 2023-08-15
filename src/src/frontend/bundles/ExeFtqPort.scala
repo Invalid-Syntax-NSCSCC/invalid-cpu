@@ -1,5 +1,6 @@
 package frontend.bundles
 import chisel3._
+import chisel3.util.log2Ceil
 import spec.Param
 class ExeFtqPort extends Bundle {
   val queryPcBundle = new QueryPcBundle
@@ -15,6 +16,7 @@ class ExeCommitFtqNdPort extends Bundle {
   val ftqMetaUpdateValid       = Bool()
   val ftqMetaUpdateFtbDirty    = Bool()
   val ftqMetaUpdateJumpTarget  = UInt(spec.Width.Mem.addr)
+  val fetchLength              = UInt(log2Ceil(Param.fetchInstMaxNum + 1).W)
   val ftqMetaUpdateFallThrough = UInt(spec.Width.Mem.addr)
   val ftqUpdateMetaId          = UInt(Param.BPU.Width.id)
 }

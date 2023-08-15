@@ -205,10 +205,11 @@ class BPU(
   ftbUpdateEntry.isCrossCacheline := io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline
   ftbUpdateEntry.jumpTargetAddr   := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr
 //  ftbUpdateEntry.fallThroughAddr  := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr
-  ftbUpdateEntry.fetchLength := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle
-    .fallThroughAddr(Param.Width.ICache._fetchOffset, 2) -
-    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle
-      .startPc(Param.Width.ICache._fetchOffset, 2) // Use 1 + log(fetchNum) bits minus to ensure no overflow
+//  ftbUpdateEntry.fetchLength := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle
+//    .fallThroughAddr(Param.Width.ICache._fetchOffset, 2) -
+//    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle
+//      .startPc(Param.Width.ICache._fetchOffset, 2) // Use 1 + log(fetchNum) bits minus to ensure no overflow
+  ftbUpdateEntry.fetchLength := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLength
 
   // global branch history update logic
   val ghrFixBundle = Wire(new GhrFixNdBundle)

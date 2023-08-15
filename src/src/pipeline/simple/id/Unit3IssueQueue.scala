@@ -136,6 +136,7 @@ class Unit3IssueQueue(
   mainRSEnqPort.bits.mainExeBranchInfo.predictJumpAddr   := predictPc
   mainRSEnqPort.bits.mainExeBranchInfo.isBranch          := io.ins.head.bits.decode.info.isBranch
   mainRSEnqPort.bits.mainExeBranchInfo.branchType        := io.ins.head.bits.decode.info.branchType
+  mainRSEnqPort.bits.mainExeBranchInfo.ftqPredictInfo    := io.ins.head.bits.ftqPredictInfo
 
   (io.ins).lazyZip(io.regReadPorts).zipWithIndex.foreach {
     case ((in, readRes), index) =>
