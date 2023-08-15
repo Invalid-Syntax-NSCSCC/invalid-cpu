@@ -81,6 +81,9 @@ class Frontend extends Module {
     case (dst, src) =>
       dst := src
   }
+  if (Param.isNoPrivilege && Param.exeFeedBackFtqDelay) {
+    ftq.io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateJumpTarget := io.cuNewPc.pcAddr
+  }
 
   // stage 2-4
   instFetch.io.ftqIFPort       <> ftq.io.ftqIFPort
