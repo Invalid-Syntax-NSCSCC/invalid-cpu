@@ -120,7 +120,7 @@ class MainExeStage
 
   val isDbarBlockingReg = RegInit(false.B)
   // dbar start
-  when(selectedIn.instInfo.isValid && selectedIn.instInfo.exeOp === OpBundle.dbar) {
+  when(selectedIn.instInfo.isValid && selectedIn.instInfo.exeOp === OpBundle.dbar && outValid) {
     isDbarBlockingReg := true.B
   }
   // dbar execute and finish
