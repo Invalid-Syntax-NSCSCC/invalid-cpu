@@ -9,13 +9,12 @@ class CsrHash(
   outputLength: Int = 10)
     extends Module {
   val io = IO(new Bundle {
-    val dataUpdate        = Input(Bool())
-    val data              = Input(UInt(inputLength.W))
-    val hash              = Output(UInt(outputLength.W))
-    val isExeFixCsr       = Input(Bool())
-    val isPredecodeFixCsr = Input(Bool())
-    val isRecoverCsr      = Input(Bool())
-    val originHash        = Input(UInt(outputLength.W))
+    val dataUpdate    = Input(Bool())
+    val data          = Input(UInt(inputLength.W))
+    val hash          = Output(UInt(outputLength.W))
+    val isFixHash     = Input(Bool())
+    val isRecoverHash = Input(Bool())
+    val originHash    = Input(UInt(outputLength.W))
   })
 
   val csr     = RegInit(0.U(outputLength.W))
@@ -27,10 +26,10 @@ class CsrHash(
 
   if (Param.isSpeculativeGlobalHistory) {
     nextCSR := Mux(
-      io.isRecoverCsr,
+      io.isRecoverHash,
       io.originHash,
       Mux(
-        io.isExeFixCsr || io.isPredecodeFixCsr,
+        io.isFixHash,
         Cat(io.originHash(outputLength - 2, 0), io.originHash(outputLength - 1) ^ io.data(0)) ^ (io.data(
           inputLength - 1
         ) << residual).asUInt,

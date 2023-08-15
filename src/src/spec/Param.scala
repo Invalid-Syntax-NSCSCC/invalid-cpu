@@ -19,15 +19,15 @@ object Param {
   val isOutOfOrderIssue          = false
   val isFullUncachedPatch        = true
   val isMmioDelay                = false || isChiplab || isFullFpga
-  val isNoPrivilege              = false || isReleasePackage
-  val isCacheOnPg                = false
+  val isNoPrivilege              = true || isReleasePackage
+  val isCacheOnPg                = true
   val isForcedCache              = false || isReleasePackage
   val isForcedUncached           = false
   val isBranchPredict            = true
   val isPredecode                = true
   val isOverideRas               = true
   val isFtbUpdateRet             = true
-  val isSpeculativeGlobalHistory = false
+  val isSpeculativeGlobalHistory = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
@@ -233,10 +233,8 @@ object Param {
 
       val commitRecover    = 0.U
       val exeFixJumpError  = next
-      val exeUpdateJump    = next
-      val exeRecover       = next
       val decodeUpdateJump = next
-      val decodeBrExcp     = next
+      val decodeRecoder    = next
 
       def width = log2Ceil(count + 1)
     }

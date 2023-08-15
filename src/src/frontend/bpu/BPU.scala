@@ -25,7 +25,8 @@ class BPU(
 
   val io = IO(new Bundle {
     // Backend flush
-    val backendFlush = Input(Bool())
+    val backendFlush   = Input(Bool())
+    val preDecodeFlush = Input(Bool())
 
     // FTQ
     val bpuFtqPort = Flipped(new BpuFtqPort)
@@ -57,7 +58,7 @@ class BPU(
   val rasTopAddr = WireDefault(0.U(addr.W))
 
   val ftqFullDelay = RegNext(io.bpuFtqPort.ftqFull, false.B)
-  val flushDelay   = RegNext(io.backendFlush || (mainRedirectValid && !ftqFullDelay), false.B)
+  val flushDelay   = RegNext(io.backendFlush || io.preDecodeFlush || (mainRedirectValid && !ftqFullDelay), false.B)
 
   ////////////////////////////////////////////////////////////////////////////////////
   // Query logic
@@ -216,20 +217,20 @@ class BPU(
   val ghrUpdateSignalBundle = WireDefault(
     io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle
   )
-  ghrFixBundle.isFixGhrValid    := ghrUpdateSignalBundle.isPredecoderFixGhr || io.backendFlush
-  ghrFixBundle.isFixBranchTaken := ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken
+  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.isPredecoderFixGhr || io.backendFlush || io.preDecodeFlush
+  ghrFixBundle.isFixBranchTaken := Mux(
+    ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
+    ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken,
+    ghrUpdateSignalBundle.isPredecoderBranchTaken
+  )
 //  ghrUpdateSignalBundle.isCommitFixGhr
   ghrFixBundle.ghrFixType := Mux(
-    io.backendFlush && !ghrUpdateSignalBundle.exeFixBundle.isExeFixValid && !ghrUpdateSignalBundle.isPredecoderFixGhr,
+    io.backendFlush && !ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
     GhrFixType.commitRecover,
     Mux(
       ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
-      Mux(
-        ghrUpdateSignalBundle.exeFixBundle.exeFixFirstBrTaken,
-        GhrFixType.exeUpdateJump,
-        Mux(ghrUpdateSignalBundle.exeFixBundle.exeFixJumpError, GhrFixType.exeFixJumpError, GhrFixType.exeRecover)
-      ),
-      Mux(ghrUpdateSignalBundle.isPredecoderBranchTaken, GhrFixType.decodeUpdateJump, GhrFixType.decodeBrExcp)
+      GhrFixType.exeFixJumpError,
+      Mux(ghrUpdateSignalBundle.isPredecoderBranchTaken, GhrFixType.decodeUpdateJump, GhrFixType.decodeRecoder)
     )
   )
 

@@ -524,10 +524,10 @@ class MainExeStage
   )
 
   feedbackFtq.fixGhrBundle.isExeFixValid := isRedirect && !isBlocking && outValid
-  feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
-    aluCalcJumpEn && !inFtqPredictInfo.isPredictValid && !isBlocking && isBranchInst
-  feedbackFtq.fixGhrBundle.exeFixIsTaken   := aluCalcJumpEn
-  feedbackFtq.fixGhrBundle.exeFixJumpError := isRedirect && !isBlocking
+//  feedbackFtq.fixGhrBundle.exeFixFirstBrTaken :=
+//    aluCalcJumpEn && !inFtqPredictInfo.isPredictValid && !isBlocking && isBranchInst
+  feedbackFtq.fixGhrBundle.exeFixIsTaken := aluCalcJumpEn
+//  feedbackFtq.fixGhrBundle.exeFixJumpError := isRedirect && !isBlocking
 
   if (Param.exeFeedBackFtqDelay) {
 

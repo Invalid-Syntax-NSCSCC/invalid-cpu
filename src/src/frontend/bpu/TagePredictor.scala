@@ -164,9 +164,9 @@ class TagePredictor(
   specPtr               := nextSpecPtr
 
   // signal that indicates how to fix globalHistory Hash value
-  val isExeFixCsr       = WireDefault(false.B)
-  val isPredecodeFixCsr = WireDefault(false.B)
-  val isRecoverCsr      = WireDefault(false.B)
+  val isFixHash         = WireDefault(false.B)
+
+  val isRecoverHash     = WireDefault(false.B)
 //  val originHash = Input(UInt(outputLength.W))
 
   isGlobalHistoryUpdateReg := isUpdateValid
@@ -189,33 +189,16 @@ class TagePredictor(
   }
   when(io.ghrUpdateNdBundle.fixBundle.isFixGhrValid) {
     switch(io.ghrUpdateNdBundle.fixBundle.ghrFixType) {
-      is(GhrFixType.commitRecover) {
+      is(GhrFixType.commitRecover, GhrFixType.decodeRecoder) {
         // recover to the old history
-        nextSpecPtr  := checkPtr
-        isRecoverCsr := true.B
+        nextSpecPtr   := checkPtr
+        isRecoverHash := true.B
       }
-      is(GhrFixType.decodeBrExcp) {
-        // recover to the old history,quit predict info
-        nextSpecPtr  := checkPtr + 1.U
-        isRecoverCsr := true.B
-      }
-      is(GhrFixType.exeFixJumpError, GhrFixType.exeRecover) {
-        // fix error predict
-        nextSpecPtr                    := checkPtr
-        nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.fixBundle.isFixBranchTaken
-        isExeFixCsr                    := true.B
-      }
-      is(GhrFixType.exeUpdateJump) {
-        // update the branch that has not been predicted
+      is(GhrFixType.exeFixJumpError, GhrFixType.decodeUpdateJump) {
+        // update the branch that has not been predicted or predicted error; use the old history
         nextSpecPtr                    := checkPtr - 1.U
-        nextGlobalHistory(nextSpecPtr) := true.B
-        isExeFixCsr                    := true.B
-      }
-      is(GhrFixType.decodeUpdateJump) {
-        // update the branch that has not been predicted
-        nextSpecPtr                    := checkPtr - 1.U
-        nextGlobalHistory(nextSpecPtr) := true.B
-        isPredecodeFixCsr              := true.B
+        nextGlobalHistory(nextSpecPtr) := io.ghrUpdateNdBundle.fixBundle.isFixBranchTaken // true
+        isFixHash                      := true.B
       }
     }
   }.elsewhen(io.ghrUpdateNdBundle.bpuSpecValid) {
@@ -239,7 +222,7 @@ class TagePredictor(
 //  )
 
   // output
-  io.tageQueryMeta.tageGhrInfo.checkPtr := nextSpecPtr
+  io.tageQueryMeta.tageGhrInfo.checkPtr := specPtr
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Logic
@@ -299,9 +282,8 @@ class TagePredictor(
       taggedPreditor.io.reallocEntry      := tagUpdateisReallocEntrys(providerId)
       taggedPreditor.io.updateTag         := tagUpdateNewTags(providerId)
       taggedPreditor.io.updateIndex       := updateMetaBundle.tagPredictorHitIndexs(providerId)
-      taggedPreditor.io.isRecoverCsr      := isRecoverCsr
-      taggedPreditor.io.isExeFixCsr       := isExeFixCsr
-      taggedPreditor.io.isPredecodeFixCsr := isPredecodeFixCsr
+      taggedPreditor.io.isRecoverHash     := isRecoverHash
+      taggedPreditor.io.isFixHash         := isFixHash
       taggedPreditor.io.originGhtHash     := updateMetaBundle.tageGhrInfo.tagGhtHashs(providerId)
       taggedPreditor.io.originTagHashCsr1 := updateMetaBundle.tageGhrInfo.tagTagHashCsr1s(providerId)
       taggedPreditor.io.originTagHashCsr2 := updateMetaBundle.tageGhrInfo.tagTagHashCsr2s(providerId)

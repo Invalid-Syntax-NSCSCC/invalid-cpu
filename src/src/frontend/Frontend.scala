@@ -61,9 +61,10 @@ class Frontend extends Module {
   //         access bram and send predict target pc in next stage ,
   //         quit the fallback target and use the new predict pc(modify ftq);
   //          if the pc has send to instFetch, then flush it  (by mainRedirect signal )
-  bpu.io.pc           := pc.io.pc
-  bpu.io.bpuFtqPort   <> ftq.io.bpuFtqPort
-  bpu.io.backendFlush := io.isFlush || instFetch.io.preDecodeRedirectPort.predecodeRedirect
+  bpu.io.pc             := pc.io.pc
+  bpu.io.bpuFtqPort     <> ftq.io.bpuFtqPort
+  bpu.io.backendFlush   := io.isFlush
+  bpu.io.preDecodeFlush := instFetch.io.preDecodeRedirectPort.predecodeRedirect
 
   // fetch Target Pc queue;
   // stage 1
