@@ -79,6 +79,16 @@ class MemReqStage
   peer.dCacheMaintenance.client.addr    := selectedIn.translatedMemReq.addr
   peer.iCacheMaintenance.client.addr    := selectedIn.translatedMemReq.addr
 
+  // No memory action when exception happens
+  when(selectedIn.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+    if (Param.isDiffTest) {
+      out.wb.instInfo.load.get.en  := 0.U
+      out.wb.instInfo.store.get.en := 0.U
+    }
+    out.isMemReq      := false.B
+    out.isAtomicStore := false.B
+  }
+
   // CACOP workaround
   val dCacheBitsDelta   = Param.Width.DCache._addr + Param.Width.DCache._byteOffset - Param.Width.DCache._indexOffsetMax
   val iCacheBitsDelta   = Param.Width.ICache._addr + Param.Width.ICache._byteOffset - Param.Width.ICache._indexOffsetMax
@@ -93,7 +103,7 @@ class MemReqStage
 
   // Handle pipelined input
   when(selectedIn.wb.instInfo.isValid) {
-    when(selectedIn.translatedMemReq.isValid) {
+    when(selectedIn.translatedMemReq.isValid && selectedIn.wb.instInfo.exceptionPos === ExceptionPos.none) {
       // Whether last memory request is submitted
       when(io.out.ready) {
         when(isTrueCached) {

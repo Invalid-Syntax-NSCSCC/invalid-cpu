@@ -31,7 +31,7 @@ abstract class NoSavedInBaseStage[InT <: Data, OutT <: Data, PT <: Data](
   io.out <> outQueue
 
   // Handle input
-  protected val inReady = ((lastResultOut.ready && !lastResultOut.valid) || io.out.ready)
+  protected val inReady = (lastResultOut.ready && !lastResultOut.valid) || io.out.ready
   io.in.ready := inReady
 
   // Handle flush (queue is already handled)
