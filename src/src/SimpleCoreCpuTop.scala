@@ -189,7 +189,7 @@ class SimpleCoreCpuTop extends Module {
   frontend.io.csr.crmd   := csr.io.csrValues.crmd
   frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0
   frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
-  // TODO: connect cu.io.isBranchFlush
+  // TODO: connect cu.io.isFlushFromRefetchOrExcp
 
   // TODO: Connect frontend
   frontend.io.exeFtqPort.queryPcBundle <> issueQueue.io.queryPcPort

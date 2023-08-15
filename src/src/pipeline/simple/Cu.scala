@@ -37,11 +37,11 @@ class Cu(
     val csrWriteInfo = Input(new CsrWriteNdPort)
     val newPc        = Output(new BackendRedirectPcNdPort)
 
-    val isBranchFlush      = Output(Bool())
-    val frontendFlush      = Output(Bool())
-    val frontendFlushFtqId = Output(UInt(Param.BPU.ftqPtrWidth.W))
-    val backendFlush       = Output(Bool())
-    val idleFlush          = Output(Bool())
+    val isFlushFromRefetchOrExcp = Output(Bool())
+    val frontendFlush            = Output(Bool())
+    val frontendFlushFtqId       = Output(UInt(Param.BPU.ftqPtrWidth.W))
+    val backendFlush             = Output(Bool())
+    val idleFlush                = Output(Bool())
 
     val commitBitMask = Output(Vec(Param.commitNum, Bool()))
 
@@ -206,16 +206,14 @@ class Cu(
   val refetchFlush = majorInstInfo.isValid && majorInstInfo.needRefetch
 
   io.csrMessage.ertnFlush := isExceptionReturn
-  io.frontendFlush :=
+
+  io.isFlushFromRefetchOrExcp :=
     RegNext(
-      isException || io.branchExe.en || refetchFlush || isExceptionReturn,
-      false.B
-    )
-  io.isBranchFlush :=
-    !RegNext(
       isException || refetchFlush || isExceptionReturn,
       false.B
     )
+  io.frontendFlush :=
+    io.isFlushFromRefetchOrExcp || RegNext(io.branchExe.en, false.B)
   val frontendFlushFtqId = Mux(
     isException || refetchFlush || isExceptionReturn,
     majorInstInfo.ftqInfo.ftqId,
