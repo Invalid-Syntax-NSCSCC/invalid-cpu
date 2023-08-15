@@ -79,6 +79,14 @@ class MemReqStage
   peer.dCacheMaintenance.client.addr    := selectedIn.translatedMemReq.addr
   peer.iCacheMaintenance.client.addr    := selectedIn.translatedMemReq.addr
 
+  // No memory action when exception happens
+  if (Param.isDiffTest) {
+    when(selectedIn.wb.instInfo.exceptionPos =/= ExceptionPos.none) {
+      out.wb.instInfo.load.get.en  := 0.U
+      out.wb.instInfo.store.get.en := 0.U
+    }
+  }
+
   // CACOP workaround
   val dCacheBitsDelta   = Param.Width.DCache._addr + Param.Width.DCache._byteOffset - Param.Width.DCache._indexOffsetMax
   val iCacheBitsDelta   = Param.Width.ICache._addr + Param.Width.ICache._byteOffset - Param.Width.ICache._indexOffsetMax
