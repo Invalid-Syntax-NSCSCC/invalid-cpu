@@ -144,7 +144,7 @@ object Param {
     }
 
     object Tlb {
-      val num      = 32
+      val num      = 4
       val transNum = 2
     }
 
