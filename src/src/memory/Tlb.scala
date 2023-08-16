@@ -137,6 +137,7 @@ class Tlb extends Module {
           transPort.virtAddr(Value.Tlb.Ps._4Mb.litValue - 1, 0)
         )
       )
+      transPort.isNotCached := selectedPage.mat === 0.U
 
       // Handle exception
       when(!isFound) {
