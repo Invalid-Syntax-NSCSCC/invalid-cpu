@@ -288,9 +288,9 @@ class TagePredictor(
       taggedPreditor.io.updateIndex       := updateMetaBundle.tagPredictorHitIndexs(providerId)
       taggedPreditor.io.isRecoverHash     := isRecoverHash
       taggedPreditor.io.isFixHash         := isFixHash
-      taggedPreditor.io.originGhtHash     := updateMetaBundle.tageGhrInfo.tagGhtHashs(providerId)
-      taggedPreditor.io.originTagHashCsr1 := updateMetaBundle.tageGhrInfo.tagTagHashCsr1s(providerId)
-      taggedPreditor.io.originTagHashCsr2 := updateMetaBundle.tageGhrInfo.tagTagHashCsr2s(providerId)
+      taggedPreditor.io.originGhtHash     := io.ghrUpdateNdBundle.tageGhrInfo.tagGhtHashs(providerId)
+      taggedPreditor.io.originTagHashCsr1 := io.ghrUpdateNdBundle.tageGhrInfo.tagTagHashCsr1s(providerId)
+      taggedPreditor.io.originTagHashCsr2 := io.ghrUpdateNdBundle.tageGhrInfo.tagTagHashCsr2s(providerId)
 
       taggedPreditor
     }
