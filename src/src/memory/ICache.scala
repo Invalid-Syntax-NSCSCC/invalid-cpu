@@ -96,7 +96,7 @@ class ICache(
   // RAMs for valid and tag
   val statusTagRams = Seq.fill(Param.Count.ICache.setLen)(
     Module(
-      new SingleLutRam(
+      new VSingleBRam(
         Param.Count.ICache.sizePerRam,
         ICacheStatusTagBundle.width
       )
@@ -121,12 +121,6 @@ class ICache(
   dataLineRams.foreach { ram =>
     ram.io         := DontCare
     ram.io.isWrite := false.B // Fallback: Not write
-  }
-
-  val statusTagReadRegVec = RegInit(VecInit(Seq.fill(Param.Count.ICache.setLen)(0.U(ICacheStatusTagBundle.width.W))))
-  statusTagReadRegVec.zip(statusTagRams).foreach {
-    case (reg, ram) =>
-      reg := ram.io.dataOut
   }
 
   // AXI master
@@ -224,7 +218,7 @@ class ICache(
       isHasReqReg := io.accessPort.req.client.isValid
 
       // Step 2: Read status-tag
-      val statusTagLines = WireDefault(VecInit(statusTagReadRegVec.map(reg => toStatusTagLine(reg))))
+      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
 
       // Step 2: Read data (for read and write)
       val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.dataOut)))
@@ -393,7 +387,7 @@ class ICache(
       val queryIndex = WireDefault(queryIndexFromMemAddr(reqMemAddr))
 
       // Step 2: Read status-tag
-      val statusTagLines = WireDefault(VecInit(statusTagReadRegVec.map(reg => toStatusTagLine(reg))))
+      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
 
       // Step 2: Read data request (for write-back)
       dataLineRams.foreach { ram =>
