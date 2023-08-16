@@ -216,12 +216,6 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.exeFixBundle            := io.exeFtqPort.feedBack.fixGhrBundle
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderFixGhr      := io.preDecoderFlush
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderBranchTaken := io.preDecoderBranchTaken
-  io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo :=
-    Mux(
-      io.backendFlush,
-      ftqBpuMetaRegs(backendFlushIdReg).tageQueryMeta.tageGhrInfo,
-      ftqBpuMetaRegs(preDecoderFlushIdReg).tageQueryMeta.tageGhrInfo
-    )
 //  when(
 //    io.cuCommitFtqPort.blockBitmask(0) & io.cuCommitFtqPort.meta.isBranch
 //  ) {
@@ -340,5 +334,11 @@ class FetchTargetQueue(
       io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty ||
         (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
   }
+  io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo :=
+    Mux(
+      io.backendFlush,
+      ftqBpuMetaRegs(backendFlushIdReg).tageQueryMeta.tageGhrInfo,
+      ftqBpuMetaRegs(preDecoderFlushIdReg).tageQueryMeta.tageGhrInfo
+    )
 
 }
