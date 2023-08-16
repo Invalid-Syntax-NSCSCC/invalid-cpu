@@ -7,6 +7,7 @@ import chisel3.experimental.Param
 import pipeline.common.bundles.FetchInstInfoBundle
 import common.bundles.RfAccessInfoNdPort
 import memory.enums.TlbMemType
+import spec.Inst._
 
 class InstTranslateStage extends Module {
 
@@ -41,10 +42,13 @@ class InstTranslateStage extends Module {
       }
     }
 
-    // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr
+    // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op
+    val inst = io.ins.head.bits.inst
     val seqs: Vec[Vec[UInt]] = VecInit(
       Seq(
-        Seq(0.U, 1.U, 3.U, 4.U, 0.U)
+        Seq(33.U, 34.U, inst(9, 5), 0.U, 0.U, 0.U, ExeInst.Op.nor.asUInt),
+        Seq(33.U, 33.U, 0.U, 1.U, 1.U, 0.U, ExeInst.Op.add.asUInt),
+        Seq(inst(4, 0), inst(14, 10), 33.U, 0.U, 0.U, ExeInst.Op.add.asUInt)
       ).map(VecInit(_))
     )
 
@@ -52,7 +56,7 @@ class InstTranslateStage extends Module {
     val storeInfoReg = RegInit(FetchInstInfoBundle.default)
 
     val isCustomInsts = io.ins.map { in =>
-      in.valid && false.B
+      in.valid && inst(31, 15) === _3R.sub_w
     }
     isCustomInsts.zipWithIndex.foreach {
       case (isCustomInst, idx) =>
@@ -100,6 +104,7 @@ class InstTranslateStage extends Module {
         outInfo.imm            := res(3)
         outInfo.hasImm         := res(4) =/= 0.U
         outInfo.jumpBranchAddr := res(5)
+        outInfo.op             := res(6).asTypeOf(outInfo.op)
       }
     }
 
