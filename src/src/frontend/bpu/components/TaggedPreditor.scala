@@ -2,7 +2,7 @@ package frontend.bpu.components
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.util._
-import frontend.bpu.utils.CsrHash
+import frontend.bpu.utils.{CsrHash, DebugCsrHash}
 import memory.VSimpleDualBRam
 import spec.Param
 
@@ -35,9 +35,11 @@ class TaggedPreditor(
 
   val io = IO(new Bundle {
     // Query signal
-    val isGlobalHistoryUpdate = Input(Bool())
-    val globalHistory         = Input(UInt((ghrLength).W))
-    val pc                    = Input(UInt(spec.Width.Mem.addr))
+    val isGlobalHistoryUpdate      = Input(Bool())
+    val globalHistory              = Input(UInt((ghrLength).W))
+    val debugGlobalHistory         = Input(UInt((ghrLength).W))
+    val pc                         = Input(UInt(spec.Width.Mem.addr))
+    val debugIsGlobalHistoryUpdate = Input(Bool())
 
     // Meta
     val usefulBits       = Output(UInt(phtUsefulWidth.W))
@@ -217,5 +219,12 @@ class TaggedPreditor(
   phtRam.io.isWrite   := io.updateValid
   phtRam.io.dataIn    := Cat(phtUpdateResult.counter, phtUpdateResult.useful, phtUpdateResult.tag)
   phtRam.io.writeAddr := phtUpdateIndex
+
+  // debug speculative global history update hash
+  val debugHashedGhtInput = dontTouch(Wire(UInt(phtAddrWidth.W)))
+  val debugGhtHashCsrHash = Module(new DebugCsrHash(ghrLength, phtAddrWidth))
+  debugGhtHashCsrHash.io.data       := io.debugGlobalHistory
+  debugGhtHashCsrHash.io.dataUpdate := io.debugIsGlobalHistoryUpdate
+  debugHashedGhtInput               := debugGhtHashCsrHash.io.hash
 
 }

@@ -27,7 +27,7 @@ object Param {
   val isPredecode                = true
   val isOverideRas               = true
   val isFtbUpdateRet             = true
-  val isSpeculativeGlobalHistory = false
+  val isSpeculativeGlobalHistory = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true

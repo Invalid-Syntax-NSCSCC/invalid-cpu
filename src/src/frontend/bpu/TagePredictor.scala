@@ -251,19 +251,21 @@ class TagePredictor(
         )
       )
       // Query
-      taggedPreditor.io.isGlobalHistoryUpdate := isGlobalHistoryUpdate
-      taggedPreditor.io.globalHistory         := shiftedGlobalHistory(historyLengths(providerId + 1) - 1, 0)
-      taggedPreditor.io.pc                    := io.pc
-      tagUsefulbits(providerId)               := taggedPreditor.io.usefulBits
-      tagCtrbits(providerId)                  := taggedPreditor.io.ctrBits
-      tagQueryTags(providerId)                := taggedPreditor.io.queryTag
-      tagOriginTags(providerId)               := taggedPreditor.io.originTag
-      tagHitIndexs(providerId)                := taggedPreditor.io.hitIndex
-      tagIsTakens(providerId)                 := taggedPreditor.io.taken
-      tagIsHits(providerId)                   := taggedPreditor.io.tagHit
-      tagGhtHashs(providerId)                 := taggedPreditor.io.queryGhtHash
-      tagTagHashCsr1s(providerId)             := taggedPreditor.io.queryTagHashCsr1
-      tagTagHashCsr2s(providerId)             := taggedPreditor.io.queryTagHashCsr2
+      taggedPreditor.io.isGlobalHistoryUpdate      := isGlobalHistoryUpdate
+      taggedPreditor.io.globalHistory              := shiftedGlobalHistory(historyLengths(providerId + 1) - 1, 0)
+      taggedPreditor.io.debugIsGlobalHistoryUpdate := isUpdateValid
+      taggedPreditor.io.debugGlobalHistory         := ghr(historyLengths(providerId + 1) - 1, 0)
+      taggedPreditor.io.pc                         := io.pc
+      tagUsefulbits(providerId)                    := taggedPreditor.io.usefulBits
+      tagCtrbits(providerId)                       := taggedPreditor.io.ctrBits
+      tagQueryTags(providerId)                     := taggedPreditor.io.queryTag
+      tagOriginTags(providerId)                    := taggedPreditor.io.originTag
+      tagHitIndexs(providerId)                     := taggedPreditor.io.hitIndex
+      tagIsTakens(providerId)                      := taggedPreditor.io.taken
+      tagIsHits(providerId)                        := taggedPreditor.io.tagHit
+      tagGhtHashs(providerId)                      := taggedPreditor.io.queryGhtHash
+      tagTagHashCsr1s(providerId)                  := taggedPreditor.io.queryTagHashCsr1
+      tagTagHashCsr2s(providerId)                  := taggedPreditor.io.queryTagHashCsr2
 
       // update
       taggedPreditor.io.updatePc          := io.updatePc
