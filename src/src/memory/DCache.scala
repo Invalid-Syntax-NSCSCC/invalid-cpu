@@ -144,7 +144,7 @@ class DCache(
   // RAMs for valid, dirty, and tag
   val statusTagRams = Seq.fill(Param.Count.DCache.setLen)(
     Module(
-      new VSimpleDualBRam(
+      new SimpleDualBRam(
         Param.Count.DCache.sizePerRam,
         StatusTagBundle.width
       )

@@ -67,9 +67,8 @@ class TaggedPreditor(
     val updateIndex      = Input(UInt(log2Ceil(phtDepth).W))
 
     // speculative update hash value
-    val isExeFixCsr       = Input(Bool())
-    val isPredecodeFixCsr = Input(Bool())
-    val isRecoverCsr      = Input(Bool())
+    val isFixHash         = Input(Bool())
+    val isRecoverHash     = Input(Bool())
     val originGhtHash     = Input(UInt(phtAddrWidth.W))
     val originTagHashCsr1 = Input(UInt(phtTagWidth.W))
     val originTagHashCsr2 = Input(UInt((phtTagWidth - 1).W))
@@ -180,34 +179,32 @@ class TaggedPreditor(
 
   // to do  connect CSR hash
   val ghtHashCsrHash = Module(new CsrHash(ghrLength, phtAddrWidth))
-  ghtHashCsrHash.io.data              := io.globalHistory
-  ghtHashCsrHash.io.dataUpdate        := io.isGlobalHistoryUpdate
-  hashedGhtInput                      := ghtHashCsrHash.io.hash
-  ghtHashCsrHash.io.originHash        := io.originGhtHash
-  ghtHashCsrHash.io.isRecoverCsr      := io.isRecoverCsr
-  ghtHashCsrHash.io.isExeFixCsr       := io.isExeFixCsr
-  ghtHashCsrHash.io.isPredecodeFixCsr := io.isPredecodeFixCsr
-  io.queryGhtHash                     := ghtHashCsrHash.io.hash
+  ghtHashCsrHash.io.data          := io.globalHistory
+  ghtHashCsrHash.io.dataUpdate    := io.isGlobalHistoryUpdate
+  hashedGhtInput                  := ghtHashCsrHash.io.hash
+  ghtHashCsrHash.io.originHash    := io.originGhtHash
+  ghtHashCsrHash.io.isRecoverHash := io.isRecoverHash
+  ghtHashCsrHash.io.isFixHash     := io.isFixHash
+  io.queryGhtHash                 := ghtHashCsrHash.io.hash
 
   val pcHashCsrHash1 = Module(new CsrHash(ghrLength, phtTagWidth))
-  pcHashCsrHash1.io.data              := io.globalHistory
-  pcHashCsrHash1.io.dataUpdate        := io.isGlobalHistoryUpdate
-  tagHashCsr1                         := pcHashCsrHash1.io.hash
-  pcHashCsrHash1.io.originHash        := io.originTagHashCsr1
-  pcHashCsrHash1.io.isRecoverCsr      := io.isRecoverCsr
-  pcHashCsrHash1.io.isExeFixCsr       := io.isExeFixCsr
-  pcHashCsrHash1.io.isPredecodeFixCsr := io.isPredecodeFixCsr
-  io.queryTagHashCsr1                 := pcHashCsrHash1.io.hash
+  pcHashCsrHash1.io.data          := io.globalHistory
+  pcHashCsrHash1.io.dataUpdate    := io.isGlobalHistoryUpdate
+  tagHashCsr1                     := pcHashCsrHash1.io.hash
+  pcHashCsrHash1.io.originHash    := io.originTagHashCsr1
+  pcHashCsrHash1.io.isRecoverHash := io.isRecoverHash
+  pcHashCsrHash1.io.isFixHash     := io.isFixHash
+  io.queryTagHashCsr1             := pcHashCsrHash1.io.hash
 
   val pcHashCsrHash2 = Module(new CsrHash(ghrLength, phtTagWidth - 1))
-  pcHashCsrHash2.io.data              := io.globalHistory
-  pcHashCsrHash2.io.dataUpdate        := io.isGlobalHistoryUpdate
-  tagHashCsr2                         := pcHashCsrHash2.io.hash
-  pcHashCsrHash2.io.originHash        := io.originTagHashCsr2
-  pcHashCsrHash2.io.isRecoverCsr      := io.isRecoverCsr
-  pcHashCsrHash2.io.isExeFixCsr       := io.isExeFixCsr
-  pcHashCsrHash2.io.isPredecodeFixCsr := io.isPredecodeFixCsr
-  io.queryTagHashCsr2                 := pcHashCsrHash2.io.hash
+  pcHashCsrHash2.io.data          := io.globalHistory
+  pcHashCsrHash2.io.dataUpdate    := io.isGlobalHistoryUpdate
+  tagHashCsr2                     := pcHashCsrHash2.io.hash
+  pcHashCsrHash2.io.originHash    := io.originTagHashCsr2
+  pcHashCsrHash2.io.isRecoverHash := io.isRecoverHash
+  pcHashCsrHash2.io.isFixHash     := io.isFixHash
+
+  io.queryTagHashCsr2 := pcHashCsrHash2.io.hash
 
   val phtRam = Module(
     new VSimpleDualBRam(

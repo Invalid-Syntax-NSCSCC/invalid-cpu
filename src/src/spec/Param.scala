@@ -50,7 +50,7 @@ object Param {
   val instRegReadNum         = 2
   val fetchInstMaxNum        = 4 // 单次取指 must be 1,2,4,8... ( less than dataPerLine)
   val issueInstInfoMaxNum    = 2 // 发射数量
-  val commitNum              = 1 // 单次提交数量
+  val commitNum              = 2 // 单次提交数量
   val pipelineNum            = if (useSimpleBackend && !isUse3Unit) issueInstInfoMaxNum else 3 // number of pipeline
   val dispatchOutQueueLength = 2
   val csrReadNum             = 1
@@ -146,7 +146,7 @@ object Param {
     }
 
     object Tlb {
-      val num      = 32
+      val num      = 4
       val transNum = 2
     }
 
@@ -235,10 +235,8 @@ object Param {
 
       val commitRecover    = 0.U
       val exeFixJumpError  = next
-      val exeUpdateJump    = next
-      val exeRecover       = next
       val decodeUpdateJump = next
-      val decodeBrExcp     = next
+      val decodeRecoder    = next
 
       def width = log2Ceil(count + 1)
     }

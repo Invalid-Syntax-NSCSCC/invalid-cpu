@@ -6,19 +6,16 @@ import spec._
 
 class BranchAddrBundle extends Bundle {
   val startPc        = UInt(spec.Width.Mem.addr)
-  val jumpTargetAddr = UInt(spec.Width.Mem.addr)
-  val fetchLength    = UInt(log2Ceil(Param.fetchInstMaxNum + 1).W)
+  val jumpPartialTargetAddr = UInt((spec.Width.Mem._addr - 2).W)
+  val fetchLastIdx   = UInt(log2Ceil(Param.fetchInstMaxNum).W)
 //  val fallThroughAddr = UInt(spec.Width.Mem.addr)
 }
 
 class ExeFtqFixGhrBundle extends Bundle {
-  val isExeFixValid      = Bool()
-  val exeFixFirstBrTaken = Bool()
-  val exeFixJumpError    = Bool()
-  val exeFixIsTaken      = Bool()
+  val isExeFixValid = Bool()
+  val exeFixIsTaken = Bool()
 }
 class GhrUpdateSignalBundle extends Bundle {
-  val isCommitFixGhr          = Bool()
   val exeFixBundle            = new ExeFtqFixGhrBundle
   val isPredecoderFixGhr      = Bool()
   val isPredecoderBranchTaken = Bool()

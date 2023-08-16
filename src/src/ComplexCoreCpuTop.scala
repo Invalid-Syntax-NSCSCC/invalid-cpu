@@ -180,6 +180,7 @@ class ComplexCoreCpuTop extends Module {
   }
   frontend.io.commitFixBranch := false.B
   frontend.io.commitFixId     := 0.U
+  frontend.io.isFlushFromCu   := false.B // TODO
 
   // Instruction queue
   instQueue.io.enqueuePort <> frontend.io.instDequeuePort
