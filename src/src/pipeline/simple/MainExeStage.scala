@@ -355,10 +355,12 @@ class MainExeStage
   }
   switch(selectedIn.instInfo.exeOp.subOp) {
     is(OpBundle.rdcntvl_w.subOp) {
-      cntOrShiftResult := io.peer.get.stableCounterReadPort.output(wordLength - 1, 0)
+      out.wb.instInfo.forbidParallelCommit := true.B
+      cntOrShiftResult                     := io.peer.get.stableCounterReadPort.output(wordLength - 1, 0)
     }
 
     is(OpBundle.rdcntvh_w.subOp) {
+      out.wb.instInfo.forbidParallelCommit := true.B
       cntOrShiftResult := io.peer.get.stableCounterReadPort
         .output(doubleWordLength - 1, wordLength)
     }
