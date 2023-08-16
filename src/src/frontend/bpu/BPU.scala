@@ -264,11 +264,14 @@ class BPU(
   tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
   tagePredictorModule.io.updateInfoPort := tageUpdateInfo
   // update global history in the next cycle
-  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := io.bpuFtqPort.ftqP1.predictTaken
+  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := RegNext(io.bpuFtqPort.ftqP1.predictTaken, false.B)
   // bpu predict info
-  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := mainRedirectValid
-  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle    := ghrFixBundle
-  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo  := io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo
+  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := RegNext(
+    mainRedirectValid && (!ghrFixBundle.isFixGhrValid),
+    false.B
+  ) // decrease net delay, predict update delay one cycle
+  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle   := ghrFixBundle
+  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo := io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo
 //  // update global history in the next cycle
 //  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := RegNext(
 //    io.bpuFtqPort.ftqP1.predictTaken,

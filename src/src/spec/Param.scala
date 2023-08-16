@@ -9,8 +9,8 @@ object Param {
   val useSimpleBackend = true
 
   // These options are one-hot
-  val isChiplab        = true
-  val isReleasePackage = false
+  val isChiplab        = false
+  val isReleasePackage = true
   val isFullFpga       = false
 
   val usePmu = false || isChiplab // 性能计数器
@@ -27,7 +27,7 @@ object Param {
   val isPredecode                = true
   val isOverideRas               = true
   val isFtbUpdateRet             = true
-  val isSpeculativeGlobalHistory = false
+  val isSpeculativeGlobalHistory = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true
