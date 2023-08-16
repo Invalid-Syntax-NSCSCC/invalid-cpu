@@ -228,7 +228,7 @@ class SimpleCoreCpuTop extends Module {
   }
 
   val instTranslateStage = Module(new InstTranslateStage)
-  instTranslateStage.io.isFlush := cu.io.backendFlush
+  instTranslateStage.io.isFlush := cu.io.frontendFlush
 
   // decode
   decodeStage.io.isFrontendFlush := cu.io.frontendFlush

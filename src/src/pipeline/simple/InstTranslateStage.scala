@@ -108,5 +108,10 @@ class InstTranslateStage extends Module {
       }
     }
 
+    when(io.isFlush) {
+      customContinueReg := false.B
+      counter           := 0.U
+    }
+
   }
 }
