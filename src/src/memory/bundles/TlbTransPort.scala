@@ -6,9 +6,10 @@ import memory.enums.TlbMemType
 import spec._
 
 class TlbTransPort extends Bundle {
-  val isValid   = Input(Bool())
-  val virtAddr  = Input(UInt(Width.Mem.addr))
-  val memType   = Input(TlbMemType())
-  val physAddr  = Output(UInt(Width.Mem.addr))
-  val exception = Valid(UInt(Width.Csr.exceptionIndex))
+  val isValid     = Input(Bool())
+  val virtAddr    = Input(UInt(Width.Mem.addr))
+  val memType     = Input(TlbMemType())
+  val physAddr    = Output(UInt(Width.Mem.addr))
+  val isNotCached = Output(Bool())
+  val exception   = Valid(UInt(Width.Csr.exceptionIndex))
 }

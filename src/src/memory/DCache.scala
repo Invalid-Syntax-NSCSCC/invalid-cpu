@@ -144,7 +144,7 @@ class DCache(
   // RAMs for valid, dirty, and tag
   val statusTagRams = Seq.fill(Param.Count.DCache.setLen)(
     Module(
-      new SimpleDualLutRam(
+      new VSimpleDualBRam(
         Param.Count.DCache.sizePerRam,
         StatusTagBundle.width
       )
@@ -169,12 +169,6 @@ class DCache(
   dataLineRams.foreach { ram =>
     ram.io         := DontCare
     ram.io.isWrite := false.B // Fallback: Not write
-  }
-
-  val statusTagReadRegVec = RegInit(VecInit(Seq.fill(Param.Count.DCache.setLen)(0.U(StatusTagBundle.width.W))))
-  statusTagReadRegVec.zip(statusTagRams).foreach {
-    case (reg, ram) =>
-      reg := ram.io.dataOut
   }
 
   // AXI master
@@ -319,7 +313,7 @@ class DCache(
       isHasReqReg := io.accessPort.req.client.isValid
 
       // Step 2: Read status-tag
-      val statusTagLines = WireDefault(VecInit(statusTagReadRegVec.map(reg => toStatusTagLine(reg))))
+      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
 
       // Step 2: Read data (for read and write)
       val dataLines = WireDefault(VecInit(dataLineRams.map(_.io.dataOut)))
@@ -680,7 +674,7 @@ class DCache(
       val queryIndex = WireDefault(queryIndexFromMemAddr(reqMemAddr))
 
       // Step 2: Read status-tag
-      val statusTagLines = WireDefault(VecInit(statusTagReadRegVec.map(reg => toStatusTagLine(reg))))
+      val statusTagLines = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
 
       // Step 2: Read data request (for write-back)
       dataLineRams.foreach { ram =>
@@ -772,7 +766,7 @@ class DCache(
       )
       val dataLines        = WireDefault(VecInit(dataLineRams.map(_.io.dataOut))) // Delay for 1 cycle
       val selectedDataLine = WireDefault(dataLines(setCountDownReg))
-      val statusTagLines   = WireDefault(VecInit(statusTagReadRegVec.map(reg => toStatusTagLine(reg))))
+      val statusTagLines   = WireDefault(VecInit(statusTagRams.map(ram => toStatusTagLine(ram.io.dataOut))))
 
       dataLineRams.map(_.io.readAddr).foreach(_ := queryIndex)
 
