@@ -53,6 +53,11 @@ class FetchTargetQueue(
   val isFlush                  = WireDefault(false.B)
   val isFlushDelay             = RegNext(isFlush, false.B)
   isFlush := io.backendFlush || io.preDecoderFlush
+  val backendFlushIdReg    = RegInit(0.U(ptrWidth.W))
+  val preDecoderFlushIdReg = RegInit(0.U(ptrWidth.W))
+  backendFlushIdReg    := io.backendFlushFtqId
+  preDecoderFlushIdReg := io.preDecoderFtqId
+  // flush Enable delay 1 circle than id (to decrease mux netDelay)
 
   val bpuPtr    = RegInit(0.U(ptrWidth.W))
   val ifPtr     = RegInit(0.U(ptrWidth.W))
@@ -123,14 +128,14 @@ class FetchTargetQueue(
 
   // if IF predecoder found a redirect
   when(io.preDecoderFlush) {
-    nextIfPtr := io.preDecoderFtqId + 1.U
-    bpuPtr    := io.preDecoderFtqId + 1.U
+    nextIfPtr := preDecoderFlushIdReg + 1.U
+    bpuPtr    := preDecoderFlushIdReg + 1.U
   }
   // if backend redirect triggered,back to the next block of the redirect block
   // backend may continue to commit older block (flush before exeStage inst;commit after exeStage inst)
   when(io.backendFlush) {
-    nextIfPtr := io.backendFlushFtqId + 1.U
-    bpuPtr    := io.backendFlushFtqId + 1.U
+    nextIfPtr := backendFlushIdReg + 1.U
+    bpuPtr    := backendFlushIdReg + 1.U
   }
 
   // next FTQ
@@ -211,12 +216,6 @@ class FetchTargetQueue(
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.exeFixBundle            := io.exeFtqPort.feedBack.fixGhrBundle
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderFixGhr      := io.preDecoderFlush
   io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle.isPredecoderBranchTaken := io.preDecoderBranchTaken
-  io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo :=
-    Mux(
-      io.backendFlush,
-      ftqBpuMetaRegs(io.backendFlushFtqId).tageQueryMeta.tageGhrInfo,
-      ftqBpuMetaRegs(io.preDecoderFtqId).tageQueryMeta.tageGhrInfo
-    )
 //  when(
 //    io.cuCommitFtqPort.blockBitmask(0) & io.cuCommitFtqPort.meta.isBranch
 //  ) {
@@ -304,9 +303,7 @@ class FetchTargetQueue(
   when(bpuMetaWriteValid) {
     ftqBpuMetaRegs(bpuMetaWritePtr) := bpuMetaWriteEntry
   }
-//  when(io.preDecoderFlush) {
-//    ftqBpuMetaRegs(io.preDecoderFtqId).tageQueryMeta.tageGhrInfo := io.bpuFtqPort.bpuQueryMeta.tageQueryMeta.tageGhrInfo
-//  }
+
   // update pc from backend
   when(io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateValid) {
     val ftqUpdateMetaId = WireDefault(io.exeFtqPort.feedBack.commitBundle.ftqUpdateMetaId)
@@ -337,5 +334,11 @@ class FetchTargetQueue(
       io.exeFtqPort.feedBack.commitBundle.ftqMetaUpdateFtbDirty ||
         (io.commitFtqTrainPort.branchTakenMeta.predictedTaken ^ io.commitFtqTrainPort.branchTakenMeta.isTaken)
   }
+  io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo :=
+    Mux(
+      io.backendFlush,
+      ftqBpuMetaRegs(backendFlushIdReg).tageQueryMeta.tageGhrInfo,
+      ftqBpuMetaRegs(preDecoderFlushIdReg).tageQueryMeta.tageGhrInfo
+    )
 
 }
