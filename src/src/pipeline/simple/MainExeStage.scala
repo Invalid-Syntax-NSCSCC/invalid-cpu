@@ -201,9 +201,9 @@ class MainExeStage
   out.memRequest.rw := Mux(isWrite, ReadWriteSel.write, ReadWriteSel.read)
   out.isAtomicStore := selectedIn.instInfo.exeOp === OpBundle.sc
 
-  when(isValidLoadStore) {
-    out.wb.instInfo.forbidParallelCommit := true.B
-  }
+  // when(isValidLoadStore) {
+  //   out.wb.instInfo.forbidParallelCommit := true.B
+  // }
 
   // Handle exception
   when(selectedIn.instInfo.exceptionPos === ExceptionPos.none && isAddrNotAligned) {
@@ -225,8 +225,8 @@ class MainExeStage
   val cacopAddr = selectedIn.leftOperand + selectedIn.rightOperand
   val isCacop   = selectedIn.instInfo.exeOp === OpBundle.cacop
   when(isCacop) {
-    out.memRequest.addr                  := cacopAddr
-    out.wb.instInfo.forbidParallelCommit := true.B
+    out.memRequest.addr := cacopAddr
+    // out.wb.instInfo.forbidParallelCommit := true.B
 
     switch(selectedIn.code(2, 0)) {
       is(0.U) {
@@ -355,12 +355,12 @@ class MainExeStage
   }
   switch(selectedIn.instInfo.exeOp.subOp) {
     is(OpBundle.rdcntvl_w.subOp) {
-      out.wb.instInfo.forbidParallelCommit := true.B
-      cntOrShiftResult                     := io.peer.get.stableCounterReadPort.output(wordLength - 1, 0)
+      // out.wb.instInfo.forbidParallelCommit := true.B
+      cntOrShiftResult := io.peer.get.stableCounterReadPort.output(wordLength - 1, 0)
     }
 
     is(OpBundle.rdcntvh_w.subOp) {
-      out.wb.instInfo.forbidParallelCommit := true.B
+      // out.wb.instInfo.forbidParallelCommit := true.B
       cntOrShiftResult := io.peer.get.stableCounterReadPort
         .output(doubleWordLength - 1, wordLength)
     }
@@ -568,7 +568,7 @@ class MainExeStage
   val isIdle = selectedIn.instInfo.exeOp === OpBundle.idle
 
   when(isBranchInst || isIdle || isErtn) {
-    out.wb.instInfo.forbidParallelCommit := true.B
+    // out.wb.instInfo.forbidParallelCommit := true.B
   }
 
   when(io.isFlush) {

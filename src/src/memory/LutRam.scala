@@ -13,14 +13,14 @@ class SingleLutRam(size: Int, dataWidth: Int) extends Module {
     val dataOut = Output(UInt(dataWidth.W))
   })
 
-  val data = RegInit(VecInit(Seq.fill(size)(0.U(dataWidth.W))))
+  val ram = Mem(size, UInt(dataWidth.W))
 
   // Read
-  io.dataOut := data(io.addr)
+  io.dataOut := ram.read(io.addr)
 
   // Write
   when(io.isWrite) {
-    data(io.addr) := io.dataIn
+    ram(io.addr) := io.dataIn
   }
 }
 
@@ -35,13 +35,13 @@ class SimpleDualLutRam(size: Int, dataWidth: Int) extends Module {
     val dataOut   = Output(UInt(dataWidth.W))
   })
 
-  val data = RegInit(VecInit(Seq.fill(size)(0.U(dataWidth.W))))
+  val ram = Mem(size, UInt(dataWidth.W))
 
   // Read
-  io.dataOut := data(io.readAddr)
+  io.dataOut := ram.read(io.readAddr)
 
   // Write
   when(io.isWrite) {
-    data(io.writeAddr) := io.dataIn
+    ram(io.writeAddr) := io.dataIn
   }
 }

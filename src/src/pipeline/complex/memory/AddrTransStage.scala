@@ -72,7 +72,7 @@ class AddrTransStage
   out.cacheMaintenance        := selectedIn.cacheMaintenance
   out.isAtomicStore           := selectedIn.isAtomicStore
   out.isAtomicStoreSuccessful := selectedIn.memRequest.isValid
-  out.isCached                := false.B // Fallback: Uncached
+  out.isCached                := true.B // Fallback: Cached
 
   // DMW mapping
   val directMapVec = Wire(
@@ -166,18 +166,8 @@ class AddrTransStage
   }
 
   // Can use cache
-  switch(peer.csr.crmd.datm) {
-    is(Csr.Crmd.Datm.suc) {
-      out.isCached := false.B
-    }
-    is(Csr.Crmd.Datm.cc) {
-      out.isCached := true.B
-    }
-  }
-  if (isCacheOnPg) {
-    when(peer.csr.crmd.pg === 1.U) {
-      out.isCached := true.B
-    }
+  when(peer.csr.crmd.da && (peer.csr.crmd.datm === 0.U)) {
+    out.isCached := false.B
   }
   if (isForcedCache) {
     out.isCached := true.B
