@@ -25,7 +25,9 @@ class BPU(
 
   val io = IO(new Bundle {
     // Backend flush
-    val backendFlush = Input(Bool())
+    val backendFlush   = Input(Bool())
+    val preDecodeFlush = Input(Bool())
+    val isFlushFromCu  = Input(Bool())
 
     // FTQ
     val bpuFtqPort = Flipped(new BpuFtqPort)
@@ -40,7 +42,7 @@ class BPU(
     // PMU
     // TODO: use PMU to monitor miss-prediction rate and each component useful rate
   })
-  io.fetchNum := io.bpuFtqPort.ftqP0.length
+  io.fetchNum := io.bpuFtqPort.ftqP0.fetchLastIdx +& 1.U
   // P1 signals
   val mainRedirectValid = WireDefault(false.B)
 
@@ -57,7 +59,7 @@ class BPU(
   val rasTopAddr = WireDefault(0.U(addr.W))
 
   val ftqFullDelay = RegNext(io.bpuFtqPort.ftqFull, false.B)
-  val flushDelay   = RegNext(io.backendFlush || (mainRedirectValid && !ftqFullDelay), false.B)
+  val flushDelay   = RegNext(io.backendFlush || io.preDecodeFlush || (mainRedirectValid && !ftqFullDelay), false.B)
 
   ////////////////////////////////////////////////////////////////////////////////////
   // Query logic
@@ -77,7 +79,7 @@ class BPU(
   }.otherwise {
     // p0 generate a next-line prediction
     when(isCrossPage) {
-      io.bpuFtqPort.ftqP0.length := (0.U(10.W) - io.pc(11, 2))
+      io.bpuFtqPort.ftqP0.fetchLastIdx := (0.U(10.W) - io.pc(11, 2)) - 1.U
     }.otherwise {
       // sequential pc
       val pcFetchNum = WireDefault(Param.fetchInstMaxNum.U(log2Ceil(Param.fetchInstMaxNum + 1).W))
@@ -95,7 +97,7 @@ class BPU(
           )
         }
       }
-      io.bpuFtqPort.ftqP0.length := pcFetchNum
+      io.bpuFtqPort.ftqP0.fetchLastIdx := pcFetchNum - 1.U
     }
     io.bpuFtqPort.ftqP0.startPc := io.pc
     io.bpuFtqPort.ftqP0.isValid := true.B
@@ -121,7 +123,7 @@ class BPU(
     // calculate fetch num with notTakenFallThroughAddress - startPc
 //    io.bpuFtqPort.ftqP1.length := (ftbEntry.fallThroughAddr(Param.Width.ICache._fetchOffset, 2) -
 //      p1Pc(Param.Width.ICache._fetchOffset, 2)) // Use 1 + log(fetchNum) bits minus to ensure no overflow
-    io.bpuFtqPort.ftqP1.length       := ftbEntry.fetchLength
+    io.bpuFtqPort.ftqP1.fetchLastIdx := ftbEntry.fetchLastIdx
     io.bpuFtqPort.ftqP1.predictValid := true.B
     //  switch predictTaken with ftbEntry.BranchType
     io.bpuFtqPort.ftqP1.predictTaken := true.B // (BranchType.call,BranchType.unCond)
@@ -138,15 +140,19 @@ class BPU(
   // Pc output
   io.bpuRedirectPc.valid         := mainRedirectValid
   io.bpuFtqPort.bpuRedirectValid := mainRedirectValid
-  io.bpuRedirectPc.bits          := ftbEntry.jumpTargetAddr
+  io.bpuRedirectPc.bits          := ftbEntry.jumpPartialTargetAddr << 2
   //  case branchType
   switch(ftbEntry.branchType) {
     is(Param.BPU.BranchType.cond) {
 //      io.bpuRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddr, ftbEntry.fallThroughAddr)
-      io.bpuRedirectPc.bits := Mux(predictTaken, ftbEntry.jumpTargetAddr, p1Pc + ftbEntry.fetchLength * 4.U)
+      io.bpuRedirectPc.bits := Mux(
+        predictTaken,
+        ftbEntry.jumpPartialTargetAddr << 2,
+        p1Pc + ((ftbEntry.fetchLastIdx +& 1.U) << 2)
+      )
     }
     is(Param.BPU.BranchType.call, Param.BPU.BranchType.uncond) {
-      io.bpuRedirectPc.bits := ftbEntry.jumpTargetAddr
+      io.bpuRedirectPc.bits := ftbEntry.jumpPartialTargetAddr << 2
     }
     is(Param.BPU.BranchType.ret) {
       // return inst is predict in preDecode Stage;
@@ -203,33 +209,27 @@ class BPU(
   ftbUpdateEntry.tag        := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc(addr - 1, log2Ceil(ftbNset) + 2)
   ftbUpdateEntry.branchType := io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType
   ftbUpdateEntry.isCrossCacheline := io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline
-  ftbUpdateEntry.jumpTargetAddr   := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpTargetAddr
-//  ftbUpdateEntry.fallThroughAddr  := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fallThroughAddr
-//  ftbUpdateEntry.fetchLength := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle
-//    .fallThroughAddr(Param.Width.ICache._fetchOffset, 2) -
-//    io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle
-//      .startPc(Param.Width.ICache._fetchOffset, 2) // Use 1 + log(fetchNum) bits minus to ensure no overflow
-  ftbUpdateEntry.fetchLength := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLength
+  ftbUpdateEntry.jumpPartialTargetAddr   := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpPartialTargetAddr
+  ftbUpdateEntry.fetchLastIdx     := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLastIdx
 
   // global branch history update logic
   val ghrFixBundle = Wire(new GhrFixNdBundle)
   val ghrUpdateSignalBundle = WireDefault(
     io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle
   )
-  ghrFixBundle.isFixGhrValid    := ghrUpdateSignalBundle.isPredecoderFixGhr || io.backendFlush
-  ghrFixBundle.isFixBranchTaken := ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken
-//  ghrUpdateSignalBundle.isCommitFixGhr
+  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.isPredecoderFixGhr || io.backendFlush || io.preDecodeFlush
+  ghrFixBundle.isFixBranchTaken := Mux(
+    ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
+    ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken,
+    ghrUpdateSignalBundle.isPredecoderBranchTaken
+  )
   ghrFixBundle.ghrFixType := Mux(
-    io.backendFlush && !ghrUpdateSignalBundle.exeFixBundle.isExeFixValid && !ghrUpdateSignalBundle.isPredecoderFixGhr,
+    io.backendFlush && io.isFlushFromCu,
     GhrFixType.commitRecover,
     Mux(
       ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
-      Mux(
-        ghrUpdateSignalBundle.exeFixBundle.exeFixFirstBrTaken,
-        GhrFixType.exeUpdateJump,
-        Mux(ghrUpdateSignalBundle.exeFixBundle.exeFixJumpError, GhrFixType.exeFixJumpError, GhrFixType.exeRecover)
-      ),
-      Mux(ghrUpdateSignalBundle.isPredecoderBranchTaken, GhrFixType.decodeUpdateJump, GhrFixType.decodeBrExcp)
+      GhrFixType.exeFixJumpError,
+      Mux(ghrUpdateSignalBundle.isPredecoderBranchTaken, GhrFixType.decodeUpdateJump, GhrFixType.decodeRecoder)
     )
   )
 

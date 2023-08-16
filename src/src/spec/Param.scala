@@ -233,10 +233,8 @@ object Param {
 
       val commitRecover    = 0.U
       val exeFixJumpError  = next
-      val exeUpdateJump    = next
-      val exeRecover       = next
       val decodeUpdateJump = next
-      val decodeBrExcp     = next
+      val decodeRecoder    = next
 
       def width = log2Ceil(count + 1)
     }

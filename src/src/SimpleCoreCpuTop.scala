@@ -186,9 +186,11 @@ class SimpleCoreCpuTop extends Module {
   } else {
     frontend.io.tlbTrans <> tlb.get.io.tlbTransPorts(1)
   }
-  frontend.io.csr.crmd   := csr.io.csrValues.crmd
-  frontend.io.csr.dmw(0) := csr.io.csrValues.dmw0
-  frontend.io.csr.dmw(1) := csr.io.csrValues.dmw1
+  frontend.io.csr.crmd      := csr.io.csrValues.crmd
+  frontend.io.csr.dmw(0)    := csr.io.csrValues.dmw0
+  frontend.io.csr.dmw(1)    := csr.io.csrValues.dmw1
+  frontend.io.isFlushFromCu := cu.io.isFlushFromRefetchOrExcp
+  // TODO: connect cu.io.isFlushFromRefetchOrExcp
 
   // TODO: Connect frontend
   frontend.io.exeFtqPort.queryPcBundle <> issueQueue.io.queryPcPort
@@ -366,10 +368,7 @@ class SimpleCoreCpuTop extends Module {
   cu.io.csrValues := csr.io.csrValues
 
   require(Param.jumpBranchPipelineIndex != 0)
-  cu.io.branchExe                 := mainExeStage.io.peer.get.branchSetPort
-  cu.io.redirectFromDecode.en     := false.B // instQueue.io.redirectRequest
-  cu.io.redirectFromDecode.ftqId  := DontCare
-  cu.io.redirectFromDecode.pcAddr := DontCare
+  cu.io.branchExe := mainExeStage.io.peer.get.branchSetPort
 
   cu.io.csrFlushRequest   := csr.io.csrFlushRequest
   cu.io.csrWriteInfo      := csrScoreBoard.io.csrWritePort
