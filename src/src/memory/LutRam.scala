@@ -13,7 +13,7 @@ class SingleLutRam(size: Int, dataWidth: Int) extends Module {
     val dataOut = Output(UInt(dataWidth.W))
   })
 
-  val ram = SyncReadMem(size, UInt(dataWidth.W), SyncReadMem.WriteFirst)
+  val ram = SyncReadMem(size, UInt(dataWidth.W), SyncReadMem.ReadFirst)
 
   // Read
   io.dataOut := ram.read(io.addr)
@@ -35,7 +35,7 @@ class SimpleDualLutRam(size: Int, dataWidth: Int) extends Module {
     val dataOut   = Output(UInt(dataWidth.W))
   })
 
-  val ram = SyncReadMem(size, UInt(dataWidth.W), SyncReadMem.WriteFirst)
+  val ram = SyncReadMem(size, UInt(dataWidth.W), SyncReadMem.ReadFirst)
 
   // Read
   io.dataOut := ram.read(io.readAddr)
