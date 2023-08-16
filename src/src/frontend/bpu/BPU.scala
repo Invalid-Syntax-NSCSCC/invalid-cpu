@@ -208,16 +208,16 @@ class BPU(
   ftbUpdateEntry.valid      := !(io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty && io.bpuFtqPort.ftqBpuTrainMeta.ftbHit)
   ftbUpdateEntry.tag        := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc(addr - 1, log2Ceil(ftbNset) + 2)
   ftbUpdateEntry.branchType := io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType
-  ftbUpdateEntry.isCrossCacheline := io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline
-  ftbUpdateEntry.jumpPartialTargetAddr   := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpPartialTargetAddr
-  ftbUpdateEntry.fetchLastIdx     := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLastIdx
+  ftbUpdateEntry.isCrossCacheline      := io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline
+  ftbUpdateEntry.jumpPartialTargetAddr := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpPartialTargetAddr
+  ftbUpdateEntry.fetchLastIdx          := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLastIdx
 
   // global branch history update logic
   val ghrFixBundle = Wire(new GhrFixNdBundle)
   val ghrUpdateSignalBundle = WireDefault(
     io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle
   )
-  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.isPredecoderFixGhr || io.backendFlush || io.preDecodeFlush
+  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.exeFixBundle.isExeFixValid || io.backendFlush || io.preDecodeFlush
   ghrFixBundle.isFixBranchTaken := Mux(
     ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
     ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken,
