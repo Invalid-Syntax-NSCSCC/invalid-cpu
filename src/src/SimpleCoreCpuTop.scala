@@ -474,7 +474,11 @@ class SimpleCoreCpuTop extends Module {
   }
   (io.diffTest, regFile.io.regfileDatas) match {
     case (Some(t), r) =>
-      t.regs := r
+      // t.regs := r(31, 0)
+      t.regs.zipWithIndex.foreach {
+        case (dst, idx) =>
+          dst := r(idx)
+      }
     case _ =>
   }
   (io.diffTest, csr.io.csrValues) match {

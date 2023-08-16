@@ -44,13 +44,21 @@ class InstTranslateStage extends Module {
 
     // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op
     val inst = io.ins.head.bits.inst
-    val seqs: Vec[Vec[UInt]] = VecInit(
-      Seq(
-        Seq(33.U, 34.U, inst(9, 5), 0.U, 0.U, 0.U, ExeInst.Op.nor.asUInt),
-        Seq(33.U, 33.U, 0.U, 1.U, 1.U, 0.U, ExeInst.Op.add.asUInt),
-        Seq(inst(4, 0), inst(14, 10), 33.U, 0.U, 0.U, ExeInst.Op.add.asUInt)
-      ).map(VecInit(_))
+
+    val raw_seqs = Seq(
+      Seq(33.U, 34.U, inst(9, 5), 0.U, 0.U, 0.U, ExeInst.Op.nor.asUInt),
+      Seq(33.U, 33.U, 0.U, 1.U, 1.U, 0.U, ExeInst.Op.add.asUInt),
+      Seq(inst(4, 0), inst(14, 10), 33.U, 0.U, 0.U, 0.U, ExeInst.Op.add.asUInt)
     )
+    val seqs: Vec[Vec[UInt]] = Wire(Vec(raw_seqs.length, Vec(raw_seqs.head.length, UInt(32.W))))
+
+    seqs.zip(raw_seqs).foreach {
+      case (seq, raw_seq) =>
+        seq.zip(raw_seq).foreach {
+          case (dst, src) =>
+            dst := src
+        }
+    }
 
     val counter      = RegInit(zeroWord)
     val storeInfoReg = RegInit(FetchInstInfoBundle.default)
