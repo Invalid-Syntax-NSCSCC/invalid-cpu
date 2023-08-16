@@ -208,7 +208,14 @@ class TagePredictor(
     ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
   }
   if (Param.isSpeculativeGlobalHistory) {
-    shiftedGlobalHistory := Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr
+    shiftedGlobalHistory := Mux(
+      io.ghrUpdateNdBundle.fixBundle.isFixGhrValid,
+      Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr,
+      Cat(
+        RegNext(Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr),
+        io.ghrUpdateNdBundle.bpuSpecTaken
+      ) // when speculative update, preFetch history to decrease logicDelay (connect with BRAM)
+    )
   } else {
     shiftedGlobalHistory := ghr
   }
