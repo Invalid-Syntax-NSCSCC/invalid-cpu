@@ -21,9 +21,9 @@ object Param {
   val isOutOfOrderIssue          = false
   val isFullUncachedPatch        = true
   val isMmioDelay                = false || isChiplab || isFullFpga
-  val isNoPrivilege              = false || isReleasePackage
+  val isNoPrivilege              = false
   val isCacheOnPg                = false
-  val isForcedCache              = false || isReleasePackage
+  val isForcedCache              = false
   val isForcedUncached           = false
   val isBranchPredict            = true
   val isPredecode                = true
@@ -146,7 +146,7 @@ object Param {
     }
 
     object Tlb {
-      val num      = 4
+      val num      = if (isChiplab) 32 else 4
       val transNum = 2
     }
 
