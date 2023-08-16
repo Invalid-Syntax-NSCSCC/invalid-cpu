@@ -216,14 +216,15 @@ class BPU(
   val ghrUpdateSignalBundle = WireDefault(
     io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle
   )
-  val ghrFixBundleReg = RegInit(GhrFixNdBundle.default)
-  ghrFixBundleReg.isFixGhrValid := ghrUpdateSignalBundle.exeFixBundle.isExeFixValid || io.backendFlush || io.preDecodeFlush
-  ghrFixBundleReg.isFixBranchTaken := Mux(
+  // val ghrFixBundleReg = RegInit(GhrFixNdBundle.default)
+  val ghrFixBundle = Wire(new GhrFixNdBundle)
+  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.exeFixBundle.isExeFixValid || io.backendFlush || io.preDecodeFlush
+  ghrFixBundle.isFixBranchTaken := Mux(
     ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
     ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken,
     ghrUpdateSignalBundle.isPredecoderBranchTaken
   )
-  ghrFixBundleReg.ghrFixType := Mux(
+  ghrFixBundle.ghrFixType := Mux(
     io.backendFlush && io.isFlushFromCu,
     GhrFixType.commitRecover,
     Mux(
@@ -232,9 +233,9 @@ class BPU(
       Mux(ghrUpdateSignalBundle.isPredecoderBranchTaken, GhrFixType.decodeUpdateJump, GhrFixType.decodeRecoder)
     )
   )
-  val tageGhrInfo = Reg(new TageGhrInfo())
-  tageGhrInfo := DontCare
-  tageGhrInfo := io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo
+//  val tageGhrInfo = Reg(new TageGhrInfo())
+//  tageGhrInfo := DontCare
+//  tageGhrInfo := io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo
 
   // connect fetch target buffer module
   // assign ftbHit = 0
@@ -263,13 +264,19 @@ class BPU(
   tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
   tagePredictorModule.io.updateInfoPort := tageUpdateInfo
   // update global history in the next cycle
-  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := RegNext(
-    io.bpuFtqPort.ftqP1.predictTaken,
-    false.B
-  ) // bpu predict info
-  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := RegNext(mainRedirectValid, false.B)
-  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle    := ghrFixBundleReg
-  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo  := tageGhrInfo
+  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := io.bpuFtqPort.ftqP1.predictTaken
+  // bpu predict info
+  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := mainRedirectValid
+  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle    := ghrFixBundle
+  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo  := io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo
+//  // update global history in the next cycle
+//  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := RegNext(
+//    io.bpuFtqPort.ftqP1.predictTaken,
+//    false.B
+//  ) // bpu predict info
+//  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := RegNext(mainRedirectValid, false.B)
+//  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle    := ghrFixBundleReg
+//  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo  := tageGhrInfo
 //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 
 }
