@@ -49,11 +49,19 @@ class Csr(
   // val csr = RegInit(VecInit(Seq.fill(Count.csrReg)(zeroWord)))
 
   val csr =
-    RegInit(
-      VecInit(
-        Seq("h8".U(wordLength.W)) ++ Seq.fill(Count.csrReg - 1)(zeroWord)
+    if (Param.isCsrCacheInit) {
+      RegInit(
+        VecInit(
+          Seq("ha8".U(wordLength.W)) ++ Seq.fill(Count.csrReg - 1)(zeroWord)
+        )
       )
-    )
+    } else {
+      RegInit(
+        VecInit(
+          Seq("h8".U(wordLength.W)) ++ Seq.fill(Count.csrReg - 1)(zeroWord)
+        )
+      )
+    }
 
   // CRMD 当前模式信息
   val crmd = viewUInt(csr(spec.Csr.Index.crmd), new CrmdBundle)
