@@ -413,7 +413,11 @@ class SimpleCoreCpuTop extends Module {
     Seq.fill(4)(
       commitStage.io.gprWritePorts(0).en && commitStage.io.ins(0).bits.instInfo.isValid && commitStage.io
         .ins(0)
-        .valid && commitStage.io.ins(0).ready && !cu.io.csrMessage.exceptionFlush
+        .valid && commitStage.io.ins(0).ready && !cu.io.csrMessage.exceptionFlush &&
+        !(
+          commitStage.io.ins(0).bits.instInfo.customInstInfo.isCustom &&
+            !commitStage.io.ins(0).bits.instInfo.customInstInfo.isCommit
+        )
     )
   ).asUInt
   io.debug0_wb.rf.wnum  := commitStage.io.gprWritePorts(0).addr
