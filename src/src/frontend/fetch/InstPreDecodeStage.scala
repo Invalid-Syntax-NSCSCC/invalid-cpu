@@ -10,9 +10,9 @@ import pipeline.common.bundles.{FetchInstInfoBundle, InstQueueEnqNdPort}
 import spec.Param
 
 class InstPreDecodeNdPort extends Bundle {
-  val enqInfos  = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
-  val ftqLength = UInt(log2Ceil(Param.fetchInstMaxNum + 1).W)
-  val ftqId     = UInt(Param.BPU.ftqPtrWidth.W)
+  val enqInfos     = Vec(Param.fetchInstMaxNum, Valid(new FetchInstInfoBundle))
+  val fetchLastIdx = UInt(log2Ceil(Param.fetchInstMaxNum).W)
+  val ftqId        = UInt(Param.BPU.ftqPtrWidth.W)
 }
 
 object InstPreDecodeNdPort {
@@ -84,8 +84,8 @@ class InstPreDecodeStage
       decodeResultVec(index) := preDecoder.io.result
     }
 
-    val isErrorPredict = selectedIn.enqInfos(io.in.bits.ftqLength - 1.U).bits.ftqInfo.predictBranch &&
-      !decodeResultVec(io.in.bits.ftqLength - 1.U).isBranch
+    val isErrorPredict = selectedIn.enqInfos(io.in.bits.fetchLastIdx).bits.ftqInfo.predictBranch &&
+      !decodeResultVec(io.in.bits.fetchLastIdx).isBranch
 
     val isJumpVec = Wire(Vec(Param.fetchInstMaxNum, Bool()))
     isJumpVec.zip(decodeResultVec).foreach {
@@ -95,7 +95,7 @@ class InstPreDecodeStage
 
     // select the first  (call ,ret ,direct unconditional)branch inst
     val jumpIndex = PriorityEncoder(isJumpVec)
-    val isJump    = isJumpVec.asUInt.orR && (jumpIndex +& 1.U <= selectedIn.ftqLength)
+    val isJump    = isJumpVec.asUInt.orR && (jumpIndex <= selectedIn.fetchLastIdx)
 
     // only immJump or ret can jump; indirect call would not jump
     // when met immediately jump but bpu do not predict jump, then triger a redirect
@@ -139,7 +139,7 @@ class InstPreDecodeStage
           Mux(
             decodeResultVec(jumpIndex).isRet,
             rasModule.io.topAddr,
-            selectedIn.enqInfos(io.in.bits.ftqLength - 1.U).bits.pcAddr + 4.U
+            selectedIn.enqInfos(io.in.bits.fetchLastIdx).bits.pcAddr + 4.U
           )
         ),
         0.U
@@ -151,15 +151,15 @@ class InstPreDecodeStage
 
     // output
     // cut block length
-    val selectBlockLength = Mux(
+    val selectFetchLastIdx = Mux(
       isDataValid && (isJump && canJump),
-      jumpIndex +& 1.U,
-      selectedIn.ftqLength
+      jumpIndex,
+      selectedIn.fetchLastIdx
     )
     isDataValid && ((isJump && canJump) || isErrorPredict)
 //    WireDefault(selectedIn.ftqLength)
 //    when( isPredecoderRedirect && !isErrorPredict) {
-//      selectBlockLength := jumpIndex +& 1.U
+//      selectFetchLastIdx := jumpIndex
 //    }
 
     // when redirect,change output instOutput
@@ -168,9 +168,9 @@ class InstPreDecodeStage
         if (Param.fetchInstMaxNum == 1) {
           infoBundle.valid := true.B
         } else {
-          infoBundle.valid := index.asUInt(log2Ceil(Param.fetchInstMaxNum + 1).W) < selectBlockLength
+          infoBundle.valid := index.asUInt(log2Ceil(Param.fetchInstMaxNum).W) <= selectFetchLastIdx
         }
-        when((index + 1).U === selectBlockLength) {
+        when(index.U === selectFetchLastIdx) {
           infoBundle.bits.ftqInfo.predictBranch := selectedIn
             .enqInfos(index)
             .bits

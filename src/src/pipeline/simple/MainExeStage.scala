@@ -539,15 +539,15 @@ class MainExeStage
     feedbackFtq.commitBundle.ftqUpdateMetaId          := RegNext(inFtqInfo.ftqId, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := RegNext(jumpAddr, 0.U)
     feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := RegNext(fallThroughPc, 0.U)
-    feedbackFtq.commitBundle.fetchLength := RegNext(inFtqPredictInfo.idxInBlock +& 1.U, 0.U) // TODO fetchNum
+    feedbackFtq.commitBundle.fetchLastIdx             := RegNext(inFtqPredictInfo.idxInBlock, 0.U)
   } else {
     feedbackFtq.commitBundle.ftqMetaUpdateValid := (isBranchInst || (!isBranchInst && inFtqPredictInfo.predictBranch)) && !branchBlockingReg
     feedbackFtq.commitBundle.ftqMetaUpdateFtbDirty := branchTargetMispredict ||
       (aluCalcJumpEn && !inFtqInfo.isLastInBlock) || (!isBranchInst && inFtqPredictInfo.predictBranch)
     feedbackFtq.commitBundle.ftqUpdateMetaId          := inFtqInfo.ftqId
     feedbackFtq.commitBundle.ftqMetaUpdateJumpTarget  := jumpAddr
-    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc // TODO fetchNum
-    feedbackFtq.commitBundle.fetchLength              := inFtqPredictInfo.idxInBlock +& 1.U
+    feedbackFtq.commitBundle.ftqMetaUpdateFallThrough := fallThroughPc
+    feedbackFtq.commitBundle.fetchLastIdx             := inFtqPredictInfo.idxInBlock
   }
 
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
