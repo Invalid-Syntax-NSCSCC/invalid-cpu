@@ -221,10 +221,10 @@ class TaggedPreditor(
   phtRam.io.writeAddr := phtUpdateIndex
 
   // debug speculative global history update hash
-  val debugHashedGhtInput = dontTouch(Wire(UInt(phtAddrWidth.W)))
-  val debugGhtHashCsrHash = Module(new DebugCsrHash(ghrLength, phtAddrWidth))
-  debugGhtHashCsrHash.io.data       := io.debugGlobalHistory
-  debugGhtHashCsrHash.io.dataUpdate := io.debugIsGlobalHistoryUpdate
-  debugHashedGhtInput               := debugGhtHashCsrHash.io.hash
+//  val debugHashedGhtInput = dontTouch(Wire(UInt(phtAddrWidth.W)))
+//  val debugGhtHashCsrHash = Module(new DebugCsrHash(ghrLength, phtAddrWidth))
+//  debugGhtHashCsrHash.io.data       := io.debugGlobalHistory
+//  debugGhtHashCsrHash.io.dataUpdate := io.debugIsGlobalHistoryUpdate
+//  debugHashedGhtInput               := debugGhtHashCsrHash.io.hash
 
 }
