@@ -123,7 +123,7 @@ class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
       outInstInfo.ftqCommitInfo.branchType.foreach(_ := decodeRes.info.branchType)
       outInstInfo.ftqCommitInfo.isBranch.foreach(_ := decodeRes.info.isBranch)
 
-      outInstInfo.forbidParallelCommit := decodeRes.info.needRefetch || inBits.customInstInfo.isCustom
+      outInstInfo.forbidParallelCommit := decodeRes.info.isIssueMainPipeline || inBits.customInstInfo.isCustom
       outInstInfo.customInstInfo       := inBits.customInstInfo
 
       outInstInfo.exceptionPos    := ExceptionPos.none
