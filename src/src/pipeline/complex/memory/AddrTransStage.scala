@@ -72,7 +72,7 @@ class AddrTransStage
   out.cacheMaintenance        := selectedIn.cacheMaintenance
   out.isAtomicStore           := selectedIn.isAtomicStore
   out.isAtomicStoreSuccessful := selectedIn.memRequest.isValid
-  out.isCached                := false.B // Fallback: Uncached
+  out.isCached                := true.B // Fallback: Cached
 
   // DMW mapping
   val directMapVec = Wire(
