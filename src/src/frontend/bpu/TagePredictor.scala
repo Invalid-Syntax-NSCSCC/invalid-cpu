@@ -19,6 +19,9 @@ class GhrFixNdBundle extends Bundle {
   val ghrFixType       = UInt(Param.BPU.GhrFixType.width.W)
   val isFixBranchTaken = Bool()
 }
+object GhrFixNdBundle {
+  def default = 0.U.asTypeOf(new GhrFixNdBundle)
+}
 object GhrUpdateNdBundle {
   def default = 0.U.asTypeOf(new GhrUpdateNdBundle)
 }
