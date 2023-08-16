@@ -77,6 +77,8 @@ class InstTranslateStage extends Module {
         majorOut.valid := true.B
         counter        := counter - 1.U
 
+        val customFetchInf
+
         val res: Vec[UInt] = seqs(seqs.length.U - counter)
         val outInfo = majorOut.bits.customInstInfo
         majorOut.bits.customInstInfo.isCustom := true.B
