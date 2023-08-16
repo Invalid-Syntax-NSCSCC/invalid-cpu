@@ -225,10 +225,16 @@ class SimpleCoreCpuTop extends Module {
       }
   }
 
+  val instTranslateStage = Module(new InstTranslateStage)
+  instTranslateStage.io.isFlush := cu.io.backendFlush
+
   // decode
   decodeStage.io.isFrontendFlush := cu.io.frontendFlush
   decodeStage.io.isBackendFlush  := cu.io.backendFlush
-  connectVec(instQueue.io.dequeuePorts, decodeStage.io.ins)
+  // connectVec(instQueue.io.dequeuePorts, decodeStage.io.ins)
+  connectVec(instQueue.io.dequeuePorts, instTranslateStage.io.ins)
+  connectVec(decodeStage.io.ins, instTranslateStage.io.outs)
+
   connectVec(decodeStage.io.robIdRequests, rob.io.requests)
   decodeStage.io.idleBlocking := cu.io.idleFlush
   decodeStage.io.hasInterrupt := csr.io.hasInterrupt
