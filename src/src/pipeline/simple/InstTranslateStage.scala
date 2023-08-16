@@ -6,6 +6,7 @@ import chisel3.util.Decoupled
 import chisel3.experimental.Param
 import pipeline.common.bundles.FetchInstInfoBundle
 import common.bundles.RfAccessInfoNdPort
+import memory.enums.TlbMemType
 
 class InstTranslateStage extends Module {
 
@@ -40,14 +41,15 @@ class InstTranslateStage extends Module {
       }
     }
 
-    // write reg ; read 1, read 2 ; imm
+    // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr
     val seqs: Vec[Vec[UInt]] = VecInit(
       Seq(
-        Seq(0.U, 1.U, 3.U, 4.U)
+        Seq(0.U, 1.U, 3.U, 4.U, 0.U)
       ).map(VecInit(_))
     )
 
-    val counter = RegInit(zeroWord)
+    val counter      = RegInit(zeroWord)
+    val storeInfoReg = RegInit(FetchInstInfoBundle.default)
 
     val isCustomInsts = io.ins.map { in =>
       in.valid && false.B
@@ -62,6 +64,7 @@ class InstTranslateStage extends Module {
         } else {
           // idx == 0
           when(isCustomInst && !customContinueReg) {
+            storeInfoReg      := io.ins.head.bits
             customContinueReg := true.B
             counter           := seqs.length.U
             io.outs.foreach(_.valid := false.B)
@@ -75,9 +78,8 @@ class InstTranslateStage extends Module {
       val majorOut = io.outs.head
       when(majorOut.ready) {
         majorOut.valid := true.B
+        majorOut.bits  := storeInfoReg
         counter        := counter - 1.U
-
-        val customFetchInf
 
         val res: Vec[UInt] = seqs(seqs.length.U - counter)
         val outInfo = majorOut.bits.customInstInfo
@@ -95,7 +97,9 @@ class InstTranslateStage extends Module {
         fillRfAccess(outInfo.gprWrite, res(0))
         fillRfAccess(outInfo.gprReadPorts(0), res(1))
         fillRfAccess(outInfo.gprReadPorts(1), res(2))
-        outInfo.imm := res(3)
+        outInfo.imm            := res(3)
+        outInfo.hasImm         := res(4) =/= 0.U
+        outInfo.jumpBranchAddr := res(5)
       }
     }
 

@@ -153,6 +153,16 @@ class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
 
       outInstInfo.robId := robIdReq.result.bits
 
+      when(inBits.customInstInfo.isCustom) {
+        enq.bits.decode.info.gprWritePort   := inBits.customInstInfo.gprWrite
+        enq.bits.decode.info.gprReadPorts   := inBits.customInstInfo.gprReadPorts
+        enq.bits.decode.info.imm            := inBits.customInstInfo.imm
+        outInstInfo.exeOp                   := inBits.customInstInfo.op
+        enq.bits.decode.info.jumpBranchAddr := inBits.customInstInfo.jumpBranchAddr
+        enq.bits.decode.info.exeOp          := inBits.customInstInfo.op
+        enq.bits.decode.info.isHasImm       := inBits.customInstInfo.hasImm
+      }
+
       if (Param.isDiffTest) {
         outInstInfo.pc.get   := inBits.pcAddr
         outInstInfo.inst.get := inBits.inst
