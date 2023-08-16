@@ -144,7 +144,7 @@ object Param {
     }
 
     object Tlb {
-      val num      = 4
+      val num      = if (isChiplab) 32 else 4
       val transNum = 2
     }
 
