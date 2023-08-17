@@ -7,6 +7,8 @@ object Param {
   // Configurable self-defined parameters go here
 
   val hasCustomInstruction = true
+  // These option are one-hot
+  val testSub = true
 
   val useSimpleBackend = true
 

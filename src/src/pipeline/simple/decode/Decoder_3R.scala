@@ -5,6 +5,7 @@ import chisel3.util._
 import pipeline.simple.decode.bundles.DecodeOutNdPort
 import spec.ExeInst.OpBundle
 import spec.Inst.{_3R => Inst}
+import spec.Param
 
 class Decoder_3R extends BaseDecoder {
   io.out := DecodeOutNdPort.default
@@ -66,8 +67,10 @@ class Decoder_3R extends BaseDecoder {
       outInfo.exeOp    := OpBundle.add
     }
     is(Inst.sub_w) {
-      io.out.isMatched := true.B
-      outInfo.exeOp    := OpBundle.sub
+      if (!Param.testSub) {
+        io.out.isMatched := true.B
+        outInfo.exeOp    := OpBundle.sub
+      }
     }
     is(Inst.slt_w) {
       io.out.isMatched := true.B

@@ -47,37 +47,43 @@ class InstTranslateStage extends Module {
 
     val inst = storeInfoReg.inst
 
-    // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op
-    val raw_seqs = Seq(
-      Seq(33.U, 34.U, inst(14, 10), 0.U, false.B, 0.U, ExeInst.OpBundle.nor),
-      Seq(33.U, 33.U, 0.U, 1.U, true.B, 0.U, ExeInst.OpBundle.add),
-      Seq(inst(4, 0), inst(9, 5), 33.U, 0.U, false.B, 0.U, ExeInst.OpBundle.add)
-    )
+    // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op ; issue main pipeline
+    var raw_seqs: Seq[Seq[Data]] =
+      if (Param.testSub) {
+        Seq(
+          Seq(33.U, 34.U, inst(14, 10), 0.U, false.B, 0.U, ExeInst.OpBundle.nor, false.B),
+          Seq(33.U, 33.U, 0.U, 1.U, true.B, 0.U, ExeInst.OpBundle.add, false.B),
+          Seq(inst(4, 0), inst(9, 5), 33.U, 0.U, false.B, 0.U, ExeInst.OpBundle.add, false.B)
+        )
+      } // else if (Param.testSub)
+      else { Seq(Seq()) }
 
     val seqs = Wire(
       Vec(
         raw_seqs.length,
         (new Bundle {
-          val wreg           = UInt(Width.Reg.addr)
-          val rreg1          = UInt(Width.Reg.addr)
-          val rreg2          = UInt(Width.Reg.addr)
-          val imm            = UInt(wordLength.W)
-          val hasImm         = Bool()
-          val jumpBranchAddr = UInt(wordLength.W)
-          val exeOp          = new ExeInst.OpBundle
+          val wreg                = UInt(Width.Reg.addr)
+          val rreg1               = UInt(Width.Reg.addr)
+          val rreg2               = UInt(Width.Reg.addr)
+          val imm                 = UInt(wordLength.W)
+          val hasImm              = Bool()
+          val jumpBranchAddr      = UInt(wordLength.W)
+          val exeOp               = new ExeInst.OpBundle
+          val isIssueMainPipeline = Bool()
         })
       )
     )
 
     seqs.zip(raw_seqs).foreach {
       case (seq, raw_seq) =>
-        seq.wreg           := raw_seq(0)
-        seq.rreg1          := raw_seq(1)
-        seq.rreg2          := raw_seq(2)
-        seq.imm            := raw_seq(3)
-        seq.hasImm         := raw_seq(4)
-        seq.jumpBranchAddr := raw_seq(5)
-        seq.exeOp          := raw_seq(6)
+        seq.wreg                := raw_seq(0)
+        seq.rreg1               := raw_seq(1)
+        seq.rreg2               := raw_seq(2)
+        seq.imm                 := raw_seq(3)
+        seq.hasImm              := raw_seq(4)
+        seq.jumpBranchAddr      := raw_seq(5)
+        seq.exeOp               := raw_seq(6)
+        seq.isIssueMainPipeline := raw_seq(7)
     }
 
     val counter = RegInit(zeroWord)
@@ -128,10 +134,11 @@ class InstTranslateStage extends Module {
         fillRfAccess(outInfo.gprWrite, res.wreg)
         fillRfAccess(outInfo.gprReadPorts(0), res.rreg1)
         fillRfAccess(outInfo.gprReadPorts(1), res.rreg2)
-        outInfo.imm            := res.imm
-        outInfo.hasImm         := res.hasImm
-        outInfo.jumpBranchAddr := res.jumpBranchAddr
-        outInfo.op             := res.exeOp
+        outInfo.imm                 := res.imm
+        outInfo.hasImm              := res.hasImm
+        outInfo.jumpBranchAddr      := res.jumpBranchAddr
+        outInfo.op                  := res.exeOp
+        outInfo.isIssueMainPipeline := res.isIssueMainPipeline
       }
     }
 
