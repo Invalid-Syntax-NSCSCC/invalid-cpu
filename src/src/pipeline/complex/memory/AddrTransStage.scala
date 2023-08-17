@@ -72,7 +72,7 @@ class AddrTransStage
   out.cacheMaintenance        := selectedIn.cacheMaintenance
   out.isAtomicStore           := selectedIn.isAtomicStore
   out.isAtomicStoreSuccessful := selectedIn.memRequest.isValid
-  out.isCached                := true.B // Fallback: Cached
+  out.isCached                := false.B // Fallback: Uncached
 
   // DMW mapping
   val directMapVec = Wire(
@@ -140,15 +140,16 @@ class AddrTransStage
   switch(transMode) {
     is(AddrTransType.direct) {
       translatedAddr := selectedInVirtAddr
-      when(peer.csr.crmd.datm === 0.U) {
-        out.isCached := false.B
+      when(peer.csr.crmd.datm === Csr.Crmd.Datm.cc) {
+        out.isCached := true.B
       }
     }
     is(AddrTransType.directMapping) {
       translatedAddr := Mux(directMapVec(0).isHit, directMapVec(0).mappedAddr, directMapVec(1).mappedAddr)
-      val isNotCached = Mux(directMapVec(0).isHit, peer.csr.dmw(0).mat === 0.U, peer.csr.dmw(1).mat === 0.U)
-      when(isNotCached) {
-        out.isCached := false.B
+      val isCached =
+        Mux(directMapVec(0).isHit, peer.csr.dmw(0).mat === Csr.Crmd.Datm.cc, peer.csr.dmw(1).mat === Csr.Crmd.Datm.cc)
+      when(isCached) {
+        out.isCached := true.B
       }
     }
     is(AddrTransType.pageTableMapping) {
@@ -157,8 +158,8 @@ class AddrTransStage
         out.translatedMemReq.isValid := !peer.tlbTrans.exception.valid && selectedIn.memRequest.isValid
         out.cacheMaintenance.control.isL1Valid := !peer.tlbTrans.exception.valid && selectedIn.cacheMaintenance.control.isL1Valid
         out.cacheMaintenance.control.isL2Valid := !peer.tlbTrans.exception.valid && selectedIn.cacheMaintenance.control.isL2Valid
-        when(peer.tlbTrans.isNotCached) {
-          out.isCached := false.B
+        when(peer.tlbTrans.isCached) {
+          out.isCached := true.B
         }
 
         // Handle exception
