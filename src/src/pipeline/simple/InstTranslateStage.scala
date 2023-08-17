@@ -42,9 +42,11 @@ class InstTranslateStage extends Module {
       }
     }
 
-    // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op
-    val inst = io.ins.head.bits.inst
+    val storeInfoReg = RegInit(FetchInstInfoBundle.default)
 
+    val inst = storeInfoReg.inst
+
+    // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op
     val raw_seqs = Seq(
       Seq(33.U, 34.U, inst(9, 5), 0.U, 0.U, 0.U, ExeInst.Op.nor.asUInt),
       Seq(33.U, 33.U, 0.U, 1.U, 1.U, 0.U, ExeInst.Op.add.asUInt),
@@ -60,8 +62,7 @@ class InstTranslateStage extends Module {
         }
     }
 
-    val counter      = RegInit(zeroWord)
-    val storeInfoReg = RegInit(FetchInstInfoBundle.default)
+    val counter = RegInit(zeroWord)
 
     val isCustomInsts = io.ins.map { in =>
       in.valid && inst(31, 15) === _3R.sub_w
