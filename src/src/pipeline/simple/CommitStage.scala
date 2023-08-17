@@ -96,8 +96,12 @@ class CommitStage(
   // Diff test connection
   io.difftest match {
     case Some(dt) =>
-      dt.valid := RegNext(inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready, false.B) // && nextCommit)
-      // force to show pc & inst
+      dt.valid := RegNext(
+        inBits(0).instInfo.isValid && io.ins(0).valid && io.ins(0).ready && !(
+          inBits.head.instInfo.customInstInfo.isCustom && !inBits.head.instInfo.customInstInfo.isCommit
+        ),
+        false.B
+      ) // && nextCommit)// force to show pc & inst
       dt.pc    := RegNext(inBits(0).instInfo.pc.get, 0.U)
       dt.instr := RegNext(inBits(0).instInfo.inst.get, 0.U)
       dt.wen   := RegNext(inBits(0).gprWrite.en, false.B)

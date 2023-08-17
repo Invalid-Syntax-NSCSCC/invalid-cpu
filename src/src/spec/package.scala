@@ -23,8 +23,8 @@ package object spec {
   object Width {
     val inst = wordLength.W
     object Reg {
-      val addr = wordLog.W
-      val data = wordLength.W
+      val addr = if (Param.hasCustomInstruction) (wordLog + 1).W else wordLog.W
+      val data = if (Param.hasCustomInstruction) (doubleWordLength).W else wordLength.W
     }
 
     object Csr {
@@ -68,7 +68,7 @@ package object spec {
   }
 
   object Count {
-    val reg    = wordLength
+    val reg    = if (Param.hasCustomInstruction) doubleWordLength else wordLength
     val csrReg = Csr.Index.count + 1
   }
 

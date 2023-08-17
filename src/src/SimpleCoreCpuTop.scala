@@ -227,10 +227,15 @@ class SimpleCoreCpuTop extends Module {
       }
   }
 
+  val instTranslateStage = Module(new InstTranslateStage)
+  instTranslateStage.io.isFlush := cu.io.frontendFlush
+
   // decode
   decodeStage.io.isFrontendFlush := cu.io.frontendFlush
   decodeStage.io.isBackendFlush  := cu.io.backendFlush
-  connectVec(instQueue.io.dequeuePorts, decodeStage.io.ins)
+  // connectVec(instQueue.io.dequeuePorts, decodeStage.io.ins)
+  connectVec(instQueue.io.dequeuePorts, instTranslateStage.io.ins)
+  connectVec(decodeStage.io.ins, instTranslateStage.io.outs)
   connectVec(decodeStage.io.robIdRequests, rob.io.requests)
   decodeStage.io.idleBlocking := cu.io.idleFlush
   decodeStage.io.hasInterrupt := csr.io.hasInterrupt
@@ -407,7 +412,11 @@ class SimpleCoreCpuTop extends Module {
     Seq.fill(4)(
       commitStage.io.gprWritePorts(0).en && commitStage.io.ins(0).bits.instInfo.isValid && commitStage.io
         .ins(0)
-        .valid && commitStage.io.ins(0).ready && !cu.io.csrMessage.exceptionFlush
+        .valid && commitStage.io.ins(0).ready && !cu.io.csrMessage.exceptionFlush &&
+        !(
+          commitStage.io.ins(0).bits.instInfo.customInstInfo.isCustom &&
+            !commitStage.io.ins(0).bits.instInfo.customInstInfo.isCommit
+        )
     )
   ).asUInt
   io.debug0_wb.rf.wnum  := commitStage.io.gprWritePorts(0).addr
@@ -464,7 +473,10 @@ class SimpleCoreCpuTop extends Module {
   }
   (io.diffTest, regFile.io.regfileDatas) match {
     case (Some(t), r) =>
-      t.regs := r
+      t.regs.zipWithIndex.foreach {
+        case (dst, idx) =>
+          dst := r(idx)
+      }
     case _ =>
   }
   (io.diffTest, csr.io.csrValues) match {

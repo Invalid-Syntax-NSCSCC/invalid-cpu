@@ -30,6 +30,8 @@ class InstInfoNdPort extends Bundle {
   val isTlb = Bool()
 
   val forbidParallelCommit = Bool()
+
+  val customInstInfo = new CustomInstInfoBundle
 }
 
 object InstInfoNdPort {

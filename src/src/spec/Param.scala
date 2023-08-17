@@ -6,6 +6,8 @@ import chisel3.{ChiselEnum, _}
 object Param {
   // Configurable self-defined parameters go here
 
+  val hasCustomInstruction = true
+
   val useSimpleBackend = true
 
   // These options are one-hot
