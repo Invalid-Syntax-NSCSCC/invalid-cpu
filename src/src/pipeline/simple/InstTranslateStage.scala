@@ -73,6 +73,14 @@ class InstTranslateStage extends Module {
           Seq(34.U, 33.U, 34.U, 0.U, false.B, 0.U, OpBundle.div, false.B), // 34 : 33 div 1 , as the same as 33
           Seq(0.U, 34.U, 33.U, 0.U, false.B, jumpPc, OpBundle.beq, true.B) // beq 33, 34 jump
         )
+      } else if (Param.testSt_w) {
+        val imm12 = inst(21, 10)
+        val sext  = Wire(SInt(32.W))
+        sext := imm12.asSInt
+        Seq(
+          Seq(33.U, rj, 0.U, sext.asUInt, true.B, 0.U, OpBundle.add, false.B),
+          Seq(0.U, 33.U, rd, 0.U, false.B, 0.U, OpBundle.st_w, true.B)
+        )
       } else { Seq(Seq()) }
 
     val seqs = Wire(
@@ -109,6 +117,7 @@ class InstTranslateStage extends Module {
       in.valid && (
         if (Param.testSub) in.bits.inst(31, 15) === _3R.sub_w
         else if (Param.testB) in.bits.inst(31, 26) === _2RI16.b_
+        else if (Param.testSt_w) in.bits.inst(31, 22) === _2RI12.st_w
         else false.B
       )
     }

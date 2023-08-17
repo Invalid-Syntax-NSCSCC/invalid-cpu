@@ -10,7 +10,7 @@ object Param {
   // These option are one-hot
   val testSub  = false // nor 0 ; add 1 ; add
   val testB    = false // rdcnt ; add ; div ; beq
-  val testSt_w = true
+  val testSt_w = true // add ; st.w
 
   val useSimpleBackend = true
 
