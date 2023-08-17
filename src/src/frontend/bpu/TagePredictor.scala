@@ -19,6 +19,9 @@ class GhrFixNdBundle extends Bundle {
   val ghrFixType       = UInt(Param.BPU.GhrFixType.width.W)
   val isFixBranchTaken = Bool()
 }
+object GhrFixNdBundle {
+  def default = 0.U.asTypeOf(new GhrFixNdBundle)
+}
 object GhrUpdateNdBundle {
   def default = 0.U.asTypeOf(new GhrUpdateNdBundle)
 }
@@ -149,9 +152,7 @@ class TagePredictor(
   val nextSpecPtr = Wire(UInt(Param.BPU.TagePredictor.ghrPtrWidth.W))
   val commitPtr   = dontTouch(RegInit(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W)))
   val checkPtr    = WireDefault(0.U(Param.BPU.TagePredictor.ghrPtrWidth.W))
-  val checkDepth  = Wire(UInt(Param.BPU.TagePredictor.ghrPtrWidth.W))
-  checkPtr   := io.ghrUpdateNdBundle.tageGhrInfo.checkPtr
-  checkDepth := checkPtr - commitPtr // calculate the location of the correct old history
+  checkPtr := io.ghrUpdateNdBundle.tageGhrInfo.checkPtr
 
   // Global History Register
   val speculativeHistoryReg = RegInit(VecInit(Seq.fill(ghrDepth)(false.B)))
@@ -164,9 +165,9 @@ class TagePredictor(
   specPtr               := nextSpecPtr
 
   // signal that indicates how to fix globalHistory Hash value
-  val isFixHash         = WireDefault(false.B)
+  val isFixHash = WireDefault(false.B)
 
-  val isRecoverHash     = WireDefault(false.B)
+  val isRecoverHash = WireDefault(false.B)
 //  val originHash = Input(UInt(outputLength.W))
 
   isGlobalHistoryUpdateReg := isUpdateValid
@@ -210,7 +211,14 @@ class TagePredictor(
     ghr := Cat(ghr(ghrDepth - 2, 0), updateBranchTaken)
   }
   if (Param.isSpeculativeGlobalHistory) {
-    shiftedGlobalHistory := Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr
+    shiftedGlobalHistory := Mux(
+      io.ghrUpdateNdBundle.fixBundle.isFixGhrValid,
+      Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr,
+      Cat(
+        RegNext(Cat(nextGlobalHistory.asUInt, nextGlobalHistory.asUInt) >> nextSpecPtr),
+        io.ghrUpdateNdBundle.bpuSpecTaken
+      ) // when speculative update, preFetch history to decrease logicDelay (connect with BRAM)
+    )
   } else {
     shiftedGlobalHistory := ghr
   }
@@ -220,9 +228,6 @@ class TagePredictor(
 //    nextGlobalHistory.asUInt(nextSpecPtr, 0),
 //    nextGlobalHistory.asUInt(Param.BPU.TagePredictor.ghrLength-1, nextSpecPtr)
 //  )
-
-  // output
-  io.tageQueryMeta.tageGhrInfo.checkPtr := specPtr
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // Query Logic
@@ -256,19 +261,21 @@ class TagePredictor(
         )
       )
       // Query
-      taggedPreditor.io.isGlobalHistoryUpdate := isGlobalHistoryUpdate
-      taggedPreditor.io.globalHistory         := shiftedGlobalHistory(historyLengths(providerId + 1) - 1, 0)
-      taggedPreditor.io.pc                    := io.pc
-      tagUsefulbits(providerId)               := taggedPreditor.io.usefulBits
-      tagCtrbits(providerId)                  := taggedPreditor.io.ctrBits
-      tagQueryTags(providerId)                := taggedPreditor.io.queryTag
-      tagOriginTags(providerId)               := taggedPreditor.io.originTag
-      tagHitIndexs(providerId)                := taggedPreditor.io.hitIndex
-      tagIsTakens(providerId)                 := taggedPreditor.io.taken
-      tagIsHits(providerId)                   := taggedPreditor.io.tagHit
-      tagGhtHashs(providerId)                 := taggedPreditor.io.queryGhtHash
-      tagTagHashCsr1s(providerId)             := taggedPreditor.io.queryTagHashCsr1
-      tagTagHashCsr2s(providerId)             := taggedPreditor.io.queryTagHashCsr2
+      taggedPreditor.io.isGlobalHistoryUpdate      := isGlobalHistoryUpdate
+      taggedPreditor.io.globalHistory              := shiftedGlobalHistory(historyLengths(providerId + 1) - 1, 0)
+      taggedPreditor.io.debugIsGlobalHistoryUpdate := isUpdateValid
+      taggedPreditor.io.debugGlobalHistory         := ghr(historyLengths(providerId + 1) - 1, 0)
+      taggedPreditor.io.pc                         := io.pc
+      tagUsefulbits(providerId)                    := taggedPreditor.io.usefulBits
+      tagCtrbits(providerId)                       := taggedPreditor.io.ctrBits
+      tagQueryTags(providerId)                     := taggedPreditor.io.queryTag
+      tagOriginTags(providerId)                    := taggedPreditor.io.originTag
+      tagHitIndexs(providerId)                     := taggedPreditor.io.hitIndex
+      tagIsTakens(providerId)                      := taggedPreditor.io.taken
+      tagIsHits(providerId)                        := taggedPreditor.io.tagHit
+      tagGhtHashs(providerId)                      := taggedPreditor.io.queryGhtHash
+      tagTagHashCsr1s(providerId)                  := taggedPreditor.io.queryTagHashCsr1
+      tagTagHashCsr2s(providerId)                  := taggedPreditor.io.queryTagHashCsr2
 
       // update
       taggedPreditor.io.updatePc          := io.updatePc
@@ -284,9 +291,9 @@ class TagePredictor(
       taggedPreditor.io.updateIndex       := updateMetaBundle.tagPredictorHitIndexs(providerId)
       taggedPreditor.io.isRecoverHash     := isRecoverHash
       taggedPreditor.io.isFixHash         := isFixHash
-      taggedPreditor.io.originGhtHash     := updateMetaBundle.tageGhrInfo.tagGhtHashs(providerId)
-      taggedPreditor.io.originTagHashCsr1 := updateMetaBundle.tageGhrInfo.tagTagHashCsr1s(providerId)
-      taggedPreditor.io.originTagHashCsr2 := updateMetaBundle.tageGhrInfo.tagTagHashCsr2s(providerId)
+      taggedPreditor.io.originGhtHash     := io.ghrUpdateNdBundle.tageGhrInfo.tagGhtHashs(providerId)
+      taggedPreditor.io.originTagHashCsr1 := io.ghrUpdateNdBundle.tageGhrInfo.tagTagHashCsr1s(providerId)
+      taggedPreditor.io.originTagHashCsr2 := io.ghrUpdateNdBundle.tageGhrInfo.tagTagHashCsr2s(providerId)
 
       taggedPreditor
     }
@@ -343,7 +350,7 @@ class TagePredictor(
   vecAssign(queryMetaBundle.tageGhrInfo.tagGhtHashs, tagGhtHashs)
   vecAssign(queryMetaBundle.tageGhrInfo.tagTagHashCsr1s, tagTagHashCsr1s)
   vecAssign(queryMetaBundle.tageGhrInfo.tagTagHashCsr2s, tagTagHashCsr2s)
-  queryMetaBundle.tageGhrInfo.checkPtr := nextSpecPtr
+  queryMetaBundle.tageGhrInfo.checkPtr := specPtr
   queryMetaBundle.isUseful := takens(predPredictionId) =/= takens(
     altPredPredctionId
   ) // Indicates whether the pred component is useful

@@ -15,6 +15,7 @@ class TageGhrInfo(
   val tagTagHashCsr2s = Vec(tagComponentNum, UInt((tagComponentTagWidth - 1).W))
 }
 
+
 class TageMetaPort(
   tagComponentNum:      Int = Param.BPU.TagePredictor.tagComponentNum,
   tagComponentTagWidth: Int = Param.BPU.TagePredictor.tagComponentTagWidth,
