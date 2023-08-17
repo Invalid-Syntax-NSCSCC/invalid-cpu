@@ -123,7 +123,8 @@ class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
       outInstInfo.ftqCommitInfo.branchType.foreach(_ := decodeRes.info.branchType)
       outInstInfo.ftqCommitInfo.isBranch.foreach(_ := decodeRes.info.isBranch)
 
-      outInstInfo.forbidParallelCommit := decodeRes.info.isIssueMainPipeline
+      outInstInfo.forbidParallelCommit := decodeRes.info.isIssueMainPipeline || inBits.customInstInfo.isCustom
+      outInstInfo.customInstInfo       := inBits.customInstInfo
 
       outInstInfo.exceptionPos    := ExceptionPos.none
       outInstInfo.exceptionRecord := DontCare
@@ -133,7 +134,7 @@ class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
       }.elsewhen(inBits.exceptionValid) {
         outInstInfo.exceptionPos    := ExceptionPos.frontend
         outInstInfo.exceptionRecord := inBits.exception
-      }.elsewhen(!isMatched) {
+      }.elsewhen(!isMatched && !inBits.customInstInfo.isCustom) {
         outInstInfo.exceptionPos    := ExceptionPos.frontend
         outInstInfo.exceptionRecord := Csr.ExceptionIndex.ine
       }.elsewhen(
@@ -151,6 +152,15 @@ class DecodeStage(issueNum: Int = Param.issueInstInfoMaxNum) extends Module {
       // enq.bits.isIssueMainPipeline := decodeRes.info.isIssueMainPipeline
 
       outInstInfo.robId := robIdReq.result.bits
+      when(inBits.customInstInfo.isCustom) {
+        enq.bits.decode.info.gprWritePort   := inBits.customInstInfo.gprWrite
+        enq.bits.decode.info.gprReadPorts   := inBits.customInstInfo.gprReadPorts
+        enq.bits.decode.info.imm            := inBits.customInstInfo.imm
+        outInstInfo.exeOp                   := inBits.customInstInfo.op
+        enq.bits.decode.info.jumpBranchAddr := inBits.customInstInfo.jumpBranchAddr
+        enq.bits.decode.info.exeOp          := inBits.customInstInfo.op
+        enq.bits.decode.info.isHasImm       := inBits.customInstInfo.hasImm
+      }
 
       if (Param.isDiffTest) {
         outInstInfo.pc.get   := inBits.pcAddr
