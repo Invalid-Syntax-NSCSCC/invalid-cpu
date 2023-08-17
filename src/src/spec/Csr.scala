@@ -161,16 +161,4 @@ object Csr {
     def num   = count + 1
     def width = log2Ceil(count + 1).W
   }
-
-  object Crmd {
-    object Plv {
-      val high = 0.U(2.W)
-      val low  = 3.U(2.W)
-    }
-
-    object Datm {
-      val suc = 0.U(2.W)
-      val cc  = 1.U(2.W)
-    }
-  }
 }
