@@ -106,7 +106,11 @@ class InstTranslateStage extends Module {
     val counter = RegInit(zeroWord)
 
     val isCustomInsts = io.ins.map { in =>
-      in.valid && in.bits.inst(31, 15) === _3R.sub_w
+      in.valid && (
+        if (Param.testSub) in.bits.inst(31, 15) === _3R.sub_w
+        else if (Param.testB) in.bits.inst(31, 26) === _2RI16.b_
+        else false.B
+      )
     }
     isCustomInsts.zipWithIndex.foreach {
       case (isCustomInst, idx) =>
