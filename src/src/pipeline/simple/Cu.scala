@@ -269,9 +269,10 @@ class Cu(
         mask := instInfo.isValid && (isException ||
           instInfo.ftqInfo.isLastInBlock ||
           refetchFlush ||
-          isExceptionReturn)
+          isExceptionReturn) && !(instInfo.customInstInfo.isCustom && !instInfo.customInstInfo.isCommit)
       } else {
-        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock
+        mask := instInfo.isValid && instInfo.ftqInfo.isLastInBlock &&
+          !(instInfo.customInstInfo.isCustom && !instInfo.customInstInfo.isCommit)
       }
   }
 
