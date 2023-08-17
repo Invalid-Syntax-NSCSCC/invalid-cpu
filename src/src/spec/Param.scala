@@ -21,7 +21,7 @@ object Param {
   val isMmioDelay                = false || isChiplab || isFullFpga
   val isNoPrivilege              = false
   val isCacheOnPg                = false
-  val isCsrCacheInit             = false || isReleasePackage
+  val isCsrCacheInit             = false
   val isForcedCache              = false
   val isForcedUncached           = false
   val isBranchPredict            = true
