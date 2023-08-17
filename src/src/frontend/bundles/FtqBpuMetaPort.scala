@@ -6,8 +6,8 @@ import spec._
 
 class BranchAddrBundle extends Bundle {
   val startPc        = UInt(spec.Width.Mem.addr)
-  val jumpPartialTargetAddr = UInt((spec.Width.Mem._addr - 2).W)
-  val fetchLastIdx   = UInt(log2Ceil(Param.fetchInstMaxNum).W)
+  val jumpTargetAddr = UInt(spec.Width.Mem.addr)
+  val fetchLength    = UInt(log2Ceil(Param.fetchInstMaxNum + 1).W)
 //  val fallThroughAddr = UInt(spec.Width.Mem.addr)
 }
 

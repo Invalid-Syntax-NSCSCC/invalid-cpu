@@ -16,7 +16,7 @@ class ExeCommitFtqNdPort extends Bundle {
   val ftqMetaUpdateValid       = Bool()
   val ftqMetaUpdateFtbDirty    = Bool()
   val ftqMetaUpdateJumpTarget  = UInt(spec.Width.Mem.addr)
-  val fetchLastIdx             = UInt(log2Ceil(Param.fetchInstMaxNum).W)
+  val fetchLength              = UInt(log2Ceil(Param.fetchInstMaxNum + 1).W)
   val ftqMetaUpdateFallThrough = UInt(spec.Width.Mem.addr)
   val ftqUpdateMetaId          = UInt(Param.BPU.Width.id)
 }

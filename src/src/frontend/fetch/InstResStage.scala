@@ -33,8 +33,8 @@ class InstResStage
   val isLastHasReq = RegNext(false.B, false.B)
 
   // Fallback output
-  out.fetchLastIdx := selectedIn.ftqBlock.fetchLastIdx
-  out.ftqId        := selectedIn.ftqId
+  out.ftqLength := selectedIn.ftqBlock.length
+  out.ftqId     := selectedIn.ftqId
 
   out.enqInfos.zipWithIndex.foreach {
     case (infoBundle, index) =>
@@ -48,13 +48,13 @@ class InstResStage
           selectedIn.ftqBlock.startPc(Param.Width.ICache._byteOffset - 1, Param.Width.ICache._instOffset) + index.U
         )
         infoBundle.bits.inst := peer.memRes.read.dataVec(fetchIndex)
-        infoBundle.valid     := index.asUInt(log2Ceil(Param.fetchInstMaxNum).W) <= selectedIn.ftqBlock.fetchLastIdx
+        infoBundle.valid     := index.asUInt(log2Ceil(Param.fetchInstMaxNum + 1).W) < selectedIn.ftqBlock.length
       }
       infoBundle.bits.exceptionValid     := selectedIn.exception.valid
       infoBundle.bits.exception          := selectedIn.exception.bits
       infoBundle.bits.ftqInfo.ftqId      := selectedIn.ftqId
       infoBundle.bits.ftqInfo.idxInBlock := index.U
-      when(index.U === selectedIn.ftqBlock.fetchLastIdx) {
+      when((index + 1).U === selectedIn.ftqBlock.length) {
         infoBundle.bits.ftqInfo.predictBranch  := selectedIn.ftqBlock.predictTaken
         infoBundle.bits.ftqInfo.isPredictValid := selectedIn.ftqBlock.predictValid
         infoBundle.bits.ftqInfo.isLastInBlock  := true.B

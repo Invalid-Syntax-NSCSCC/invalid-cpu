@@ -52,15 +52,12 @@ class FTB(
     bundle.valid            := line(FtbEntryNdPort.width - 1)
     bundle.isCrossCacheline := line(FtbEntryNdPort.width - 2)
     bundle.branchType       := line(FtbEntryNdPort.width - 3, FtbEntryNdPort.width - 2 - Param.BPU.BranchType.width)
-    bundle.tag := line(
-      Param.BPU.FTB.tagWidth - 1 + spec.Width.Mem._addr - 2 + log2Ceil(Param.fetchInstMaxNum),
-      spec.Width.Mem._addr - 2 + log2Ceil(Param.fetchInstMaxNum)
+    bundle.fetchLength := line(
+      FtbEntryNdPort.width - 3 - Param.BPU.BranchType.width,
+      Param.BPU.FTB.tagWidth + spec.Width.Mem._addr
     )
-    bundle.jumpPartialTargetAddr := line(
-      spec.Width.Mem._addr - 1 - 2 + log2Ceil(Param.fetchInstMaxNum),
-      log2Ceil(Param.fetchInstMaxNum)
-    )
-    bundle.fetchLastIdx := line(log2Ceil(Param.fetchInstMaxNum) - 1, 0)
+    bundle.tag            := line(Param.BPU.FTB.tagWidth - 1 + spec.Width.Mem._addr, spec.Width.Mem._addr)
+    bundle.jumpTargetAddr := line(spec.Width.Mem._addr - 1, 0)
     bundle
   }
 
