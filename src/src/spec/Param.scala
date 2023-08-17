@@ -20,7 +20,7 @@ object Param {
   val isFullUncachedPatch        = true
   val isMmioDelay                = false || isChiplab || isFullFpga
   val isNoPrivilege              = false
-  val isCacheOnPg                = false
+  val isCacheOnPg                = true
   val isCsrCacheInit             = false || isReleasePackage
   val isForcedCache              = false
   val isForcedUncached           = false
@@ -28,7 +28,7 @@ object Param {
   val isPredecode                = true
   val isOverideRas               = true
   val isFtbUpdateRet             = true
-  val isSpeculativeGlobalHistory = false
+  val isSpeculativeGlobalHistory = true
 
   val isWritebackPassThroughWakeUp = true
   val canIssueSameWbRegInsts       = true

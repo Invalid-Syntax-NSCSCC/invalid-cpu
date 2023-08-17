@@ -237,9 +237,9 @@ class Cu(
     isExceptionReturnDelay
 
   io.newPc.ftqId := Mux(
-    refetchFlushDelay || isExceptionDelay || isExceptionReturnDelay,
-    RegNext(majorInstInfo.ftqInfo.ftqId, 0.U),
-    redirectFromExeDelay.ftqId
+    refetchFlush || isException || isExceptionReturn,
+    majorInstInfo.ftqInfo.ftqId,
+    io.branchExe.ftqId
   )
 
   io.newPc.pcAddr := Mux(

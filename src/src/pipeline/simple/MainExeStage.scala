@@ -18,6 +18,7 @@ import spec._
 
 import scala.collection.immutable
 import common.NoSavedInBaseStage
+import spec.Param.BPU.BranchType
 
 class ExeNdPort extends Bundle {
   // Operands
@@ -555,7 +556,8 @@ class MainExeStage
   // out.wb.instInfo.ftqCommitInfo.isBranchSuccess := aluCalcJumpEn
   out.wb.instInfo.ftqCommitInfo.isRedirect := isRedirect || selectedIn.instInfo.ftqCommitInfo.isRedirect
 
-  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg && outValid
+  out.commitFtqPort.isTrainValid := isBranchInst && out.wb.instInfo.ftqInfo.isLastInBlock && !branchBlockingReg && outValid &&
+    !(selectedIn.branchInfo.branchType === BranchType.cond && !inFtqPredictInfo.isPredictValid && !alu.io.result.jumpEn)
   out.commitFtqPort.ftqId                          := selectedIn.instInfo.ftqInfo.ftqId
   out.commitFtqPort.branchTakenMeta.isTaken        := aluCalcJumpEn
   out.commitFtqPort.branchTakenMeta.branchType     := selectedIn.branchInfo.branchType

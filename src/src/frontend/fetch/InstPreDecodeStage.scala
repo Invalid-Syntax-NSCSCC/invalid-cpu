@@ -130,7 +130,8 @@ class InstPreDecodeStage
 
     // peer output
     // delay 1 circle
-    val ftqIdReg = RegNext(selectedIn.ftqId, 0.U)
+    //    val ftqIdReg = RegNext(selectedIn.ftqId, 0.U)
+    val ftqIdReg = selectedIn.ftqId
     val jumpPcReg =
       RegNext(
         Mux(

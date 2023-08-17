@@ -208,16 +208,17 @@ class BPU(
   ftbUpdateEntry.valid      := !(io.bpuFtqPort.ftqBpuTrainMeta.ftbDirty && io.bpuFtqPort.ftqBpuTrainMeta.ftbHit)
   ftbUpdateEntry.tag        := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc(addr - 1, log2Ceil(ftbNset) + 2)
   ftbUpdateEntry.branchType := io.bpuFtqPort.ftqBpuTrainMeta.branchTakenMeta.branchType
-  ftbUpdateEntry.isCrossCacheline := io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline
-  ftbUpdateEntry.jumpPartialTargetAddr   := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpPartialTargetAddr
-  ftbUpdateEntry.fetchLastIdx     := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLastIdx
+  ftbUpdateEntry.isCrossCacheline      := io.bpuFtqPort.ftqBpuTrainMeta.isCrossCacheline
+  ftbUpdateEntry.jumpPartialTargetAddr := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.jumpPartialTargetAddr
+  ftbUpdateEntry.fetchLastIdx          := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.fetchLastIdx
 
   // global branch history update logic
-  val ghrFixBundle = Wire(new GhrFixNdBundle)
   val ghrUpdateSignalBundle = WireDefault(
     io.bpuFtqPort.ftqBpuTrainMeta.ghrUpdateSignalBundle
   )
-  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.isPredecoderFixGhr || io.backendFlush || io.preDecodeFlush
+  // val ghrFixBundleReg = RegInit(GhrFixNdBundle.default)
+  val ghrFixBundle = Wire(new GhrFixNdBundle)
+  ghrFixBundle.isFixGhrValid := ghrUpdateSignalBundle.exeFixBundle.isExeFixValid || io.backendFlush || io.preDecodeFlush
   ghrFixBundle.isFixBranchTaken := Mux(
     ghrUpdateSignalBundle.exeFixBundle.isExeFixValid,
     ghrUpdateSignalBundle.exeFixBundle.exeFixIsTaken,
@@ -253,16 +254,29 @@ class BPU(
 
   // connect tage Predictor module
   val tagePredictorModule = Module(new TagePredictor)
-  tagePredictorModule.io.pc                             := io.pc
-  tageQueryMeta                                         := tagePredictorModule.io.tageQueryMeta
-  predictTaken                                          := tagePredictorModule.io.predictBranchTaken
-  predictValid                                          := tagePredictorModule.io.predictValid
-  tagePredictorModule.io.updatePc                       := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
-  tagePredictorModule.io.updateInfoPort                 := tageUpdateInfo
-  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := io.bpuFtqPort.ftqP1.predictTaken // bpu predict info
-  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := mainRedirectValid
-  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle    := ghrFixBundle
-  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo  := io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo
-//  tagePredictorModule.io.perfTagHitCounters <> DontCare
+  tagePredictorModule.io.pc             := io.pc
+  tageQueryMeta                         := tagePredictorModule.io.tageQueryMeta
+  predictTaken                          := tagePredictorModule.io.predictBranchTaken
+  predictValid                          := tagePredictorModule.io.predictValid
+  tagePredictorModule.io.updatePc       := io.bpuFtqPort.ftqBpuTrainMeta.branchAddrBundle.startPc
+  tagePredictorModule.io.updateInfoPort := tageUpdateInfo
+  // update global history in the next cycle
+  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := RegNext(io.bpuFtqPort.ftqP1.predictTaken, false.B)
+  // bpu predict info
+  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := RegNext(
+    mainRedirectValid && (!ghrFixBundle.isFixGhrValid),
+    false.B
+  ) // decrease net delay, predict update delay one cycle
+  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle   := ghrFixBundle
+  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo := io.bpuFtqPort.ftqBpuTrainMeta.tageGhrInfo
+  //  // update global history in the next cycle
+  //  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecTaken := RegNext(
+  //    io.bpuFtqPort.ftqP1.predictTaken,
+  //    false.B
+  //  ) // bpu predict info
+  //  tagePredictorModule.io.ghrUpdateNdBundle.bpuSpecValid := RegNext(mainRedirectValid, false.B)
+  //  tagePredictorModule.io.ghrUpdateNdBundle.fixBundle    := ghrFixBundleReg
+  //  tagePredictorModule.io.ghrUpdateNdBundle.tageGhrInfo  := tageGhrInfo
+  //  tagePredictorModule.io.perfTagHitCounters <> DontCare
 
 }
