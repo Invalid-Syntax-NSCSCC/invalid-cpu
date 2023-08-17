@@ -8,7 +8,8 @@ object Param {
 
   val hasCustomInstruction = true
   // These option are one-hot
-  val testSub = true
+  val testSub = true // nor 0 ; add 1 ; add
+  val testB   = false // rdcnt ; add ; div ; beq
 
   val useSimpleBackend = true
 

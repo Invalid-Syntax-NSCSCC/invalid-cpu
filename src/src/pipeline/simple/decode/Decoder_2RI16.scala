@@ -51,16 +51,18 @@ class Decoder_2RI16 extends BaseDecoder {
 
   switch(opcode) {
     is(Inst.b_) {
-      io.out.info.isIssueMainPipeline := true.B
-      outInfo.gprReadPorts(0).en      := false.B
-      outInfo.gprReadPorts(1).en      := false.B
-      outInfo.gprReadPorts(0).addr    := DontCare
-      outInfo.gprReadPorts(1).addr    := DontCare
-      io.out.isMatched                := true.B
-      outInfo.exeOp                   := OpBundle.b
-      outInfo.isBranch                := true.B
-      outInfo.branchType              := BranchType.uncond
-      outInfo.jumpBranchAddr          := imm26SextShift2.asUInt + io.instInfoPort.pcAddr
+      if (!Param.testB) {
+        io.out.info.isIssueMainPipeline := true.B
+        outInfo.gprReadPorts(0).en      := false.B
+        outInfo.gprReadPorts(1).en      := false.B
+        outInfo.gprReadPorts(0).addr    := DontCare
+        outInfo.gprReadPorts(1).addr    := DontCare
+        io.out.isMatched                := true.B
+        outInfo.exeOp                   := OpBundle.b
+        outInfo.isBranch                := true.B
+        outInfo.branchType              := BranchType.uncond
+        outInfo.jumpBranchAddr          := imm26SextShift2.asUInt + io.instInfoPort.pcAddr
+      }
     }
     is(Inst.bl) {
       io.out.info.isIssueMainPipeline := true.B

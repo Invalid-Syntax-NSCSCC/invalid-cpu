@@ -8,7 +8,9 @@ import pipeline.common.bundles.FetchInstInfoBundle
 import common.bundles.RfAccessInfoNdPort
 import memory.enums.TlbMemType
 import spec.Inst._
+import chisel3.util._
 import spec.Width
+import spec.ExeInst.OpBundle
 
 class InstTranslateStage extends Module {
 
@@ -46,17 +48,32 @@ class InstTranslateStage extends Module {
     val storeInfoReg = RegInit(FetchInstInfoBundle.default)
 
     val inst = storeInfoReg.inst
+    val rd   = inst(4, 0)
+    val rj   = inst(9, 5)
+    val rk   = inst(14, 10)
 
     // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op ; issue main pipeline
+    // if use zero, please use Reg[63] but not Reg[0]
     var raw_seqs: Seq[Seq[Data]] =
       if (Param.testSub) {
         Seq(
-          Seq(33.U, 34.U, inst(14, 10), 0.U, false.B, 0.U, ExeInst.OpBundle.nor, false.B),
-          Seq(33.U, 33.U, 0.U, 1.U, true.B, 0.U, ExeInst.OpBundle.add, false.B),
-          Seq(inst(4, 0), inst(9, 5), 33.U, 0.U, false.B, 0.U, ExeInst.OpBundle.add, false.B)
+          Seq(33.U, 63.U, rk, 0.U, false.B, 0.U, OpBundle.nor, false.B),
+          Seq(33.U, 33.U, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B),
+          Seq(rd, rj, 33.U, 0.U, false.B, 0.U, OpBundle.add, false.B)
         )
-      } // else if (Param.testSub)
-      else { Seq(Seq()) }
+      } else if (Param.testB) {
+
+        val imm16 = inst(25, 10)
+        val imm26 = Wire(SInt(32.W))
+        imm26 := Cat(rj, rd, imm16, 0.U(2.W)).asSInt
+        val jumpPc = imm26.asUInt + storeInfoReg.pcAddr
+        Seq(
+          Seq(33.U, 63.U, 0.U, 0.U, false.B, 0.U, OpBundle.rdcntvl_w, true.B), // 33 : get a time val
+          Seq(34.U, 63.U, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B), // 34 : 1
+          Seq(34.U, 33.U, 34.U, 0.U, false.B, 0.U, OpBundle.div, false.B), // 34 : 33 div 1 , as the same as 33
+          Seq(0.U, 34.U, 33.U, 0.U, false.B, jumpPc, OpBundle.beq, true.B) // beq 33, 34 jump
+        )
+      } else { Seq(Seq()) }
 
     val seqs = Wire(
       Vec(
