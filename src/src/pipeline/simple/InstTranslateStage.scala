@@ -8,6 +8,7 @@ import pipeline.common.bundles.FetchInstInfoBundle
 import common.bundles.RfAccessInfoNdPort
 import memory.enums.TlbMemType
 import spec.Inst._
+import spec.Width
 
 class InstTranslateStage extends Module {
 
@@ -48,18 +49,35 @@ class InstTranslateStage extends Module {
 
     // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op
     val raw_seqs = Seq(
-      Seq(33.U, 34.U, inst(9, 5), 0.U, 0.U, 0.U, ExeInst.OpBundle.nor.asUInt),
-      Seq(33.U, 33.U, 0.U, 1.U, 1.U, 0.U, ExeInst.OpBundle.add.asUInt),
-      Seq(inst(4, 0), inst(14, 10), 33.U, 0.U, 0.U, 0.U, ExeInst.OpBundle.add.asUInt)
+      Seq(33.U, 34.U, inst(9, 5), 0.U, false.B, 0.U, ExeInst.OpBundle.nor),
+      Seq(33.U, 33.U, 0.U, 1.U, true.B, 0.U, ExeInst.OpBundle.add),
+      Seq(inst(4, 0), inst(14, 10), 33.U, 0.U, false.B, 0.U, ExeInst.OpBundle.add)
     )
-    val seqs: Vec[Vec[UInt]] = Wire(Vec(raw_seqs.length, Vec(raw_seqs.head.length, UInt(32.W))))
+
+    val seqs = Wire(
+      Vec(
+        raw_seqs.length,
+        (new Bundle {
+          val wreg           = UInt(Width.Reg.addr)
+          val rreg1          = UInt(Width.Reg.addr)
+          val rreg2          = UInt(Width.Reg.addr)
+          val imm            = UInt(wordLength.W)
+          val hasImm         = Bool()
+          val jumpBranchAddr = UInt(wordLength.W)
+          val exeOp          = new ExeInst.OpBundle
+        })
+      )
+    )
 
     seqs.zip(raw_seqs).foreach {
       case (seq, raw_seq) =>
-        seq.zip(raw_seq).foreach {
-          case (dst, src) =>
-            dst := src
-        }
+        seq.wreg           := raw_seq(0)
+        seq.rreg1          := raw_seq(1)
+        seq.rreg2          := raw_seq(2)
+        seq.imm            := raw_seq(3)
+        seq.hasImm         := raw_seq(4)
+        seq.jumpBranchAddr := raw_seq(5)
+        seq.exeOp          := raw_seq(6)
     }
 
     val counter = RegInit(zeroWord)
@@ -94,7 +112,7 @@ class InstTranslateStage extends Module {
         majorOut.bits  := storeInfoReg
         counter        := counter - 1.U
 
-        val res: Vec[UInt] = seqs(seqs.length.U - counter)
+        val res     = seqs(seqs.length.U - counter)
         val outInfo = majorOut.bits.customInstInfo
         majorOut.bits.customInstInfo.isCustom := true.B
         when(counter === 1.U) {
@@ -107,13 +125,13 @@ class InstTranslateStage extends Module {
           port.addr := addr
         }
 
-        fillRfAccess(outInfo.gprWrite, res(0))
-        fillRfAccess(outInfo.gprReadPorts(0), res(1))
-        fillRfAccess(outInfo.gprReadPorts(1), res(2))
-        outInfo.imm            := res(3)
-        outInfo.hasImm         := res(4) =/= 0.U
-        outInfo.jumpBranchAddr := res(5)
-        outInfo.op             := res(6).asTypeOf(outInfo.op)
+        fillRfAccess(outInfo.gprWrite, res.wreg)
+        fillRfAccess(outInfo.gprReadPorts(0), res.rreg1)
+        fillRfAccess(outInfo.gprReadPorts(1), res.rreg2)
+        outInfo.imm            := res.imm
+        outInfo.hasImm         := res.hasImm
+        outInfo.jumpBranchAddr := res.jumpBranchAddr
+        outInfo.op             := res.exeOp
       }
     }
 
