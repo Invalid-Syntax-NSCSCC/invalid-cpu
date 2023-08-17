@@ -48,9 +48,9 @@ class InstTranslateStage extends Module {
 
     // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op
     val raw_seqs = Seq(
-      Seq(33.U, 34.U, inst(9, 5), 0.U, 0.U, 0.U, ExeInst.Op.nor.asUInt),
-      Seq(33.U, 33.U, 0.U, 1.U, 1.U, 0.U, ExeInst.Op.add.asUInt),
-      Seq(inst(4, 0), inst(14, 10), 33.U, 0.U, 0.U, 0.U, ExeInst.Op.add.asUInt)
+      Seq(33.U, 34.U, inst(9, 5), 0.U, 0.U, 0.U, ExeInst.OpBundle.nor.asUInt),
+      Seq(33.U, 33.U, 0.U, 1.U, 1.U, 0.U, ExeInst.OpBundle.add.asUInt),
+      Seq(inst(4, 0), inst(14, 10), 33.U, 0.U, 0.U, 0.U, ExeInst.OpBundle.add.asUInt)
     )
     val seqs: Vec[Vec[UInt]] = Wire(Vec(raw_seqs.length, Vec(raw_seqs.head.length, UInt(32.W))))
 
