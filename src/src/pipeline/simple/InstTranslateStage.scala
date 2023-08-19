@@ -60,7 +60,7 @@ class InstTranslateStage extends Module {
     // imm ; has imm ; jump branch addr ; exe op ; issue main pipeline ;
     // jump offset ; jump direction (false is to next, true is to previous)
 
-    // if use read zero, please use Reg[63] but not Reg[0] ; Reg[0] is use to no read
+    // if use read zero, please use Reg[63] but NOT Reg[0] ; Reg[0] is use to no read
     var raw_seqs: Seq[Seq[Data]] =
       if (Param.testSub) {
         Seq(
@@ -72,8 +72,8 @@ class InstTranslateStage extends Module {
           Seq(33.U, rk, 63.U, 0.U, false.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
           // add x35, x63, x63    x35 = 0
           Seq(35.U, 63.U, 63.U, 0.U, false.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
-          // ori x34, x63, 5      x34 = 5
-          Seq(34.U, 63.U, 0.U, 5.U, true.B, 0.U, OpBundle.or, false.B, 1.U, false.B),
+          // ori x34, x63, 4      x34 = 4
+          Seq(34.U, 63.U, 0.U, 4.U, true.B, 0.U, OpBundle.or, false.B, 1.U, false.B),
           // addi x35, x35, 1     x35 += 1
           Seq(35.U, 35.U, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
           // nor x33, x33, x63
@@ -82,6 +82,8 @@ class InstTranslateStage extends Module {
           Seq(0.U, 35.U, 34.U, 0.U, false.B, 0.U, OpBundle.custom_bne, false.B, 3.U, true.B),
           // addi x36, rj, 1
           Seq(36.U, rj, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+          // nor x33, x33, x63
+          Seq(33.U, 33.U, 63.U, 0.U, false.B, 0.U, OpBundle.nor, false.B, 1.U, false.B),
           // add rd, x33, x36
           Seq(rd, 33.U, 36.U, 0.U, false.B, 0.U, OpBundle.add, false.B, 1.U, false.B)
         )
