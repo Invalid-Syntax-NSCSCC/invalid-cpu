@@ -15,4 +15,8 @@ class CustomInstInfoBundle extends Bundle {
   val hasImm              = Bool()
   val jumpBranchAddr      = UInt(wordLength.W)
   val isIssueMainPipeline = Bool()
+
+  val isInnerJump   = Bool()
+  val jumpDirection = Bool()
+  val jumpOffset    = UInt(10.W)
 }

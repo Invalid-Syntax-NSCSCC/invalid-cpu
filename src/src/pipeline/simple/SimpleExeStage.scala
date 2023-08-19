@@ -58,4 +58,19 @@ class SimpleExeStage
       out.gprWrite.data := alu.io.result.shift
     }
   }
+
+  switch(selectedIn.instInfo.exeOp.subOp) {
+    is(OpBundle.custom_beq.subOp) {
+      when(selectedIn.leftOperand =/= selectedIn.rightOperand) {
+        out.instInfo.customInstInfo.jumpDirection := false.B
+        out.instInfo.customInstInfo.jumpOffset    := 1.U
+      }
+    }
+    is(OpBundle.custom_bne.subOp) {
+      when(selectedIn.leftOperand === selectedIn.rightOperand) {
+        out.instInfo.customInstInfo.jumpDirection := false.B
+        out.instInfo.customInstInfo.jumpOffset    := 1.U
+      }
+    }
+  }
 }

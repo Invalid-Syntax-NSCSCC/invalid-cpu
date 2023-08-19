@@ -24,6 +24,10 @@ class InstTranslateStage extends Module {
       Decoupled(new FetchInstInfoBundle)
     )
     val isFlush = Input(Bool())
+
+    val isInnerJump   = Input(Bool())
+    val jumpDirection = Input(Bool())
+    val jumpOffset    = Input(UInt(10.W))
   })
 
   io.ins.zip(io.outs).foreach {
@@ -52,14 +56,34 @@ class InstTranslateStage extends Module {
     val rj   = inst(9, 5)
     val rk   = inst(14, 10)
 
-    // write reg ; read 1, read 2 ; imm ; has imm ; jump branch addr ; exe op ; issue main pipeline
-    // if use zero, please use Reg[63] but not Reg[0]
+    // write reg ; read 1, read 2 ;
+    // imm ; has imm ; jump branch addr ; exe op ; issue main pipeline ;
+    // jump offset ; jump direction (false is to next, true is to previous)
+
+    // if use read zero, please use Reg[63] but not Reg[0] ; Reg[0] is use to no read
     var raw_seqs: Seq[Seq[Data]] =
       if (Param.testSub) {
         Seq(
-          Seq(33.U, 63.U, rk, 0.U, false.B, 0.U, OpBundle.nor, false.B),
-          Seq(33.U, 33.U, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B),
-          Seq(rd, rj, 33.U, 0.U, false.B, 0.U, OpBundle.add, false.B)
+          // Seq(33.U, 63.U, rk, 0.U, false.B, 0.U, OpBundle.nor, false.B, 1.U, false.B),
+          // Seq(33.U, 33.U, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+          // Seq(rd, rj, 33.U, 0.U, false.B, 0.U, OpBundle.add, false.B, 1.U, false.B)
+
+          // add x33, rk, x63
+          Seq(33.U, rk, 63.U, 0.U, false.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+          // add x35, x63, x63    x35 = 0
+          Seq(35.U, 63.U, 63.U, 0.U, false.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+          // ori x34, x63, 5      x34 = 5
+          Seq(34.U, 63.U, 0.U, 5.U, true.B, 0.U, OpBundle.or, false.B, 1.U, false.B),
+          // addi x35, x35, 1     x35 += 1
+          Seq(35.U, 35.U, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+          // nor x33, x33, x63
+          Seq(33.U, 33.U, 63.U, 0.U, false.B, 0.U, OpBundle.nor, false.B, 1.U, false.B),
+          // cus_bne x35, x34 , -3  continue x35 + 1, x33 = ~x33 for 5 time
+          Seq(0.U, 35.U, 34.U, 0.U, false.B, 0.U, OpBundle.custom_bne, false.B, 3.U, true.B),
+          // addi x36, rj, 1
+          Seq(36.U, rj, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+          // add rd, x33, x36
+          Seq(rd, 33.U, 36.U, 0.U, false.B, 0.U, OpBundle.add, false.B, 1.U, false.B)
         )
       } else if (Param.testB) {
 
@@ -68,18 +92,29 @@ class InstTranslateStage extends Module {
         imm26 := Cat(rj, rd, imm16, 0.U(2.W)).asSInt
         val jumpPc = imm26.asUInt + storeInfoReg.pcAddr
         Seq(
-          Seq(33.U, 63.U, 0.U, 0.U, false.B, 0.U, OpBundle.rdcntvl_w, true.B), // 33 : get a time val
-          Seq(34.U, 63.U, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B), // 34 : 1
-          Seq(34.U, 33.U, 34.U, 0.U, false.B, 0.U, OpBundle.div, false.B), // 34 : 33 div 1 , as the same as 33
-          Seq(0.U, 34.U, 33.U, 0.U, false.B, jumpPc, OpBundle.beq, true.B) // beq 33, 34 jump
+          Seq(33.U, 63.U, 0.U, 0.U, false.B, 0.U, OpBundle.rdcntvl_w, true.B, 1.U, false.B), // 33 : get a time val
+          Seq(34.U, 63.U, 0.U, 1.U, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B), // 34 : 1
+          Seq(
+            34.U,
+            33.U,
+            34.U,
+            0.U,
+            false.B,
+            0.U,
+            OpBundle.div,
+            false.B,
+            1.U,
+            false.B
+          ), // 34 : 33 div 1 , as the same as 33
+          Seq(0.U, 34.U, 33.U, 0.U, false.B, jumpPc, OpBundle.beq, true.B, 0.U, false.B) // beq 33, 34 jump
         )
       } else if (Param.testSt_w) {
         val imm12 = inst(21, 10)
         val sext  = Wire(SInt(32.W))
         sext := imm12.asSInt
         Seq(
-          Seq(33.U, rj, 0.U, sext.asUInt, true.B, 0.U, OpBundle.add, false.B),
-          Seq(0.U, 33.U, rd, 0.U, false.B, 0.U, OpBundle.st_w, true.B)
+          Seq(33.U, rj, 0.U, sext.asUInt, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+          Seq(0.U, 33.U, rd, 0.U, false.B, 0.U, OpBundle.st_w, true.B, 1.U, false.B)
         )
       } else { Seq(Seq()) }
 
@@ -95,6 +130,8 @@ class InstTranslateStage extends Module {
           val jumpBranchAddr      = UInt(wordLength.W)
           val exeOp               = new ExeInst.OpBundle
           val isIssueMainPipeline = Bool()
+          val jumpDirection       = Bool()
+          val jumpOffsetIndex     = UInt(10.W)
         })
       )
     )
@@ -109,6 +146,8 @@ class InstTranslateStage extends Module {
         seq.jumpBranchAddr      := raw_seq(5)
         seq.exeOp               := raw_seq(6)
         seq.isIssueMainPipeline := raw_seq(7)
+        seq.jumpOffsetIndex     := raw_seq(8)
+        seq.jumpDirection       := raw_seq(9)
     }
 
     val counter = RegInit(zeroWord)
@@ -141,12 +180,29 @@ class InstTranslateStage extends Module {
         }
     }
 
+    val isJumpBlockReg = RegInit(false.B)
+    when(isJumpBlockReg) {
+      io.outs.head.valid := false.B
+      when(io.isInnerJump) {
+        isJumpBlockReg := false.B
+        // counter        := seqs.length.U - io.jumpAbsIndex
+        counter := Mux(
+          io.jumpDirection,
+          counter + io.jumpOffset,
+          counter - io.jumpOffset
+        )
+      }
+    }
+
     when(counter =/= 0.U) {
       val majorOut = io.outs.head
-      when(majorOut.ready) {
+      when(majorOut.ready && !isJumpBlockReg) {
         majorOut.valid := true.B
         majorOut.bits  := storeInfoReg
-        counter        := counter - 1.U
+        counter        := Mux(majorOut.bits.customInstInfo.isInnerJump, counter, counter - 1.U)
+        when(majorOut.bits.customInstInfo.isInnerJump) {
+          isJumpBlockReg := true.B
+        }
 
         val res     = seqs(seqs.length.U - counter)
         val outInfo = majorOut.bits.customInstInfo
@@ -169,13 +225,16 @@ class InstTranslateStage extends Module {
         outInfo.jumpBranchAddr      := res.jumpBranchAddr
         outInfo.op                  := res.exeOp
         outInfo.isIssueMainPipeline := res.isIssueMainPipeline
+        outInfo.isInnerJump         := res.exeOp === OpBundle.custom_beq || res.exeOp === OpBundle.custom_bne
+        outInfo.jumpDirection       := res.jumpDirection
+        outInfo.jumpOffset          := res.jumpOffsetIndex
       }
     }
 
     when(io.isFlush) {
       customContinueReg := false.B
+      isJumpBlockReg    := false.B
       counter           := 0.U
     }
-
   }
 }

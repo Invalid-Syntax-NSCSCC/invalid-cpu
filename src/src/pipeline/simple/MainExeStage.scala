@@ -568,6 +568,21 @@ class MainExeStage
     // out.wb.instInfo.forbidParallelCommit := true.B
   }
 
+  switch(selectedIn.instInfo.exeOp.subOp) {
+    is(OpBundle.custom_beq.subOp) {
+      when(selectedIn.leftOperand =/= selectedIn.rightOperand) {
+        out.wb.instInfo.customInstInfo.jumpDirection := false.B
+        out.wb.instInfo.customInstInfo.jumpOffset    := 1.U
+      }
+    }
+    is(OpBundle.custom_bne.subOp) {
+      when(selectedIn.leftOperand === selectedIn.rightOperand) {
+        out.wb.instInfo.customInstInfo.jumpDirection := false.B
+        out.wb.instInfo.customInstInfo.jumpOffset    := 1.U
+      }
+    }
+  }
+
   when(io.isFlush) {
     outValid          := false.B
     branchBlockingReg := false.B

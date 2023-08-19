@@ -101,6 +101,9 @@ object ExeInst {
     val dbar  = next
     val ibar  = next
 
+    val custom_beq = next
+    val custom_bne = next
+
     // csr / exception
     val sel_csr = newSel
 

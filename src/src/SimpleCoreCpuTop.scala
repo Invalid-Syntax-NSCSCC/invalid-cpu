@@ -229,6 +229,10 @@ class SimpleCoreCpuTop extends Module {
 
   val instTranslateStage = Module(new InstTranslateStage)
   instTranslateStage.io.isFlush := cu.io.frontendFlush
+  instTranslateStage.io.isInnerJump := commitStage.io.ins.head.valid && commitStage.io.ins.head.ready &&
+    commitStage.io.ins.head.bits.instInfo.customInstInfo.isInnerJump
+  instTranslateStage.io.jumpDirection := commitStage.io.ins.head.bits.instInfo.customInstInfo.jumpDirection
+  instTranslateStage.io.jumpOffset    := commitStage.io.ins.head.bits.instInfo.customInstInfo.jumpOffset
 
   // decode
   decodeStage.io.isFrontendFlush := cu.io.frontendFlush
