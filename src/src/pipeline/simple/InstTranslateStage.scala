@@ -118,7 +118,45 @@ class InstTranslateStage extends Module {
           Seq(33.U, rj, 0.U, sext.asUInt, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
           Seq(0.U, 33.U, rd, 0.U, false.B, 0.U, OpBundle.st_w, true.B, 1.U, false.B)
         )
-      } else { Seq(Seq()) }
+      } else {
+
+        val imm5a = inst(24, 20)
+        val imm5b = inst(19, 15)
+        val imm5c = inst(14, 10)
+        val rj    = inst(9, 5)
+        val rd    = inst(4, 0)
+
+        val mask = Wire(Vec(32, Bool()))
+        mask.zipWithIndex.foreach {
+          case (elem, idx) =>
+            when(
+              (imm5c >= idx.U && idx.U > imm5b) ||
+                (idx.U > imm5b && imm5b > imm5c) ||
+                (idx.U <= imm5c && imm5b > imm5c)
+            ) {
+              elem := true.B
+            }.otherwise {
+              elem := false.B
+            }
+
+        }
+
+        // write reg ; read 1, read 2 ;
+        // imm ; has imm ; jump branch addr ; exe op ; issue main pipeline ;
+        // jump offset ; jump direction (false is to next, true is to previous)
+
+        Seq(
+          // shift
+          Seq(33.U, rj, 0.U, imm5a, true.B, 0.U, OpBundle.sll, false.B, 1.U, false.B),
+          Seq(34.U, 63.U, 0.U, 32.U, true.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+          Seq(34.U, 34.U, 0.U, imm5a, true.B, 0.U, OpBundle.sub, false.B, 1.U, false.B),
+          Seq(34.U, rj, 34.U, 0.U, false.B, 0.U, OpBundle.srl, false.B, 1.U, false.B),
+          Seq(35.U, 34.U, 33.U, 0.U, false.B, 0.U, OpBundle.add, false.B, 1.U, false.B),
+
+          // and
+          Seq(rd, 35.U, 0.U, mask.asUInt, true.B, 0.U, OpBundle.and, false.B, 1.U, false.B)
+        )
+      }
 
     val seqs = Wire(
       Vec(
@@ -159,7 +197,7 @@ class InstTranslateStage extends Module {
         if (Param.testSub) in.bits.inst(31, 15) === _3R.sub_w
         else if (Param.testB) in.bits.inst(31, 26) === _2RI16.b_
         else if (Param.testSt_w) in.bits.inst(31, 22) === _2RI12.st_w
-        else false.B
+        else in.bits.inst(31, 25) === "b1100001".U
       )
     }
     isCustomInsts.zipWithIndex.foreach {

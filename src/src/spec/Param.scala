@@ -10,13 +10,13 @@ object Param {
   // These option are one-hot
   val testSub  = false // nor 0 ; add 1 ; add
   val testB    = false // rdcnt ; add ; div ; beq
-  val testSt_w = true // add ; st.w
+  val testSt_w = false // add ; st.w
 
   val useSimpleBackend = true
 
   // These options are one-hot
-  val isChiplab        = true
-  val isReleasePackage = false
+  val isChiplab        = false
+  val isReleasePackage = true
   val isFullFpga       = false
 
   val usePmu = false || isChiplab // 性能计数器
@@ -55,7 +55,7 @@ object Param {
   val instRegReadNum         = 2
   val fetchInstMaxNum        = 4 // 单次取指 must be 1,2,4,8... ( less than dataPerLine)
   val issueInstInfoMaxNum    = 2 // 发射数量
-  val commitNum              = 2 // 单次提交数量
+  val commitNum              = 1 // 单次提交数量
   val pipelineNum            = if (useSimpleBackend && !isUse3Unit) issueInstInfoMaxNum else 3 // number of pipeline
   val dispatchOutQueueLength = 2
   val csrReadNum             = 1
