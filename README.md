@@ -21,3 +21,8 @@ Invalid Syntax 参赛队为 NSCSCC 2023 团队赛 LoongArch 赛道设计的 CPU 
 - `scripts/refresh_branch.sh <BRANCH_NAME>`：将 `<BRANCH_NAME>` 分支强制同步到远端仓库的 main 分支。建议在每合并一个 PR 之后立即这样做，否则在下次利用此分支提交 PR 时会由于 squash merge 的原因导致引入无关 commits（参见 <https://stackoverflow.com/questions/16306012/github-pull-request-showing-commits-that-are-already-in-target-branch>）
 
 其他自动化任务请参考 `Makefile` 和 <https://github.com/OpenXiangShan/chisel-playground>
+
+## 分支
++ `sub-1`: 初赛提交作品
++ `alt-final`: 决赛提交作品
++ `custom-final`: NSCSCC 2023 自定义指令翻译代码
